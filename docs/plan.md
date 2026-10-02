@@ -40,7 +40,7 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 
 - [x] Phase 0: Reference audit and compatibility inventory
 - [x] Phase 1: Basic local platform and reference smoke tests
-- [ ] Phase 2: Capability contracts and native Go implementations
+- [x] Phase 2: Capability contracts and native Go implementations
 - [ ] Phase 3: Shared TDF3 implementation and native interop
 - [ ] Phase 4: Compiler support for bytes, host operations, and library exports
 - [ ] Phase 5: TypeScript SDK for Node and browsers
@@ -81,6 +81,8 @@ HTTP needs a method, URL, headers, request bytes, cancellation/deadline, bounded
 Add independent known-answer and cross-library checks for algorithm parameters, encodings, key import/export, and rejection of invalid inputs. Native wrappers can use the Go standard library; the shared source can import only Goalchemy's accepted library boundary.
 
 Acceptance: wrappers and contracts agree; operations pass primitive and encoding tests; unsupported target capabilities fail with useful diagnostics; the shared SDK can call the wrappers using ordinary Go and still pass the relevant Goalchemy source checks.
+
+Phase 2 accepted native Go HTTP and cooperative source checking; generated HTTP deliberately reports an unavailable capability until Phase 4 implements pending host operations and cancellation. Go-emitted crypto, encoding, and wall time are verified. This boundary preserves the native interop sequence and does not waive generated HTTP or any target requirement. See [capability contract and evidence](capabilities.md).
 
 ## Phase 3 Shared TDF3 implementation and native interop
 

@@ -4,7 +4,7 @@ This project will implement OpenTDF SDK behavior in shared Go source accepted by
 
 The first release will create and decrypt TDF3 files through a real OpenTDF Key Access Server (KAS). The final goal is full feature parity with the pinned OpenTDF Go SDK on all seven targets; the compatibility inventory tracks required work beyond this first release.
 
-Phases 0 and 1 are complete: the [reference audit](docs/tdf-poc.md), [compatibility inventory](docs/compatibility.md), and [local platform with passing reference interoperability](docs/phase1-results.md) are verified. SDK implementation begins with native capability contracts in Phase 2 of the [implementation plan](docs/plan.md). The checked-out reference revisions are recorded in [references.lock.json](references.lock.json).
+Phases 0, 1, and 2 are complete: the [reference audit](docs/tdf-poc.md), [compatibility inventory](docs/compatibility.md), and [local platform with passing reference interoperability](docs/phase1-results.md) are verified. [Native capability contracts and Go implementations](docs/capabilities.md) are also complete. Shared TDF implementation begins in Phase 3 of the [implementation plan](docs/plan.md). The checked-out reference revisions are recorded in [references.lock.json](references.lock.json).
 
 From this directory, run `make platform-up`, `make platform-ready`, and `make interop-smoke`. See [platform setup](docs/platform.md) for prerequisites, configuration, and lifecycle commands.
 
