@@ -78,16 +78,16 @@ required case, mock KAS or self-round-trip cannot satisfy these checks.
 
 | Target | Accepted work | Delivery evidence still required |
 | --- | --- | --- |
-| Go | Importable generated SDK/native consumer; RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase7 |
-| TypeScript | Native byte storage and Node/Chromium host lifecycle, including reviewed task-identity result/fault/cleanup-ACK repair | Production HTTP/crypto, importable Node/browser package and SDK/KAS matrix |
+| Go | Importable generated SDK/native consumer; RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
+| TypeScript | Importable Node/browser ESM SDK, native WebCrypto/fetch, RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | Java | Native byte storage and generic host lifecycle, including reviewed foreign-task cleanup repair | Production adapters, importable SDK and SDK/KAS matrix |
 | C# | Native byte storage and generic CLR host lifecycle | Production adapters, importable SDK and SDK/KAS matrix |
 | Python | Native byte storage and generic CPython host lifecycle | Production adapters, importable SDK and SDK/KAS matrix |
 | Rust | Native byte storage and reviewed owned-wire/native-thread host lifecycle | Production adapters, Cargo SDK and SDK/KAS matrix |
 | C | Native byte storage and reviewed native-wire/collector/sanitizer host lifecycle | Production adapters, headers/library and SDK/KAS matrix |
 
-Update this ledger from terminal evidence, not implementation intent. All-target
-libraries, target adapters, real interop and Phase 7 CI/package checks remain
-open. Commit after each verified phase in SDK and, when changed, Goalchemy.
+Update this ledger from terminal evidence, not implementation intent. Java, C#, Python, Rust and C
+libraries, production adapters and real interop remain open, together with
+Phase 7 CI/package checks for all seven targets. Commit after each verified phase in SDK and, when changed, Goalchemy.
 Shipping here means reviewable, reproducible packages and passing delivery
 evidence; public publishing requires a separate release instruction.

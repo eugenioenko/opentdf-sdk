@@ -16,16 +16,20 @@ idempotent, cancels in-flight requests and preserves caller-owned keys.
 key handles and structured manifest data. [Error](../errors.go) preserves
 stable categories, operation, service fields, obligations and a cause.
 
-The [driver](../../goalchemy/internal/driver/emit.go) still gates library emission
-for TypeScript, Java, C#, Python and Rust with `GCE006`. The existing
+The [driver](../../goalchemy/internal/driver/emit.go) gates library emission
+for Java, C#, Python and Rust with `GCE006`. Phase 5 adds accepted
+TypeScript value-library emission; its terminal acceptance is recorded in
+[the delivery ledger](delivery-checklist.md). The existing
 [C library emitter](../../goalchemy/internal/emit/c/c.go) rejects suspending
 exports and only supports a limited scalar/string boundary. Neither this C API
 nor a generated executable satisfies the SDK library requirement.
 
 The [generated Go library boundary](generated-go-library.md) is accepted with real KAS RSA/P256/Bearer/enforced-DPoP and negative evidence. It adds serialized, cancellable calls and fresh source
 initialization over the accepted [Go host lifecycle](../../goalchemy/docs/host-operations.md).
-The remaining six library boundaries and the final package/CI matrix follow in
-Phases 5–7; terminal acceptance is recorded in
+The [generated TypeScript library](generated-typescript-library.md) is accepted
+for Node and an actual browser, with copied value boundaries and real KAS
+evidence. The remaining five library boundaries and final package/CI matrix
+follow in Phases 6–7; terminal acceptance is recorded in
 [the delivery ledger](delivery-checklist.md).
 
 ## Required boundary behavior

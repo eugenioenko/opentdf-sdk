@@ -43,7 +43,7 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 - [x] Phase 2: Capability contracts and native Go implementations
 - [x] Phase 3: Shared TDF3 implementation and native interop
 - [x] Phase 4: Seven-target byte/host foundation and generated Go library
-- [ ] Phase 5: TypeScript SDK for Node and browsers
+- [x] Phase 5: TypeScript SDK for Node and browsers
 - [ ] Phase 6: Java, C#, Python, Rust, and C SDKs in sequence
 - [ ] Phase 7: Interop CI and TDF3 delivery readiness
 
@@ -101,12 +101,12 @@ Phase 4 is accepted for the seven-target byte/host foundation and the first
 importable generated Go SDK. The remaining target library exports are implemented
 and accepted together with their production adapters in Phases 5–6. This sequencing
 lets each export boundary execute the actual SDK; all seven importable libraries
-remain delivery requirements. Earlier progress entries marking Phase4 open refer
+remain delivery requirements. Earlier progress entries marking Phase 4 open refer
 to the previous all-target-export grouping.
 
 Assign and review the compiler tasks separately.
 
-Start from the current [library-target gate](../../goalchemy/internal/driver/emit.go), [TypeScript slice representation](../../goalchemy/targets/typescript/types/slice.ts), [slice contracts](../../goalchemy/specs/types/slice.yaml), and [runtime contracts](../../goalchemy/specs/runtime/core/). Existing [slice-aliasing](../../goalchemy/tests/language/testdata/slices_alias/main.go) and [growth](../../goalchemy/tests/language/testdata/slice_growth/main.go) fixtures are regression baselines. Native byte storage has passed its bounded acceptance checks on all seven targets: Go retains its standard byte slices, and TypeScript, Java, C#, Python, Rust and C now use specialized native backing. Generated Go scheduler/HTTP, the [TypeScript portable host lifecycle](../../goalchemy/docs/typescript-host-operations.md), the [Java host lifecycle](../../goalchemy/docs/java-host-operations.md), the [C# host lifecycle](../../goalchemy/docs/csharp-host-operations.md), the [Python host lifecycle](../../goalchemy/docs/python-host-operations.md), and the [Rust host lifecycle](../../goalchemy/docs/rust-host-operations.md) have passed bounded acceptance; the [C host lifecycle](../../goalchemy/docs/c-host-operations.md) has also passed collector/sanitizer/native/emitted acceptance. All seven generic host prerequisites and the [generated Go SDK](generated-go-library.md) are accepted; TypeScript Node/browser SDK delivery is next. TypeScript acceptance includes actual Node and Chromium executable frames, not production HTTP/crypto adapters or SDK libraries. Every specialization must preserve arbitrary Go string bytes rather than substitute a UTF-8 text decoder. See [TypeScript design and evidence](../../goalchemy/docs/typescript-byte-storage.md), [Java design and evidence](../../goalchemy/docs/java-byte-storage.md), [C# design and evidence](../../goalchemy/docs/csharp-byte-storage.md), [Python design and evidence](../../goalchemy/docs/python-byte-storage.md), [Rust design and evidence](../../goalchemy/docs/rust-byte-storage.md) and [C design and evidence](../../goalchemy/docs/c-byte-storage.md). These prerequisites establish generic host behavior; production adapters and SDK libraries for the six remaining targets follow in Phases 5–6.
+Start from the current [library-target gate](../../goalchemy/internal/driver/emit.go), [TypeScript slice representation](../../goalchemy/targets/typescript/types/slice.ts), [slice contracts](../../goalchemy/specs/types/slice.yaml), and [runtime contracts](../../goalchemy/specs/runtime/core/). Existing [slice-aliasing](../../goalchemy/tests/language/testdata/slices_alias/main.go) and [growth](../../goalchemy/tests/language/testdata/slice_growth/main.go) fixtures are regression baselines. Native byte storage has passed its bounded acceptance checks on all seven targets: Go retains its standard byte slices, and TypeScript, Java, C#, Python, Rust and C now use specialized native backing. Generated Go scheduler/HTTP, the [TypeScript portable host lifecycle](../../goalchemy/docs/typescript-host-operations.md), the [Java host lifecycle](../../goalchemy/docs/java-host-operations.md), the [C# host lifecycle](../../goalchemy/docs/csharp-host-operations.md), the [Python host lifecycle](../../goalchemy/docs/python-host-operations.md), and the [Rust host lifecycle](../../goalchemy/docs/rust-host-operations.md) have passed bounded acceptance; the [C host lifecycle](../../goalchemy/docs/c-host-operations.md) has also passed collector/sanitizer/native/emitted acceptance. All seven generic host prerequisites and the [generated Go SDK](generated-go-library.md) are accepted; Phase 5 also accepts the TypeScript Node/browser SDK. Phase 4 host evidence covers actual Node and Chromium executable frames; Phase 5 adds production HTTP/crypto adapters and SDK libraries. Every specialization must preserve arbitrary Go string bytes rather than substitute a UTF-8 text decoder. See [TypeScript design and evidence](../../goalchemy/docs/typescript-byte-storage.md), [Java design and evidence](../../goalchemy/docs/java-byte-storage.md), [C# design and evidence](../../goalchemy/docs/csharp-byte-storage.md), [Python design and evidence](../../goalchemy/docs/python-byte-storage.md), [Rust design and evidence](../../goalchemy/docs/rust-byte-storage.md) and [C design and evidence](../../goalchemy/docs/c-byte-storage.md). These prerequisites establish generic host behavior; production adapters and SDK libraries for Java, C#, Python, Rust and C follow in Phase 6.
 
 1. Specialize `[]byte` storage on non-Go targets. Preserve slice identity, offset/length/capacity, nil versus empty, append growth, aliasing, `copy` overlap, strings containing arbitrary bytes, and conversion semantics. Test language behavior and measure memory on representative SDK payloads.
 2. Add pending host operations to the scheduler. Register requests and completions, retain buffers/keys for the declared lifetime, resume only through the scheduler, and implement cancellation and shutdown. No runnable tasks with pending I/O must not be reported as deadlock. Host deadlines and wall-clock time must work alongside the existing virtual-clock conformance fixtures.
@@ -122,6 +122,16 @@ Use TypeScript as the first non-Go generated SDK to exercise the combined byte, 
 Implement crypto with Web Crypto where it covers the pinned profile, HTTP with `fetch`, and byte APIs with `Uint8Array`. Export promise-based SDK operations. Support a token-provider/public-client path for browsers and client credentials for appropriate non-browser consumers. Any required browser-specific PEM/JWK conversion must preserve the shared protocol's exact representation.
 
 Acceptance: an independent Node application and a real browser test import the generated package; both interop directions pass against both references using real KAS; DPoP challenges, cancellation, invalid inputs, and byte conversions behave correctly. No Node-only import is present in the browser dependency graph.
+
+Phase 5 is accepted. Independent installed ESM consumers work in Node and actual
+Chromium, with an 88-input browser SDK graph free of Node dependencies. Real KAS
+BASIC/EC/enforced-DPoP matrices pass, with stock Web enforced-nonce401 limitations
+recorded separately. Ownership, queued/active cancellation, source failures,
+crypto lifetimes, UTF-8 and transport rejection checks pass. Original compiler
+campaign failures and its cache-processing termination remain retained alongside
+terminal current supplements. Java is the next sole worker; the five remaining
+SDKs and Phase 7 stay open. See [TypeScript delivery](generated-typescript-library.md)
+and [the progress log](progress.md) for precise evidence and limits.
 
 ## Phase 6 Remaining target SDKs
 
@@ -155,7 +165,7 @@ The Phase 0 inventory preserves broader reference functionality for possible fut
 
 Complete SDK/API parity would need a separate feature-by-feature plan and acceptance audit. The current implementation must advertise only its tested TDF3 profiles and byte API.
 
-## Initial findings and uncertainties
+## Historical initial findings and uncertainties
 
 The pinned Goalchemy supports seven executable targets, but exported library builds are currently restricted to C and simple non-suspending parameters/results. Non-Go byte slices are boxed. The TypeScript runtime currently includes `Buffer`, `node:fs`, `process.exit`, and scheduler environment reads. These are implementation gaps to resolve, not fundamental browser restrictions.
 
