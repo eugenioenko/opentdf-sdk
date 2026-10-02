@@ -371,3 +371,67 @@ Root accepts Phase5 after terminal review of the final TypeScript SDK/library an
 Final transport review additionally repaired a truncated-response classification defect: reader.cancel rejected with the same stored network error and masked a declared transport failure as host_fault. The original actual compiled SDK failure remains retained. Root independently replayed the byte-identical probe SHA825761bd76c60d312c3cb9d17bbbde94530883c8c4503e17fc421f925a563383 against269 frozen copied final files in an isolated mirror; terminal0 returns source/transport with one rejecting request, in `.local/root-typescript-truncated-response-proof-fixed/evidence.json`. Exact generated Node/Chromium regression7.849 seconds verifies actual truncation, same-error cleanup, distinct cleanup fault and release-before-ACK. Only the compiled HTTP runtime changes from the preceding repaired package; all other175 compiled files and all61 Go delivery files remain unchanged. Final offline package/declaration/import, links and whitespace checks pass. Platform remains restored verified BASIC. Go and TypeScript TDF3 SDKs are accepted; Java/C#/Python/Rust/C SDKs and all-target Phase7 clean-package/CI readiness remain required. Root now records signed Phase5 commits before assigning Java.
 
 Phase5 compiler/runtime work is committed locally as Goalchemy `941a644bef590691826f23cef75cd0dd5302ac6b` with the existing SSH signature. references.lock.json now pins that accepted compiler; platform and Web SDK revisions remain unchanged. The SDK phase commit records the reviewed Node/browser delivery, with its paired signed commit recorded in ignored root-phase5-commits.json. The Java assignment will start from the post-commit accepted source baseline.
+
+
+## Phase 6 Java SDK accepted — 2026-10-02
+
+Java now delivers an importable named-package JAR executing the shared SDK.
+The native facade exposes owned payload/configuration/metadata results, typed
+errors and serialized cancellable asynchronous calls. JDK 21 supplies HTTP and
+JCA crypto; pinned BC 1.86 supplies HKDF and absent-public-point P-256 derivation.
+Dependency locks, artifact SHA, embedded licenses and build prerequisites are
+included. See [Java delivery](generated-java-library.md) and
+[the compiler boundary](../../goalchemy/docs/java-library-boundary.md).
+
+Root accepted the exact 94 worker files after matching all 1,764 frozen source
+hashes, 841 terminal status files and package/receipt hashes. The reviewed scope
+includes Java emission/runtime/capabilities, two bounded shared native-method
+lowering repairs, and a Java-only diagnostic expectation update. The C atomic
+fixture and other accepted targets remain preserved. The corresponding signed
+Goalchemy phase commit is `60ffa2a1a385d6abc7142d229e8db7c348a011af` (`feat(java): add native capabilities
+and cancellable value libraries`); the SDK pin now references it.
+
+Independent importing consumers pass 170 boundary/lifecycle checks and three
+missing-dependency checks; 59 native crypto checks verify vectors and Go/Java
+interop. Tests cover source initialization, durable nested copies/errors,
+queued/active cancellation, callback re-entry and submission faults, acquired
+JCA key Close races, cleanup acknowledgments and next-call recovery. Root
+independently reproduced result loss, queued-cancel deadlock and owner-launch
+failure in earlier artifacts, then verified unchanged probes against separate
+repairs. The final native owner-launch probe passes typed host-fault propagation
+and next-call recovery. HTTP/TLS/bounds/deadline/cancellation negatives preserve
+zero plaintext and actual release ordering.
+
+Artifact-scoped real-KAS matrices pass BASIC 35 comparisons/10 negatives,
+EC 280/8 and enforced DPoP 226/10. They cover seven payload/metadata cases,
+RSA/P-256 wrapping and response sessions, RS256/ES256, discovery/explicit keys,
+and native token providers. Four stock Web enforced-nonce authentication401
+limitations remain explicit; Bearer-produced reference formats are separately
+labeled. Root independently compared 932 retained payload/metadata files.
+
+The final dispatch repair changes only four Library class entries relative to
+the preceding frozen JAR; generated SDK, facade, HTTP, crypto and protocol
+classes are byte-identical. Its fresh final BASIC supplement passes 15 real-KAS
+comparisons/10 negatives, a native OAuth provider and repeated ownership/recovery.
+Root compared another 27 exact output files. Two fresh builds produce the same
+final JAR SHA256 `0bf2c89bae6cedfba714a9a900b81c5b71ec3bda8a8a29337d1e4f32e8434418`.
+Earlier full matrices remain evidence for their recorded artifacts, with the
+fresh final consumer/KAS/native fault checks covering the affected boundary.
+
+The original mandatory `go test -count=1 -timeout 30m ./...` campaign ended1.
+Only the installed compiler's unchanged60s timeout under concurrent load and a
+stale Java GCE006 expectation failed. Both pass focused supplements at their
+original budgets (9.221s and18.963s). Passing broad language, contracts, corpus,
+memory, C sanitizer and native/browser integration evidence was preserved;
+the original campaign is not relabeled all0. SDK race, vet, catalog13/95/7,
+freshness560, native bound-method Go/TS/Java checks, documentation and syntax
+checks pass. Earlier fixture failures and their separate corrections remain in
+the terminal evidence; no required case was skipped.
+
+Ignored receipts include `.local/java-tdf-library-worker-handoff.txt`,
+`.local/java-tdf-library/final-terminal-evidence.json`,
+`.local/root-java-library-accepted-evidence.json` and
+`.local/root-java-phase6-commits.json`. Root's documentation/pin changes are
+recorded separately from the immutable worker freeze. The platform is restored
+to verified BASIC. C# is next, followed by Python, Rust and C. Phase 6 and Phase 7
+remain open; this acceptance does not complete the seven-target delivery goal.

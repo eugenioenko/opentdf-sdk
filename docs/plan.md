@@ -129,7 +129,7 @@ BASIC/EC/enforced-DPoP matrices pass, with stock Web enforced-nonce401 limitatio
 recorded separately. Ownership, queued/active cancellation, source failures,
 crypto lifetimes, UTF-8 and transport rejection checks pass. Original compiler
 campaign failures and its cache-processing termination remain retained alongside
-terminal current supplements. Java is the next sole worker; the five remaining
+terminal current supplements. Java is accepted in Phase 6; four remaining
 SDKs and Phase 7 stay open. See [TypeScript delivery](generated-typescript-library.md)
 and [the progress log](progress.md) for precise evidence and limits.
 
@@ -139,7 +139,7 @@ Implement and accept each target before starting the next. Each target needs cap
 
 | Order | Target | Proposed primitives and delivery |
 | --- | --- | --- |
-| 1 | Java | JCA crypto, `java.net.http`, importable artifact with byte arrays and appropriate async/error APIs |
+| 1 | Java (accepted) | JDK 21 JCA/HTTP plus pinned BC 1.86 for HKDF/omitted-Q P256, named-package JAR, owned bytes and cancellable async/error API |
 | 2 | C# | .NET crypto and `HttpClient`, class library with byte APIs, cancellation, and async calls |
 | 3 | Python | `cryptography` plus a bounded HTTP adapter, installable package and documented sync/async behavior |
 | 4 | Rust | Maintained crypto/HTTP crates, generated Cargo package and lockfile, idiomatic `Result` and clear key/resource ownership |
@@ -148,6 +148,14 @@ Implement and accept each target before starting the next. Each target needs cap
 Avoid blocking the cooperative scheduler during host network I/O. Java, C#, Python, Rust, and C adapters must define their completion behavior as carefully as TypeScript. Validate TLS verification, cancellation, platform errors, and actual RSA/EC/JOSE parameters rather than assuming host defaults align.
 
 Acceptance per target: install/build from a clean environment; all required primitive conformance checks pass; the native consumer calls the SDK as a library; both interop directions pass against both references; no skipped required tests; dependency versions and licenses are recorded.
+
+Java is accepted with an independently importing native consumer, reproducible
+JAR, 170 boundary/lifecycle checks, 59 native crypto checks and artifact-scoped
+BASIC/EC/enforced-DPoP matrices. The final library dispatch repair has a fresh
+real-KAS supplement and independent native launch-failure recovery proof.
+Original broad failures and passing scoped repairs remain visible in
+[the progress log](progress.md). C# is the next sole worker, followed by Python,
+Rust and C; Phase 6 and final Phase 7 delivery remain open.
 
 ## Phase 7 Interop CI and TDF3 delivery readiness
 

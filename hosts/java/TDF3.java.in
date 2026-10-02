@@ -1,0 +1,85 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import io.goalchemy.runtime.Callback;
+import io.goalchemy.runtime.Library;
+import java.nio.charset.*;
+import java.nio.*;
+import java.util.concurrent.*;
+import java.util.function.Function;
+
+/** TDF3 value adapter. Protocol operations execute in the generated shared source. */
+public final class TDF3 {
+ private TDF3() {}
+ public static final class KASRoute { public String URL="",APIBaseURL=""; }
+ public static final class Config {
+  public String PlatformURL="",KASURL="",IssuerURL="",TokenURL="",ClientID="",ClientSecret="",TokenProviderName="";
+  public KASRoute[] AllowedKAS;
+  public boolean AllowHTTP,DPoP;public long TimeoutMillis;
+  public String KASPublicKeyPEM="",KID="",KASAlgorithm="",SessionAlgorithm="",AuthPrivateKeyPEM="",AuthAlgorithm="";
+ }
+ public static final class EncryptOptions {
+  public String PolicyBase64="",SegmentHashAlgorithm="",MimeType="";
+  public String[] Attributes,Dissem;
+  public long SegmentSize;public boolean HasSegmentSize,IncludeMetadata;public byte[] Metadata;
+ }
+ public record AccessToken(String value,String scheme,long expiresAt,String confirmationJKT) {}
+ public record Decrypted(byte[] Payload,byte[] Metadata,boolean HasMetadata,String ManifestJSON) {
+  public Decrypted {Payload=Payload.clone();Metadata=Metadata.clone();}
+  public byte[] Payload(){return Payload.clone();}public byte[] Metadata(){return Metadata.clone();}
+ }
+ public static final class TDFError extends RuntimeException {
+  public final String kind,code,operation,serverCode,serverMessage,causeCategory;public final long httpStatus;
+  private final String[] obligations;
+  TDFError(Library.Failure failure){
+   super("tdf: "+failure.kind,failure.getCause());kind=failure.kind;var f=failure.fields();
+   code=f.get("Code") instanceof String s?decode(s):kind;operation=text(f.get("Operation"));
+   httpStatus=f.get("HTTPStatus") instanceof Long n?n:0;serverCode=text(f.get("ServerCode"));serverMessage=text(f.get("ServerMessage"));causeCategory=text(f.get("CauseCategory"));
+   Object raw=f.get("RequiredObligations");if(raw instanceof Object[] a){obligations=new String[a.length];for(int i=0;i<a.length;i++)obligations[i]=text(a[i]);}else obligations=new String[0];
+  }
+  public String[] requiredObligations(){return obligations.clone();}
+ }
+ public static final class ProviderRequest {
+  private final Callback.Request request;
+  ProviderRequest(Callback.Request request){this.request=request;}
+  public boolean canceled(){return request.canceled();}
+  public void retain(){request.retain();}
+  public void onStop(Runnable stop){request.onStop(stop);}
+  public void resolve(AccessToken token){try{request.resolve(tokenBytes(token));}catch(IllegalArgumentException|Library.Failure e){request.reject("provider: invalid token response");}}
+  public void reject(String message){request.reject(message);}
+  public void fault(Throwable fault){request.fault(fault);}
+ }
+ @FunctionalInterface public interface TokenProvider { void start(ProviderRequest request)throws Exception; }
+ public static TokenProvider fromStage(Function<ProviderRequest,? extends CompletionStage<AccessToken>> provider){
+  return request->{CompletionStage<AccessToken> stage=provider.apply(request);if(stage==null)throw new IllegalStateException("null token stage");request.retain();stage.whenComplete((token,error)->{if(error!=null)request.reject("provider: rejected");else request.resolve(token);});};
+ }
+ public static final class CallOptions { public TokenProvider tokenProvider; }
+ public static final class Operation<T> {
+  private final Library.Operation<?> nativeOperation;private final CompletionStage<T> completion;
+  Operation(Library.Operation<?> op,CompletionStage<T> completion){nativeOperation=op;this.completion=completion;}
+  public boolean cancel(){return nativeOperation.cancel();}
+  public CompletionStage<T> completion(){return completion;}
+ }
+ private static String text(Object value){return value instanceof String s?decode(s):"";}
+ private static String decode(String binary){byte[] a=new byte[binary.length()];for(int i=0;i<a.length;i++){char c=binary.charAt(i);if(c>255)throw new IllegalStateException("invalid source text");a[i]=(byte)c;}return decodeBytes(a);}
+ private static String decodeBytes(byte[] bytes){try{return StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();}catch(CharacterCodingException e){throw new IllegalStateException("invalid generated UTF8 text",e);}}
+ private static String encode(String value){if(value==null)return "";try{ByteBuffer encoded=StandardCharsets.UTF_8.newEncoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(value));byte[] a=new byte[encoded.remaining()];encoded.get(a);return new String(a,StandardCharsets.ISO_8859_1);}catch(CharacterCodingException e){throw Library.invalid();}}
+ private static String[] strings(String[] input){if(input==null)return null;if(input.length>64<<20)throw Library.invalid();String[] result=new String[input.length];for(int i=0;i<result.length;i++)result[i]=encode(input[i]);return result;}
+ private static Generated.Config config(Config input){
+  if(input==null)input=new Config();Generated.Config c=new Generated.Config();
+  c.PlatformURL=encode(input.PlatformURL);c.KASURL=encode(input.KASURL);c.IssuerURL=encode(input.IssuerURL);c.TokenURL=encode(input.TokenURL);c.ClientID=encode(input.ClientID);c.ClientSecret=encode(input.ClientSecret);c.TokenProviderName=encode(input.TokenProviderName);
+  c.KASPublicKeyPEM=encode(input.KASPublicKeyPEM);c.KID=encode(input.KID);c.KASAlgorithm=encode(input.KASAlgorithm);c.SessionAlgorithm=encode(input.SessionAlgorithm);c.AuthPrivateKeyPEM=encode(input.AuthPrivateKeyPEM);c.AuthAlgorithm=encode(input.AuthAlgorithm);
+  c.AllowHTTP=input.AllowHTTP;c.DPoP=input.DPoP;c.TimeoutMillis=input.TimeoutMillis;
+  if(input.AllowedKAS!=null){if(input.AllowedKAS.length>64<<20)throw Library.invalid();c.AllowedKAS=new Generated.KASRoute[input.AllowedKAS.length];for(int i=0;i<c.AllowedKAS.length;i++){KASRoute r=input.AllowedKAS[i];if(r==null)throw Library.invalid();Generated.KASRoute s=new Generated.KASRoute();s.URL=encode(r.URL);s.APIBaseURL=encode(r.APIBaseURL);c.AllowedKAS[i]=s;}}
+  return c;
+ }
+ private static Generated.EncryptOptions options(EncryptOptions input){if(input==null)input=new EncryptOptions();Generated.EncryptOptions o=new Generated.EncryptOptions();o.PolicyBase64=encode(input.PolicyBase64);o.SegmentHashAlgorithm=encode(input.SegmentHashAlgorithm);o.MimeType=encode(input.MimeType);o.Attributes=strings(input.Attributes);o.Dissem=strings(input.Dissem);o.SegmentSize=input.SegmentSize;o.HasSegmentSize=input.HasSegmentSize;o.IncludeMetadata=input.IncludeMetadata;o.Metadata=input.Metadata;return o;}
+ private static Library.Options call(Generated.Config config,CallOptions input){Library.Options options=new Library.Options();TokenProvider provider=input==null?null:input.tokenProvider;if(provider!=null){config.TokenProviderName="access-token";options.callbacks=new Callback.Registration[]{new Callback.Registration("access-token",request->provider.start(new ProviderRequest(request)))};}return options;}
+ private static <T,R> Operation<R> wrap(Library.Operation<T> op,Function<T,R> convert){
+  CompletableFuture<R> future=new CompletableFuture<>();op.completion().whenComplete((value,error)->{if(error!=null){Throwable e=error instanceof CompletionException&&error.getCause()!=null?error.getCause():error;future.completeExceptionally(e instanceof Library.Failure f?new TDFError(f):e);}else try{future.complete(convert.apply(value));}catch(Throwable e){future.completeExceptionally(e);}});return new Operation<>(op,future.minimalCompletionStage());
+ }
+ public static Operation<byte[]> encrypt(Config c,byte[] payload,EncryptOptions o,CallOptions callOptions){try{Generated.Config config=config(c);Library.Options call=call(config,callOptions);return wrap(Generated.Encrypt(config,payload,options(o),call),value->value.clone());}catch(Library.Failure e){return wrap(Library.<byte[]>failed(e),Function.identity());}}
+ public static Operation<Decrypted> decrypt(Config c,byte[] archive,CallOptions callOptions){try{Generated.Config config=config(c);return wrap(Generated.Decrypt(config,archive,call(config,callOptions)),value->new Decrypted(value.Payload==null?new byte[0]:value.Payload,value.Metadata==null?new byte[0]:value.Metadata,value.HasMetadata,decodeBytes(value.ManifestJSON)));}catch(Library.Failure e){return wrap(Library.<Decrypted>failed(e),Function.identity());}}
+ private static String quote(String s){if(s==null)s="";StringBuilder b=new StringBuilder("\"");for(int i=0;i<s.length();i++){char c=s.charAt(i);if(c=='"'||c=='\\')b.append('\\').append(c);else if(c<32)b.append(String.format(java.util.Locale.ROOT,"\\u%04x",(int)c));else b.append(c);}return b.append('"').toString();}
+ private static byte[] tokenBytes(AccessToken t){if(t==null||t.value==null||t.scheme==null||t.expiresAt<0||t.value.length()>65536||t.scheme.length()>128||t.confirmationJKT!=null&&t.confirmationJKT.length()>256)throw new IllegalArgumentException("invalid token");String json="{\"value\":"+quote(t.value)+",\"scheme\":"+quote(t.scheme)+",\"expiresAt\":"+quote(Long.toString(t.expiresAt))+",\"confirmationJKT\":"+quote(t.confirmationJKT)+"}";return encode(json).getBytes(StandardCharsets.ISO_8859_1);}
+}
