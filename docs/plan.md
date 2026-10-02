@@ -14,6 +14,14 @@ Use GPT-6.1 Sol with high reasoning effort for crypto, protocol, compiler, sched
 
 Each assignment specifies the objective, allowed files, dependencies, acceptance checks, and required handoff. The orchestrator owns this plan and status updates. Workers report changed files, exact commands and outcomes, known gaps, and the next dependency. Shared workspace changes are immediately visible, so ownership must stay explicit.
 
+The user's current cadence for each remaining SDK target is: implement the target
+→ focused checks → required real-KAS matrix → one acceptance review → commit
+→ next target. Run broader preservation checks when a shared change or concrete
+failure requires them. Retain failures and use focused repairs at the original
+budgets; repeat passed checks only when a new change or demonstrated gap warrants
+it. This cadence supersedes older per-target broad-suite workflows. Java and C# have
+been accepted and committed; Python is the next sole worker.
+
 After each handoff, the orchestrator reads the changes, runs the appropriate checks, and either accepts the task or assigns a focused repair. Required repository instructions apply to changes inside each clone. Do not count skipped tests, a mock KAS, an executable wrapper, or a successful self-round-trip as evidence of generated SDK compatibility.
 
 Continue through approved scope without requesting permission for routine reversible implementation or local testing. Bring material changes in scope or dependencies to the user. Public publishing, pushing, and release actions require separate authorization.
@@ -129,7 +137,7 @@ BASIC/EC/enforced-DPoP matrices pass, with stock Web enforced-nonce401 limitatio
 recorded separately. Ownership, queued/active cancellation, source failures,
 crypto lifetimes, UTF-8 and transport rejection checks pass. Original compiler
 campaign failures and its cache-processing termination remain retained alongside
-terminal current supplements. Java is accepted in Phase 6; four remaining
+terminal current supplements. Java and C# are accepted in Phase 6; three remaining
 SDKs and Phase 7 stay open. See [TypeScript delivery](generated-typescript-library.md)
 and [the progress log](progress.md) for precise evidence and limits.
 
@@ -140,7 +148,7 @@ Implement and accept each target before starting the next. Each target needs cap
 | Order | Target | Proposed primitives and delivery |
 | --- | --- | --- |
 | 1 | Java (accepted) | JDK 21 JCA/HTTP plus pinned BC 1.86 for HKDF/omitted-Q P256, named-package JAR, owned bytes and cancellable async/error API |
-| 2 | C# | .NET crypto and `HttpClient`, class library with byte APIs, cancellation, and async calls |
+| 2 | C# (accepted) | .NET crypto and `HttpClient`, class library with byte APIs, cancellation, and async calls |
 | 3 | Python | `cryptography` plus a bounded HTTP adapter, installable package and documented sync/async behavior |
 | 4 | Rust | Maintained crypto/HTTP crates, generated Cargo package and lockfile, idiomatic `Result` and clear key/resource ownership |
 | 5 | C | OpenSSL and libcurl, headers/library, explicit handles/buffer release, documented async driving model, existing collector integration |
@@ -154,8 +162,13 @@ JAR, 170 boundary/lifecycle checks, 59 native crypto checks and artifact-scoped
 BASIC/EC/enforced-DPoP matrices. The final library dispatch repair has a fresh
 real-KAS supplement and independent native launch-failure recovery proof.
 Original broad failures and passing scoped repairs remain visible in
-[the progress log](progress.md). C# is the next sole worker, followed by Python,
-Rust and C; Phase 6 and final Phase 7 delivery remain open.
+[the progress log](progress.md). C# is accepted with reproducible .NET 8 DLLs,
+93 boundary/lifecycle checks, 39 native crypto checks and artifact-scoped
+BASIC/EC/enforced-DPoP matrices. Focused final checks cover cancellation,
+callback fault handling and detached source-panic ownership; current emitted
+runtime files match the repository. See [C# delivery](generated-csharp-library.md).
+Python is the next sole worker, followed by Rust and C; Phase 6 and final
+Phase 7 delivery remain open.
 
 ## Phase 7 Interop CI and TDF3 delivery readiness
 

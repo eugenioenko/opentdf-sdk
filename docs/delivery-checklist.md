@@ -81,12 +81,12 @@ required case, mock KAS or self-round-trip cannot satisfy these checks.
 | Go | Importable generated SDK/native consumer; RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | TypeScript | Importable Node/browser ESM SDK, native WebCrypto/fetch, RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | Java | Importable JAR/native consumer; JCA/BC crypto, bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| C# | Native byte storage and generic CLR host lifecycle | Production adapters, importable SDK and SDK/KAS matrix |
+| C# | Importable .NET 8 DLL/native consumer; built-in crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | Python | Native byte storage and generic CPython host lifecycle | Production adapters, importable SDK and SDK/KAS matrix |
 | Rust | Native byte storage and reviewed owned-wire/native-thread host lifecycle | Production adapters, Cargo SDK and SDK/KAS matrix |
 | C | Native byte storage and reviewed native-wire/collector/sanitizer host lifecycle | Production adapters, headers/library and SDK/KAS matrix |
 
-Update this ledger from terminal evidence, not implementation intent. C#, Python, Rust and C
+Update this ledger from terminal evidence, not implementation intent. Python, Rust and C
 libraries, production adapters and real interop remain open, together with
 Phase 7 CI/package checks for all seven targets. Commit after each verified phase in SDK and, when changed, Goalchemy.
 Shipping here means reviewable, reproducible packages and passing delivery

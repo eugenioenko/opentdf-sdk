@@ -1,0 +1,8 @@
+{
+  "sdk": ".NET SDK 8.0.425",
+  "runtime": "Microsoft.NETCore.App 8.0.31",
+  "dependencies": [],
+  "licenses": [".NET MIT", "Goalchemy Apache-2.0"],
+  "nativeCrypto": "System.Security.Cryptography (.NET8, OpenSSL on Linux)",
+  "nativeHTTP": "System.Net.Http.HttpClient (.NET8)"
+}

@@ -435,3 +435,68 @@ Ignored receipts include `.local/java-tdf-library-worker-handoff.txt`,
 recorded separately from the immutable worker freeze. The platform is restored
 to verified BASIC. C# is next, followed by Python, Rust and C. Phase 6 and Phase 7
 remain open; this acceptance does not complete the seven-target delivery goal.
+
+
+## Phase 6 C# SDK accepted — 2026-10-02
+
+C# now delivers an independently importable `OpenTDF.TDF3.dll` executing the
+shared SDK, with owned byte/configuration/metadata results, typed errors,
+serialized cancellable Tasks and native token providers. .NET 8 built-in crypto
+and HttpClient supply production capabilities without NuGet dependencies.
+SDK 8.0.425/runtime 8.0.31, Linux prerequisites and shipped licenses are recorded
+in [C# delivery](generated-csharp-library.md) and its dependency lock.
+
+The single acceptance review verified all 89 frozen worker files and 1,841
+source hashes against the 1,764-file accepted Java baseline. The worker changed
+only the approved C# backend/runtime/capabilities and associated driver/spec/test
+branches; shared SDK protocol and other target implementations remain unchanged.
+Root documentation and pin changes are recorded separately. The signed Goalchemy
+commit is `fe54f04fe692b5fae46f7bf820f7d326c25d627e` (`feat(csharp): add native capabilities and cancellable value libraries`).
+The SDK compiler pin now references this accepted revision.
+
+Independent importing consumers pass 93 final boundary/lifecycle checks;
+39 native crypto checks and an independent native Go verifier cover vectors,
+PEM/JWK, OAEP, signatures, ECDH and HKDF. Tests verify owned nested snapshots,
+exact integers, metadata presence, source initialization, queued/active
+cancellation, provider faults, key Close races, resource retirement and recovery.
+Focused C# emitter/driver, host/byte/language, contracts, catalog 13/95/7 and
+588-file generated freshness checks pass. No routine all-target campaign was
+required by this target-only change.
+
+Artifact-scoped real-KAS matrices pass BASIC 35 comparisons/10 typed negatives,
+EC 280/8 and enforced DPoP 226/10, covering all seven payload/metadata cases,
+RSA/P256 wrapping and response sessions, RS256/ES256, discovery and native
+matching token providers. Eleven controlled actual-SDK HTTP/TLS/bounds/deadline/
+cancellation negatives also pass, with zero plaintext and actual cleanup ACKs.
+Four stock Web enforced-nonce authentication401 limitations remain explicit;
+Bearer-format producers are labeled separately from generated DPoP success.
+Root verified 2,450 matrix artifact hashes and 743 terminal status records.
+
+BASIC, EC and controlled checks used DLL SHA256
+`7d02d253cb3ad11407ca271e2c9368ba7d37f7ca64f73f6de4326f5efe5f7f6d`;
+DPoP used `f3c4262466154e5f5d0e02cec909639979901f7bbc9f4299fd87ba307c2e57d2`.
+The final reproducible DLL SHA256 is
+`84abe35f82dc2af992b9b88913cd16888f8d10ccc5f5b8072bf4ba589e55f4e8`.
+The generated SDK engine, facade, crypto and HTTP sources remain identical;
+only Library, TaskSpawn and Callback lifecycle/failure paths differ from the
+original matrix package, and only TaskSpawn/Callback differ from the DPoP package.
+Final 93-check evidence covers those affected paths without relabeling earlier
+matrices as runs of the final artifact.
+
+Review repairs move cancellation-registration disposal outside locks, seal
+callback ownership at settlement, preserve cleanup acknowledgments after
+callback faults and detach source-panic graphs from durable native errors.
+A stale embedded compiler catalog was detected in earlier successful builds;
+those artifacts remain retained. The final compiler was rebuilt from current
+source, and all 88 emitted native runtime modules match repository bytes.
+Two sealed builds produce the identical final DLL. Thirteen original nonzero
+statuses remain visible: nine failed setup/fixture/path/spec runs with focused
+corrections and four separately recorded stock Web nonce limitations.
+
+Ignored receipts include `.local/csharp-tdf-library-worker-handoff.txt`,
+`.local/csharp-tdf-library/final-source-freeze.json`,
+`.local/csharp-tdf-library/final-package-freeze.json`,
+`.local/csharp-tdf-library/final-terminal-evidence.json`,
+`.local/root-csharp-final-terminal-audit.json` and the paired signed-commit record
+`.local/root-csharp-phase6-commits.json`. Platform BASIC is restored and verified.
+Python is next, followed by Rust and C. Phase 6 and Phase 7 remain open.

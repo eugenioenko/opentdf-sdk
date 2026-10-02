@@ -17,7 +17,7 @@ key handles and structured manifest data. [Error](../errors.go) preserves
 stable categories, operation, service fields, obligations and a cause.
 
 The [driver](../../goalchemy/internal/driver/emit.go) gates library emission
-for C#, Python and Rust with `GCE006`. Go, TypeScript and Java value-library
+for Python and Rust with `GCE006`. Go, TypeScript, Java and C# value-library
 emission is accepted; terminal acceptance is recorded in
 [the delivery ledger](delivery-checklist.md). The existing
 [C library emitter](../../goalchemy/internal/emit/c/c.go) rejects suspending
@@ -30,8 +30,11 @@ The [generated TypeScript library](generated-typescript-library.md) is accepted
 for Node and an actual browser, with copied value boundaries and real KAS
 evidence. The [generated Java library](generated-java-library.md) is accepted
 with an independent named-package JAR consumer, copied byte/value/error boundaries,
-native crypto/HTTP and real KAS profile/negative evidence. The remaining four
-library boundaries and final package/CI matrix
+native crypto/HTTP and real KAS profile/negative evidence. The
+[generated C# library](generated-csharp-library.md) is accepted with a .NET 8
+class library, built-in crypto/HTTP, native token providers, owned cancellable
+Tasks and 93 boundary/lifecycle checks plus real-KAS matrices. The remaining
+three library boundaries and final package/CI matrix
 follow in Phases 6–7; terminal acceptance is recorded in
 [the delivery ledger](delivery-checklist.md).
 
