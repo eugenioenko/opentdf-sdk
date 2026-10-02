@@ -4,7 +4,7 @@ Build an OpenTDF SDK from one Go source implementation using Goalchemy, with usa
 
 The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK repositories. Extend the local Goalchemy clone as needed. Use the existing Go and TypeScript SDKs as independent compatibility references and their CLIs for operational smoke tests.
 
-Full feature parity with the pinned OpenTDF Go SDK on every target is the final objective. It is broader than TDF3 and KAS: the reference exposes platform service clients, discovery, streaming, assertions, obligations, and additional encryption schemes. Phase 0 inventories these features, and Phase 8 implements the remaining required scope. Do not claim full parity when only the first release has passed.
+The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
 ## Execution and review
 
@@ -42,11 +42,10 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 - [x] Phase 1: Basic local platform and reference smoke tests
 - [x] Phase 2: Capability contracts and native Go implementations
 - [x] Phase 3: Shared TDF3 implementation and native interop
-- [ ] Phase 4: Compiler support for bytes, host operations, and library exports
+- [x] Phase 4: Seven-target byte/host foundation and generated Go library
 - [ ] Phase 5: TypeScript SDK for Node and browsers
 - [ ] Phase 6: Java, C#, Python, Rust, and C SDKs in sequence
-- [ ] Phase 7: Interop CI and first release readiness
-- [ ] Phase 8: Remaining SDK parity
+- [ ] Phase 7: Interop CI and TDF3 delivery readiness
 
 ## Phase 0 Reference audit and compatibility inventory
 
@@ -96,21 +95,29 @@ Run both directions against both pinned SDKs through real KAS: new SDK encryptio
 
 Acceptance: native Go interop passes for both references; cases include empty/binary payloads, exact segment boundaries, multiple segments, allowed and denied policy, RSA and EC, token expiry/cancellation, DPoP nonce retry, tampered ciphertext, root/segment metadata tampering, malformed archives, and unsupported features. Maintain deterministic format fixtures separately from live network tests.
 
-## Phase 4 Compiler support for bytes host operations and libraries
+## Phase 4 Compiler foundation and generated Go library
+
+Phase 4 is accepted for the seven-target byte/host foundation and the first
+importable generated Go SDK. The remaining target library exports are implemented
+and accepted together with their production adapters in Phases 5–6. This sequencing
+lets each export boundary execute the actual SDK; all seven importable libraries
+remain delivery requirements. Earlier progress entries marking Phase4 open refer
+to the previous all-target-export grouping.
 
 Assign and review the compiler tasks separately.
 
-Start from the current [library-target gate](../../goalchemy/internal/driver/emit.go), [TypeScript slice representation](../../goalchemy/targets/typescript/types/slice.ts), [slice contracts](../../goalchemy/specs/types/slice.yaml), and [runtime contracts](../../goalchemy/specs/runtime/core/). Existing [slice-aliasing](../../goalchemy/tests/language/testdata/slices_alias/main.go) and [growth](../../goalchemy/tests/language/testdata/slice_growth/main.go) fixtures are regression baselines. The current TypeScript backing array is generic and its string conversions preserve Go byte strings; specialization must retain arbitrary bytes rather than substitute a UTF-8 text decoder. These source pointers identify implementation starting points, not completed compiler support.
+Start from the current [library-target gate](../../goalchemy/internal/driver/emit.go), [TypeScript slice representation](../../goalchemy/targets/typescript/types/slice.ts), [slice contracts](../../goalchemy/specs/types/slice.yaml), and [runtime contracts](../../goalchemy/specs/runtime/core/). Existing [slice-aliasing](../../goalchemy/tests/language/testdata/slices_alias/main.go) and [growth](../../goalchemy/tests/language/testdata/slice_growth/main.go) fixtures are regression baselines. Native byte storage has passed its bounded acceptance checks on all seven targets: Go retains its standard byte slices, and TypeScript, Java, C#, Python, Rust and C now use specialized native backing. Generated Go scheduler/HTTP, the [TypeScript portable host lifecycle](../../goalchemy/docs/typescript-host-operations.md), the [Java host lifecycle](../../goalchemy/docs/java-host-operations.md), the [C# host lifecycle](../../goalchemy/docs/csharp-host-operations.md), the [Python host lifecycle](../../goalchemy/docs/python-host-operations.md), and the [Rust host lifecycle](../../goalchemy/docs/rust-host-operations.md) have passed bounded acceptance; the [C host lifecycle](../../goalchemy/docs/c-host-operations.md) has also passed collector/sanitizer/native/emitted acceptance. All seven generic host prerequisites and the [generated Go SDK](generated-go-library.md) are accepted; TypeScript Node/browser SDK delivery is next. TypeScript acceptance includes actual Node and Chromium executable frames, not production HTTP/crypto adapters or SDK libraries. Every specialization must preserve arbitrary Go string bytes rather than substitute a UTF-8 text decoder. See [TypeScript design and evidence](../../goalchemy/docs/typescript-byte-storage.md), [Java design and evidence](../../goalchemy/docs/java-byte-storage.md), [C# design and evidence](../../goalchemy/docs/csharp-byte-storage.md), [Python design and evidence](../../goalchemy/docs/python-byte-storage.md), [Rust design and evidence](../../goalchemy/docs/rust-byte-storage.md) and [C design and evidence](../../goalchemy/docs/c-byte-storage.md). These prerequisites establish generic host behavior; production adapters and SDK libraries for the six remaining targets follow in Phases 5–6.
 
 1. Specialize `[]byte` storage on non-Go targets. Preserve slice identity, offset/length/capacity, nil versus empty, append growth, aliasing, `copy` overlap, strings containing arbitrary bytes, and conversion semantics. Test language behavior and measure memory on representative SDK payloads.
 2. Add pending host operations to the scheduler. Register requests and completions, retain buffers/keys for the declared lifetime, resume only through the scheduler, and implement cancellation and shutdown. No runnable tasks with pending I/O must not be reported as deadlock. Host deadlines and wall-clock time must work alongside the existing virtual-clock conformance fixtures.
-3. Add exported library mode for all targets. Initialize once per instance, convert host bytes/strings/configuration, expose structured errors, and support calls that suspend. Test overlapping calls, instance isolation, cleanup, background tasks, and failure propagation. C needs explicit output ownership and release rules; host exceptions must not turn into source panics accidentally.
+   Generated Go scheduler/HTTP has passed bounded acceptance, including an emitted SDK real-KAS RSA/Bearer probe in both directions against both references. TypeScript's portable Promise lifecycle has also passed bounded acceptance in Node and actual Chromium, Java's generic worker/mailbox lifecycle has passed actual JVM and emitted-program checks, and C#'s Task/mailbox lifecycle has passed actual CLR and emitted-program checks, and Python's calling-owner lifecycle has passed actual CPython and emitted-program checks. Rust's owned-wire/native-thread host lifecycle and C's native-wire/collector lifecycle have also passed native/emitted acceptance. All seven generic ports are accepted; importable SDK libraries and production non-Go capability adapters follow. Review registration/completion races, cancellation cleanup, stale callbacks, scheduler ownership and real versus virtual deadlines before ports depend on the design. These bounded host acceptances do not complete library, production-adapter or SDK/KAS delivery requirements.
+3. Establish the importable Go TDF3 library boundary, then port it with each target SDK in Phases 5–6. Convert host bytes/configuration/results, expose structured errors and support calls that suspend. A minimal encryption/decryption façade may construct and close shared clients internally; exporting every source type/method is not required. Define initialization and overlapping-call behavior, preserve independent caller configuration, and test cancellation, cleanup and failure propagation. Persistent clients, if exposed, must preserve their documented lifetime. C needs explicit output ownership and release rules; host exceptions must not turn into source panics or process exits. The [library acceptance requirements](library-requirements.md) define this TDF3 boundary; toy exports alone cannot satisfy it.
 
-Acceptance: relevant compiler/runtime conformance passes on every affected target; exported APIs can be called from small native consumers; asynchronous completion and cancellation tests pass; byte semantics hold under aliasing; existing runnable program behavior still passes.
+Acceptance: relevant compiler/runtime conformance passes on every affected target; exported APIs can be called from small native consumers; asynchronous completion and cancellation tests pass; byte semantics hold under aliasing; existing runnable program behavior still passes. Phase 4 acceptance covers all-seven byte/host conformance and the generated Go export/SDK matrix. Remaining target exports retain the same acceptance criteria in their SDK phases.
 
 ## Phase 5 TypeScript SDK for Node and browsers
 
-Use TypeScript as the first generated SDK to exercise the combined byte, library, and async changes. Replace direct Node dependencies in shared runtime conversion, output, failure, and scheduler configuration with portable behavior or explicit host adapters. Emit importable JavaScript and accurate TypeScript declarations rather than relying on Node's direct `.ts` execution.
+Use TypeScript as the first non-Go generated SDK to exercise the combined byte, library, and async changes. Replace direct Node dependencies in shared runtime conversion, output, failure, and scheduler configuration with portable behavior or explicit host adapters. Emit importable JavaScript and accurate TypeScript declarations rather than relying on Node's direct `.ts` execution.
 
 Implement crypto with Web Crypto where it covers the pinned profile, HTTP with `fetch`, and byte APIs with `Uint8Array`. Export promise-based SDK operations. Support a token-provider/public-client path for browsers and client credentials for appropriate non-browser consumers. Any required browser-specific PEM/JWK conversion must preserve the shared protocol's exact representation.
 
@@ -132,7 +139,7 @@ Avoid blocking the cooperative scheduler during host network I/O. Java, C#, Pyth
 
 Acceptance per target: install/build from a clean environment; all required primitive conformance checks pass; the native consumer calls the SDK as a library; both interop directions pass against both references; no skipped required tests; dependency versions and licenses are recorded.
 
-## Phase 7 Interop CI and first release readiness
+## Phase 7 Interop CI and TDF3 delivery readiness
 
 Run a pinned platform stack in CI with separate bounded jobs for targets. Test seven targets in both directions against both reference SDKs: 28 baseline producer/consumer pairs. The TypeScript browser environment is an additional run of the TypeScript target. RSA/EC, Bearer/DPoP, payload sizes, and negative cases expand each applicable pair rather than being implied by the count.
 
@@ -140,15 +147,13 @@ Provide fast offline format/conformance tests and a clearly named integration su
 
 Document APIs, setup, dependencies, limits, supported TDF profiles, unsupported features, and package installation. Check clean builds and ownership/error behavior at host boundaries. Keep release artifacts reproducible; do not publish packages without an explicit release instruction.
 
-Acceptance: the complete baseline matrix and required negative cases pass in CI; generated packages work from native consumers; documentation matches the compatibility inventory; Phase 0 through Phase 6 criteria are satisfied. This establishes the first TDF3/KAS release, not full SDK parity.
+Acceptance: the complete baseline matrix and required negative cases pass in CI; generated packages work from native consumers; documentation matches the supported TDF3 profile and explicit limitations; Phase 0 through Phase 6 criteria and the delivery checklist are satisfied. This completes the current seven-target TDF3/KAS goal. Public package publication is a separate action requiring an explicit release instruction.
 
-## Phase 8 Remaining SDK parity
+## Deferred reference features outside this goal
 
-Use the Phase 0 inventory to schedule the remaining features in small tasks, rechecking the pinned references before each implementation. Expected areas include platform service clients, policy discovery/autoconfiguration, multi-KAS grants and key splitting, streaming/seekable I/O, assertions and metadata, obligations, auth methods, legacy compatibility, and additional TDF/key-wrapping profiles. Some of these may become prerequisites earlier when reference interop requires them; update the plan when that happens.
+The Phase 0 inventory preserves broader reference functionality for possible future work: general platform service clients, policy autoconfiguration, multi-KAS/key splitting, streaming/seekable APIs, assertion creation/verification beyond the declared profile, obligation fulfillment, additional auth grants, legacy formats and advanced encryption schemes. These do not gate the current delivery. An input requiring an unsupported feature must still fail clearly before successful plaintext; enforcing that rejection remains in scope.
 
-Generate or implement shared protocol models/clients within the accepted language subset. Keep format and protocol decisions in shared source; keep native boundary adapters small. Add independent interop tests for every newly claimed feature across relevant targets.
-
-Acceptance: every supported feature of the pinned Go SDK has implemented behavior, documentation, and passing tests on all seven targets. Deferral may describe an intermediate release; it cannot establish completion of the full goal. API compatibility and feature compatibility are separate claims; exact Go option APIs need not map literally to every language. The final completion audit must check the inventory feature by feature and require real-platform interop evidence for the relevant behavior.
+Complete SDK/API parity would need a separate feature-by-feature plan and acceptance audit. The current implementation must advertise only its tested TDF3 profiles and byte API.
 
 ## Initial findings and uncertainties
 
