@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "repositories": {
+    "goalchemy": {
+      "path": "../goalchemy",
+      "revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907"
+    },
+    "platform": {
+      "path": "../platform",
+      "revision": "f2635158b681fa970aafce7eacf108a453521f63"
+    },
+    "web-sdk": {
+      "path": "../web-sdk",
+      "revision": "55a0521b1499b392c75373e11ec5930c6a43f0c7"
+    }
+  },
+  "documentation": [
+    "https://opentdf.io/llms.txt",
+    "https://opentdf.io/quickstart",
+    "https://opentdf.io/quickstart/docker-compose.yaml"
+  ]
+}
