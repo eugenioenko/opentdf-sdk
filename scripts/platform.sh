@@ -6,7 +6,26 @@ LOCAL="$SDK/.local"
 mkdir -p "$LOCAL/bin" "$LOCAL/logs" "$LOCAL/keys"
 # CLI smoke uses explicit --host/auth flags, selecting the reference CLI in-memory profile.
 export npm_config_cache="$LOCAL/npm-cache"
-compose() { docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" "$@"; }
+compose() {
+  local profile=basic
+  if [[ -s "$LOCAL/profiles/active" ]]; then profile=$(cat "$LOCAL/profiles/active"); fi
+  if [[ "$profile" == ec || "$profile" == dpop ]]; then
+    docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" -f "$SDK/dev/compose.profiles.yaml" "$@"
+  else
+    docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" "$@"
+  fi
+}
+check_profile() {
+  if [[ -s "$LOCAL/profiles/effective.yaml" && ! -s "$LOCAL/profiles/active" ]]; then
+    echo 'Profile selection is unverified; recover with scripts/platform-profile.sh basic' >&2
+    return 1
+  fi
+  if [[ -s "$LOCAL/profiles/active" ]] && [[ $(cat "$LOCAL/profiles/active") != basic ]]; then
+    "$SDK/scripts/platform-profile.sh" check
+  else
+    "$SDK/scripts/platform-check.py"
+  fi
+}
 check_refs() {
   python3 - "$SDK" <<'PY'
 import json, subprocess, sys
@@ -62,7 +81,30 @@ from pathlib import Path
 p=Path(sys.argv[1]); (p/'.local/build-references.json').write_text((p/'references.lock.json').read_text())
 PY
 }
+artifacts_current() {
+  python3 - "$SDK" <<'PYREFS'
+import json, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+try:
+    lock = json.loads((root / 'references.lock.json').read_text())
+    built = json.loads((root / '.local/build-references.json').read_text())
+    assert all(lock['repositories'][name]['revision'] == built['repositories'][name]['revision']
+               for name in ('platform', 'web-sdk'))
+    assert all((root / '.local/bin' / name).is_file() for name in ('opentdf', 'otdfctl'))
+except (OSError, ValueError, KeyError, AssertionError):
+    raise SystemExit(1)
+PYREFS
+}
 provision() {
+  if [[ -s "$LOCAL/profiles/effective.yaml" && ! -s "$LOCAL/profiles/active" ]]; then
+    echo 'Recover the basic profile before reprovisioning: scripts/platform-profile.sh basic' >&2
+    return 1
+  fi
+  if [[ -s "$LOCAL/profiles/active" ]] && [[ $(cat "$LOCAL/profiles/active") != basic ]]; then
+    echo 'Restore the basic profile before reprovisioning: scripts/platform-profile.sh basic' >&2
+    return 1
+  fi
   for ((i=0; i<120; i++)); do
     if compose exec -T postgres pg_isready -U postgres -d opentdf >/dev/null 2>&1; then break; fi
     sleep 2
@@ -78,8 +120,18 @@ provision() {
     < "$SDK/dev/local-kas.sql" > "$LOCAL/logs/local-kas-provision.log" 2>&1
 }
 up() {
+  if [[ -s "$LOCAL/profiles/effective.yaml" && ! -s "$LOCAL/profiles/active" ]]; then
+    echo 'Profile selection is unverified; recover with scripts/platform-profile.sh basic' >&2
+    return 1
+  fi
+  if [[ -s "$LOCAL/profiles/active" ]]; then
+    case $(cat "$LOCAL/profiles/active") in
+      basic|ec|dpop) ;;
+      *) echo 'Invalid profile marker; select basic, ec or dpop explicitly' >&2; return 1 ;;
+    esac
+  fi
   init
-  if [[ ! -s "$LOCAL/build-references.json" ]] || ! cmp -s "$SDK/references.lock.json" "$LOCAL/build-references.json"; then build; fi
+  if ! artifacts_current; then build; fi
   compose up -d postgres keycloak
   # Do not reprovision an initialized database; provisioning is also an explicit operator command.
   if [[ ! -s "$LOCAL/provisioned" ]]; then
@@ -88,7 +140,7 @@ up() {
   fi
   compose up -d platform
   wait_url http://localhost:8080/healthz
-  "$SDK/scripts/platform-check.py"
+  check_profile
 }
 case "${1:-help}" in
   init) init ;;
@@ -98,7 +150,8 @@ case "${1:-help}" in
   down|stop) compose down ;;
   status) compose ps --all ;;
   logs) compose logs --tail=100 "${@:2}" ;;
-  ready|check) wait_url http://localhost:8080/healthz; "$SDK/scripts/platform-check.py" ;;
+  ready|check) wait_url http://localhost:8080/healthz; check_profile ;;
   smoke) "$SDK/scripts/reference-smoke.sh" ;;
-  *) echo 'Usage: scripts/platform.sh {init|build|up|provision|ready|check|status|logs|down|smoke}'; exit 2 ;;
+  profile) "$SDK/scripts/platform-profile.sh" "${2:-help}" ;;
+  *) echo 'Usage: scripts/platform.sh {init|build|up|provision|ready|check|status|logs|down|smoke|profile {basic|ec|dpop|check|smoke}}'; exit 2 ;;
 esac

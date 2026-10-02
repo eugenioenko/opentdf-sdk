@@ -8,7 +8,7 @@ Full feature parity with the pinned OpenTDF Go SDK on every target is the final 
 
 ## Execution and review
 
-The root agent is the orchestrator. Run at most one worker agent at a time. A phase can require several small worker assignments; finish and review one assignment before starting the next. Workers must not spawn additional agents.
+The root agent is the orchestrator. Run at most one worker agent at a time. A phase can require several small worker assignments; finish and review one assignment before starting the next. Workers must not spawn additional agents. Workers run in the background. Keep the root thread available to the user; inspect status and delivered results without long blocking waits or worker polling loops. Long verification commands should return a background process handle for later inspection.
 
 Use GPT-6.1 Sol with high reasoning effort for crypto, protocol, compiler, scheduler, and exported API work. Use medium effort for bounded setup, packaging, documentation, and straightforward adapters. Give explicitly configured workers a self-contained task and the relevant files; the first reference audit was already started with inherited settings. Escalate a routine task to high effort when evidence shows a harder dependency.
 
@@ -41,7 +41,7 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 - [x] Phase 0: Reference audit and compatibility inventory
 - [x] Phase 1: Basic local platform and reference smoke tests
 - [x] Phase 2: Capability contracts and native Go implementations
-- [ ] Phase 3: Shared TDF3 implementation and native interop
+- [x] Phase 3: Shared TDF3 implementation and native interop
 - [ ] Phase 4: Compiler support for bytes, host operations, and library exports
 - [ ] Phase 5: TypeScript SDK for Node and browsers
 - [ ] Phase 6: Java, C#, Python, Rust, and C SDKs in sequence
@@ -98,7 +98,9 @@ Acceptance: native Go interop passes for both references; cases include empty/bi
 
 ## Phase 4 Compiler support for bytes host operations and libraries
 
-Assign and review these compiler tasks separately:
+Assign and review the compiler tasks separately.
+
+Start from the current [library-target gate](../../goalchemy/internal/driver/emit.go), [TypeScript slice representation](../../goalchemy/targets/typescript/types/slice.ts), [slice contracts](../../goalchemy/specs/types/slice.yaml), and [runtime contracts](../../goalchemy/specs/runtime/core/). Existing [slice-aliasing](../../goalchemy/tests/language/testdata/slices_alias/main.go) and [growth](../../goalchemy/tests/language/testdata/slice_growth/main.go) fixtures are regression baselines. The current TypeScript backing array is generic and its string conversions preserve Go byte strings; specialization must retain arbitrary bytes rather than substitute a UTF-8 text decoder. These source pointers identify implementation starting points, not completed compiler support.
 
 1. Specialize `[]byte` storage on non-Go targets. Preserve slice identity, offset/length/capacity, nil versus empty, append growth, aliasing, `copy` overlap, strings containing arbitrary bytes, and conversion semantics. Test language behavior and measure memory on representative SDK payloads.
 2. Add pending host operations to the scheduler. Register requests and completions, retain buffers/keys for the declared lifetime, resume only through the scheduler, and implement cancellation and shutdown. No runnable tasks with pending I/O must not be reported as deadlock. Host deadlines and wall-clock time must work alongside the existing virtual-clock conformance fixtures.

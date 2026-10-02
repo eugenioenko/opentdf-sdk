@@ -1,0 +1,2202 @@
+{
+  "schema_version": 3,
+  "reference_revision": "f2635158b681fa970aafce7eacf108a453521f63",
+  "package": "github.com/opentdf/platform/sdk",
+  "toolchain": "go1.25.14",
+  "scope": "Root package public function/method, type/member, constant and variable declarations, SDK client fields, and sdkconnect service interface methods. Excludes other subpackages, unexported implementation details and behavioral coverage.",
+  "doc_sha256": "7a34c31913387443ccde141d4acf9a9c0484c8d19c82df70f57248603ffacb86",
+  "functions": [
+    {
+      "symbol": "AllowList.Add",
+      "signature": "func (a AllowList) Add(kasURL string) error"
+    },
+    {
+      "symbol": "AllowList.IsAllowed",
+      "signature": "func (a AllowList) IsAllowed(kasURL string) bool"
+    },
+    {
+      "symbol": "AppliesToState.String",
+      "signature": "func (ats AppliesToState) String() string"
+    },
+    {
+      "symbol": "Assertion.GetHash",
+      "signature": "func (a Assertion) GetHash() ([]byte, error)"
+    },
+    {
+      "symbol": "Assertion.Sign",
+      "signature": "func (a *Assertion) Sign(hash, sig string, key AssertionKey) error"
+    },
+    {
+      "symbol": "Assertion.Verify",
+      "signature": "func (a Assertion) Verify(key AssertionKey) (string, string, error)"
+    },
+    {
+      "symbol": "AssertionKey.Algorithm",
+      "signature": "func (k AssertionKey) Algorithm() AssertionKeyAlg"
+    },
+    {
+      "symbol": "AssertionKey.IsEmpty",
+      "signature": "func (k AssertionKey) IsEmpty() bool"
+    },
+    {
+      "symbol": "AssertionKeyAlg.String",
+      "signature": "func (a AssertionKeyAlg) String() string"
+    },
+    {
+      "symbol": "AssertionType.String",
+      "signature": "func (at AssertionType) String() string"
+    },
+    {
+      "symbol": "AssertionVerificationKeys.Get",
+      "signature": "func (k AssertionVerificationKeys) Get(assertionID string) (AssertionKey, error)"
+    },
+    {
+      "symbol": "AssertionVerificationKeys.IsEmpty",
+      "signature": "func (k AssertionVerificationKeys) IsEmpty() bool"
+    },
+    {
+      "symbol": "AttributeNameFQN.Authority",
+      "signature": "func (a AttributeNameFQN) Authority() string"
+    },
+    {
+      "symbol": "AttributeNameFQN.Name",
+      "signature": "func (a AttributeNameFQN) Name() string"
+    },
+    {
+      "symbol": "AttributeNameFQN.Prefix",
+      "signature": "func (a AttributeNameFQN) Prefix() string"
+    },
+    {
+      "symbol": "AttributeNameFQN.Select",
+      "signature": "func (a AttributeNameFQN) Select(v string) AttributeValueFQN"
+    },
+    {
+      "symbol": "AttributeNameFQN.String",
+      "signature": "func (a AttributeNameFQN) String() string"
+    },
+    {
+      "symbol": "AttributeValueFQN.Authority",
+      "signature": "func (a AttributeValueFQN) Authority() string"
+    },
+    {
+      "symbol": "AttributeValueFQN.Name",
+      "signature": "func (a AttributeValueFQN) Name() string"
+    },
+    {
+      "symbol": "AttributeValueFQN.Prefix",
+      "signature": "func (a AttributeValueFQN) Prefix() AttributeNameFQN"
+    },
+    {
+      "symbol": "AttributeValueFQN.String",
+      "signature": "func (a AttributeValueFQN) String() string"
+    },
+    {
+      "symbol": "AttributeValueFQN.Value",
+      "signature": "func (a AttributeValueFQN) Value() string"
+    },
+    {
+      "symbol": "AuthClient.AccessToken",
+      "signature": "func (a *AuthClient) AccessToken(ctx context.Context) (auth.AccessToken, error)"
+    },
+    {
+      "symbol": "BindingMethod.String",
+      "signature": "func (bm BindingMethod) String() string"
+    },
+    {
+      "symbol": "BulkDecryptPrepared.BulkDecrypt",
+      "signature": "func (bp *BulkDecryptPrepared) BulkDecrypt(ctx context.Context) error"
+    },
+    {
+      "symbol": "BulkErrors.Error",
+      "signature": "func (b BulkErrors) Error() string"
+    },
+    {
+      "symbol": "BulkErrors.Unwrap",
+      "signature": "func (b BulkErrors) Unwrap() []error"
+    },
+    {
+      "symbol": "CertExchangeTokenSource.AccessToken",
+      "signature": "func (c *CertExchangeTokenSource) AccessToken(ctx context.Context, _ *http.Client) (auth.AccessToken, error)"
+    },
+    {
+      "symbol": "CertExchangeTokenSource.AccessTokenCredential",
+      "signature": "func (c *CertExchangeTokenSource) AccessTokenCredential(ctx context.Context, _ *http.Client) (auth.AccessTokenCredential, error)"
+    },
+    {
+      "symbol": "CertExchangeTokenSource.MakeToken",
+      "signature": "func (c *CertExchangeTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error)"
+    },
+    {
+      "symbol": "DefaultKeySplitter",
+      "signature": "func DefaultKeySplitter() KeySplitter"
+    },
+    {
+      "symbol": "ErrAssertionFailure.Error",
+      "signature": "func (e ErrAssertionFailure) Error() string"
+    },
+    {
+      "symbol": "ErrAssertionFailure.Unwrap",
+      "signature": "func (e ErrAssertionFailure) Unwrap() error"
+    },
+    {
+      "symbol": "Error.Error",
+      "signature": "func (c Error) Error() string"
+    },
+    {
+      "symbol": "FromBulkErrors",
+      "signature": "func FromBulkErrors(err error) ([]error, bool)"
+    },
+    {
+      "symbol": "GetSystemMetadataAssertionConfig",
+      "signature": "func GetSystemMetadataAssertionConfig() (AssertionConfig, error)"
+    },
+    {
+      "symbol": "GetTdfType",
+      "signature": "func GetTdfType(reader io.ReadSeeker) TdfType"
+    },
+    {
+      "symbol": "IDPAccessTokenSource.AccessToken",
+      "signature": "func (t *IDPAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error)"
+    },
+    {
+      "symbol": "IDPAccessTokenSource.AccessTokenCredential",
+      "signature": "func (t *IDPAccessTokenSource) AccessTokenCredential(_ context.Context, client *http.Client) (auth.AccessTokenCredential, error)"
+    },
+    {
+      "symbol": "IDPAccessTokenSource.MakeToken",
+      "signature": "func (t *IDPAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error)"
+    },
+    {
+      "symbol": "IDPTokenExchangeTokenSource.AccessToken",
+      "signature": "func (i *IDPTokenExchangeTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error)"
+    },
+    {
+      "symbol": "IDPTokenExchangeTokenSource.AccessTokenCredential",
+      "signature": "func (i *IDPTokenExchangeTokenSource) AccessTokenCredential(ctx context.Context, client *http.Client) (auth.AccessTokenCredential, error)"
+    },
+    {
+      "symbol": "IDPTokenExchangeTokenSource.MakeToken",
+      "signature": "func (i *IDPTokenExchangeTokenSource) MakeToken(keyMaker func(jwk.Key) ([]byte, error)) ([]byte, error)"
+    },
+    {
+      "symbol": "IsPlatformEndpointMalformed",
+      "signature": "func IsPlatformEndpointMalformed(e string) bool"
+    },
+    {
+      "symbol": "IsValidTdf",
+      "signature": "func IsValidTdf(reader io.ReadSeeker) (bool, error)"
+    },
+    {
+      "symbol": "KeyTypeToPolicyAlgorithm",
+      "signature": "func KeyTypeToPolicyAlgorithm(kt ocrypto.KeyType) (policy.Algorithm, error)"
+    },
+    {
+      "symbol": "New",
+      "signature": "func New(platformEndpoint string, opts ...Option) (*SDK, error)"
+    },
+    {
+      "symbol": "NewAttributeNameFQN",
+      "signature": "func NewAttributeNameFQN(u string) (AttributeNameFQN, error)"
+    },
+    {
+      "symbol": "NewAttributeValueFQN",
+      "signature": "func NewAttributeValueFQN(u string) (AttributeValueFQN, error)"
+    },
+    {
+      "symbol": "NewCertExchangeTokenSource",
+      "signature": "func NewCertExchangeTokenSource(logger *slog.Logger, info oauth.CertExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, dpop *ocrypto.RsaKeyPair) (auth.AccessTokenSource, error)"
+    },
+    {
+      "symbol": "NewChunkedWriter",
+      "signature": "func NewChunkedWriter(_ context.Context, opts ...ChunkedWriterOption) (ChunkedWriter, error)"
+    },
+    {
+      "symbol": "NewDPoPValidationHTTPClient",
+      "signature": "func NewDPoPValidationHTTPClient(base *http.Client, opts ...Option) (*http.Client, error)"
+    },
+    {
+      "symbol": "NewIDPAccessTokenSource",
+      "signature": "func NewIDPAccessTokenSource( credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair, ) (*IDPAccessTokenSource, error)"
+    },
+    {
+      "symbol": "NewIDPTokenExchangeTokenSource",
+      "signature": "func NewIDPTokenExchangeTokenSource(logger *slog.Logger, exchangeInfo oauth.TokenExchangeInfo, credentials oauth.ClientCredentials, idpTokenEndpoint string, scopes []string, key *ocrypto.RsaKeyPair) (*IDPTokenExchangeTokenSource, error)"
+    },
+    {
+      "symbol": "NewOAuthAccessTokenSource",
+      "signature": "func NewOAuthAccessTokenSource( source oauth2.TokenSource, scopes []string, key *ocrypto.RsaKeyPair, ) (*OAuthAccessTokenSource, error)"
+    },
+    {
+      "symbol": "NewResourceLocator",
+      "signature": "func NewResourceLocator(url string) (*ResourceLocator, error)"
+    },
+    {
+      "symbol": "NewResourceLocatorFromReader",
+      "signature": "func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error)"
+    },
+    {
+      "symbol": "OAuthAccessTokenSource.AccessToken",
+      "signature": "func (t *OAuthAccessTokenSource) AccessToken(ctx context.Context, client *http.Client) (auth.AccessToken, error)"
+    },
+    {
+      "symbol": "OAuthAccessTokenSource.AccessTokenCredential",
+      "signature": "func (t *OAuthAccessTokenSource) AccessTokenCredential(_ context.Context, _ *http.Client) (auth.AccessTokenCredential, error)"
+    },
+    {
+      "symbol": "OAuthAccessTokenSource.MakeToken",
+      "signature": "func (t *OAuthAccessTokenSource) MakeToken(tokenMaker func(jwk.Key) ([]byte, error)) ([]byte, error)"
+    },
+    {
+      "symbol": "PlatformConfiguration.AuthzEndpoint",
+      "signature": "func (c PlatformConfiguration) AuthzEndpoint() (string, error)"
+    },
+    {
+      "symbol": "PlatformConfiguration.Issuer",
+      "signature": "func (c PlatformConfiguration) Issuer() (string, error)"
+    },
+    {
+      "symbol": "PlatformConfiguration.TokenEndpoint",
+      "signature": "func (c PlatformConfiguration) TokenEndpoint() (string, error)"
+    },
+    {
+      "symbol": "PolicyAlgorithmToKeyType",
+      "signature": "func PolicyAlgorithmToKeyType(alg policy.Algorithm) (ocrypto.KeyType, error)"
+    },
+    {
+      "symbol": "Reader.DataAttributes",
+      "signature": "func (r *Reader) DataAttributes() ([]string, error)"
+    },
+    {
+      "symbol": "Reader.Init",
+      "signature": "func (r *Reader) Init(ctx context.Context) error"
+    },
+    {
+      "symbol": "Reader.Manifest",
+      "signature": "func (r *Reader) Manifest() Manifest"
+    },
+    {
+      "symbol": "Reader.Obligations",
+      "signature": "func (r *Reader) Obligations(ctx context.Context) (RequiredObligations, error)"
+    },
+    {
+      "symbol": "Reader.Policy",
+      "signature": "func (r *Reader) Policy() (PolicyObject, error)"
+    },
+    {
+      "symbol": "Reader.Read",
+      "signature": "func (r *Reader) Read(p []byte) (int, error)"
+    },
+    {
+      "symbol": "Reader.ReadAt",
+      "signature": "func (r *Reader) ReadAt(buf []byte, offset int64) (int, error)"
+    },
+    {
+      "symbol": "Reader.Seek",
+      "signature": "func (r *Reader) Seek(offset int64, whence int) (int64, error)"
+    },
+    {
+      "symbol": "Reader.UnencryptedMetadata",
+      "signature": "func (r *Reader) UnencryptedMetadata() ([]byte, error)"
+    },
+    {
+      "symbol": "Reader.UnsafePayloadKeyRetrieval",
+      "signature": "func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error)"
+    },
+    {
+      "symbol": "Reader.WriteTo",
+      "signature": "func (r *Reader) WriteTo(writer io.Writer) (int64, error)"
+    },
+    {
+      "symbol": "ResourceLocator.Equals",
+      "signature": "func (rl ResourceLocator) Equals(r2 ResourceLocator) bool"
+    },
+    {
+      "symbol": "ResourceLocator.GetIdentifier",
+      "signature": "func (rl ResourceLocator) GetIdentifier() (string, error)"
+    },
+    {
+      "symbol": "ResourceLocator.GetURL",
+      "signature": "func (rl ResourceLocator) GetURL() (string, error)"
+    },
+    {
+      "symbol": "ResourceLocator.ID",
+      "signature": "func (rl ResourceLocator) ID() string"
+    },
+    {
+      "symbol": "ResourceLocator.KASURI",
+      "signature": "func (rl ResourceLocator) KASURI() string"
+    },
+    {
+      "symbol": "ResourceLocator.Less",
+      "signature": "func (rl ResourceLocator) Less(y *ResourceLocator) bool"
+    },
+    {
+      "symbol": "ResourceLocator.String",
+      "signature": "func (rl ResourceLocator) String() string"
+    },
+    {
+      "symbol": "RootIntegrityAlg.String",
+      "signature": "func (a RootIntegrityAlg) String() string"
+    },
+    {
+      "symbol": "SDK.AttributeExists",
+      "signature": "func (s SDK) AttributeExists(ctx context.Context, attributeFqn string) (bool, error)"
+    },
+    {
+      "symbol": "SDK.AttributeValueExists",
+      "signature": "func (s SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error)"
+    },
+    {
+      "symbol": "SDK.Auth",
+      "signature": "func (s *SDK) Auth() *AuthClient"
+    },
+    {
+      "symbol": "SDK.BulkDecrypt",
+      "signature": "func (s SDK) BulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) error"
+    },
+    {
+      "symbol": "SDK.Close",
+      "signature": "func (s SDK) Close() error"
+    },
+    {
+      "symbol": "SDK.Conn",
+      "signature": "func (s SDK) Conn() *ConnectRPCConnection"
+    },
+    {
+      "symbol": "SDK.CreateTDF",
+      "signature": "func (s SDK) CreateTDF(writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error)"
+    },
+    {
+      "symbol": "SDK.CreateTDFContext",
+      "signature": "func (s SDK) CreateTDFContext(ctx context.Context, writer io.Writer, reader io.Reader, opts ...TDFOption) (*TDFObject, error)"
+    },
+    {
+      "symbol": "SDK.DecryptBytes",
+      "signature": "func (s SDK) DecryptBytes(ctx context.Context, ciphertext []byte, opts ...TDFReaderOption) ([]byte, error)"
+    },
+    {
+      "symbol": "SDK.DecryptFile",
+      "signature": "func (s SDK) DecryptFile(ctx context.Context, inputPath, outputPath string, opts ...TDFReaderOption) error"
+    },
+    {
+      "symbol": "SDK.DecryptTo",
+      "signature": "func (s SDK) DecryptTo(ctx context.Context, out io.Writer, ciphertext []byte, opts ...TDFReaderOption) error"
+    },
+    {
+      "symbol": "SDK.GetBaseKey",
+      "signature": "func (s SDK) GetBaseKey(ctx context.Context) (*policy.SimpleKasKey, error)"
+    },
+    {
+      "symbol": "SDK.GetEntityAttributes",
+      "signature": "func (s SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Entity) ([]string, error)"
+    },
+    {
+      "symbol": "SDK.IsHealthy",
+      "signature": "func (s SDK) IsHealthy(ctx context.Context) (bool, error)"
+    },
+    {
+      "symbol": "SDK.ListAttributes",
+      "signature": "func (s SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*policy.Attribute, error)"
+    },
+    {
+      "symbol": "SDK.LoadTDF",
+      "signature": "func (s SDK) LoadTDF(reader io.ReadSeeker, opts ...TDFReaderOption) (*Reader, error)"
+    },
+    {
+      "symbol": "SDK.Logger",
+      "signature": "func (s SDK) Logger() *slog.Logger"
+    },
+    {
+      "symbol": "SDK.PrepareBulkDecrypt",
+      "signature": "func (s SDK) PrepareBulkDecrypt(ctx context.Context, opts ...BulkDecryptOption) (*BulkDecryptPrepared, error)"
+    },
+    {
+      "symbol": "SDK.StoreKASKeys",
+      "signature": "func (s *SDK) StoreKASKeys(url string, keys *policy.KasPublicKeySet) error"
+    },
+    {
+      "symbol": "SDK.ValidateAttributes",
+      "signature": "func (s SDK) ValidateAttributes(ctx context.Context, fqns ...string) error"
+    },
+    {
+      "symbol": "Scope.String",
+      "signature": "func (s Scope) String() string"
+    },
+    {
+      "symbol": "SegmentIntegrityAlg.String",
+      "signature": "func (a SegmentIntegrityAlg) String() string"
+    },
+    {
+      "symbol": "SigningAlgorithm.Valid",
+      "signature": "func (a SigningAlgorithm) Valid() bool"
+    },
+    {
+      "symbol": "SplitResult.Validate",
+      "signature": "func (r *SplitResult) Validate() error"
+    },
+    {
+      "symbol": "SplitResult.VerifyReconstruction",
+      "signature": "func (r *SplitResult) VerifyReconstruction(dek []byte) error"
+    },
+    {
+      "symbol": "Statement.UnmarshalJSON",
+      "signature": "func (s *Statement) UnmarshalJSON(data []byte) error"
+    },
+    {
+      "symbol": "SupportedFeatures",
+      "signature": "func SupportedFeatures() []string"
+    },
+    {
+      "symbol": "TDFObject.Manifest",
+      "signature": "func (t *TDFObject) Manifest() Manifest"
+    },
+    {
+      "symbol": "TDFObject.Size",
+      "signature": "func (t TDFObject) Size() int64"
+    },
+    {
+      "symbol": "TdfType.String",
+      "signature": "func (t TdfType) String() string"
+    },
+    {
+      "symbol": "WithAssertionVerificationKeys",
+      "signature": "func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption"
+    },
+    {
+      "symbol": "WithAssertions",
+      "signature": "func WithAssertions(assertionList ...AssertionConfig) TDFOption"
+    },
+    {
+      "symbol": "WithAutoconfigure",
+      "signature": "func WithAutoconfigure(enable bool) TDFOption"
+    },
+    {
+      "symbol": "WithBulkIgnoreAllowlist",
+      "signature": "func WithBulkIgnoreAllowlist(ignore bool) BulkDecryptOption"
+    },
+    {
+      "symbol": "WithBulkKasAllowlist",
+      "signature": "func WithBulkKasAllowlist(kasList []string) BulkDecryptOption"
+    },
+    {
+      "symbol": "WithChunkedAssertions",
+      "signature": "func WithChunkedAssertions(assertions []AssertionConfig) ChunkedFinalizeOption"
+    },
+    {
+      "symbol": "WithChunkedAttributes",
+      "signature": "func WithChunkedAttributes(values []*policy.Value) ChunkedFinalizeOption"
+    },
+    {
+      "symbol": "WithChunkedDefaultKAS",
+      "signature": "func WithChunkedDefaultKAS(kas *policy.SimpleKasKey) ChunkedWriterOption"
+    },
+    {
+      "symbol": "WithChunkedDefaultKASForFinalize",
+      "signature": "func WithChunkedDefaultKASForFinalize(kas *policy.SimpleKasKey) ChunkedFinalizeOption"
+    },
+    {
+      "symbol": "WithChunkedEncryptedMetadata",
+      "signature": "func WithChunkedEncryptedMetadata(metadata string) ChunkedFinalizeOption"
+    },
+    {
+      "symbol": "WithChunkedInitialAttributes",
+      "signature": "func WithChunkedInitialAttributes(values []*policy.Value) ChunkedWriterOption"
+    },
+    {
+      "symbol": "WithChunkedKeySplitter",
+      "signature": "func WithChunkedKeySplitter(splitter KeySplitter) ChunkedWriterOption"
+    },
+    {
+      "symbol": "WithChunkedMimeType",
+      "signature": "func WithChunkedMimeType(mimeType string) ChunkedFinalizeOption"
+    },
+    {
+      "symbol": "WithChunkedSegments",
+      "signature": "func WithChunkedSegments(indices []int) ChunkedFinalizeOption"
+    },
+    {
+      "symbol": "WithChunkedTargetMode",
+      "signature": "func WithChunkedTargetMode(mode string) ChunkedWriterOption"
+    },
+    {
+      "symbol": "WithClientCredentials",
+      "signature": "func WithClientCredentials(clientID, clientSecret string, scopes []string) Option"
+    },
+    {
+      "symbol": "WithConnectionValidation",
+      "signature": "func WithConnectionValidation() Option"
+    },
+    {
+      "symbol": "WithCustomAuthorizationConnection",
+      "signature": "func WithCustomAuthorizationConnection(conn *ConnectRPCConnection) Option"
+    },
+    {
+      "symbol": "WithCustomCoreConnection",
+      "signature": "func WithCustomCoreConnection(conn *ConnectRPCConnection) Option"
+    },
+    {
+      "symbol": "WithCustomEntityResolutionConnection",
+      "signature": "func WithCustomEntityResolutionConnection(conn *ConnectRPCConnection) Option"
+    },
+    {
+      "symbol": "WithCustomPolicyConnection",
+      "signature": "func WithCustomPolicyConnection(conn *ConnectRPCConnection) Option"
+    },
+    {
+      "symbol": "WithCustomWellknownConnection",
+      "signature": "func WithCustomWellknownConnection(conn *ConnectRPCConnection) Option"
+    },
+    {
+      "symbol": "WithDPoPAlgorithm",
+      "signature": "func WithDPoPAlgorithm(alg SigningAlgorithm) Option"
+    },
+    {
+      "symbol": "WithDPoPJWK",
+      "signature": "func WithDPoPJWK(key jwk.Key) Option"
+    },
+    {
+      "symbol": "WithDPoPKeyPEM",
+      "signature": "func WithDPoPKeyPEM(pemBytes []byte) Option"
+    },
+    {
+      "symbol": "WithDataAttributeValues",
+      "signature": "func WithDataAttributeValues(attributes ...*policy.Value) TDFOption"
+    },
+    {
+      "symbol": "WithDataAttributes",
+      "signature": "func WithDataAttributes(attributes ...string) TDFOption"
+    },
+    {
+      "symbol": "WithDisableAssertionVerification",
+      "signature": "func WithDisableAssertionVerification(disable bool) TDFReaderOption"
+    },
+    {
+      "symbol": "WithExtraClientOptions",
+      "signature": "func WithExtraClientOptions(opts ...connect.ClientOption) Option"
+    },
+    {
+      "symbol": "WithFulfillableObligationFQNs",
+      "signature": "func WithFulfillableObligationFQNs(fqns []string) Option"
+    },
+    {
+      "symbol": "WithIPC",
+      "signature": "func WithIPC() Option"
+    },
+    {
+      "symbol": "WithIgnoreAllowlist",
+      "signature": "func WithIgnoreAllowlist(ignore bool) TDFReaderOption"
+    },
+    {
+      "symbol": "WithInputSize",
+      "signature": "func WithInputSize(size int64) TDFOption"
+    },
+    {
+      "symbol": "WithInsecurePlaintextConn",
+      "signature": "func WithInsecurePlaintextConn() Option"
+    },
+    {
+      "symbol": "WithInsecureSkipVerifyConn",
+      "signature": "func WithInsecureSkipVerifyConn() Option"
+    },
+    {
+      "symbol": "WithKasAllowlist",
+      "signature": "func WithKasAllowlist(kasList []string) TDFReaderOption"
+    },
+    {
+      "symbol": "WithKasInformation",
+      "signature": "func WithKasInformation(kasInfoList ...KASInfo) TDFOption"
+    },
+    {
+      "symbol": "WithLogger",
+      "signature": "func WithLogger(logger *slog.Logger) Option"
+    },
+    {
+      "symbol": "WithMaxManifestSize",
+      "signature": "func WithMaxManifestSize(size int64) TDFReaderOption"
+    },
+    {
+      "symbol": "WithMetaData",
+      "signature": "func WithMetaData(metaData string) TDFOption"
+    },
+    {
+      "symbol": "WithMimeType",
+      "signature": "func WithMimeType(mimeType string) TDFOption"
+    },
+    {
+      "symbol": "WithNoKIDInKAO",
+      "signature": "func WithNoKIDInKAO() Option"
+    },
+    {
+      "symbol": "WithOAuthAccessTokenSource",
+      "signature": "func WithOAuthAccessTokenSource(t oauth2.TokenSource) Option"
+    },
+    {
+      "symbol": "WithPlatformConfiguration",
+      "signature": "func WithPlatformConfiguration(platformConfiguration PlatformConfiguration) Option"
+    },
+    {
+      "symbol": "WithPolicyFrom",
+      "signature": "func WithPolicyFrom(r *Reader) TDFOption"
+    },
+    {
+      "symbol": "WithSchemaValidation",
+      "signature": "func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption"
+    },
+    {
+      "symbol": "WithSegmentSize",
+      "signature": "func WithSegmentSize(size int64) TDFOption"
+    },
+    {
+      "symbol": "WithSessionEncryptionRSA",
+      "signature": "func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option"
+    },
+    {
+      "symbol": "WithSessionKeyType",
+      "signature": "func WithSessionKeyType(keyType ocrypto.KeyType) TDFReaderOption"
+    },
+    {
+      "symbol": "WithSessionSignerRSA",
+      "signature": "func WithSessionSignerRSA(key *rsa.PrivateKey) Option"
+    },
+    {
+      "symbol": "WithSystemMetadataAssertion",
+      "signature": "func WithSystemMetadataAssertion() TDFOption"
+    },
+    {
+      "symbol": "WithTDF3DecryptOptions",
+      "signature": "func WithTDF3DecryptOptions(options ...TDFReaderOption) BulkDecryptOption"
+    },
+    {
+      "symbol": "WithTDFFulfillableObligationFQNs",
+      "signature": "func WithTDFFulfillableObligationFQNs(fqns []string) TDFReaderOption"
+    },
+    {
+      "symbol": "WithTDFType",
+      "signature": "func WithTDFType(tdfType TdfType) BulkDecryptOption"
+    },
+    {
+      "symbol": "WithTDFs",
+      "signature": "func WithTDFs(tdfs ...*BulkTDF) BulkDecryptOption"
+    },
+    {
+      "symbol": "WithTLSCredentials",
+      "signature": "func WithTLSCredentials(tls *tls.Config, audience []string) Option"
+    },
+    {
+      "symbol": "WithTargetMode",
+      "signature": "func WithTargetMode(mode string) TDFOption"
+    },
+    {
+      "symbol": "WithTokenEndpoint",
+      "signature": "func WithTokenEndpoint(tokenEndpoint string) Option"
+    },
+    {
+      "symbol": "WithTokenExchange",
+      "signature": "func WithTokenExchange(subjectToken string, audience []string) Option"
+    },
+    {
+      "symbol": "WithWrappingKeyAlg",
+      "signature": "func WithWrappingKeyAlg(keyType ocrypto.KeyType) TDFOption"
+    }
+  ],
+  "types": [
+    {
+      "symbol": "AllowList",
+      "declaration": "type AllowList map[string]bool"
+    },
+    {
+      "symbol": "AppliesToState",
+      "declaration": "type AppliesToState string"
+    },
+    {
+      "symbol": "Assertion",
+      "declaration": "type Assertion struct {",
+      "members": [
+        "ID             string         `json:\"id\"`",
+        "Type           AssertionType  `json:\"type\"`",
+        "Scope          Scope          `json:\"scope\"`",
+        "AppliesToState AppliesToState `json:\"appliesToState,omitempty\"`",
+        "Statement      Statement      `json:\"statement\"`",
+        "Binding        Binding        `json:\"binding,omitempty\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "AssertionConfig",
+      "declaration": "type AssertionConfig struct {",
+      "members": [
+        "ID             string         `validate:\"required\"`",
+        "Type           AssertionType  `validate:\"required\"`",
+        "Scope          Scope          `validate:\"required\"`",
+        "AppliesToState AppliesToState `validate:\"required\"`",
+        "Statement      Statement",
+        "SigningKey     AssertionKey"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "AssertionKey",
+      "declaration": "type AssertionKey struct {",
+      "members": [
+        "Alg AssertionKeyAlg",
+        "Key interface{}"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "AssertionKeyAlg",
+      "declaration": "type AssertionKeyAlg string"
+    },
+    {
+      "symbol": "AssertionType",
+      "declaration": "type AssertionType string"
+    },
+    {
+      "symbol": "AssertionVerificationKeys",
+      "declaration": "type AssertionVerificationKeys struct {",
+      "members": [
+        "DefaultKey AssertionKey",
+        "Keys map[string]AssertionKey"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "AttributeNameFQN",
+      "declaration": "type AttributeNameFQN struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "AttributeValueFQN",
+      "declaration": "type AttributeValueFQN struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "AuthClient",
+      "declaration": "type AuthClient struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "Binding",
+      "declaration": "type Binding struct {",
+      "members": [
+        "Method string `json:\"method,omitempty\"`",
+        "Signature string `json:\"signature,omitempty\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "BindingMethod",
+      "declaration": "type BindingMethod string"
+    },
+    {
+      "symbol": "BulkDecryptOption",
+      "declaration": "type BulkDecryptOption func(request *BulkDecryptRequest) error"
+    },
+    {
+      "symbol": "BulkDecryptPrepared",
+      "declaration": "type BulkDecryptPrepared struct {",
+      "members": [
+        "PolicyTDF map[string]*BulkTDF"
+      ],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "BulkDecryptRequest",
+      "declaration": "type BulkDecryptRequest struct {",
+      "members": [
+        "TDFs               []*BulkTDF",
+        "TDF3DecryptOptions []TDFReaderOption // Options for TDF3 Decryptor",
+        "TDFType            TdfType"
+      ],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "BulkErrors",
+      "declaration": "type BulkErrors []error"
+    },
+    {
+      "symbol": "BulkTDF",
+      "declaration": "type BulkTDF struct {",
+      "members": [
+        "Reader               io.ReadSeeker",
+        "Writer               io.Writer",
+        "Error                error",
+        "TriggeredObligations RequiredObligations"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "CertExchangeTokenSource",
+      "declaration": "type CertExchangeTokenSource struct {",
+      "members": [
+        "auth.AccessTokenSource",
+        "IdpEndpoint string"
+      ],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "ChunkedFinalizeOption",
+      "declaration": "type ChunkedFinalizeOption func(*chunkedFinalizeConfig) error"
+    },
+    {
+      "symbol": "ChunkedFinalizeResult",
+      "declaration": "type ChunkedFinalizeResult struct {",
+      "members": [
+        "Data []byte",
+        "EncryptedSize int64",
+        "Manifest *Manifest",
+        "TotalSegments int",
+        "TotalSize int64"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "ChunkedSegmentResult",
+      "declaration": "type ChunkedSegmentResult struct {",
+      "members": [
+        "EncryptedSize int64",
+        "Hash string",
+        "Index int",
+        "PlaintextSize int64",
+        "TDFData io.Reader"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "ChunkedWriter",
+      "declaration": "type ChunkedWriter interface {",
+      "members": [
+        "Finalize(ctx context.Context, opts ...ChunkedFinalizeOption) (*ChunkedFinalizeResult, error)",
+        "GetManifest(ctx context.Context, opts ...ChunkedFinalizeOption) (*Manifest, error)",
+        "WriteSegment(ctx context.Context, index int, data []byte) (*ChunkedSegmentResult, error)"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "ChunkedWriterOption",
+      "declaration": "type ChunkedWriterOption func(*chunkedWriterConfig) error"
+    },
+    {
+      "symbol": "ConnectRPCConnection",
+      "declaration": "type ConnectRPCConnection struct {",
+      "members": [
+        "Client   *http.Client",
+        "Endpoint string",
+        "Options  []connect.ClientOption"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "EncryptedMetadata",
+      "declaration": "type EncryptedMetadata struct {",
+      "members": [
+        "Cipher string `json:\"ciphertext\"`",
+        "Iv     string `json:\"iv\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "EncryptionInformation",
+      "declaration": "type EncryptionInformation struct {",
+      "members": [
+        "KeyAccessType        string      `json:\"type\"`",
+        "Policy               string      `json:\"policy\"`",
+        "KeyAccessObjs        []KeyAccess `json:\"keyAccess\"`",
+        "Method               Method      `json:\"method\"`",
+        "IntegrityInformation `json:\"integrityInformation\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "ErrAssertionFailure",
+      "declaration": "type ErrAssertionFailure struct {",
+      "members": [
+        "ID string"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "Error",
+      "declaration": "type Error string"
+    },
+    {
+      "symbol": "IDPAccessTokenSource",
+      "declaration": "type IDPAccessTokenSource struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "IDPTokenExchangeTokenSource",
+      "declaration": "type IDPTokenExchangeTokenSource struct {",
+      "members": [
+        "IDPAccessTokenSource",
+        "oauth.TokenExchangeInfo"
+      ],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "IntegrityAlgorithm",
+      "declaration": "type IntegrityAlgorithm = int"
+    },
+    {
+      "symbol": "IntegrityInformation",
+      "declaration": "type IntegrityInformation struct {",
+      "members": [
+        "RootSignature           `json:\"rootSignature\"`",
+        "SegmentHashAlgorithm    string    `json:\"segmentHashAlg\"`",
+        "DefaultSegmentSize      int64     `json:\"segmentSizeDefault\"`",
+        "DefaultEncryptedSegSize int64     `json:\"encryptedSegmentSizeDefault\"`",
+        "Segments                []Segment `json:\"segments\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "KASClient",
+      "declaration": "type KASClient struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "KASInfo",
+      "declaration": "type KASInfo struct {",
+      "members": [
+        "URL string",
+        "PublicKey string",
+        "KID string",
+        "Algorithm string",
+        "Default bool"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "KASKeyFetcher",
+      "declaration": "type KASKeyFetcher interface {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "KASPublicKey",
+      "declaration": "type KASPublicKey struct {",
+      "members": [
+        "Algorithm ocrypto.KeyType",
+        "KID string",
+        "PEM string",
+        "URL string"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "KeyAccess",
+      "declaration": "type KeyAccess struct {",
+      "members": [
+        "KeyType            string      `json:\"type\"`",
+        "KasURL             string      `json:\"url\"`",
+        "Protocol           string      `json:\"protocol\"`",
+        "WrappedKey         string      `json:\"wrappedKey\"`",
+        "PolicyBinding      interface{} `json:\"policyBinding\"`",
+        "EncryptedMetadata  string      `json:\"encryptedMetadata,omitempty\"`",
+        "KID                string      `json:\"kid,omitempty\"`",
+        "SplitID            string      `json:\"sid,omitempty\"`",
+        "SchemaVersion      string      `json:\"schemaVersion,omitempty\"`",
+        "EphemeralPublicKey string      `json:\"ephemeralPublicKey,omitempty\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "KeySplitter",
+      "declaration": "type KeySplitter interface {",
+      "members": [
+        "Split(ctx context.Context, attrs []*policy.Value, dek []byte, defaultKAS *policy.SimpleKasKey) (*SplitResult, error)"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "Manifest",
+      "declaration": "type Manifest struct {",
+      "members": [
+        "EncryptionInformation `json:\"encryptionInformation\"`",
+        "Payload               `json:\"payload\"`",
+        "Assertions            []Assertion `json:\"assertions,omitempty\"`",
+        "TDFVersion            string      `json:\"schemaVersion,omitempty\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "Method",
+      "declaration": "type Method struct {",
+      "members": [
+        "Algorithm    string `json:\"algorithm\"`",
+        "IV           string `json:\"iv\"`",
+        "IsStreamable bool   `json:\"isStreamable\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "OAuthAccessTokenSource",
+      "declaration": "type OAuthAccessTokenSource struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "Option",
+      "declaration": "type Option func(*config)"
+    },
+    {
+      "symbol": "Payload",
+      "declaration": "type Payload struct {",
+      "members": [
+        "Type        string `json:\"type\"`",
+        "URL         string `json:\"url\"`",
+        "Protocol    string `json:\"protocol\"`",
+        "MimeType    string `json:\"mimeType\"`",
+        "IsEncrypted bool   `json:\"isEncrypted\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "PlatformConfiguration",
+      "declaration": "type PlatformConfiguration map[string]interface{}"
+    },
+    {
+      "symbol": "PolicyBinding",
+      "declaration": "type PolicyBinding struct {",
+      "members": [
+        "Alg  string `json:\"alg\"`",
+        "Hash string `json:\"hash\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "PolicyObject",
+      "declaration": "type PolicyObject struct {",
+      "members": [
+        "UUID string `json:\"uuid\"`",
+        "Body struct {",
+        "DataAttributes []attributeObject `json:\"dataAttributes\"`",
+        "Dissem         []string          `json:\"dissem\"`",
+        "} `json:\"body\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "Reader",
+      "declaration": "type Reader struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "RequiredObligations",
+      "declaration": "type RequiredObligations struct {",
+      "members": [
+        "FQNs []string"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "ResourceLocator",
+      "declaration": "type ResourceLocator struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "RootIntegrityAlg",
+      "declaration": "type RootIntegrityAlg int"
+    },
+    {
+      "symbol": "RootSignature",
+      "declaration": "type RootSignature struct {",
+      "members": [
+        "Algorithm string `json:\"alg\"`",
+        "Signature string `json:\"sig\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "SDK",
+      "declaration": "type SDK struct {",
+      "members": [
+        "Actions                 sdkconnect.ActionServiceClient",
+        "Attributes              sdkconnect.AttributesServiceClient",
+        "Authorization           sdkconnect.AuthorizationServiceClient",
+        "AuthorizationV2         sdkconnect.AuthorizationServiceClientV2",
+        "EntityResoution         sdkconnect.EntityResolutionServiceClient",
+        "EntityResolutionV2      sdkconnect.EntityResolutionServiceClientV2",
+        "KeyAccessServerRegistry sdkconnect.KeyAccessServerRegistryServiceClient",
+        "Namespaces              sdkconnect.NamespaceServiceClient",
+        "Obligations             sdkconnect.ObligationsServiceClient",
+        "RegisteredResources     sdkconnect.RegisteredResourcesServiceClient",
+        "ResourceMapping         sdkconnect.ResourceMappingServiceClient",
+        "SubjectMapping          sdkconnect.SubjectMappingServiceClient",
+        "DynamicValueMapping     sdkconnect.DynamicValueMappingServiceClient",
+        "Unsafe                  sdkconnect.UnsafeServiceClient",
+        "KeyManagement           sdkconnect.KeyManagementServiceClient"
+      ],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "SchemaValidationIntensity",
+      "declaration": "type SchemaValidationIntensity int"
+    },
+    {
+      "symbol": "Scope",
+      "declaration": "type Scope string"
+    },
+    {
+      "symbol": "Segment",
+      "declaration": "type Segment struct {",
+      "members": [
+        "Hash          string `json:\"hash\"`",
+        "Size          int64  `json:\"segmentSize\"`",
+        "EncryptedSize int64  `json:\"encryptedSegmentSize\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "SegmentIntegrityAlg",
+      "declaration": "type SegmentIntegrityAlg int"
+    },
+    {
+      "symbol": "SigningAlgorithm",
+      "declaration": "type SigningAlgorithm string"
+    },
+    {
+      "symbol": "Split",
+      "declaration": "type Split struct {",
+      "members": [
+        "Data []byte",
+        "ID string",
+        "KASURLs []string"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "SplitResult",
+      "declaration": "type SplitResult struct {",
+      "members": [
+        "KASPublicKeys map[string]KASPublicKey",
+        "Splits []Split"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "Statement",
+      "declaration": "type Statement struct {",
+      "members": [
+        "Format string `json:\"format,omitempty\" validate:\"required\"`",
+        "Schema string `json:\"schema,omitempty\" validate:\"required\"`",
+        "Value string `json:\"value,omitempty\"  validate:\"required\"`"
+      ],
+      "has_unexported_members": false
+    },
+    {
+      "symbol": "TDFConfig",
+      "declaration": "type TDFConfig struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "TDFFormat",
+      "declaration": "type TDFFormat = int"
+    },
+    {
+      "symbol": "TDFObject",
+      "declaration": "type TDFObject struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "TDFOption",
+      "declaration": "type TDFOption func(*TDFConfig) error"
+    },
+    {
+      "symbol": "TDFReaderConfig",
+      "declaration": "type TDFReaderConfig struct {",
+      "members": [],
+      "has_unexported_members": true
+    },
+    {
+      "symbol": "TDFReaderOption",
+      "declaration": "type TDFReaderOption func(*TDFReaderConfig) error"
+    },
+    {
+      "symbol": "TdfType",
+      "declaration": "type TdfType string"
+    }
+  ],
+  "values": [
+    {
+      "kind": "const",
+      "symbols": [
+        "SystemMetadataAssertionID",
+        "SystemMetadataSchemaV1"
+      ],
+      "declaration": "const (\nSystemMetadataAssertionID = \"system-metadata\"\nSystemMetadataSchemaV1    = \"system-metadata-v1\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "ErrGrpcDialFailed",
+        "ErrShutdownFailed",
+        "ErrPlatformUnreachable",
+        "ErrHealthCheckUnsupported",
+        "ErrPlatformConfigFailed",
+        "ErrPlatformEndpointMalformed",
+        "ErrPlatformIssuerNotFound",
+        "ErrPlatformAuthzEndpointNotFound",
+        "ErrPlatformTokenEndpointNotFound",
+        "ErrPlatformEndpointNotFound",
+        "ErrAccessTokenInvalid",
+        "ErrNoAccessTokenSource",
+        "ErrWellKnowConfigEmpty",
+        "ErrAttributeNotFound"
+      ],
+      "declaration": "const (\nErrGrpcDialFailed      = Error(\"failed to dial grpc endpoint\")\nErrShutdownFailed      = Error(\"failed to shutdown sdk\")\nErrPlatformUnreachable = Error(\"platform unreachable or not responding\")\nErrHealthCheckUnsupported        = Error(\"health check not supported in IPC mode\")\nErrPlatformConfigFailed          = Error(\"failed to retrieve platform configuration\")\nErrPlatformEndpointMalformed     = Error(\"platform endpoint is malformed\")\nErrPlatformIssuerNotFound        = Error(\"issuer not found in well-known idp configuration\")\nErrPlatformAuthzEndpointNotFound = Error(\"authorization_endpoint not found in well-known idp configuration\")\nErrPlatformTokenEndpointNotFound = Error(\"token_endpoint not found in well-known idp configuration\")\nErrPlatformEndpointNotFound      = Error(\"platform_endpoint not found in well-known configuration\")\nErrAccessTokenInvalid            = Error(\"access token is invalid\")\nErrNoAccessTokenSource           = Error(\"no access token source configured; SDK was created without credentials\")\nErrWellKnowConfigEmpty           = Error(\"well-known configuration is empty\")\nErrAttributeNotFound             = Error(\"attribute not found\")\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "DefaultRSAKeySize",
+        "ECKeySize256",
+        "ECKeySize384",
+        "ECKeySize521"
+      ],
+      "declaration": "const (\nDefaultRSAKeySize = 2048\nECKeySize256      = 256\nECKeySize384      = 384\nECKeySize521      = 521\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "JSONFormat",
+        "XMLFormat"
+      ],
+      "declaration": "const (\nJSONFormat = iota\nXMLFormat\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "HS256",
+        "GMAC"
+      ],
+      "declaration": "const (\nHS256 = iota\nGMAC\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "TDFSpecVersion",
+        "Version"
+      ],
+      "declaration": "const (\nTDFSpecVersion = \"4.3.0\"\nVersion = \"0.34.0\" // x-release-please-version\n)"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrBaseKeyNotFound",
+        "ErrBaseKeyInvalidFormat",
+        "ErrBaseKeyEmpty",
+        "ErrMarshalBaseKeyFailed",
+        "ErrUnmarshalBaseKeyFailed"
+      ],
+      "declaration": "var (\nErrBaseKeyNotFound        = errors.New(\"base key not found in well-known configuration\")\nErrBaseKeyInvalidFormat   = errors.New(\"base key has invalid format\")\nErrBaseKeyEmpty           = errors.New(\"base key is empty or not provided\")\nErrMarshalBaseKeyFailed   = errors.New(\"failed to marshal base key configuration\")\nErrUnmarshalBaseKeyFailed = errors.New(\"failed to unmarshal base key configuration\")\n)"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrChunkedAlreadyFinalized",
+        "ErrChunkedCleanupFailed",
+        "ErrChunkedCloseFailed",
+        "ErrChunkedFinalizeFailed",
+        "ErrChunkedInvalidSegmentIndex",
+        "ErrChunkedMissingSegmentZero",
+        "ErrChunkedSegmentAlreadyWritten",
+        "ErrChunkedWriteInFlight"
+      ],
+      "declaration": "var (\nErrChunkedAlreadyFinalized = errors.New(\"chunked: writer already finalized\")\nErrChunkedCleanupFailed = errors.New(\"chunked: segment cleanup failed after a failed write; writer is unusable\")\nErrChunkedCloseFailed = errors.New(\"chunked: archive close failed after finalize; writer is unusable\")\nErrChunkedFinalizeFailed = errors.New(\"chunked: archive finalize failed; writer is unusable\")\nErrChunkedInvalidSegmentIndex = errors.New(\"chunked: invalid segment index\")\nErrChunkedMissingSegmentZero = errors.New(\"chunked: segment 0 was never written; it carries the payload's ZIP local file header\")\nErrChunkedSegmentAlreadyWritten = errors.New(\"chunked: segment already written\")\nErrChunkedWriteInFlight = errors.New(\"chunked: a segment write is still in flight; every WriteSegment must return before Finalize\")\n)"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrTDFNotDecryptable",
+        "ErrTDFDecryptFailed"
+      ],
+      "declaration": "var (\nErrTDFNotDecryptable = errors.New(\"tdf: input is not decryptable\")\nErrTDFDecryptFailed = errors.New(\"tdf: decrypt failed\")\n)"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrTampered",
+        "ErrRootSigValidation",
+        "ErrSegSizeMismatch",
+        "ErrSegSizeUnresolved",
+        "ErrSegSigValidation",
+        "ErrGMACSignatureFailed",
+        "ErrTDFPayloadReadFail",
+        "ErrTDFPayloadInvalidOffset",
+        "ErrRootSignatureFailure",
+        "ErrRewrapBadRequest",
+        "ErrUnsupportedRootIntegrityAlgorithm",
+        "ErrUnsupportedSegmentIntegrityAlgorithm",
+        "ErrKASRequestError",
+        "ErrRewrapForbidden"
+      ],
+      "declaration": "var (\nErrTampered                = errors.New(\"tamper detected\")\nErrRootSigValidation       = fmt.Errorf(\"[%w] tdf: failed integrity check on root signature\", ErrTampered)\nErrSegSizeMismatch         = fmt.Errorf(\"[%w] tdf: mismatch encrypted segment size in manifest\", ErrTampered)\nErrSegSizeUnresolved       = fmt.Errorf(\"[%w] tdf: segment size invalid or missing from manifest, with no default to fall back on\", ErrTampered)\nErrSegSigValidation        = fmt.Errorf(\"[%w] tdf: failed integrity check on segment hash\", ErrTampered)\nErrGMACSignatureFailed     = fmt.Errorf(\"[%w] tdf: ciphertext too short for a gmac signature\", ErrTampered)\nErrTDFPayloadReadFail      = fmt.Errorf(\"[%w] tdf: fail to read payload from tdf\", ErrTampered)\nErrTDFPayloadInvalidOffset = fmt.Errorf(\"[%w] sdk.Reader.ReadAt: negative offset\", ErrTampered)\nErrRootSignatureFailure    = fmt.Errorf(\"[%w] tdf: issue verifying root signature\", ErrTampered)\nErrRewrapBadRequest        = fmt.Errorf(\"[%w] tdf: rewrap request 400\", ErrTampered)\nErrUnsupportedRootIntegrityAlgorithm = errors.New(\"tdf: unsupported root integrity algorithm\")\nErrUnsupportedSegmentIntegrityAlgorithm = errors.New(\"tdf: unsupported segment integrity algorithm\")\nErrKASRequestError = errors.New(\"tdf: KAS request error\")\nErrRewrapForbidden = errors.New(\"tdf: rewrap request 403\")\n)"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrInvalid"
+      ],
+      "declaration": "var ErrInvalid = errors.New(\"invalid type\")"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrInvalidPerSchema"
+      ],
+      "declaration": "var ErrInvalidPerSchema = errors.New(\"manifest was not valid\")"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrSplitterRequiresDefaultKAS"
+      ],
+      "declaration": "var ErrSplitterRequiresDefaultKAS = errors.New(\"chunked: default splitter requires a default KAS; supply WithChunkedDefaultKAS or WithChunkedKeySplitter\")"
+    },
+    {
+      "kind": "var",
+      "symbols": [
+        "ErrSplitterUnsupportedAlgorithm"
+      ],
+      "declaration": "var ErrSplitterUnsupportedAlgorithm = errors.New(\"chunked: unsupported KAS key algorithm\")"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "Encrypted",
+        "Unencrypted"
+      ],
+      "declaration": "const (\nEncrypted   AppliesToState = \"encrypted\"\nUnencrypted AppliesToState = \"unencrypted\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "AssertionKeyAlgRS256",
+        "AssertionKeyAlgHS256"
+      ],
+      "declaration": "const (\nAssertionKeyAlgRS256 AssertionKeyAlg = \"RS256\"\nAssertionKeyAlgHS256 AssertionKeyAlg = \"HS256\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "HandlingAssertion",
+        "BaseAssertion"
+      ],
+      "declaration": "const (\nHandlingAssertion AssertionType = \"handling\"\nBaseAssertion     AssertionType = \"other\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "JWS"
+      ],
+      "declaration": "const (\nJWS BindingMethod = \"jws\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "RootHS256"
+      ],
+      "declaration": "const RootHS256 RootIntegrityAlg = iota"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "Skip",
+        "Lax",
+        "Strict"
+      ],
+      "declaration": "const (\nSkip SchemaValidationIntensity = iota\nLax\nStrict\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "TrustedDataObjScope",
+        "PayloadScope"
+      ],
+      "declaration": "const (\nTrustedDataObjScope Scope = \"tdo\"\nPayloadScope        Scope = \"payload\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "SegmentHS256",
+        "SegmentGMAC"
+      ],
+      "declaration": "const (\nSegmentHS256 SegmentIntegrityAlg = iota\nSegmentGMAC\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "ES256",
+        "ES384",
+        "ES512",
+        "RS256",
+        "RS384",
+        "RS512"
+      ],
+      "declaration": "const (\nES256 SigningAlgorithm = \"ES256\"\nES384 SigningAlgorithm = \"ES384\"\nES512 SigningAlgorithm = \"ES512\"\nRS256 SigningAlgorithm = \"RS256\"\nRS384 SigningAlgorithm = \"RS384\"\nRS512 SigningAlgorithm = \"RS512\"\n)"
+    },
+    {
+      "kind": "const",
+      "symbols": [
+        "Invalid",
+        "Standard"
+      ],
+      "declaration": "const (\nInvalid  TdfType = \"Invalid\"\nStandard TdfType = \"Standard\"\n)"
+    }
+  ],
+  "service_clients": [
+    {
+      "field": "Actions",
+      "go_type": "sdkconnect.ActionServiceClient"
+    },
+    {
+      "field": "Attributes",
+      "go_type": "sdkconnect.AttributesServiceClient"
+    },
+    {
+      "field": "Authorization",
+      "go_type": "sdkconnect.AuthorizationServiceClient"
+    },
+    {
+      "field": "AuthorizationV2",
+      "go_type": "sdkconnect.AuthorizationServiceClientV2"
+    },
+    {
+      "field": "EntityResoution",
+      "go_type": "sdkconnect.EntityResolutionServiceClient"
+    },
+    {
+      "field": "EntityResolutionV2",
+      "go_type": "sdkconnect.EntityResolutionServiceClientV2"
+    },
+    {
+      "field": "KeyAccessServerRegistry",
+      "go_type": "sdkconnect.KeyAccessServerRegistryServiceClient"
+    },
+    {
+      "field": "Namespaces",
+      "go_type": "sdkconnect.NamespaceServiceClient"
+    },
+    {
+      "field": "Obligations",
+      "go_type": "sdkconnect.ObligationsServiceClient"
+    },
+    {
+      "field": "RegisteredResources",
+      "go_type": "sdkconnect.RegisteredResourcesServiceClient"
+    },
+    {
+      "field": "ResourceMapping",
+      "go_type": "sdkconnect.ResourceMappingServiceClient"
+    },
+    {
+      "field": "SubjectMapping",
+      "go_type": "sdkconnect.SubjectMappingServiceClient"
+    },
+    {
+      "field": "DynamicValueMapping",
+      "go_type": "sdkconnect.DynamicValueMappingServiceClient"
+    },
+    {
+      "field": "Unsafe",
+      "go_type": "sdkconnect.UnsafeServiceClient"
+    },
+    {
+      "field": "KeyManagement",
+      "go_type": "sdkconnect.KeyManagementServiceClient"
+    }
+  ],
+  "service_interfaces": [
+    {
+      "symbol": "ActionServiceClient",
+      "source": "sdk/sdkconnect/actions.go",
+      "source_sha256": "7b2159f965c756d4c035a5e95151f9fbcc764e2bba884a9ca8a1d54f45fca34a",
+      "methods": [
+        {
+          "symbol": "CreateAction",
+          "signature": "CreateAction(ctx context.Context, req *actions.CreateActionRequest) (*actions.CreateActionResponse, error)"
+        },
+        {
+          "symbol": "DeleteAction",
+          "signature": "DeleteAction(ctx context.Context, req *actions.DeleteActionRequest) (*actions.DeleteActionResponse, error)"
+        },
+        {
+          "symbol": "GetAction",
+          "signature": "GetAction(ctx context.Context, req *actions.GetActionRequest) (*actions.GetActionResponse, error)"
+        },
+        {
+          "symbol": "ListActions",
+          "signature": "ListActions(ctx context.Context, req *actions.ListActionsRequest) (*actions.ListActionsResponse, error)"
+        },
+        {
+          "symbol": "UpdateAction",
+          "signature": "UpdateAction(ctx context.Context, req *actions.UpdateActionRequest) (*actions.UpdateActionResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "Actions"
+      ]
+    },
+    {
+      "symbol": "AttributesServiceClient",
+      "source": "sdk/sdkconnect/attributes.go",
+      "source_sha256": "95898eb641f1729175248da6e11ed282b50baddb140c108ff6b50d555808fad3",
+      "methods": [
+        {
+          "symbol": "AssignKeyAccessServerToAttribute",
+          "signature": "AssignKeyAccessServerToAttribute(ctx context.Context, req *attributes.AssignKeyAccessServerToAttributeRequest) (*attributes.AssignKeyAccessServerToAttributeResponse, error)"
+        },
+        {
+          "symbol": "AssignKeyAccessServerToValue",
+          "signature": "AssignKeyAccessServerToValue(ctx context.Context, req *attributes.AssignKeyAccessServerToValueRequest) (*attributes.AssignKeyAccessServerToValueResponse, error)"
+        },
+        {
+          "symbol": "AssignPublicKeyToAttribute",
+          "signature": "AssignPublicKeyToAttribute(ctx context.Context, req *attributes.AssignPublicKeyToAttributeRequest) (*attributes.AssignPublicKeyToAttributeResponse, error)"
+        },
+        {
+          "symbol": "AssignPublicKeyToValue",
+          "signature": "AssignPublicKeyToValue(ctx context.Context, req *attributes.AssignPublicKeyToValueRequest) (*attributes.AssignPublicKeyToValueResponse, error)"
+        },
+        {
+          "symbol": "CreateAttribute",
+          "signature": "CreateAttribute(ctx context.Context, req *attributes.CreateAttributeRequest) (*attributes.CreateAttributeResponse, error)"
+        },
+        {
+          "symbol": "CreateAttributeValue",
+          "signature": "CreateAttributeValue(ctx context.Context, req *attributes.CreateAttributeValueRequest) (*attributes.CreateAttributeValueResponse, error)"
+        },
+        {
+          "symbol": "DeactivateAttribute",
+          "signature": "DeactivateAttribute(ctx context.Context, req *attributes.DeactivateAttributeRequest) (*attributes.DeactivateAttributeResponse, error)"
+        },
+        {
+          "symbol": "DeactivateAttributeValue",
+          "signature": "DeactivateAttributeValue(ctx context.Context, req *attributes.DeactivateAttributeValueRequest) (*attributes.DeactivateAttributeValueResponse, error)"
+        },
+        {
+          "symbol": "GetAttribute",
+          "signature": "GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error)"
+        },
+        {
+          "symbol": "GetAttributeValue",
+          "signature": "GetAttributeValue(ctx context.Context, req *attributes.GetAttributeValueRequest) (*attributes.GetAttributeValueResponse, error)"
+        },
+        {
+          "symbol": "GetAttributeValuesByFqns",
+          "signature": "GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error)"
+        },
+        {
+          "symbol": "GetEntitleableAttributesByFqns",
+          "signature": "GetEntitleableAttributesByFqns(ctx context.Context, req *attributes.GetEntitleableAttributesByFqnsRequest) (*attributes.GetEntitleableAttributesByFqnsResponse, error)"
+        },
+        {
+          "symbol": "GetKeyMappingsByFqns",
+          "signature": "GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error)"
+        },
+        {
+          "symbol": "ListAttributeValues",
+          "signature": "ListAttributeValues(ctx context.Context, req *attributes.ListAttributeValuesRequest) (*attributes.ListAttributeValuesResponse, error)"
+        },
+        {
+          "symbol": "ListAttributes",
+          "signature": "ListAttributes(ctx context.Context, req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error)"
+        },
+        {
+          "symbol": "RemoveKeyAccessServerFromAttribute",
+          "signature": "RemoveKeyAccessServerFromAttribute(ctx context.Context, req *attributes.RemoveKeyAccessServerFromAttributeRequest) (*attributes.RemoveKeyAccessServerFromAttributeResponse, error)"
+        },
+        {
+          "symbol": "RemoveKeyAccessServerFromValue",
+          "signature": "RemoveKeyAccessServerFromValue(ctx context.Context, req *attributes.RemoveKeyAccessServerFromValueRequest) (*attributes.RemoveKeyAccessServerFromValueResponse, error)"
+        },
+        {
+          "symbol": "RemovePublicKeyFromAttribute",
+          "signature": "RemovePublicKeyFromAttribute(ctx context.Context, req *attributes.RemovePublicKeyFromAttributeRequest) (*attributes.RemovePublicKeyFromAttributeResponse, error)"
+        },
+        {
+          "symbol": "RemovePublicKeyFromValue",
+          "signature": "RemovePublicKeyFromValue(ctx context.Context, req *attributes.RemovePublicKeyFromValueRequest) (*attributes.RemovePublicKeyFromValueResponse, error)"
+        },
+        {
+          "symbol": "UpdateAttribute",
+          "signature": "UpdateAttribute(ctx context.Context, req *attributes.UpdateAttributeRequest) (*attributes.UpdateAttributeResponse, error)"
+        },
+        {
+          "symbol": "UpdateAttributeValue",
+          "signature": "UpdateAttributeValue(ctx context.Context, req *attributes.UpdateAttributeValueRequest) (*attributes.UpdateAttributeValueResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "Attributes"
+      ]
+    },
+    {
+      "symbol": "AuthorizationServiceClient",
+      "source": "sdk/sdkconnect/authorization.go",
+      "source_sha256": "392f2518dff8680cdd8a198ddc403bf26301194962507284dbfe645969663f78",
+      "methods": [
+        {
+          "symbol": "GetDecisions",
+          "signature": "GetDecisions(ctx context.Context, req *authorization.GetDecisionsRequest) (*authorization.GetDecisionsResponse, error)"
+        },
+        {
+          "symbol": "GetDecisionsByToken",
+          "signature": "GetDecisionsByToken(ctx context.Context, req *authorization.GetDecisionsByTokenRequest) (*authorization.GetDecisionsByTokenResponse, error)"
+        },
+        {
+          "symbol": "GetEntitlements",
+          "signature": "GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "Authorization"
+      ]
+    },
+    {
+      "symbol": "AuthorizationServiceClientV2",
+      "source": "sdk/sdkconnect/authorizationv2.go",
+      "source_sha256": "75d8d54fd5ddd97f6a9617ac2e0842e404a93c08bb838a0a5bf797af2a4a1833",
+      "methods": [
+        {
+          "symbol": "GetDecision",
+          "signature": "GetDecision(ctx context.Context, req *authorizationv2.GetDecisionRequest) (*authorizationv2.GetDecisionResponse, error)"
+        },
+        {
+          "symbol": "GetDecisionBulk",
+          "signature": "GetDecisionBulk(ctx context.Context, req *authorizationv2.GetDecisionBulkRequest) (*authorizationv2.GetDecisionBulkResponse, error)"
+        },
+        {
+          "symbol": "GetDecisionMultiResource",
+          "signature": "GetDecisionMultiResource(ctx context.Context, req *authorizationv2.GetDecisionMultiResourceRequest) (*authorizationv2.GetDecisionMultiResourceResponse, error)"
+        },
+        {
+          "symbol": "GetEntitlements",
+          "signature": "GetEntitlements(ctx context.Context, req *authorizationv2.GetEntitlementsRequest) (*authorizationv2.GetEntitlementsResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "AuthorizationV2"
+      ]
+    },
+    {
+      "symbol": "DynamicValueMappingServiceClient",
+      "source": "sdk/sdkconnect/dynamicvaluemapping.go",
+      "source_sha256": "c01c6155aaa6c5bb398323e29ae2e7bac250ac3392c5fd4a3a680e11bdffe8b5",
+      "methods": [
+        {
+          "symbol": "CreateDynamicValueMapping",
+          "signature": "CreateDynamicValueMapping(ctx context.Context, req *dynamicvaluemapping.CreateDynamicValueMappingRequest) (*dynamicvaluemapping.CreateDynamicValueMappingResponse, error)"
+        },
+        {
+          "symbol": "DeleteDynamicValueMapping",
+          "signature": "DeleteDynamicValueMapping(ctx context.Context, req *dynamicvaluemapping.DeleteDynamicValueMappingRequest) (*dynamicvaluemapping.DeleteDynamicValueMappingResponse, error)"
+        },
+        {
+          "symbol": "GetDynamicValueMapping",
+          "signature": "GetDynamicValueMapping(ctx context.Context, req *dynamicvaluemapping.GetDynamicValueMappingRequest) (*dynamicvaluemapping.GetDynamicValueMappingResponse, error)"
+        },
+        {
+          "symbol": "ListDynamicValueMappings",
+          "signature": "ListDynamicValueMappings(ctx context.Context, req *dynamicvaluemapping.ListDynamicValueMappingsRequest) (*dynamicvaluemapping.ListDynamicValueMappingsResponse, error)"
+        },
+        {
+          "symbol": "UpdateDynamicValueMapping",
+          "signature": "UpdateDynamicValueMapping(ctx context.Context, req *dynamicvaluemapping.UpdateDynamicValueMappingRequest) (*dynamicvaluemapping.UpdateDynamicValueMappingResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "DynamicValueMapping"
+      ]
+    },
+    {
+      "symbol": "EntityResolutionServiceClient",
+      "source": "sdk/sdkconnect/entityresolution.go",
+      "source_sha256": "b5bef80e54c8c44ca5df1fd31c3879f55fb3f4418914c619ea5c039a7c6dcd40",
+      "methods": [
+        {
+          "symbol": "CreateEntityChainFromJwt",
+          "signature": "CreateEntityChainFromJwt(ctx context.Context, req *entityresolution.CreateEntityChainFromJwtRequest) (*entityresolution.CreateEntityChainFromJwtResponse, error)"
+        },
+        {
+          "symbol": "ResolveEntities",
+          "signature": "ResolveEntities(ctx context.Context, req *entityresolution.ResolveEntitiesRequest) (*entityresolution.ResolveEntitiesResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "EntityResoution"
+      ]
+    },
+    {
+      "symbol": "EntityResolutionServiceClientV2",
+      "source": "sdk/sdkconnect/entityresolutionv2.go",
+      "source_sha256": "a5709499ead3c511e43380cafe69c88ac53d41aa97683cd9f2d6c7f9a5abf372",
+      "methods": [
+        {
+          "symbol": "CreateEntityChainsFromTokens",
+          "signature": "CreateEntityChainsFromTokens(ctx context.Context, req *entityresolutionv2.CreateEntityChainsFromTokensRequest) (*entityresolutionv2.CreateEntityChainsFromTokensResponse, error)"
+        },
+        {
+          "symbol": "ResolveEntities",
+          "signature": "ResolveEntities(ctx context.Context, req *entityresolutionv2.ResolveEntitiesRequest) (*entityresolutionv2.ResolveEntitiesResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "EntityResolutionV2"
+      ]
+    },
+    {
+      "symbol": "KeyAccessServerRegistryServiceClient",
+      "source": "sdk/sdkconnect/kasregistry.go",
+      "source_sha256": "63f64d28e460346603bb1f7bd9f516e56e19c6febb9a00fcd4d8e12a284ad44c",
+      "methods": [
+        {
+          "symbol": "CreateKey",
+          "signature": "CreateKey(ctx context.Context, req *kasregistry.CreateKeyRequest) (*kasregistry.CreateKeyResponse, error)"
+        },
+        {
+          "symbol": "CreateKeyAccessServer",
+          "signature": "CreateKeyAccessServer(ctx context.Context, req *kasregistry.CreateKeyAccessServerRequest) (*kasregistry.CreateKeyAccessServerResponse, error)"
+        },
+        {
+          "symbol": "DeleteKeyAccessServer",
+          "signature": "DeleteKeyAccessServer(ctx context.Context, req *kasregistry.DeleteKeyAccessServerRequest) (*kasregistry.DeleteKeyAccessServerResponse, error)"
+        },
+        {
+          "symbol": "GetBaseKey",
+          "signature": "GetBaseKey(ctx context.Context, req *kasregistry.GetBaseKeyRequest) (*kasregistry.GetBaseKeyResponse, error)"
+        },
+        {
+          "symbol": "GetKey",
+          "signature": "GetKey(ctx context.Context, req *kasregistry.GetKeyRequest) (*kasregistry.GetKeyResponse, error)"
+        },
+        {
+          "symbol": "GetKeyAccessServer",
+          "signature": "GetKeyAccessServer(ctx context.Context, req *kasregistry.GetKeyAccessServerRequest) (*kasregistry.GetKeyAccessServerResponse, error)"
+        },
+        {
+          "symbol": "ListKeyAccessServerGrants",
+          "signature": "ListKeyAccessServerGrants(ctx context.Context, req *kasregistry.ListKeyAccessServerGrantsRequest) (*kasregistry.ListKeyAccessServerGrantsResponse, error)"
+        },
+        {
+          "symbol": "ListKeyAccessServers",
+          "signature": "ListKeyAccessServers(ctx context.Context, req *kasregistry.ListKeyAccessServersRequest) (*kasregistry.ListKeyAccessServersResponse, error)"
+        },
+        {
+          "symbol": "ListKeyMappings",
+          "signature": "ListKeyMappings(ctx context.Context, req *kasregistry.ListKeyMappingsRequest) (*kasregistry.ListKeyMappingsResponse, error)"
+        },
+        {
+          "symbol": "ListKeys",
+          "signature": "ListKeys(ctx context.Context, req *kasregistry.ListKeysRequest) (*kasregistry.ListKeysResponse, error)"
+        },
+        {
+          "symbol": "RotateKey",
+          "signature": "RotateKey(ctx context.Context, req *kasregistry.RotateKeyRequest) (*kasregistry.RotateKeyResponse, error)"
+        },
+        {
+          "symbol": "SetBaseKey",
+          "signature": "SetBaseKey(ctx context.Context, req *kasregistry.SetBaseKeyRequest) (*kasregistry.SetBaseKeyResponse, error)"
+        },
+        {
+          "symbol": "UpdateKey",
+          "signature": "UpdateKey(ctx context.Context, req *kasregistry.UpdateKeyRequest) (*kasregistry.UpdateKeyResponse, error)"
+        },
+        {
+          "symbol": "UpdateKeyAccessServer",
+          "signature": "UpdateKeyAccessServer(ctx context.Context, req *kasregistry.UpdateKeyAccessServerRequest) (*kasregistry.UpdateKeyAccessServerResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "KeyAccessServerRegistry"
+      ]
+    },
+    {
+      "symbol": "KeyManagementServiceClient",
+      "source": "sdk/sdkconnect/keymanagement.go",
+      "source_sha256": "5768decab82bb0a781e9e7b91e69b36ef781f6a58d552311b7395bf2be4d981a",
+      "methods": [
+        {
+          "symbol": "CreateProviderConfig",
+          "signature": "CreateProviderConfig(ctx context.Context, req *keymanagement.CreateProviderConfigRequest) (*keymanagement.CreateProviderConfigResponse, error)"
+        },
+        {
+          "symbol": "DeleteProviderConfig",
+          "signature": "DeleteProviderConfig(ctx context.Context, req *keymanagement.DeleteProviderConfigRequest) (*keymanagement.DeleteProviderConfigResponse, error)"
+        },
+        {
+          "symbol": "GetProviderConfig",
+          "signature": "GetProviderConfig(ctx context.Context, req *keymanagement.GetProviderConfigRequest) (*keymanagement.GetProviderConfigResponse, error)"
+        },
+        {
+          "symbol": "ListProviderConfigs",
+          "signature": "ListProviderConfigs(ctx context.Context, req *keymanagement.ListProviderConfigsRequest) (*keymanagement.ListProviderConfigsResponse, error)"
+        },
+        {
+          "symbol": "UpdateProviderConfig",
+          "signature": "UpdateProviderConfig(ctx context.Context, req *keymanagement.UpdateProviderConfigRequest) (*keymanagement.UpdateProviderConfigResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "KeyManagement"
+      ]
+    },
+    {
+      "symbol": "NamespaceServiceClient",
+      "source": "sdk/sdkconnect/namespaces.go",
+      "source_sha256": "dba336acceea1caf6ab725aacab516aeb24847915ca019c499982c66a7a25181",
+      "methods": [
+        {
+          "symbol": "AssignKeyAccessServerToNamespace",
+          "signature": "AssignKeyAccessServerToNamespace(ctx context.Context, req *namespaces.AssignKeyAccessServerToNamespaceRequest) (*namespaces.AssignKeyAccessServerToNamespaceResponse, error)"
+        },
+        {
+          "symbol": "AssignPublicKeyToNamespace",
+          "signature": "AssignPublicKeyToNamespace(ctx context.Context, req *namespaces.AssignPublicKeyToNamespaceRequest) (*namespaces.AssignPublicKeyToNamespaceResponse, error)"
+        },
+        {
+          "symbol": "CreateNamespace",
+          "signature": "CreateNamespace(ctx context.Context, req *namespaces.CreateNamespaceRequest) (*namespaces.CreateNamespaceResponse, error)"
+        },
+        {
+          "symbol": "DeactivateNamespace",
+          "signature": "DeactivateNamespace(ctx context.Context, req *namespaces.DeactivateNamespaceRequest) (*namespaces.DeactivateNamespaceResponse, error)"
+        },
+        {
+          "symbol": "GetNamespace",
+          "signature": "GetNamespace(ctx context.Context, req *namespaces.GetNamespaceRequest) (*namespaces.GetNamespaceResponse, error)"
+        },
+        {
+          "symbol": "ListNamespaces",
+          "signature": "ListNamespaces(ctx context.Context, req *namespaces.ListNamespacesRequest) (*namespaces.ListNamespacesResponse, error)"
+        },
+        {
+          "symbol": "RemoveKeyAccessServerFromNamespace",
+          "signature": "RemoveKeyAccessServerFromNamespace(ctx context.Context, req *namespaces.RemoveKeyAccessServerFromNamespaceRequest) (*namespaces.RemoveKeyAccessServerFromNamespaceResponse, error)"
+        },
+        {
+          "symbol": "RemovePublicKeyFromNamespace",
+          "signature": "RemovePublicKeyFromNamespace(ctx context.Context, req *namespaces.RemovePublicKeyFromNamespaceRequest) (*namespaces.RemovePublicKeyFromNamespaceResponse, error)"
+        },
+        {
+          "symbol": "UpdateNamespace",
+          "signature": "UpdateNamespace(ctx context.Context, req *namespaces.UpdateNamespaceRequest) (*namespaces.UpdateNamespaceResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "Namespaces"
+      ]
+    },
+    {
+      "symbol": "ObligationsServiceClient",
+      "source": "sdk/sdkconnect/obligations.go",
+      "source_sha256": "74ffa4abd86bcbe823c77a199a295edfb0edf0ed0949966ac8b193502029d42e",
+      "methods": [
+        {
+          "symbol": "AddObligationTrigger",
+          "signature": "AddObligationTrigger(ctx context.Context, req *obligations.AddObligationTriggerRequest) (*obligations.AddObligationTriggerResponse, error)"
+        },
+        {
+          "symbol": "CreateObligation",
+          "signature": "CreateObligation(ctx context.Context, req *obligations.CreateObligationRequest) (*obligations.CreateObligationResponse, error)"
+        },
+        {
+          "symbol": "CreateObligationValue",
+          "signature": "CreateObligationValue(ctx context.Context, req *obligations.CreateObligationValueRequest) (*obligations.CreateObligationValueResponse, error)"
+        },
+        {
+          "symbol": "DeleteObligation",
+          "signature": "DeleteObligation(ctx context.Context, req *obligations.DeleteObligationRequest) (*obligations.DeleteObligationResponse, error)"
+        },
+        {
+          "symbol": "DeleteObligationValue",
+          "signature": "DeleteObligationValue(ctx context.Context, req *obligations.DeleteObligationValueRequest) (*obligations.DeleteObligationValueResponse, error)"
+        },
+        {
+          "symbol": "GetObligation",
+          "signature": "GetObligation(ctx context.Context, req *obligations.GetObligationRequest) (*obligations.GetObligationResponse, error)"
+        },
+        {
+          "symbol": "GetObligationTrigger",
+          "signature": "GetObligationTrigger(ctx context.Context, req *obligations.GetObligationTriggerRequest) (*obligations.GetObligationTriggerResponse, error)"
+        },
+        {
+          "symbol": "GetObligationValue",
+          "signature": "GetObligationValue(ctx context.Context, req *obligations.GetObligationValueRequest) (*obligations.GetObligationValueResponse, error)"
+        },
+        {
+          "symbol": "GetObligationValuesByFQNs",
+          "signature": "GetObligationValuesByFQNs(ctx context.Context, req *obligations.GetObligationValuesByFQNsRequest) (*obligations.GetObligationValuesByFQNsResponse, error)"
+        },
+        {
+          "symbol": "GetObligationsByFQNs",
+          "signature": "GetObligationsByFQNs(ctx context.Context, req *obligations.GetObligationsByFQNsRequest) (*obligations.GetObligationsByFQNsResponse, error)"
+        },
+        {
+          "symbol": "ListObligationTriggers",
+          "signature": "ListObligationTriggers(ctx context.Context, req *obligations.ListObligationTriggersRequest) (*obligations.ListObligationTriggersResponse, error)"
+        },
+        {
+          "symbol": "ListObligations",
+          "signature": "ListObligations(ctx context.Context, req *obligations.ListObligationsRequest) (*obligations.ListObligationsResponse, error)"
+        },
+        {
+          "symbol": "RemoveObligationTrigger",
+          "signature": "RemoveObligationTrigger(ctx context.Context, req *obligations.RemoveObligationTriggerRequest) (*obligations.RemoveObligationTriggerResponse, error)"
+        },
+        {
+          "symbol": "UpdateObligation",
+          "signature": "UpdateObligation(ctx context.Context, req *obligations.UpdateObligationRequest) (*obligations.UpdateObligationResponse, error)"
+        },
+        {
+          "symbol": "UpdateObligationValue",
+          "signature": "UpdateObligationValue(ctx context.Context, req *obligations.UpdateObligationValueRequest) (*obligations.UpdateObligationValueResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "Obligations"
+      ]
+    },
+    {
+      "symbol": "RegisteredResourcesServiceClient",
+      "source": "sdk/sdkconnect/registeredresources.go",
+      "source_sha256": "bcdc203b6f48077e096eeff1b0bb5531f3c0d26ee9e7212bca869e9ad4057f53",
+      "methods": [
+        {
+          "symbol": "CreateRegisteredResource",
+          "signature": "CreateRegisteredResource(ctx context.Context, req *registeredresources.CreateRegisteredResourceRequest) (*registeredresources.CreateRegisteredResourceResponse, error)"
+        },
+        {
+          "symbol": "CreateRegisteredResourceValue",
+          "signature": "CreateRegisteredResourceValue(ctx context.Context, req *registeredresources.CreateRegisteredResourceValueRequest) (*registeredresources.CreateRegisteredResourceValueResponse, error)"
+        },
+        {
+          "symbol": "DeleteRegisteredResource",
+          "signature": "DeleteRegisteredResource(ctx context.Context, req *registeredresources.DeleteRegisteredResourceRequest) (*registeredresources.DeleteRegisteredResourceResponse, error)"
+        },
+        {
+          "symbol": "DeleteRegisteredResourceValue",
+          "signature": "DeleteRegisteredResourceValue(ctx context.Context, req *registeredresources.DeleteRegisteredResourceValueRequest) (*registeredresources.DeleteRegisteredResourceValueResponse, error)"
+        },
+        {
+          "symbol": "GetRegisteredResource",
+          "signature": "GetRegisteredResource(ctx context.Context, req *registeredresources.GetRegisteredResourceRequest) (*registeredresources.GetRegisteredResourceResponse, error)"
+        },
+        {
+          "symbol": "GetRegisteredResourceValue",
+          "signature": "GetRegisteredResourceValue(ctx context.Context, req *registeredresources.GetRegisteredResourceValueRequest) (*registeredresources.GetRegisteredResourceValueResponse, error)"
+        },
+        {
+          "symbol": "GetRegisteredResourceValuesByFQNs",
+          "signature": "GetRegisteredResourceValuesByFQNs(ctx context.Context, req *registeredresources.GetRegisteredResourceValuesByFQNsRequest) (*registeredresources.GetRegisteredResourceValuesByFQNsResponse, error)"
+        },
+        {
+          "symbol": "ListRegisteredResourceValues",
+          "signature": "ListRegisteredResourceValues(ctx context.Context, req *registeredresources.ListRegisteredResourceValuesRequest) (*registeredresources.ListRegisteredResourceValuesResponse, error)"
+        },
+        {
+          "symbol": "ListRegisteredResources",
+          "signature": "ListRegisteredResources(ctx context.Context, req *registeredresources.ListRegisteredResourcesRequest) (*registeredresources.ListRegisteredResourcesResponse, error)"
+        },
+        {
+          "symbol": "UpdateRegisteredResource",
+          "signature": "UpdateRegisteredResource(ctx context.Context, req *registeredresources.UpdateRegisteredResourceRequest) (*registeredresources.UpdateRegisteredResourceResponse, error)"
+        },
+        {
+          "symbol": "UpdateRegisteredResourceValue",
+          "signature": "UpdateRegisteredResourceValue(ctx context.Context, req *registeredresources.UpdateRegisteredResourceValueRequest) (*registeredresources.UpdateRegisteredResourceValueResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "RegisteredResources"
+      ]
+    },
+    {
+      "symbol": "ResourceMappingServiceClient",
+      "source": "sdk/sdkconnect/resourcemapping.go",
+      "source_sha256": "73f1f99ea92260a03c43a6dc53497ff5d705447fc3145f79508595832dc0ae92",
+      "methods": [
+        {
+          "symbol": "CreateResourceMapping",
+          "signature": "CreateResourceMapping(ctx context.Context, req *resourcemapping.CreateResourceMappingRequest) (*resourcemapping.CreateResourceMappingResponse, error)"
+        },
+        {
+          "symbol": "CreateResourceMappingGroup",
+          "signature": "CreateResourceMappingGroup(ctx context.Context, req *resourcemapping.CreateResourceMappingGroupRequest) (*resourcemapping.CreateResourceMappingGroupResponse, error)"
+        },
+        {
+          "symbol": "DeleteResourceMapping",
+          "signature": "DeleteResourceMapping(ctx context.Context, req *resourcemapping.DeleteResourceMappingRequest) (*resourcemapping.DeleteResourceMappingResponse, error)"
+        },
+        {
+          "symbol": "DeleteResourceMappingGroup",
+          "signature": "DeleteResourceMappingGroup(ctx context.Context, req *resourcemapping.DeleteResourceMappingGroupRequest) (*resourcemapping.DeleteResourceMappingGroupResponse, error)"
+        },
+        {
+          "symbol": "GetResourceMapping",
+          "signature": "GetResourceMapping(ctx context.Context, req *resourcemapping.GetResourceMappingRequest) (*resourcemapping.GetResourceMappingResponse, error)"
+        },
+        {
+          "symbol": "GetResourceMappingGroup",
+          "signature": "GetResourceMappingGroup(ctx context.Context, req *resourcemapping.GetResourceMappingGroupRequest) (*resourcemapping.GetResourceMappingGroupResponse, error)"
+        },
+        {
+          "symbol": "ListResourceMappingGroups",
+          "signature": "ListResourceMappingGroups(ctx context.Context, req *resourcemapping.ListResourceMappingGroupsRequest) (*resourcemapping.ListResourceMappingGroupsResponse, error)"
+        },
+        {
+          "symbol": "ListResourceMappings",
+          "signature": "ListResourceMappings(ctx context.Context, req *resourcemapping.ListResourceMappingsRequest) (*resourcemapping.ListResourceMappingsResponse, error)"
+        },
+        {
+          "symbol": "ListResourceMappingsByGroupFqns",
+          "signature": "ListResourceMappingsByGroupFqns(ctx context.Context, req *resourcemapping.ListResourceMappingsByGroupFqnsRequest) (*resourcemapping.ListResourceMappingsByGroupFqnsResponse, error)"
+        },
+        {
+          "symbol": "UpdateResourceMapping",
+          "signature": "UpdateResourceMapping(ctx context.Context, req *resourcemapping.UpdateResourceMappingRequest) (*resourcemapping.UpdateResourceMappingResponse, error)"
+        },
+        {
+          "symbol": "UpdateResourceMappingGroup",
+          "signature": "UpdateResourceMappingGroup(ctx context.Context, req *resourcemapping.UpdateResourceMappingGroupRequest) (*resourcemapping.UpdateResourceMappingGroupResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "ResourceMapping"
+      ]
+    },
+    {
+      "symbol": "SubjectMappingServiceClient",
+      "source": "sdk/sdkconnect/subjectmapping.go",
+      "source_sha256": "eab79b9217b2e22061fcddc28b1633b70643b73dca4b758e5d2b828cc2a09884",
+      "methods": [
+        {
+          "symbol": "CreateSubjectConditionSet",
+          "signature": "CreateSubjectConditionSet(ctx context.Context, req *subjectmapping.CreateSubjectConditionSetRequest) (*subjectmapping.CreateSubjectConditionSetResponse, error)"
+        },
+        {
+          "symbol": "CreateSubjectMapping",
+          "signature": "CreateSubjectMapping(ctx context.Context, req *subjectmapping.CreateSubjectMappingRequest) (*subjectmapping.CreateSubjectMappingResponse, error)"
+        },
+        {
+          "symbol": "DeleteAllUnmappedSubjectConditionSets",
+          "signature": "DeleteAllUnmappedSubjectConditionSets(ctx context.Context, req *subjectmapping.DeleteAllUnmappedSubjectConditionSetsRequest) (*subjectmapping.DeleteAllUnmappedSubjectConditionSetsResponse, error)"
+        },
+        {
+          "symbol": "DeleteSubjectConditionSet",
+          "signature": "DeleteSubjectConditionSet(ctx context.Context, req *subjectmapping.DeleteSubjectConditionSetRequest) (*subjectmapping.DeleteSubjectConditionSetResponse, error)"
+        },
+        {
+          "symbol": "DeleteSubjectMapping",
+          "signature": "DeleteSubjectMapping(ctx context.Context, req *subjectmapping.DeleteSubjectMappingRequest) (*subjectmapping.DeleteSubjectMappingResponse, error)"
+        },
+        {
+          "symbol": "GetSubjectConditionSet",
+          "signature": "GetSubjectConditionSet(ctx context.Context, req *subjectmapping.GetSubjectConditionSetRequest) (*subjectmapping.GetSubjectConditionSetResponse, error)"
+        },
+        {
+          "symbol": "GetSubjectMapping",
+          "signature": "GetSubjectMapping(ctx context.Context, req *subjectmapping.GetSubjectMappingRequest) (*subjectmapping.GetSubjectMappingResponse, error)"
+        },
+        {
+          "symbol": "ListSubjectConditionSets",
+          "signature": "ListSubjectConditionSets(ctx context.Context, req *subjectmapping.ListSubjectConditionSetsRequest) (*subjectmapping.ListSubjectConditionSetsResponse, error)"
+        },
+        {
+          "symbol": "ListSubjectMappings",
+          "signature": "ListSubjectMappings(ctx context.Context, req *subjectmapping.ListSubjectMappingsRequest) (*subjectmapping.ListSubjectMappingsResponse, error)"
+        },
+        {
+          "symbol": "MatchSubjectMappings",
+          "signature": "MatchSubjectMappings(ctx context.Context, req *subjectmapping.MatchSubjectMappingsRequest) (*subjectmapping.MatchSubjectMappingsResponse, error)"
+        },
+        {
+          "symbol": "UpdateSubjectConditionSet",
+          "signature": "UpdateSubjectConditionSet(ctx context.Context, req *subjectmapping.UpdateSubjectConditionSetRequest) (*subjectmapping.UpdateSubjectConditionSetResponse, error)"
+        },
+        {
+          "symbol": "UpdateSubjectMapping",
+          "signature": "UpdateSubjectMapping(ctx context.Context, req *subjectmapping.UpdateSubjectMappingRequest) (*subjectmapping.UpdateSubjectMappingResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "SubjectMapping"
+      ]
+    },
+    {
+      "symbol": "UnsafeServiceClient",
+      "source": "sdk/sdkconnect/unsafe.go",
+      "source_sha256": "9312a2f88d8882d7784f7154a0cd2c08073e84d1b054018f04603998994c7daa",
+      "methods": [
+        {
+          "symbol": "UnsafeDeleteAttribute",
+          "signature": "UnsafeDeleteAttribute(ctx context.Context, req *unsafe.UnsafeDeleteAttributeRequest) (*unsafe.UnsafeDeleteAttributeResponse, error)"
+        },
+        {
+          "symbol": "UnsafeDeleteAttributeValue",
+          "signature": "UnsafeDeleteAttributeValue(ctx context.Context, req *unsafe.UnsafeDeleteAttributeValueRequest) (*unsafe.UnsafeDeleteAttributeValueResponse, error)"
+        },
+        {
+          "symbol": "UnsafeDeleteKasKey",
+          "signature": "UnsafeDeleteKasKey(ctx context.Context, req *unsafe.UnsafeDeleteKasKeyRequest) (*unsafe.UnsafeDeleteKasKeyResponse, error)"
+        },
+        {
+          "symbol": "UnsafeDeleteNamespace",
+          "signature": "UnsafeDeleteNamespace(ctx context.Context, req *unsafe.UnsafeDeleteNamespaceRequest) (*unsafe.UnsafeDeleteNamespaceResponse, error)"
+        },
+        {
+          "symbol": "UnsafeReactivateAttribute",
+          "signature": "UnsafeReactivateAttribute(ctx context.Context, req *unsafe.UnsafeReactivateAttributeRequest) (*unsafe.UnsafeReactivateAttributeResponse, error)"
+        },
+        {
+          "symbol": "UnsafeReactivateAttributeValue",
+          "signature": "UnsafeReactivateAttributeValue(ctx context.Context, req *unsafe.UnsafeReactivateAttributeValueRequest) (*unsafe.UnsafeReactivateAttributeValueResponse, error)"
+        },
+        {
+          "symbol": "UnsafeReactivateNamespace",
+          "signature": "UnsafeReactivateNamespace(ctx context.Context, req *unsafe.UnsafeReactivateNamespaceRequest) (*unsafe.UnsafeReactivateNamespaceResponse, error)"
+        },
+        {
+          "symbol": "UnsafeUpdateAttribute",
+          "signature": "UnsafeUpdateAttribute(ctx context.Context, req *unsafe.UnsafeUpdateAttributeRequest) (*unsafe.UnsafeUpdateAttributeResponse, error)"
+        },
+        {
+          "symbol": "UnsafeUpdateAttributeValue",
+          "signature": "UnsafeUpdateAttributeValue(ctx context.Context, req *unsafe.UnsafeUpdateAttributeValueRequest) (*unsafe.UnsafeUpdateAttributeValueResponse, error)"
+        },
+        {
+          "symbol": "UnsafeUpdateKey",
+          "signature": "UnsafeUpdateKey(ctx context.Context, req *unsafe.UnsafeUpdateKeyRequest) (*unsafe.UnsafeUpdateKeyResponse, error)"
+        },
+        {
+          "symbol": "UnsafeUpdateNamespace",
+          "signature": "UnsafeUpdateNamespace(ctx context.Context, req *unsafe.UnsafeUpdateNamespaceRequest) (*unsafe.UnsafeUpdateNamespaceResponse, error)"
+        }
+      ],
+      "sdk_fields": [
+        "Unsafe"
+      ]
+    },
+    {
+      "symbol": "WellKnownServiceClient",
+      "source": "sdk/sdkconnect/wellknownconfiguration.go",
+      "source_sha256": "024577aeaf6d79785cb35bbf4c0ff503e33a7317cb1fad4b262159744170761f",
+      "methods": [
+        {
+          "symbol": "GetWellKnownConfiguration",
+          "signature": "GetWellKnownConfiguration(ctx context.Context, req *wellknownconfiguration.GetWellKnownConfigurationRequest) (*wellknownconfiguration.GetWellKnownConfigurationResponse, error)"
+        }
+      ]
+    }
+  ]
+}

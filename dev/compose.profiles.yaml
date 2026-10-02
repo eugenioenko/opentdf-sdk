@@ -1,0 +1,5 @@
+# Controlled switch of only tdf-sdk's platform container; infrastructure and ports stay fixed.
+services:
+  platform:
+    volumes:
+      - ../.local/profiles/effective.yaml:/config/opentdf.yaml:ro

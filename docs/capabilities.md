@@ -14,6 +14,7 @@ Crypto inputs are at most 64 MiB per byte argument. Secure randomness takes 0..6
 | --- | --- |
 | Random | Native cryptographically secure system randomness; no deterministic substitute |
 | SHA256, HMACSHA256 | SHA-256 digest, HMAC-SHA256 over exact input bytes |
+| HMACSHA256Verify | Added during Phase 3: verifies an exact 32-byte MAC using native constant-time comparison; empty/nil key and data are valid, malformed MAC/bounds return `false,error`, well-formed mismatch returns `false,nil` |
 | HKDFSHA256 | RFC 5869 extract and expand; explicit salt/info, including empty; 0..255×32 output bytes |
 | AES256GCMEncrypt/Decrypt | 32-byte key; 12-byte nonce; explicit AAD; output ciphertext followed by 16-byte tag; nonce is separate; no implicit framing; caller must ensure nonce uniqueness per key |
 | RSAOAEPEncrypt/Decrypt | RSA-2048; OAEP SHA-1, MGF1 SHA-1, empty label; plaintext <=214 bytes, ciphertext exactly 256 bytes |
@@ -31,6 +32,8 @@ Crypto inputs are at most 64 MiB per byte argument. Secure randomness takes 0..6
 `*crypto.Key` is an opaque native handle. Shared code must retain/pass pointers and must **never copy the dereferenced Key value**. The current compiler does not enforce that value-copy restriction. It must never access native key fields. Pointer aliases share lifetime. `Close` accepts nil and is idempotent, drops retained native references and rejects subsequent key acquisitions. Host-managed storage cannot promise secure erasure. Native operations use a read lock; ECDH converts and retains the private native snapshot before acquiring the public key, allowing aliased inputs without a double-lock deadlock. Closing prevents new acquisitions but does not revoke snapshots already retained by an operation. Future adapters must preserve that rule and release retained operation resources before reporting cancellation completion. Public serialized key bytes already returned remain independently owned after Close.
 
 All crypto operations except Close declare `suspension: may`, anticipating WebCrypto; native Go executes them synchronously. Go runtime mappings complete the current scheduler task immediately by assigning its result vector. Close and encoding do not suspend. HTTP may suspend. Wall-clock observation never suspends and is nondeterministic; JWT iat/exp must use this clock.
+
+The shared TDF engine uses `HMACSHA256Verify` for policy, root and HS256 segment checks. Its native implementation calls `crypto/hmac.Equal`; shared code does not implement secret MAC comparison. The operation returns no buffers and preserves all input aliases. Native tests include RFC 4231, mismatch, malformed lengths, size bounds and mutation checks. The current catalog validates 13 types and 94 functions, with 502 generated spec files. The dedicated SDK `tests/sourcecheck/macverify` probe confirms explicit `GCE002` rejection on every non-Go target until that target implements the operation.
 
 ## HTTP, cancellation and deadlines
 

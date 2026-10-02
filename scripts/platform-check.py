@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 LOCAL = Path(__file__).resolve().parents[1] / '.local'
+(LOCAL / 'platform-check.json').unlink(missing_ok=True)
 
 def request(url, data=None, headers=None):
     with urlopen(Request(url, data=data, headers=headers or {}), timeout=15) as response:

@@ -15,3 +15,15 @@ platform-logs:
 	./scripts/platform.sh logs
 interop-smoke:
 	./scripts/platform.sh smoke
+
+.PHONY: platform-profile-basic platform-profile-ec platform-profile-dpop platform-profile-check interop-profiles
+platform-profile-basic:
+	./scripts/platform-profile.sh basic
+platform-profile-ec:
+	./scripts/platform-profile.sh ec
+platform-profile-dpop:
+	./scripts/platform-profile.sh dpop
+platform-profile-check:
+	./scripts/platform-profile.sh check
+interop-profiles:
+	./scripts/platform-profile.sh smoke
