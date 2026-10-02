@@ -39,7 +39,7 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 ## Phase checklist
 
 - [x] Phase 0: Reference audit and compatibility inventory
-- [ ] Phase 1: Basic local platform and reference smoke tests
+- [x] Phase 1: Basic local platform and reference smoke tests
 - [ ] Phase 2: Capability contracts and native Go implementations
 - [ ] Phase 3: Shared TDF3 implementation and native interop
 - [ ] Phase 4: Compiler support for bytes, host operations, and library exports
@@ -152,7 +152,7 @@ The pinned Goalchemy supports seven executable targets, but exported library bui
 
 The pinned development platform configuration disables DPoP enforcement and EC TDF preview. This does not prove what a running KAS serves. The reference rewrap request is signed with the authentication key and supplies a distinct client encryption public key. Exact protocol details belong in the Phase 0 audit.
 
-The workspace has Docker, Compose, Go, and Node available. No OpenTDF stack has been started and no reference encrypt/decrypt test has run. Toolchain and dependency availability must be established in Phase 1 and compiler prerequisites checked before Phase 4.
+Phase 1 verified a fresh local stack, pinned Go/Node reference builds, both reference interoperability directions, denied policies, and unauthenticated rejection. See [observed results](phase1-results.md). The basic profile exercises Bearer authentication and RSA-2048; enforced DPoP, EC, browsers, and compiler prerequisites remain subsequent work.
 
 No wall-clock estimate is committed yet. The compiler host/library work and per-target native boundaries are the largest uncertainties. Estimate subsequent tasks from the native interop and first generated TypeScript results.
 

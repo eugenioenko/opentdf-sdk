@@ -1,0 +1,64 @@
+# Basic local RSA/Bearer profile. Issuer and KAS are reachable through Linux host networking.
+logger:
+  level: info
+  type: text
+  output: stderr
+db:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: changeme
+  database: opentdf
+  sslmode: disable
+services:
+  kas:
+    registered_kas_uri: http://localhost:8080
+    key_management: false
+    preview:
+      ec_tdf_enabled: false
+      hybrid_tdf_enabled: false
+    keyring:
+      - kid: r1
+        alg: rsa:2048
+      - kid: r1
+        alg: rsa:2048
+        legacy: true
+  entityresolution:
+    url: http://localhost:8888/auth
+    clientid: tdf-entity-resolution
+    clientsecret: secret
+    realm: opentdf
+    legacykeycloak: true
+    inferid:
+      from:
+        email: true
+        username: true
+server:
+  public_hostname: localhost
+  port: 8080
+  tls:
+    enabled: false
+  auth:
+    enabled: true
+    dpop:
+      enforce: false
+    audience: http://localhost:8080
+    issuer: http://localhost:8888/auth/realms/opentdf
+    policy:
+      extension: |
+        g, opentdf-admin, role:admin
+        g, opentdf-standard, role:standard
+  cors:
+    enabled: true
+    allowedorigins: [http://localhost:5173]
+    allowedmethods: [GET, POST, PATCH, PUT, DELETE, OPTIONS]
+    allowedheaders: [Accept, Authorization, Connect-Protocol-Version, Content-Type, Dpop, X-Rewrap-Additional-Context]
+    exposedheaders: [Link, DPoP-Nonce]
+  cryptoProvider:
+    type: standard
+    standard:
+      keys:
+        - kid: r1
+          alg: rsa:2048
+          private: /local/keys/kas-private.pem
+          cert: /local/keys/kas-cert.pem
