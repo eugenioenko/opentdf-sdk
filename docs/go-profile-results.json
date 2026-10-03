@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "source_sha256": "64aadc5de7bec49ac62d966d9ea9aa702d202f34949074cadd5894f8c90455f8",
+    "controller_sha256": "0f9689ec0b54f7d0ecad35d5b006064aebee26dea0440366fc5f08b56f5ebc57",
+    "module_sha256": "97fb7687dbea8ede4f8a69e8321640803a96636ce50abc4c86f0a59ac929d2ff",
+    "module_lock_sha256": "0c1bfcccecef3f49986c6aac74f996dc363b5705017810c9f1d3c7e4162a27b8",
+    "binary_sha256": "d5331e80e4a167d990aa34fd73b71878f37e595f59f2973c71e037975809500a",
+    "build_command": [
+      "go",
+      "build",
+      "-trimpath",
+      "-o",
+      "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/build/profiler",
+      "."
+    ],
+    "build_info": "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/build/profiler: go1.25.1\n\tpath\topentdf-local/generated-library-reference\n\tmod\topentdf-local/generated-library-reference\t(devel)\t\n\tdep\tbuf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go\tv1.36.11-20260709200747-435963d16310.1\th1:fXh8CsdNpjRr8R5vFdqtIxPt/Lno2IIJlYOdZBIZn0w=\n\tdep\tconnectrpc.com/connect\tv1.20.0\th1:6TNDAB+WeNd2uolWNlYczB5E0KNNaVMNUEx8JEUsPmQ=\n\tdep\tgithub.com/Masterminds/semver/v3\tv3.5.0\th1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=\n\tdep\tgithub.com/cloudflare/circl\tv1.6.3\th1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=\n\tdep\tgithub.com/google/uuid\tv1.6.0\th1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=\n\tdep\tgithub.com/gowebpki/jcs\tv1.0.1\th1:Qjzg8EOkrOTuWP7DqQ1FbYtcpEbeTzUoTN9bptp8FOU=\n\tdep\tgithub.com/lestrrat-go/blackmagic\tv1.0.4\th1:IwQibdnf8l2KoO+qC3uT4OaTWsW7tuRQXy9TRN9QanA=\n\tdep\tgithub.com/lestrrat-go/httpcc\tv1.0.1\th1:ydWCStUeJLkpYyjLDHihupbn2tYmZ7m22BGkcvZZrIE=\n\tdep\tgithub.com/lestrrat-go/httprc\tv1.0.6\th1:qgmgIRhpvBqexMJjA/PmwSvhNk679oqD1RbovdCGW8k=\n\tdep\tgithub.com/lestrrat-go/iter\tv1.0.2\th1:gMXo1q4c2pHmC3dn8LzRhJfP1ceCbgSiT9lUydIzltI=\n\tdep\tgithub.com/lestrrat-go/jwx/v2\tv2.1.7\th1:bnYeET+S8IOyAw6W4LTc6SEeK7Xs58SKKZkR7scb3Ko=\n\tdep\tgithub.com/lestrrat-go/option\tv1.0.1\th1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=\n\tdep\tgithub.com/opentdf/platform/lib/ocrypto\tv0.14.0\n\t=>\t/home/enko/Workspaces/tdf/platform/lib/ocrypto\t(devel)\t\n\t\n\tdep\tgithub.com/opentdf/platform/protocol/go\tv0.41.0\n\t=>\t/home/enko/Workspaces/tdf/platform/protocol/go\t(devel)\t\n\t\n\tdep\tgithub.com/opentdf/platform/sdk\tv0.0.0\n\t=>\t/home/enko/Workspaces/tdf/platform/sdk\t(devel)\t\n\t\n\tdep\tgithub.com/xeipuuv/gojsonpointer\tv0.0.0-20190905194746-02993c407bfb\th1:zGWFAtiMcyryUHoUjUJX0/lt1H2+i2Ka2n+D3DImSNo=\n\tdep\tgithub.com/xeipuuv/gojsonreference\tv0.0.0-20180127040603-bd5ef7bd5415\th1:EzJWgHovont7NscjpAxXsDA8S8BMYve8Y5+7cuRE7R0=\n\tdep\tgithub.com/xeipuuv/gojsonschema\tv1.2.0\th1:LhYJRs+L4fBtjZUfuSZIKGeVu0QRy8e5Xi7D17UxZ74=\n\tdep\tgoalchemyout\tv0.0.0\n\t=>\t/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/go/package\t(devel)\t\n\t\n\tdep\tgolang.org/x/crypto\tv0.55.0\th1:+KWHjbgOaAQ66dh/YlkZKHlz9ZUlq61AFirAR9ntP8M=\n\tdep\tgolang.org/x/net\tv0.58.0\th1:ynWG7rqYi4ccpTEuPZ2QGWHktVEM9DMCj9yzDE0Q7To=\n\tdep\tgolang.org/x/oauth2\tv0.36.0\th1:peZ/1z27fi9hUOFCAZaHyrpWG5lwe0RJEEEeH0ThlIs=\n\tdep\tgolang.org/x/sys\tv0.47.0\th1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=\n\tdep\tgolang.org/x/text\tv0.41.0\th1:vz/seA0lnX87Othu2f/0L24RcgrXD9/YFTSuGjj3rH8=\n\tdep\tgoogle.golang.org/genproto/googleapis/rpc\tv0.0.0-20260526163538-3dc84a4a5aaa\th1:mZHHdPZl0dbGHCflZgAq/Q468DWVFcU2whhB2KAo8fk=\n\tdep\tgoogle.golang.org/grpc\tv1.83.2\th1:EManeRomTObA0BU7I8vXgg/78uE5MJ9M8B39EX2WscU=\n\tdep\tgoogle.golang.org/protobuf\tv1.36.11\th1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=1\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=a58bd5aac5c584c95aa7213eaa9c273ad07fce39\n\tbuild\tvcs.time=2026-10-03T06:28:40Z\n\tbuild\tvcs.modified=true\n",
+    "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+    "reference_archive_sha256": "7d5df0841a766a140ca67274b7a47c552e6dd58f20e7c0c9d8c27236069785bf",
+    "sdk_head": "a58bd5aac5c584c95aa7213eaa9c273ad07fce39",
+    "platform_head": "f2635158b681fa970aafce7eacf108a453521f63",
+    "generated_package_receipt_sha256": "efa2495ef15ca43c295a2b32226a87124abe35bcd909254866e0638105da82c7"
+  },
+  "profiles": [
+    {
+      "target": "reference",
+      "operation": "encrypt",
+      "operations": 54,
+      "profile_seconds_requested": 5.0,
+      "wall_loop_ms": 5039.003054,
+      "kas_calls_expected": 0,
+      "phase_statistics": {
+        "full_call_ms": {
+          "mean_ms": 93.31193453703703,
+          "median_ms": 71.4544635,
+          "total_ms": 5038.844465
+        },
+        "host_configuration_ms": {
+          "mean_ms": 0.0034006481481481483,
+          "median_ms": 0.002465,
+          "total_ms": 0.18363500000000008
+        },
+        "original_client_setup_ms": {
+          "mean_ms": 90.8516372962963,
+          "median_ms": 69.2832555,
+          "total_ms": 4905.988414
+        },
+        "public_operation_ms": {
+          "mean_ms": 2.455806425925926,
+          "median_ms": 1.6528265000000002,
+          "total_ms": 132.61354699999998
+        },
+        "original_close_ms": {
+          "mean_ms": 0.00019192592592592593,
+          "median_ms": 0.00017500000000000003,
+          "total_ms": 0.010363999999999996
+        }
+      },
+      "scope": "instrumented diagnostic loop; CPU sampling and labels active; not published benchmark samples",
+      "generated_setup_scope": "internal generated client creation is inside the generated public API; original_client_setup_ms applies only to reference SDK.New",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/build/profiler",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "reference",
+        "encrypt",
+        "5.0",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/reference-encrypt"
+      ],
+      "profile_sha256": "83a700ac528d2037d9d912fd08a4f3d9ec507a58407bc899c6db11f1a0297c88",
+      "correctness": {
+        "every_decryption_exact": false,
+        "encryption_archives_validated": [
+          {
+            "archive": "warmup.tdf",
+            "sha256": "e0cb984268006037c13f9110bbc38a7faaeb86f04e74ad95322b9ee5b7942479",
+            "bytes": 1050294,
+            "stock_go_real_kas": true
+          },
+          {
+            "archive": "first.tdf",
+            "sha256": "208de2471ba453d94fcc473f9b10c3d0ad7f750f9b8afc75007340d3f64d7c71",
+            "bytes": 1050294,
+            "stock_go_real_kas": true
+          },
+          {
+            "archive": "last.tdf",
+            "sha256": "d0636f9d6eda450fa2cf97e99bc0c99d1b57cdd7b82e6d6caf3f9757e946cfbd",
+            "bytes": 1050294,
+            "stock_go_real_kas": true
+          }
+        ]
+      },
+      "report_sha256": {
+        "top-flat.txt": "85943832951632538b62446a33f32fcc5224940d9ba3d3330163465540bc61f9",
+        "top-cumulative.txt": "747e970bb92c7cc603529e5576d90c312e65848a906fd941d6f0fb3357a1fdac",
+        "calltree.txt": "6a8b13a84cf2c2ea406f484069f308951d637704740d045057f5f25de8e1ef41",
+        "labels.txt": "e36f74b614ff8dea37437f0ffb5c7c46ede959e91324ce13249ac0a06979d21d",
+        "rsa-source.txt": "7260deed30202e9253caf663f6b172449e7a16ea28a39efc38378706d72002ac"
+      }
+    },
+    {
+      "target": "reference",
+      "operation": "decrypt",
+      "operations": 24,
+      "profile_seconds_requested": 5.0,
+      "wall_loop_ms": 5057.430012,
+      "kas_calls_expected": 25,
+      "phase_statistics": {
+        "full_call_ms": {
+          "mean_ms": 210.54628633333334,
+          "median_ms": 176.72749,
+          "total_ms": 5053.110872
+        },
+        "host_configuration_ms": {
+          "mean_ms": 0.04480395833333333,
+          "median_ms": 0.0072635,
+          "total_ms": 1.075295
+        },
+        "original_client_setup_ms": {
+          "mean_ms": 96.99479766666667,
+          "median_ms": 72.07522349999999,
+          "total_ms": 2327.8751439999996
+        },
+        "public_operation_ms": {
+          "mean_ms": 113.50462475,
+          "median_ms": 104.583573,
+          "total_ms": 2724.1109939999997
+        },
+        "original_close_ms": {
+          "mean_ms": 0.0006594166666666667,
+          "median_ms": 0.0002355,
+          "total_ms": 0.015826
+        }
+      },
+      "scope": "instrumented diagnostic loop; CPU sampling and labels active; not published benchmark samples",
+      "generated_setup_scope": "internal generated client creation is inside the generated public API; original_client_setup_ms applies only to reference SDK.New",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/build/profiler",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "reference",
+        "decrypt",
+        "5.0",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/reference-decrypt"
+      ],
+      "profile_sha256": "c0256a461cbfdd381c30b7ba6e2453c1e6821ddef3a5a35297216a39eac0b6d1",
+      "correctness": {
+        "every_decryption_exact": true,
+        "encryption_archives_validated": []
+      },
+      "report_sha256": {
+        "top-flat.txt": "8c624b11d7fae937c6dc55310cd9c97a79dc8a8572b254d77813f46608dedaa8",
+        "top-cumulative.txt": "a254f3d2519f8a32b7285f4bcc063f9a458b5cdf51d3ca4e10e39a24180a4786",
+        "calltree.txt": "e54f12ebb8289f0074e87059c39d4d493074b470962989681c55a1d0bf4a5837",
+        "labels.txt": "74e7e15e5844b6259db7a72fdf534f1639a4b7634c1e7b1a7efe6b54b2ca3dcd",
+        "rsa-source.txt": "88d47f1c6094d7318bb78f9b743907734db315a7a6700cce807dc2ed88baaa8b"
+      }
+    },
+    {
+      "target": "go",
+      "operation": "encrypt",
+      "operations": 646,
+      "profile_seconds_requested": 5.0,
+      "wall_loop_ms": 5003.485156,
+      "kas_calls_expected": 0,
+      "phase_statistics": {
+        "full_call_ms": {
+          "mean_ms": 7.737950134674922,
+          "median_ms": 6.79708,
+          "total_ms": 4998.715787000002
+        },
+        "host_configuration_ms": {
+          "mean_ms": 0.0020623653250773995,
+          "median_ms": 0.001814,
+          "total_ms": 1.332288000000001
+        },
+        "original_client_setup_ms": {
+          "mean_ms": 0,
+          "median_ms": 0.0,
+          "total_ms": 0
+        },
+        "public_operation_ms": {
+          "mean_ms": 7.7355971083591335,
+          "median_ms": 6.792025499999999,
+          "total_ms": 4997.195731999998
+        },
+        "original_close_ms": {
+          "mean_ms": 0,
+          "median_ms": 0.0,
+          "total_ms": 0
+        }
+      },
+      "scope": "instrumented diagnostic loop; CPU sampling and labels active; not published benchmark samples",
+      "generated_setup_scope": "internal generated client creation is inside the generated public API; original_client_setup_ms applies only to reference SDK.New",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/build/profiler",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "go",
+        "encrypt",
+        "5.0",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/go-encrypt"
+      ],
+      "profile_sha256": "88f82f32afdd94ec8d92b1fe059b7acb1153b6b2ba80f2fedf6399840b7cc7de",
+      "correctness": {
+        "every_decryption_exact": false,
+        "encryption_archives_validated": [
+          {
+            "archive": "warmup.tdf",
+            "sha256": "7edcc69b51b6434acc28b733eb690884ac989a54bb6111ae3c389b3970e326cf",
+            "bytes": 1050198,
+            "stock_go_real_kas": true
+          },
+          {
+            "archive": "first.tdf",
+            "sha256": "e4679ffcf101da22ea399aa91741e1bc84f360800a88590592d849c6bfcb23f3",
+            "bytes": 1050198,
+            "stock_go_real_kas": true
+          },
+          {
+            "archive": "last.tdf",
+            "sha256": "95e9e7677c3660a437d208be66dcb0604b2338260fe768d3901202f87aa157d4",
+            "bytes": 1050198,
+            "stock_go_real_kas": true
+          }
+        ]
+      },
+      "report_sha256": {
+        "top-flat.txt": "bcc23a5bf2c7f313a18ccb49edb6d5fcb18c0fda9893a12d8045495523c12213",
+        "top-cumulative.txt": "5cbd23eec3a787ccfef970a3c84b6a635bb4dd1fc51357007ffef27d17b5c85d",
+        "calltree.txt": "29d6373f0c52a8a69159e58aa063d3e3a51739639b96182405747871ae3899de",
+        "labels.txt": "8502b6b39d10f76fed18238fae475d6ff9f737c6c92a85fbb1ef3ba2809259dd",
+        "rsa-source.txt": "d27ebf3aaad4f54fa09cb44d8c8ce311713ddb53848891324f23f046373e99d2"
+      }
+    },
+    {
+      "target": "go",
+      "operation": "decrypt",
+      "operations": 62,
+      "profile_seconds_requested": 5.0,
+      "wall_loop_ms": 5062.269585,
+      "kas_calls_expected": 63,
+      "phase_statistics": {
+        "full_call_ms": {
+          "mean_ms": 81.53438590322581,
+          "median_ms": 75.89447200000001,
+          "total_ms": 5055.131925999998
+        },
+        "host_configuration_ms": {
+          "mean_ms": 0.0009415161290322581,
+          "median_ms": 0.0008665,
+          "total_ms": 0.058374000000000016
+        },
+        "original_client_setup_ms": {
+          "mean_ms": 0,
+          "median_ms": 0.0,
+          "total_ms": 0
+        },
+        "public_operation_ms": {
+          "mean_ms": 81.53330893548387,
+          "median_ms": 75.8934855,
+          "total_ms": 5055.065154000002
+        },
+        "original_close_ms": {
+          "mean_ms": 0,
+          "median_ms": 0.0,
+          "total_ms": 0
+        }
+      },
+      "scope": "instrumented diagnostic loop; CPU sampling and labels active; not published benchmark samples",
+      "generated_setup_scope": "internal generated client creation is inside the generated public API; original_client_setup_ms applies only to reference SDK.New",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/build/profiler",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "go",
+        "decrypt",
+        "5.0",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/profiles/corrected-go/go-decrypt"
+      ],
+      "profile_sha256": "c5fb65e771af56fb943e9af64bba615f273370d644bb423396abd014bc386933",
+      "correctness": {
+        "every_decryption_exact": true,
+        "encryption_archives_validated": []
+      },
+      "report_sha256": {
+        "top-flat.txt": "76c383d6b736c24e97793832d269a4c66a91802fc8bdad8a40f0c4ac9bf4b405",
+        "top-cumulative.txt": "ac7ac7f3b223c20ed5ed2db8b036308213de8b8b3b9a08dddd7c1bc5930eb700",
+        "calltree.txt": "9b1a92e4aaf11b2c4210325c327e28526bf6b160a05ca7f1fe27961dbb7d9b12",
+        "labels.txt": "633d7c7fae789034f747d1a3979c89b829d540b6c8715bb916b76479e3795035",
+        "rsa-source.txt": "4d57d6362e1be9d76db8a37efa1fafd65bb6dcdec8565490116feae2c77cd821"
+      }
+    }
+  ],
+  "limitations": [
+    "Instrumented profiler timings are separate from published benchmark medians.",
+    "CPU samples exclude blocked/waiting wall time; local real KAS is part of operation wall time.",
+    "Generated internal client setup is inside its public API phase; host configuration is not equivalent to SDK.New.",
+    "All decryption outputs exact-checked; warmup/first/last encryption archives independently stock-Go/real-KAS validated.",
+    "CPU profile includes labels, allocation/runtime work, and exact plaintext checks labelled separately."
+  ],
+  "report_rendering_note": "Generated decrypt RSA source list matched crypto/rsa.GenerateKey after initial regex missed the Go1.25 symbol. Only source-text rendering changed; no profile or timing rerun."
+}

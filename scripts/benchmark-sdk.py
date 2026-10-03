@@ -161,7 +161,16 @@ def main():
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--build-only', action='store_true')
     parser.add_argument('--skip-build', action='store_true')
+    parser.add_argument('--rerun', action='append', default=[], metavar='TARGET:OPERATION:SIZE',
+                        help='Rerun only an explicitly selected completed cell; repeat for multiple cells.')
+    parser.add_argument('--correction-note', default='', help='Attribution recorded on explicitly selected rerun receipts.')
     args = parser.parse_args()
+    reruns = set()
+    for selector in args.rerun:
+        fields = selector.split(':')
+        if len(fields) != 3 or fields[0] not in TARGETS or fields[1] not in ('encrypt', 'decrypt') or fields[2] not in SIZES:
+            parser.error('--rerun must name TARGET:OPERATION:SIZE from the supported targets, operations and sizes')
+        reruns.add(tuple(fields))
     base = args.output.resolve()
     base.mkdir(parents=True, exist_ok=True)
     if args.skip_build:
@@ -186,7 +195,8 @@ def main():
         for target in args.targets.split(','):
             for op in ['encrypt', 'decrypt']:
                 previous = accepted.get((target, op, size_bytes))
-                if previous and previous.get('status') == 'ok':
+                selected_rerun = (target, op, label) in reruns
+                if previous and previous.get('status') == 'ok' and not selected_rerun:
                     print('REUSE', target, op, label, flush=True)
                     continue
                 if op == 'decrypt' and (not (base / (str(size) + '.reference.tdf')).exists()):
@@ -196,6 +206,15 @@ def main():
                 started = time.time()
                 print('START', target, op, size, flush=True)
                 event = {'target': target, 'operation': op, 'fixture_id': size, 'size_bytes': size_bytes, 'size_label': label, 'samples_requested': args.samples, 'warmup_count': 1, 'payload_sha256': sha(fixture), 'command': command, 'harness_sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}}
+                if selected_rerun:
+                    event['rerun_attribution'] = {
+                        'reason': args.correction_note,
+                        'supersedes_raw_sha256': previous.get('derived_from_raw_sha256') if previous else None,
+                        'prior_status': previous.get('status') if previous else None,
+                        'retired_measurement': True,
+                        'source_sha256': sha(SRC / 'reference-go.go') if target == 'reference' else None,
+                        'compiled_consumer_sha256': sha(Path(commands[target][0])) if target in ('reference', 'go', 'rust', 'c') else None,
+                    }
                 try:
                     output = invoke(command, SDK, env, args.timeout)
                     result = json.loads(output)

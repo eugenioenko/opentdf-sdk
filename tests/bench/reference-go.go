@@ -57,7 +57,9 @@ func main() {
 			output = out.Bytes()
 		} else {
 			var reader *r.Reader
-			reader, e = client.LoadTDF(bytes.NewReader(data), r.WithKasAllowlist([]string{"http://localhost:8080/kas"}), r.WithSessionKeyType(ocrypto.RSA2048Key))
+			// New already generated the default RSA2048 session key. LoadTDF
+			// reuses it; an explicit WithSessionKeyType would generate a second key.
+			reader, e = client.LoadTDF(bytes.NewReader(data), r.WithKasAllowlist([]string{"http://localhost:8080/kas"}))
 			if e == nil {
 				output, e = io.ReadAll(reader)
 			}

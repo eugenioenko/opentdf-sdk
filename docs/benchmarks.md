@@ -44,7 +44,11 @@ and public API output copies. Required API copies and facade work remain timed.
 
 The original Go boundary is `SDK.New` followed by `CreateTDF`, or `LoadTDF` plus
 `io.ReadAll`, followed by `Close`. Its constructor creates an RSA session key
-even for encryption; this public lifecycle cost is included. `Close` currently
+even for encryption; this public lifecycle cost is included. Decryption reuses
+that RSA2048 session key through the default `LoadTDF` behavior. The earlier
+wrapper explicitly requested `WithSessionKeyType(RSA2048)` again, generating
+a redundant second key; its three decryption baseline cells were replaced by
+focused reruns after removing that option. `Close` currently
 returns immediately. Generated facades create fresh clients internally for each
 call and have no corresponding client-close API. All calls use ES256 signing
 with fresh ephemeral signing keys and RSA2048 KAS wrapping/response sessions.
@@ -68,7 +72,9 @@ facade/runtime copies remain timed. C frees detached owned results after timing;
 managed hosts release outputs normally. There is no explicit forced garbage
 collection, allocator reset, CPU pinning, or heap tuning. Natural allocation/GC
 and runtime scheduling during the measured interval are included. One warmup
-allows startup paths to execute but does not establish steady-state JIT behavior
+executes startup paths but does not remove the fresh-client setup that is timed
+on every call. This comparison is not a reused-client or steady-state payload
+benchmark. One warmup also does not establish steady-state JIT behavior
 for every runtime; five samples cannot characterize long-tail latency. Fresh
 RSA key generation also contributes substantial sample variation.
 
@@ -96,17 +102,25 @@ records CPU, memory, OS/kernel, toolchain versions, SDK/platform heads, package
 receipts/member hashes, linked Rust rlib identity, and consumer/source hashes.
 Tokens reside only in ignored private files with mode 0600.
 
-The 1 MiB measurements were completed first and retained without replay. Their
+The 1 MiB measurements were completed first. Forty-five final cells retain their
+original samples; only the three original-Go decryption baseline cells were
+replaced to remove redundant RSA generation. The earlier baseline receipts
+remain retired historical measurements, not failed calls. Their
 exact original runner copies and native binaries are preserved under
 `harness-v1`, with `identity.json`; original Go source copies there also preserve
 the pre-gofmt build input. Subsequent source changes formatted wrappers, excluded
 the unused browser runner, added an untimed Python token refresh, and selected
-smaller fixtures/resumption in the controller. The public API timing and crypto
-configuration were unchanged. Later receipts retain their own runner hashes.
+smaller fixtures/resumption in the controller. Those formatting/routing changes preserved the public API boundary and crypto
+configuration. A later focused correction removed only the redundant original-Go
+decryption key option; its source/binary identities and superseded receipt hashes
+are recorded under `reference-decrypt-correction`. Later receipts retain their own runner hashes.
 The original `size_mib=1` receipts remain untouched; final derived results add
 `size_bytes=1048576` and the `1MiB` label. Completed 10 MiB experiments, an
 interrupted Python 10 MiB batch, and two browser launch failures remain separate
-historical receipts and are excluded from the final tables.
+historical receipts and are excluded from the final tables. Separate diagnostic
+CPU profiles and wall phase timings at 1 MiB are described in
+[Go profiling findings](go-profiles.md); instrumented profile timings do not
+replace the five-sample table medians.
 
 The campaign ran on an AMD Ryzen 7 6800H Linux x86_64 workstation with
 32,118,324 KiB physical memory and local KAS/IdP. Both benchmark Go binaries

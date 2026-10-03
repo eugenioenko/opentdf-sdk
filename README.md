@@ -55,14 +55,24 @@ real KAS. See [methodology](docs/benchmarks.md) and [samples and runtime version
 
 | SDK | 10 KiB | 100 KiB | 1 MiB |
 | --- | ---: | ---: | ---: |
-| Original OpenTDF Go | 100.59 ms (1.00×) | 91.60 ms (1.00×) | 214.73 ms (1.00×) |
-| Generated Go | 66.12 ms (0.66×) | 76.26 ms (0.83×) | 83.24 ms (0.39×) |
-| TypeScript (Node) | 92.06 ms (0.92×) | 99.86 ms (1.09×) | 260.47 ms (1.21×) |
-| Java | 133.05 ms (1.32×) | 140.52 ms (1.53×) | 119.09 ms (0.55×) |
-| C# | 171.51 ms (1.71×) | 250.17 ms (2.73×) | 200.61 ms (0.93×) |
-| Python | 169.43 ms (1.68×) | 455.23 ms (4.97×) | 2472.00 ms (11.51×) |
-| Rust | 81.69 ms (0.81×) | 112.34 ms (1.23×) | 350.54 ms (1.63×) |
-| C | 137.86 ms (1.37×) | 228.82 ms (2.50×) | 273.05 ms (1.27×) |
+| Original OpenTDF Go | 69.87 ms (1.00×) | 67.80 ms (1.00×) | 137.10 ms (1.00×) |
+| Generated Go | 66.12 ms (0.95×) | 76.26 ms (1.12×) | 83.24 ms (0.61×) |
+| TypeScript (Node) | 92.06 ms (1.32×) | 99.86 ms (1.47×) | 260.47 ms (1.90×) |
+| Java | 133.05 ms (1.90×) | 140.52 ms (2.07×) | 119.09 ms (0.87×) |
+| C# | 171.51 ms (2.45×) | 250.17 ms (3.69×) | 200.61 ms (1.46×) |
+| Python | 169.43 ms (2.42×) | 455.23 ms (6.71×) | 2472.00 ms (18.03×) |
+| Rust | 81.69 ms (1.17×) | 112.34 ms (1.66×) | 350.54 ms (2.56×) |
+| C | 137.86 ms (1.97×) | 228.82 ms (3.37×) | 273.05 ms (1.99×) |
+
+The large encryption advantage comes mainly from fresh-client setup. In the
+separate **1 MiB CPU profiles**, original Go spent **94.38%** of sampled CPU time
+on RSA key generation in `SDK.New`; generated Go creates that session key when
+decrypting. Original Go's instrumented medians were **69.28 ms** for construction
+and **1.65 ms** for `CreateTDF`, compared with **6.80 ms** for generated Go's full
+encryption call. These diagnostic timings are separate from the table samples;
+reusing an original Go client would change the comparison. Generated encryption's
+largest sampled cost was ZIP CRC32 (**40.26%**). See [profiling findings](docs/go-profiles.md)
+and [profile results](docs/go-profile-results.json).
 
 ## Build and run
 

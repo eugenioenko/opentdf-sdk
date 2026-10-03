@@ -827,3 +827,30 @@ limitation. `docs/benchmark-results.json` contains the safe sample/environment
 export; the reproducible consumer harnesses are under `tests/bench` and
 `scripts/benchmark-sdk.py`. Raw credentials, fixture archives and private
 receipts remain ignored. Benchmark work is accepted; root owns commit and push.
+
+## Go profiling and baseline correction accepted — 2026-10-02
+
+The user asked why generated Go appeared faster, requested 1 MiB profiles of
+both Go SDKs, and authorized the README update and main push. Root found that
+the benchmark's original-Go `LoadTDF` option generated a second RSA session
+key after `SDK.New` had already created one. The wrapper now reuses the
+constructor's RSA2048 key. Exactly three original-Go decryption cells were
+remeasured; all other 45 timing cells were retained unchanged. Corrected
+original medians are 69.87, 67.80 and 137.10 ms for 10 KiB, 100 KiB and 1 MiB.
+Every table ratio uses the corrected matching baseline.
+
+Four separate five-second CPU profile loops cover original/generated Go
+encryption/decryption, with exact decryption checks and stock-Go/real-KAS
+validation of saved warmup/first/last encryption archives. Original encryption
+spent 94.38% of sampled CPU in RSA generation during client construction;
+generated encryption spent 40.26% in ZIP CRC32. The README explains the
+fresh-client lifecycle and reports instrumented phase medians separately from
+the five-sample table results. This evidence concerns setup efficiency and does
+not establish a correctness bug in the original SDK. Generated decryption
+still generates an RSA session key, accounting for 79.84% of its sampled CPU.
+
+Root verified the three-cell correction, remaining-cell preservation, frozen
+sources, four profile/report hashes, phase statistics and retained encryption
+archives. `docs/go-profiles.md`, `docs/go-profile-results.json` and
+`scripts/profile-go-sdk.py` preserve findings and reproduction instructions.
+No SDK/compiler/service changes or correctness matrix replays were required.
