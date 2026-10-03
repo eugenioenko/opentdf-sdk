@@ -881,3 +881,74 @@ Earlier profiles remain historical diagnostics of fresh-client separate
 operations; they are not attributed to this new run. No SDK/compiler/services
 changed and no broader correctness matrices were replayed. Root owns commit
 and the user-authorized main push.
+
+## Native CRC32 accepted — 2026-10-03
+
+The user requested IEEE CRC32 across Goalchemy’s seven targets, a Goalchemy PR,
+and a fresh complete real-KAS benchmark including 10 MiB. The known unrelated
+Goalchemy CI failure remains outside this work. Goalchemy was updated to main
+`aa9e069af6d40e09d1822b36bcae540b462284fd` before implementing the capability.
+
+`lib/checksum.CRC32IEEE([]byte) uint32` is synchronous, returns zero for nil and
+empty input, reads only the logical slice, preserves its backing storage, and
+retains unsigned results. Go calls `hash/crc32`, Java `java.util.zip.CRC32`, and
+Python `zlib`; TypeScript (Node/browser), C#, Rust and C use native slicing-by-8.
+No new dependencies or compiler architecture changes were needed. The shared
+SDK ZIP helper now calls this capability instead of its portable byte-at-a-time
+CRC loop. ZIP layout, verification and segment processing retain their behavior.
+
+All seven focused host contracts passed. A standalone translated fixture
+matched the native Go oracle on all seven hosts, covering binary data, offsets,
+array backing, chunk boundaries, 1 MiB input, unsigned results and unchanged
+input. The first run exposed the standalone Go import and missing C prototype;
+only affected Go/C checks were replayed after fixing those bindings. Root
+inspected the first full report and runner’s continue-on-failure behavior, plus
+the corrected Go/C receipts. Node primitive checks and actual Chromium 145
+passed 60 independent-oracle cases; the three-file browser graph had no Node
+imports or globals. Spec validation and generation-check passed with 96
+function contracts, seven targets and 680 current generated files. The nine
+existing SDK ZIP interoperability, malformed input and CRC rejection tests
+passed after integration.
+
+Root reviewed all native implementations, declarations, canonical contract,
+target mappings and generated reference/harness changes, verified the frozen
+39-file whitelist, and committed Goalchemy as signed revision
+`a3f92ee60273a74ec75f9bb5136c719e190f6c33` (SSH signature `G`).
+[Goalchemy PR #6](https://github.com/eugenioenko/goalchemy/pull/6) is open against
+main with that head. SDK references and CI pin this CRC32 revision. The original
+final-delivery packages and previous benchmarks remain historical evidence;
+fresh packages and measurements are required for the new README table.
+
+## CRC32 end-to-end benchmark accepted — 2026-10-03
+
+All seven packages were rebuilt from the committed CRC32 compiler, then installed
+into independent native consumers. Root verified distributed members and source
+hashes against their receipts: each package passed two independent-path builds
+with identical deliverables. Compiler SHA256 is
+`3d60067b8a2a793d316f6cc8f5258daa3fe67e307aec49ba47b976240325c6f8`.
+The new compiler used Go 1.25.14; both timed Go consumer binaries used Go 1.25.1.
+
+The fresh `e2e-crc32-2026-10-03` campaign ran original Go and all seven generated
+SDKs for 10 KiB, 100 KiB, 1 MiB and 10 MiB. All 32 cells passed with five measured
+pairs and one warmup each: 160 measured intervals, 32 warmups and 192 distinct
+archives independently decrypted through stock Go and real KAS. Every final
+plaintext matched exactly. No old timings, failure retries or separate-operation
+median sums were used. Public API harnesses and timing boundaries were unchanged;
+only the shared ZIP helper and benchmark size/table/package defaults changed.
+
+Root independently checked raw samples, medians and ranges, fresh archive hashes,
+stock-Go/KAS validation receipts, unchanged source/build inputs, installed package
+member hashes and compiler provenance. All 192 archives also passed complete
+standard-library ZIP CRC checks. Every manifest retains AES-256-GCM, GMAC and
+2 MiB segment defaults; each 10 MiB archive contains five segments with plaintext
+and encrypted sizes checked exactly. Original Go initializes one reusable client
+before each cell’s loop; generated stateless APIs retain their internal session
+creation costs. RSA variation and five-sample scope remain documented.
+
+The README has one milliseconds-only E2E table with four size columns and the
+existing POC/work-in-progress notice. `docs/benchmark-results.json` contains the
+safe frozen export, including all 160 samples, runtime/package identities and
+192 manifest checks. Methodology includes the new package rebuild commands;
+previous profiles/package evidence remains explicitly historical. Root owns the
+signed SDK commit and the user-authorized main push. The known unrelated
+Goalchemy CI failure was not repaired or treated as a CRC acceptance requirement.

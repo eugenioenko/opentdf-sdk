@@ -28,7 +28,8 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 
 Median **milliseconds** from five timed runs after one warmup. Each run encrypts
 the input, then decrypts the freshly produced archive through **real KAS** and
-materializes the complete plaintext. All eight SDKs were measured again;
+materializes the complete plaintext. All eight SDKs were measured again using
+fresh packages with native CRC32. The 10 MiB files use five 2 MiB segments;
 these results are not sums of the earlier encryption/decryption timings.
 
 Original Go reuses a client initialized before the timing loop. Configuration,
@@ -37,18 +38,18 @@ SDK. Generated APIs are stateless facades, so their internal per-operation
 initialization and decryption session-key generation remain timed. File I/O,
 OAuth acquisition, public-key discovery and correctness checks are untimed.
 
-| SDK | 10 KiB | 100 KiB | 1 MiB |
-| --- | ---: | ---: | ---: |
-| Original OpenTDF Go | 26.22 ms | 24.49 ms | 46.91 ms |
-| Generated Go | 87.92 ms | 54.63 ms | 101.52 ms |
-| TypeScript (Node) | 108.50 ms | 132.14 ms | 348.25 ms |
-| Java | 102.25 ms | 141.72 ms | 218.01 ms |
-| C# | 158.08 ms | 133.94 ms | 192.40 ms |
-| Python | 197.69 ms | 498.08 ms | 3759.84 ms |
-| Rust | 94.71 ms | 110.95 ms | 499.22 ms |
-| C | 207.71 ms | 185.64 ms | 408.15 ms |
+| SDK | 10 KiB | 100 KiB | 1 MiB | 10 MiB |
+| --- | ---: | ---: | ---: | ---: |
+| Original OpenTDF Go | 29.27 ms | 21.69 ms | 47.97 ms | 100.33 ms |
+| Generated Go | 74.32 ms | 104.07 ms | 59.86 ms | 83.57 ms |
+| TypeScript (Node) | 92.13 ms | 102.60 ms | 116.57 ms | 224.53 ms |
+| Java | 129.48 ms | 113.06 ms | 204.55 ms | 392.39 ms |
+| C# | 179.21 ms | 134.51 ms | 161.10 ms | 258.92 ms |
+| Python | 147.00 ms | 133.20 ms | 159.67 ms | 231.37 ms |
+| Rust | 68.61 ms | 76.47 ms | 85.91 ms | 136.43 ms |
+| C | 144.61 ms | 172.36 ms | 193.15 ms | 199.56 ms |
 
-All 144 warmup/measured archives passed independent original-Go decryption
+All 192 warmup/measured archives passed independent original-Go decryption
 through KAS, and every end-to-end plaintext matched its input exactly.
 See [methodology and lifecycle details](docs/benchmarks.md) and
 [individual samples and runtime versions](docs/benchmark-results.json).

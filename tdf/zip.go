@@ -1,6 +1,9 @@
 package tdf
 
-import "github.com/eugenioenko/goalchemy/lib/errors"
+import (
+	"github.com/eugenioenko/goalchemy/lib/checksum"
+	"github.com/eugenioenko/goalchemy/lib/errors"
+)
 
 const PayloadEntry = "0.payload"
 const ManifestEntry = "0.manifest.json"
@@ -57,31 +60,7 @@ func put32(b []byte, p int, n uint32) {
 	b[p+2] = byte(n >> 16)
 	b[p+3] = byte(n >> 24)
 }
-func crcTable() [256]uint32 {
-	var t [256]uint32
-	for i := 0; i < 256; i++ {
-		c := uint32(i)
-		for k := 0; k < 8; k++ {
-			if c&1 != 0 {
-				c = (c >> 1) ^ 0xedb88320
-			} else {
-				c >>= 1
-			}
-		}
-		t[i] = c
-	}
-	return t
-}
-
-var zipCRC = crcTable()
-
-func crc32Bytes(b []byte) uint32 {
-	c := uint32(0xffffffff)
-	for _, v := range b {
-		c = (c >> 8) ^ zipCRC[byte(c)^v]
-	}
-	return ^c
-}
+func crc32Bytes(b []byte) uint32 { return checksum.CRC32IEEE(b) }
 
 // WriteArchive writes deterministic stored ZIP32 with the pinned legacy entry name.
 func WriteArchive(payload []byte, manifest []byte, l ArchiveLimits) ([]byte, error) {

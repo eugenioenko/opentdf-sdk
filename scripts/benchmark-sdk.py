@@ -9,7 +9,7 @@ from pathlib import Path
 SDK = Path(__file__).resolve().parents[1]
 SRC = SDK / 'tests/bench'
 TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
-SIZES = {'10KiB': ('10KiB', 10 * 1024), '100KiB': ('100KiB', 100 * 1024), '1MiB': ('1', 1024 * 1024)}
+SIZES = {'10KiB': ('10KiB', 10 * 1024), '100KiB': ('100KiB', 100 * 1024), '1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024)}
 
 def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -133,7 +133,8 @@ def normalized_results(base):
 def tables(base):
     latest = normalized_results(base)
     names = {'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
-    parts = ['| SDK | 10 KiB | 100 KiB | 1 MiB |', '| --- | ---: | ---: | ---: |']
+    labels = [label.replace('KiB', ' KiB').replace('MiB', ' MiB') for label in SIZES]
+    parts = ['| SDK | ' + ' | '.join(labels) + ' |', '| --- | ' + ' | '.join('---:' for _ in labels) + ' |']
     for target in TARGETS:
         cells = []
         for _, size_bytes in SIZES.values():
@@ -152,8 +153,8 @@ def tables(base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--packages', type=Path, default=SDK / '.local/phase7/final-packages-v2')
-    parser.add_argument('--sizes', default='10KiB,100KiB,1MiB')
+    parser.add_argument('--packages', type=Path, default=SDK / '.local/crc32/delivery')
+    parser.add_argument('--sizes', default='10KiB,100KiB,1MiB,10MiB')
     parser.add_argument('--targets', default=','.join(TARGETS))
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--timeout', type=int, default=1800)

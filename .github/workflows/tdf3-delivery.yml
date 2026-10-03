@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 765fcbc51241204d283ae68ff15e9957bc91c865
+          ref: a3f92ee60273a74ec75f9bb5136c719e190f6c33
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

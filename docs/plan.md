@@ -6,6 +6,17 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## CRC32 and benchmark follow-up
+
+Add a native IEEE CRC32 capability across all seven Goalchemy targets and open a
+Goalchemy PR. Use that capability in the shared SDK ZIP implementation, rebuild
+all seven SDK packages, and rerun original Go plus every generated native SDK
+against real KAS for 10 KiB, 100 KiB, 1 MiB and 10 MiB. Publish one README table
+of measured end-to-end milliseconds, with five samples and one warmup per cell.
+Browser benchmarks are excluded; browser CRC32 support still requires a focused
+check. The existing Goalchemy CI failure is outside this follow-up. Root owns
+the PR and the user-authorized SDK main commit and push.
+
 ## Execution and review
 
 The root agent is the orchestrator. Run at most one worker agent at a time. A phase can require several small worker assignments; finish and review one assignment before starting the next. Workers must not spawn additional agents. Workers run in the background. Keep the root thread available to the user; inspect status and delivered results without long blocking waits or worker polling loops. Long verification commands should return a background process handle for later inspection.

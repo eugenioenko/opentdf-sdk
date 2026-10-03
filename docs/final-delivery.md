@@ -17,7 +17,8 @@ GitHub Actions run or a newly replayed full interoperability matrix.
 
 Use adjacent `sdk`, `goalchemy`, `platform`, and `web-sdk` checkouts. Exact source
 revisions are in [references.lock.json](../references.lock.json); Goalchemy is
-pinned to `765fcbc51241204d283ae68ff15e9957bc91c865`, platform to
+pinned to `a3f92ee60273a74ec75f9bb5136c719e190f6c33` for the
+[CRC32 follow-up](https://github.com/eugenioenko/goalchemy/pull/6), platform to
 `f2635158b681fa970aafce7eacf108a453521f63`, and Web SDK to
 `55a0521b1499b392c75373e11ec5930c6a43f0c7`.
 
@@ -56,15 +57,19 @@ The detailed scripts retain exact commands and terminal receipts.
 
 Reproducibility covers distributed package members, including library binaries,
 JavaScript/declarations, archives and notices. It excludes caches, native test
-executables, PDB/debug output and diagnostic source maps. All seven final packages
-used compiler SHA256
+executables, PDB/debug output and diagnostic source maps. The original
+final-delivery acceptance packages used compiler SHA256
 `01a5398d6cc2d26d9a519abcfe181541b474dff5479ed12e98954e9680153810`.
 Their production source members match the final accepted target trees; Go's
 only source difference is diagnostic source-position comments. An external
 concurrent Goalchemy formatting CLI branch advanced the host checkout to
-`dcabfbf0cdb6bd3cf63989da02a8046270952de4`; the tested compiler and CI retain
-the explicit accepted source pin above. Its seven CLI/diagnostic/doc files
-are recorded separately and change no embedded library, target or spec source.
+`dcabfbf0cdb6bd3cf63989da02a8046270952de4`; the tested compiler and CI used
+`765fcbc51241204d283ae68ff15e9957bc91c865` at that acceptance. Its seven
+CLI/diagnostic/doc files are recorded separately and change no embedded
+library, target or spec source.
+The current compiler pin and CI now include native CRC32. Fresh packages built
+from that pin are used for the [new end-to-end benchmark](benchmarks.md); the
+original package hashes above remain historical acceptance evidence.
 
 ## Executable jobs and observed coverage
 

@@ -1,29 +1,46 @@
 # Native SDK end-to-end benchmark
 
-The README reports one table for **10 KiB, 100 KiB and 1 MiB** of binary
+The README reports one table for **10 KiB, 100 KiB, 1 MiB and 10 MiB** of binary
 plaintext. Each cell is the median elapsed **milliseconds** of five newly
 measured complete encrypt/decrypt pairs. The timer is contiguous: encryption
 produces an archive, decryption consumes that same archive through the real KAS,
 and the timer stops after complete owned plaintext is available. These values
 are actual end-to-end measurements; they are not sums of earlier separate
-operation medians. All eight implementations were run again in a fresh campaign.
+operation medians. All eight implementations were run again in a fresh campaign using SDK packages
+rebuilt with native CRC32 from Goalchemy commit
+`a3f92ee60273a74ec75f9bb5136c719e190f6c33`. No old timing cells are reused.
 
 ## Reproduce
 
 Use the accepted installed packages indexed by
-`.local/phase7/final-packages-v2`, the pinned platform checkout in
+`.local/crc32/delivery`, the pinned platform checkout in
 `references.lock.json`, and the existing BASIC profile with real KAS at
 `http://localhost:8080/kas` and local IdP at port 8888. Package and runtime
 installation follow the delivery instructions. The runner does not start,
 stop or reconfigure services and does not invoke the Goalchemy compiler.
 
+To rebuild that package index after installing the documented prerequisites,
+run from the SDK repository with Goalchemy checked out at the pinned revision.
+The package/consumer index directory must be empty for these build commands:
+
+```sh
+mkdir -p .local/crc32/compiler
+(cd ../goalchemy && GOTOOLCHAIN=go1.25.14 go build -trimpath \
+  -o ../sdk/.local/crc32/compiler/goalchemy ./cmd/goalchemy)
+python3 scripts/delivery-packages.py all --base .local/crc32/delivery \
+  --compiler .local/crc32/compiler/goalchemy \
+  --compiler-revision a3f92ee60273a74ec75f9bb5136c719e190f6c33
+python3 scripts/delivery-consumers.py all --base .local/crc32/delivery
+```
+
 From the SDK repository, choose a new output directory:
 
 ```sh
-python3 scripts/benchmark-sdk.py --output .local/benchmarks/e2e-reproduction
+python3 scripts/benchmark-sdk.py --packages .local/crc32/delivery \
+  --output .local/benchmarks/e2e-reproduction
 ```
 
-The defaults select all eight implementations and `10KiB,100KiB,1MiB`.
+The defaults select all eight implementations and `10KiB,100KiB,1MiB,10MiB`.
 `--build-only` builds native benchmark consumers; `--skip-build` reuses those
 consumers. Existing successful end-to-end cells are reused only within their
 output directory; a new directory produces a new campaign. `--rerun` explicitly
@@ -81,14 +98,18 @@ harness never pauses or splits the interval for an untimed copy.
 Every warmup and timed pair compares the complete final plaintext byte for byte
 with the input after timing. Every freshly encrypted archive is also retained
 and independently decrypted by stock Go through the real KAS outside timing,
-then checked exactly. There are 24 cells, 144 complete pairs including warmups,
-120 measured samples, and 144 independent archive validation checks. The
+then checked exactly. There are 32 cells, 192 complete pairs including warmups,
+160 measured samples, and 192 independent archive validation checks. The
 reused original response-session key is not a plaintext-key cache: each fresh
 archive still requires a real KAS rewrap request. Generated decryption does the
 same. No mock KAS or private/offline crypto shortcut is used.
 
 Inputs are deterministic arbitrary binary bytes: byte `i` is
-`(i * 131 + (i >> 8) * 17) & 255`. Each supported file fits one 2 MiB segment.
+`(i * 131 + (i >> 8) * 17) & 255`. The three smaller sizes fit one segment; 10 MiB uses five 2 MiB segments.
+The shared ZIP code now calls Goalchemy’s `lib/checksum.CRC32IEEE`. Go, Java and
+Python use their native standard checksum libraries; the other four hosts use
+slicing-by-8 implementations. No new checksum dependency was added. Archive
+layout and CRC verification remain unchanged.
 Targets run sequentially on one host with no other SDK benchmark load. There
 is no forced garbage collection, allocator reset, CPU pinning or heap tuning;
 natural allocation/GC during each interval remains timed. One warmup and five
@@ -99,18 +120,18 @@ Browser execution is excluded at the user's request.
 ## Receipts and prior experiments
 
 The fresh accepted campaign is under ignored
-`.local/benchmarks/e2e-2026-10-03`. `raw.jsonl` retains the actual five sample
+`.local/benchmarks/e2e-crc32-2026-10-03`. `raw.jsonl` retains the actual five sample
 values per cell, medians, ranges, standard deviations, exact commands, payload/
 archive hashes, correctness results, expected KAS call counts and source hashes.
-`summary.json` contains the 24 end-to-end cells; `tables.md` is the single
+`summary.json` contains the 32 end-to-end cells; `tables.md` is the single
 milliseconds-only table. `environment.json` records hardware/kernel/toolchains,
 SDK/platform heads, package receipts/member hashes, linked Rust rlib identity,
 source hashes and compiled consumer hashes. Frozen source/module inputs and
 symbolizable consumer binaries remain in the ignored campaign directory.
 Private token files stay ignored and use mode 0600. Safe exports contain no tokens.
 
-The run uses the same AMD Ryzen 7 6800H Linux x86_64 host and accepted native
-packages as the earlier experiments. Both benchmark Go binaries use Go 1.25.1;
+The run uses the same AMD Ryzen 7 6800H Linux x86_64 host as the earlier experiments,
+with fresh native packages compiled from the CRC32 revision. Both benchmark Go binaries use Go 1.25.1;
 other installed runtimes are recorded in the campaign receipt. The CPU profiles
 in [Go profiling findings](go-profiles.md) belong to the earlier **fresh-client,
 separate-operation** experiment. They explain that old lifecycle comparison;
