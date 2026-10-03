@@ -1,9 +1,10 @@
 # Local Python buffer optimization
 
 The local candidate reduces 50 MiB Python E2E time by 37.9% compared with a fresh
-unchanged-package baseline. Both repositories use local
-`perf/python-buffer-handling-local` branches. No changes or packages were pushed
-or published; the README benchmark table remains the released v0.2.0 campaign.
+unchanged-package baseline. Both repositories use
+`perf/python-buffer-handling-local` review branches. Measurements were accepted
+locally before PR publication; the README benchmark table remains the released
+v0.2.0 campaign. The runtime dependency is [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10).
 
 | Python E2E median | 1 MiB | 10 MiB | 50 MiB |
 | --- | ---: | ---: | ---: |
@@ -69,7 +70,7 @@ Python-only follow-up did not rebuild non-Python native packages or replay
 EC/DPoP matrices; earlier acceptance for those configurations is separately
 recorded historical evidence.
 
-Goalchemy local commit is `4f5b428bf662a09991e05140484d4380e0401513`.
+Goalchemy candidate commit is `4f5b428bf662a09991e05140484d4380e0401513`.
 The candidate binary still reports compiler version 0.2.0, but it includes the
 local runtime changes and is not the published v0.2.0 binary. Candidate compiler
 SHA256 is `215efc0c817497593c76c8f4cad68cab448d0101925ed84dbd0e60c972a5a0f5`;
@@ -77,6 +78,6 @@ wheel SHA256 is `8aad9e095a596077d891782e4c4b28bd43aeb4ba0bebc3dbc1424072b296625
 Root verified the 16-file producing-source/test freeze, actual test events,
 installed files, matrix command statuses, raw medians and all benchmark archive
 hashes. Detailed receipts stay in ignored `.local/python-buffer-local/`.
-Reference/CI pins point to the unpublished local compiler commit; hosted CI was
-not triggered. Pin updates and these documentation changes occurred after timing
+Reference/CI pins point to the unreleased compiler commit. Hosted CI was not
+triggered during local benchmark acceptance. Pin updates and these documentation changes occurred after timing
 and do not change the measured producing source.

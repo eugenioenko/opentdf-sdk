@@ -8,9 +8,11 @@ benchmark's real-KAS correctness checks.
 
 These are fresh measurements from 2026-10-03, separate from both the released
 README results and the [earlier Python-only campaign](python-buffer-optimization.md).
-Everything remains local on `perf/python-buffer-handling-local`; no code changed
-while preparing or running this comparison, and no README/public results, remote
-branch or release was updated. Browser measurements remain excluded.
+Measurements were accepted locally on `perf/python-buffer-handling-local` before
+PR publication. No code changed while preparing or running this comparison. The
+README/public results and releases remain unchanged. The compiler dependency is
+[Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10). Browser
+measurements remain excluded.
 
 ## Fresh baseline medians
 
@@ -123,7 +125,7 @@ The producing SDK source is commit
 `a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4`, and Goalchemy source is local commit
 `4f5b428bf662a09991e05140484d4380e0401513`. The frozen candidate compiler SHA256 is
 `215efc0c817497593c76c8f4cad68cab448d0101925ed84dbd0e60c972a5a0f5`;
-it reports 0.2.0 but contains unpublished local changes and is not the release
+it reports 0.2.0 but contains unreleased changes and is not the release
 binary. Baseline packages use the published v0.2.0 compiler. Platform remains
 pinned to `f2635158b681fa970aafce7eacf108a453521f63`; the original Go SDK and
 reference validator come from that checkout.

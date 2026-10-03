@@ -6,6 +6,17 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Buffer optimization PR publication
+
+After local acceptance, the user authorized PR creation. Publish the Goalchemy
+runtime change against main and the SDK optimization against the existing
+benchmark PR branch, `perf/goalchemy-0.2.0-e2e-benchmarks`, to keep its review
+focused. The SDK PR depends on [SDK PR #1](https://github.com/eugenioenko/opentdf-sdk/pull/1)
+and [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10). This
+supersedes the earlier local-only constraint for branch pushes and PR creation;
+main branches and releases remain unchanged. Reuse accepted checks and benchmark
+evidence. Hosted CI starts through the ordinary PR workflow.
+
 ## All-target local buffer benchmark follow-up
 
 The user requested measurements for every supported native SDK before concluding
@@ -57,7 +68,7 @@ Commit accepted changes separately in each repository without publication.
 Status: implementation, focused ownership/tamper checks, fresh Python package,
 all-seven compiler emission, real BASIC KAS interoperability and matched Python
 benchmarks passed root acceptance. See [local results](python-buffer-optimization.md).
-The source remains on local branches; nothing is pushed or published.
+This acceptance occurred locally before the subsequent authorized PR publication.
 
 ## Goalchemy 0.2.0 release and fresh benchmark follow-up
 

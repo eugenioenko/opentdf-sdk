@@ -1140,3 +1140,21 @@ No push, publication, EC/DPoP replay or hosted CI was triggered. Acceptance is
 recorded in a signed local documentation commit; producing source remains SDK
 `a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy
 `4f5b428bf662a09991e05140484d4380e0401513`.
+
+
+## Buffer optimization PR publication authorized — 2026-10-03
+
+The user requested PR creation after accepting the all-target benchmark conclusion.
+Root published the unchanged Goalchemy runtime commit on its review branch and
+opened [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10) against
+main. The SDK PR is based on the existing benchmark PR branch so it contains only
+the buffer optimization, tests, compiler pin and comparison documentation; merge
+[SDK PR #1](https://github.com/eugenioenko/opentdf-sdk/pull/1) first. The obsolete
+`local_only` reference marker is removed now that the exact compiler commit is
+publicly fetchable. Source pins and measured producing source remain unchanged.
+
+Publication metadata/documentation is checked for links, source identity and
+whitespace. No previously accepted benchmarks or tests are rerun for these
+metadata edits. Main branches, released packages and README/public benchmark
+results remain unchanged. Hosted CI may run normally upon opening the PRs;
+local benchmark acceptance does not claim those remote checks have passed.

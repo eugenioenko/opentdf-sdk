@@ -15,7 +15,7 @@ GitHub Actions run or a newly replayed full interoperability matrix.
 
 ## Build and install
 
-The local buffer optimization branch requires an unpublished Goalchemy commit.
+The buffer optimization branch requires an unreleased Goalchemy commit.
 Its initial verification covers Python BASIC interoperability and buffer
 ownership. A subsequent [all-target benchmark](all-target-buffer-benchmarks.md)
 built and installed the other six native packages, then passed fresh BASIC E2E
@@ -26,9 +26,10 @@ README performance table continues to describe the released v0.2.0 packages.
 
 Use adjacent `sdk`, `goalchemy`, `platform`, and `web-sdk` checkouts. Exact source
 revisions are in [references.lock.json](../references.lock.json); Goalchemy is
-pinned locally to commit `4f5b428bf662a09991e05140484d4380e0401513`, based on
+pinned to commit `4f5b428bf662a09991e05140484d4380e0401513`, based on
 released [v0.2.0](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.0).
-This commit has not been pushed. Platform remains pinned to
+This commit is available in [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10).
+Platform remains pinned to
 `f2635158b681fa970aafce7eacf108a453521f63`, and Web SDK to
 `55a0521b1499b392c75373e11ec5930c6a43f0c7`.
 
