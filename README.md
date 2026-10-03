@@ -1,6 +1,6 @@
 # OpenTDF SDK with Goalchemy
 
-This project will implement OpenTDF SDK behavior in shared Go source accepted by Goalchemy and generate libraries for Go, TypeScript, Java, C#, Python, Rust, and C. TypeScript support includes Node and browsers.
+This repository contains one shared Go TDF3 encryption/decryption SDK, compiled by Goalchemy into libraries for Go, TypeScript, Java, C#, Python, Rust, and C. TypeScript supports Node and browsers. Generated packages are build outputs; the shared source and all seven build helpers live in this repository.
 
 The goal is to ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS. TypeScript includes Node and browsers. The [delivery checklist](docs/delivery-checklist.md) defines completion; broader Go SDK feature parity is outside this goal.
 

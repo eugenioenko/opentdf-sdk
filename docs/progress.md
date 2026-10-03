@@ -735,3 +735,30 @@ pinned real-service CI jobs, including an actual TypeScript browser. No push or
 publication occurred. Root records the signed C phase pair before dispatch.
 
 C phase Goalchemy commit: `765fcbc51241204d283ae68ff15e9957bc91c865` (verified SSH signature `G`). The SDK phase commit records this compiler pin and accepted C evidence.
+
+## Phase 7 delivery underway — 2026-10-02
+
+C phase pair is SDK `ee8a8938aa9ce0fe35095e02b562f0906e956abd` and Goalchemy
+`765fcbc51241204d283ae68ff15e9957bc91c865`; both signatures are `G` and trees were clean.
+All fourteen target phase signatures and ancestry checks passed. The fresh
+post-C baseline records 2088 tracked SDK/Goalchemy files. The sole
+GPT-6.1 Sol High delivery worker now owns clean seven-target packaging,
+independent consumers and executable pinned real-platform CI, including actual
+browser coverage. Root remains responsible for profile coordination, acceptance,
+common status documentation, signed commits and the final requirement audit.
+The goal remains active until these delivery gates pass.
+
+## SDK repository checkpoint — 2026-10-02
+
+The user requested committing and publishing the single SDK repository while
+final checks continue. The checkpoint includes the seven accepted target
+implementations and current delivery tooling. All seven clean two-path package
+builds and independent native consumer installs pass; 134 focused shared-source
+format/protocol checks pass. Production-source correspondence matches accepted
+final target packages, with only Go diagnostic source positions differing.
+
+Final focused KAS/browser execution is in progress against a fresh private
+platform. CI workflow/orchestration and final coverage/review are still pending;
+this checkpoint does not claim final delivery acceptance or completed CI.
+Generated packages, private fixtures, keys, logs and local services remain ignored.
+The repository is named `eugenioenko/opentdf-sdk` and is public at user request.

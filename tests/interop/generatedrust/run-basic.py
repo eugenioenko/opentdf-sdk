@@ -3,6 +3,8 @@
 from pathlib import Path
 import hashlib,json,subprocess,sys,zipfile,io,copy
 sdk=Path(__file__).resolve().parents[3]
+sys.path.insert(0,str(sdk/'tests/interop/delivery'))
+from delivery_capture import capture,assert_metadata_presence
 run=sdk/(sys.argv[1] if len(sys.argv)>1 else '.local/rust-tdf-library/basic')
 run.mkdir(parents=True,exist_ok=True)
 consumer=sdk/'tests/interop/generatedrust/consumer.sh'
@@ -20,11 +22,14 @@ rows=[]
 def invoke(label,args):
     # Do not persist unsanitized reference diagnostics containing possible tokens.
     result=subprocess.run([str(a) for a in args],cwd=sdk,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
+    capture(label,args,result,run)
     (run/(label+'.status')).write_text(str(result.returncode)+'\n')
     if result.returncode:
         if args[0]==consumer:(run/(label+'.log')).write_bytes(result.stdout+result.stderr)
         raise RuntimeError(label+' failed; status='+str(result.returncode))
-def new(mode,name):invoke(mode+'-'+name,[consumer,sdk,run,mode,name])
+def new(mode,name):
+    invoke(mode+'-'+name,[consumer,sdk,run,mode,name])
+    if mode=='decrypt':assert_metadata_presence(run,name)
 def compare(name,producer,expected,metadata):
     new('decrypt',name+'.'+producer)
     assert (run/(name+'.'+producer+'.out')).read_bytes()==expected

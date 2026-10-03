@@ -10,9 +10,9 @@ compose() {
   local profile=basic
   if [[ -s "$LOCAL/profiles/active" ]]; then profile=$(cat "$LOCAL/profiles/active"); fi
   if [[ "$profile" == ec || "$profile" == dpop ]]; then
-    docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" -f "$SDK/dev/compose.profiles.yaml" "$@"
+    docker compose --project-name "${TDF_COMPOSE_PROJECT:-tdf-sdk}" --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" -f "$SDK/dev/compose.profiles.yaml" "$@"
   else
-    docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" "$@"
+    docker compose --project-name "${TDF_COMPOSE_PROJECT:-tdf-sdk}" --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" "$@"
   fi
 }
 check_profile() {

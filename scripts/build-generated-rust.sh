@@ -4,6 +4,8 @@ SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 COMPILER=${GOALCHEMY_BIN:-"$SDK/../goalchemy/out/rust-tdf-library/goalchemy"}
 DEST=${1:-"$SDK/../goalchemy/out/rust-tdf-library/sdk"}
 mkdir -p "$DEST"
+DEST=$(cd "$DEST" && pwd)
+if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; GOALCHEMY_ROOT="$SDK/../goalchemy" "$COMPILER" compile -gate cooperative -target rust -out "$DEST" ./library)
 mv "$DEST/src/lib.rs" "$DEST/src/generated.rs"
 cp "$SDK/hosts/rust/lib.rs.in" "$DEST/src/lib.rs"

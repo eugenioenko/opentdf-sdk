@@ -1,9 +1,10 @@
 // Actual Chromium imports the compiled portable package; all OAuth credentials
 // remain inside this host fixture. No original SDK is imported in the bundle.
 import{createServer}from'node:http';import{readFile,writeFile,mkdir}from'node:fs/promises';import{resolve}from'node:path';import{execFileSync,spawnSync}from'node:child_process';import{createHash}from'node:crypto';
-import{build}from'../../../../goalchemy/out/typescript-host-operations/tooling/node_modules/esbuild/lib/main.js';import{chromium}from'../../../../goalchemy/out/typescript-host-operations/tooling/node_modules/playwright/index.mjs';import{acquireToken}from'./token-provider.mjs';
+import{pathToFileURL}from'node:url';import{acquireToken}from'./token-provider.mjs';
+const tooling=process.env.TDF_BROWSER_TOOLING??resolve(import.meta.dirname,'../../../../goalchemy/out/typescript-host-operations/tooling/node_modules');const{build}=await import(pathToFileURL(resolve(tooling,'esbuild/lib/main.js')).href);const{chromium}=await import(pathToFileURL(resolve(tooling,'playwright/index.mjs')).href);
 const sdk=resolve(import.meta.dirname,'../../..'),stage=process.argv[2]??'basic';if(!['basic','ec','dpop'].includes(stage))throw new Error('stage');const base=resolve(sdk,'.local/typescript-tdf-library'),run=resolve(base,'browser-'+stage);await mkdir(run,{recursive:true});
-const result=await build({entryPoints:[resolve(sdk,'../goalchemy/out/typescript-tdf-library/sdk/dist/index.js')],bundle:true,platform:'browser',format:'esm',write:false,metafile:true});for(const file of Object.keys(result.metafile.inputs)){const source=await readFile(file,'utf8');if(/node:|\bBuffer\b|\bprocess\b/.test(source))throw new Error('Node dependency '+file);}await writeFile(resolve(run,'browser-graph.json'),JSON.stringify(result.metafile,null,2));
+const result=await build({entryPoints:[process.env.TDF_TS_PACKAGE??resolve(sdk,'../goalchemy/out/typescript-tdf-library/sdk/dist/index.js')],bundle:true,platform:'browser',format:'esm',write:false,metafile:true});for(const file of Object.keys(result.metafile.inputs)){const source=await readFile(file,'utf8');if(/node:|\bBuffer\b|\bprocess\b/.test(source))throw new Error('Node dependency '+file);}await writeFile(resolve(run,'browser-graph.json'),JSON.stringify(result.metafile,null,2));
 const rows=[],transport=[];let brokerRequests=0;
 function hash(b){return createHash('sha256').update(b).digest('hex');}
 async function configure(wrap='rsa:2048',session='rsa:2048',auth='ES256'){

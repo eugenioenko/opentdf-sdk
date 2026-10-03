@@ -26,7 +26,7 @@ services:
     volumes:
       - ../.local/keycloak:/opt/keycloak/data
   platform:
-    image: tdf-sdk-platform:local
+    image: ${TDF_PLATFORM_IMAGE:-tdf-sdk-platform:local}
     build:
       context: ../.local
       dockerfile: ../dev/Dockerfile

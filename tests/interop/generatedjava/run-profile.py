@@ -3,6 +3,8 @@
 from pathlib import Path
 import json,subprocess,hashlib,sys,io,zipfile,urllib.request,urllib.parse,shutil
 sdk=Path(__file__).resolve().parents[3]
+sys.path.insert(0,str(sdk/'tests/interop/delivery'))
+from delivery_capture import capture,assert_metadata_presence
 stage=sys.argv[1]
 assert stage in ('ec','dpop')
 base=sdk/'.local/java-tdf-library'
@@ -12,12 +14,15 @@ rows=[];limitations=[];negative=[]
 cases={'empty':b'','binary':bytes(range(256))*3+b'\x00\xff','exact':bytes([0,255,128,7])*4096,'multiple':bytes([0,255,128,7])*8193,'metadata':b'metadata bytes','empty-metadata':b'empty metadata','hs256':bytes([0,255,128,7])*8193}
 def invoke(label,args,required=True):
     result=subprocess.run([str(a) for a in args],cwd=sdk,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120)
+    capture(label,args,result,run)
     (run/(label+'.status')).write_text(str(result.returncode)+'\n')
     if result.returncode and required:
         if args[0]==consumer:(run/(label+'.log')).write_bytes(result.stdout+result.stderr)
         raise RuntimeError(label+' failed; status='+str(result.returncode))
     return result
-def new(mode,name):invoke(mode+'-'+name,[consumer,sdk,run,mode,name])
+def new(mode,name):
+    invoke(mode+'-'+name,[consumer,sdk,run,mode,name])
+    if mode=='decrypt':assert_metadata_presence(run,name)
 def configure(wrapping,session='rsa:2048',auth='ES256',explicit=True):
     prefix=wrapping[:2]
     cfg={'PlatformURL':'http://localhost:8080','KASURL':'http://localhost:8080/kas','IssuerURL':'http://localhost:8888/auth/realms/opentdf','ClientID':'opentdf-sdk','ClientSecret':'secret','AllowHTTP':True,'KASAlgorithm':wrapping,'SessionAlgorithm':session,'AuthAlgorithm':auth,'DPoP':stage=='dpop','AllowedKAS':[{'URL':'http://localhost:8080/kas','APIBaseURL':'http://localhost:8080'}]}

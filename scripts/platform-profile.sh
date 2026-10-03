@@ -4,8 +4,8 @@ umask 077
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 LOCAL="$SDK/.local"
 PROFILE=${1:-help}
-compose() { timeout 90 docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" "$@"; }
-secure_compose() { timeout 90 docker compose --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" -f "$SDK/dev/compose.profiles.yaml" "$@"; }
+compose() { timeout 90 docker compose --project-name "${TDF_COMPOSE_PROJECT:-tdf-sdk}" --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" "$@"; }
+secure_compose() { timeout 90 docker compose --project-name "${TDF_COMPOSE_PROJECT:-tdf-sdk}" --env-file "$SDK/dev/images.env" -f "$SDK/dev/compose.yaml" -f "$SDK/dev/compose.profiles.yaml" "$@"; }
 run() { (cd "$SDK/tests/interop/profiles"; GOTOOLCHAIN=go1.25.14 GOCACHE="$LOCAL/go-build-cache" GOMODCACHE="$LOCAL/go-mod-cache" timeout 180 go run . "$@"); }
 case "$PROFILE" in
   ec|dpop|basic) ;;

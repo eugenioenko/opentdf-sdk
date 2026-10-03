@@ -27,7 +27,7 @@ include = ["opentdf_tdf3*"]
 TOML
 mkdir -p "$DEST/opentdf_tdf3/licenses"
 cp "$SDK/../goalchemy/LICENSE" "$DEST/opentdf_tdf3/licenses/Goalchemy-LICENSE"
-"$PYTHON" - "$DEST" "$SDK/.local/python-tdf-library/wheels" <<'PY'
+"$PYTHON" - "$DEST" "${TDF_WHEELHOUSE:-$SDK/.local/python-tdf-library/wheels}" <<'PY'
 import sys,pathlib,zipfile,hashlib,json,importlib.metadata
 p=pathlib.Path(sys.argv[1]);wheelhouse=pathlib.Path(sys.argv[2])
 lock=json.loads((p/'dependencies.lock.json').read_text())

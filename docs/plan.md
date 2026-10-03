@@ -188,6 +188,10 @@ accepted; Phase 7 clean-package and executable CI delivery remains open.
 
 ## Phase 7 Interop CI and TDF3 delivery readiness
 
+The sole delivery worker is active after all seven target phase commits. Root
+coordinates platform profiles, reviews final evidence and commits the accepted
+delivery phase. Clean packages and actual execution of required jobs remain open.
+
 Run a pinned platform stack in CI with separate bounded jobs for targets. Test seven targets in both directions against both reference SDKs: 28 baseline producer/consumer pairs. The TypeScript browser environment is an additional run of the TypeScript target. RSA/EC, Bearer/DPoP, payload sizes, and negative cases expand each applicable pair rather than being implied by the count.
 
 Provide fast offline format/conformance tests and a clearly named integration suite requiring real services. Cache dependencies without hiding version drift. Record compiler revision, reference revisions, platform configuration, target dependencies, and test outcomes. CI must fail when a required integration case is skipped or when the target only succeeds as an executable and has no usable library export.
