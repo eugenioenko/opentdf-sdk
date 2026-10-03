@@ -1085,3 +1085,58 @@ that unpublished commit. Measured producing source matches the accepted freeze;
 the subsequent pin/documentation edits do not change any timed operation.
 The released packages, README table, public results and existing PR branch remain
 unchanged. No push, release, package publication or hosted CI was triggered.
+
+## All-target local benchmark requested — 2026-10-03
+
+The user requested benchmarks for every native target to assess the shared archive
+optimization beyond Python. Root and one worker preserve SDK commit
+`a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy commit
+`4f5b428bf662a09991e05140484d4380e0401513` as the unchanged local candidate.
+The worker prepares fresh non-Python packages and independent consumers, reusing
+the previously verified candidate Python package. Cache reuse requires exact
+dependency hashes; existing accepted v0.2.0 packages remain untouched.
+
+Fresh baseline and candidate campaigns will run sequentially after builds, each
+with original Go and all seven generated native SDKs at 1/10/50 MiB, one warmup
+and five timed pairs per cell. Root prepared new baseline provenance using frozen
+accepted binaries without copying any timing samples. The control, native timer,
+configuration and independent stock-Go/KAS plus ZIP validation stay identical.
+Artifacts live under ignored `.local/buffer-all-targets-2026-10-03/`. No new
+result or cross-target performance improvement is claimed yet; README/public
+results and remote repositories remain unchanged.
+
+## All-target local benchmark accepted — 2026-10-03
+
+Fresh relative/absolute package builds and native installed consumers passed for
+Go, Node, Java, C#, Rust and C. Python reused the exact accepted candidate wheel,
+with its 113 actual import members reverified. The unchanged baseline packages
+remained separate. Root selected the exact baseline original-Go binary as the
+control in both campaigns, retaining an amendment for the unused freshly built
+reference binary. No production source, benchmark harness or timing boundary
+changed during this task.
+
+Both sequential full campaigns passed: original Go plus seven generated SDKs at
+1/10/50 MiB, one warmup and five measured E2E pairs per cell. All 288 archives
+passed independent stock-Go/KAS decryption, exact plaintext and ZIP CRC checks.
+Python 50 MiB falls 1085.96 to 702.17 ms (35.3%); Node falls 792.19 to 729.85 ms
+(7.9%), with nonoverlapping observed sample ranges. Go/Rust/C have lower 50 MiB
+medians but overlapping ranges; Java/C# barely change. Original-Go control
+variation prevents blanket attribution of small-file changes to this optimization.
+
+Root repeated only Java 1 MiB and C 10 MiB after their large initial slowdowns.
+The Java direction reversed (175.22 baseline to 119.47 candidate ms); C's repeat
+was 269.19 to 287.24 ms, a 6.7% slowdown rather than the initial 95.9%.
+Ranges overlap for both repeats. The original full results remain untouched;
+repeat samples are retained separately. These add 24 validated archives, making
+312 total across 52 cells and 260 measured pairs.
+
+Root verified all raw medians, statuses, actual archive hashes/byte counts and
+uniqueness, plus 1,637 producing source hashes, 1,290 package/install member hashes
+and 113 actual Python import members. Ignored artifacts and receipts are under
+`.local/buffer-all-targets-2026-10-03/`. See the
+[comparison and limitations](all-target-buffer-benchmarks.md). The README/public
+benchmark table, released packages, main and existing PR branch remain unchanged.
+No push, publication, EC/DPoP replay or hosted CI was triggered. Acceptance is
+recorded in a signed local documentation commit; producing source remains SDK
+`a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy
+`4f5b428bf662a09991e05140484d4380e0401513`.

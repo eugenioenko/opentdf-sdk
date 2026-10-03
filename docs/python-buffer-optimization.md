@@ -28,6 +28,11 @@ plaintext comparison and ZIP CRC validation. Raw samples remain in ignored
 overlap; the 1 MiB difference is within observed run variation. These five-sample
 medians are local observations, not a steady-state or cross-machine guarantee.
 
+A subsequent [all-target comparison](all-target-buffer-benchmarks.md) rebuilds the
+other six native packages and measures fresh baseline/candidate campaigns. Its
+Python 50 MiB reduction is 35.3%, consistent with this earlier separate campaign.
+The samples and tables above remain specific to the Python-only acceptance.
+
 ## Changes and ownership
 
 [Client decryption](../client.go) prepares an opaque, owned archive once through
@@ -59,9 +64,10 @@ all 113 actual installed package members. The BASIC real-KAS matrix passed 35
 comparisons across self round trips and both reference directions, plus native
 provider/ownership checks and 11 rejection categories.
 
-The changed shared SDK compiles/emits for all seven targets. This follow-up did
-not rebuild non-Python native packages or replay EC/DPoP matrices; earlier
-acceptance for those configurations is separately recorded historical evidence.
+The changed shared SDK compiles/emits for all seven targets. This initial
+Python-only follow-up did not rebuild non-Python native packages or replay
+EC/DPoP matrices; earlier acceptance for those configurations is separately
+recorded historical evidence.
 
 Goalchemy local commit is `4f5b428bf662a09991e05140484d4380e0401513`.
 The candidate binary still reports compiler version 0.2.0, but it includes the
