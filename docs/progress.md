@@ -687,3 +687,51 @@ seven-target package/CI delivery remain open. Root now records the signed Rust
 phase pair before assigning C.
 
 Rust phase Goalchemy commit: `967dfa5c51ae423a7939c83476ad4108958c51ef` (verified SSH signature `G`). The SDK commit records this compiler pin and the accepted Rust source/package evidence.
+
+## Phase 6 C SDK underway — 2026-10-02
+
+Rust accepted phase pair is SDK `52e0e2356a053f7702a5a7aafa2f67879105e56d` and Goalchemy `967dfa5c51ae423a7939c83476ad4108958c51ef`; both SSH signatures verified `G`, and both trees were clean at handoff. The fresh C baseline records 1,997 tracked SDK/Goalchemy files and unchanged pinned platform/Web references.
+
+The sole background worker `/root/c_tdf_library` uses GPT-6.1 Sol High for native C exports, owned configuration/results, OpenSSL/libcurl adapters and collector-safe cancellation. Root owns platform transitions, common documentation, acceptance and commits. Prepared libcurl development files remain isolated in ignored storage; their readiness probe is not C SDK acceptance. C must pass focused native/compiler checks and all seven canonical cases in the BASIC, EC and enforced-DPoP KAS matrices against both references and directions before its one acceptance review. Final seven-target package and executable CI delivery remains Phase 7.
+
+## Phase 6 C SDK accepted — 2026-10-02
+
+C delivers an independently linkable C17 TDF3 archive with OpenSSL 3/libcurl,
+owned recursive values, explicit-length headers, typed failures and cancellable
+submit/drive/wake/take/destroy operations. Calls serialize on a fresh registered
+source owner; inputs are copied before submission and outputs detach before
+owner retirement. Consumers need no collector initialization. Dependencies,
+licenses, Linux x86_64 limits and native API rules are in
+[C delivery](generated-c-library.md).
+
+Focused native vectors, aggregate/scalar importers, ownership/GC/cleanup,
+controlled transport, ASan/UBSan, compiler preservation, 203 strict contracts
+and generated freshness passed. Original BASIC/EC/enforced-DPoP matrices retain
+35/280/226 payload comparisons, producer-manifest metadata presence, policy
+rejections and separately labeled stock Web nonce401 observations. EC and DPoP
+ciphertext/root rejection supplements add 16 cases each with zero plaintext.
+
+The ONE acceptance review reproduced and repaired two findings: first ordinary
+or transient async caller collector registration, and native HTTP invalid-header,
+automatic gzip, decoded-body bound and sorted-header contracts. Unchanged
+original diagnostics, additional fresh/external/registered callers, overlap,
+11 actual HTTP cases, sanitizers and socket release passed. A fresh public native
+importer without GC setup decrypted two genuinely compressed BASIC KAS replies
+with exact payload and producer-manifest metadata presence. Original diagnostic
+failures and all 5,578 original evidence files remain preserved.
+
+Root independently verified 2,088 source hashes, 104 worker paths, 1,981 repair
+evidence hashes, 98 distributed package members and current authored runtime
+correspondence. Original→C1 archive changes only task_spawn; C1→final changes
+only lib_http_do. Final repair freeze SHA is
+`d82288c9652dea590293b10154814387ad4d1f85d6043356179aea50b2414c03`;
+archive SHA `5e5f7f3ca3c40ed4455ef70eaa069bc61049608886c3c8bf4f755b0f399ef4cf`.
+Fresh current-source compiler produced byte-identical final archive/package.
+The pinned 32-library native dependency/license mapping is unchanged.
+
+All seven target SDK phases are now accepted. Phase 7 still requires fresh clean
+packages, independent consumers, complete coverage and actual execution of
+pinned real-service CI jobs, including an actual TypeScript browser. No push or
+publication occurred. Root records the signed C phase pair before dispatch.
+
+C phase Goalchemy commit: `765fcbc51241204d283ae68ff15e9957bc91c865` (verified SSH signature `G`). The SDK phase commit records this compiler pin and accepted C evidence.

@@ -20,7 +20,7 @@ The user's current cadence for each remaining SDK target is: implement the targe
 failure requires them. Retain failures and use focused repairs at the original
 budgets; repeat passed checks only when a new change or demonstrated gap warrants
 it. This cadence supersedes older per-target broad-suite workflows. Java, C#, Python and Rust are
-accepted; C is next, followed by final seven-target package/CI delivery.
+accepted, together with C; final seven-target package/CI delivery is next.
 
 After each handoff, the orchestrator reads the changes, runs the appropriate checks, and either accepts the task or assigns a focused repair. Required repository instructions apply to changes inside each clone. Do not count skipped tests, a mock KAS, an executable wrapper, or a successful self-round-trip as evidence of generated SDK compatibility.
 
@@ -52,7 +52,7 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 - [x] Phase 3: Shared TDF3 implementation and native interop
 - [x] Phase 4: Seven-target byte/host foundation and generated Go library
 - [x] Phase 5: TypeScript SDK for Node and browsers
-- [ ] Phase 6: Java, C#, Python, Rust, and C SDKs in sequence
+- [x] Phase 6: Java, C#, Python, Rust, and C SDKs in sequence
 - [ ] Phase 7: Interop CI and TDF3 delivery readiness
 
 ## Phase 0 Reference audit and compatibility inventory
@@ -137,8 +137,8 @@ BASIC/EC/enforced-DPoP matrices pass, with stock Web enforced-nonce401 limitatio
 recorded separately. Ownership, queued/active cancellation, source failures,
 crypto lifetimes, UTF-8 and transport rejection checks pass. Original compiler
 campaign failures and its cache-processing termination remain retained alongside
-terminal current supplements. Java, C#, Python and Rust are accepted in Phase 6; C
-and Phase 7 stay open. See [TypeScript delivery](generated-typescript-library.md)
+terminal current supplements. Java, C#, Python, Rust and C are accepted in Phase 6;
+Phase 7 stays open. See [TypeScript delivery](generated-typescript-library.md)
 and [the progress log](progress.md) for precise evidence and limits.
 
 ## Phase 6 Remaining target SDKs
@@ -151,7 +151,7 @@ Implement and accept each target before starting the next. Each target needs cap
 | 2 | C# (accepted) | .NET crypto and `HttpClient`, class library with byte APIs, cancellation, and async calls |
 | 3 | Python (accepted) | `cryptography` plus a bounded HTTP adapter, installable package and documented sync/async behavior |
 | 4 | Rust (accepted) | Maintained crypto/HTTP crates, generated Cargo package and lockfile, idiomatic `Result` and clear key/resource ownership |
-| 5 | C | OpenSSL and libcurl, headers/library, explicit handles/buffer release, documented async driving model, existing collector integration |
+| 5 | C (accepted) | OpenSSL and libcurl, headers/library, explicit handles/buffer release, documented async driving model, existing collector integration |
 
 Avoid blocking the cooperative scheduler during host network I/O. Java, C#, Python, Rust, and C adapters must define their completion behavior as carefully as TypeScript. Validate TLS verification, cancellation, platform errors, and actual RSA/EC/JOSE parameters rather than assuming host defaults align.
 
@@ -178,7 +178,13 @@ Rust is accepted with a locked Cargo package, 136 native boundary checks,
 review repaired native collection lengths, key validation and pure-library
 dependency/feature wiring; original matrices keep their tested package identity.
 Default and optional-feature pure native consumers pass. See
-[Rust delivery](generated-rust-library.md). C is next; Phase 6 and Phase 7 remain open.
+[Rust delivery](generated-rust-library.md). C is accepted with a C17 native archive, OpenSSL/libcurl capabilities, owned
+headers and cancellable operations. BASIC/EC/enforced-DPoP seven-case matrices
+and focused native/collector/sanitizer checks pass. Its single acceptance review
+repaired first-caller collector ownership and HTTP gzip/header/bound semantics;
+original matrices retain their artifact identity and focused supplements prove
+the repaired package. See [C delivery](generated-c-library.md). Phase 6 is
+accepted; Phase 7 clean-package and executable CI delivery remains open.
 
 ## Phase 7 Interop CI and TDF3 delivery readiness
 

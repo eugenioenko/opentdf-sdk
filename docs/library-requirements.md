@@ -17,11 +17,11 @@ key handles and structured manifest data. [Error](../errors.go) preserves
 stable categories, operation, service fields, obligations and a cause.
 
 The [driver](../../goalchemy/internal/driver/emit.go) supports value-library emission
-for Go, TypeScript, Java, C#, Python and Rust; terminal acceptance is recorded in
-[the delivery ledger](delivery-checklist.md). The existing
-[C library emitter](../../goalchemy/internal/emit/c/c.go) rejects suspending
-exports and only supports a limited scalar/string boundary. Neither this C API
-nor a generated executable satisfies the SDK library requirement.
+for all seven targets; terminal acceptance is recorded in
+[the delivery ledger](delivery-checklist.md). The
+[C library emitter](../../goalchemy/internal/emit/c/c.go) supports owned aggregate
+and suspending exports alongside the legacy sequential scalar/string boundary.
+The SDK uses the owned native library API.
 
 The [generated Go library boundary](generated-go-library.md) is accepted with real KAS RSA/P256/Bearer/enforced-DPoP and negative evidence. It adds serialized, cancellable calls and fresh source
 initialization over the accepted [Go host lifecycle](../../goalchemy/docs/host-operations.md).
@@ -37,8 +37,10 @@ Tasks and 93 boundary/lifecycle checks plus real-KAS matrices. The
 installable wheel, maintained crypto, bounded HTTP and owned cancellable
 sync/async operations. The [generated Rust library](generated-rust-library.md)
 is accepted with owned Result/Future calls, locked native dependencies and
-real-KAS interoperability. The C boundary and final package/CI matrix
-follow in Phases 6–7; terminal acceptance is recorded in
+real-KAS interoperability. The [generated C library](generated-c-library.md)
+is accepted with explicit-length headers, owned values, collector-safe source
+owners, cancellable native operations and real-KAS interoperability. Final
+seven-target package/CI delivery remains Phase 7; acceptance is recorded in
 [the delivery ledger](delivery-checklist.md).
 
 ## Required boundary behavior
