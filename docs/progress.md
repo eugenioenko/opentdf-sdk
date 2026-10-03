@@ -1023,3 +1023,65 @@ Historical samples/profiles remain separately attributed. Unrelated full
 protocol matrices were not repeated. Goalchemy release CI is still running;
 SDK hosted CI will run on the user-authorized PR and is not claimed as passed.
 Root owns the signed SDK commit and PR publication.
+
+## Local buffer optimization started — 2026-10-03
+
+The user authorized local implementation and measurement of duplicate archive
+processing and redundant Python copies. Root isolated both repositories on
+`perf/python-buffer-handling-local`; the published release, SDK PR branch and
+accepted v0.2.0 installed packages remain intact. One worker owns the shared
+decryption path, Python facade and reusable Goalchemy buffer changes with focused
+tamper, snapshot, overlap and independent-output tests. Root owns review, matched
+Python 1/10/50 MiB benchmark acceptance and separate signed local commits.
+No push, publication or README benchmark replacement is authorized for this task.
+
+The preceding installed 50 MiB profile identifies repeated archive parsing and
+CRC/payload copying plus native-boundary slice temporaries. Its selected self-time
+buckets were 721 ms of allocation/copy bodies, 155 ms of generated JSON, 97 ms
+of CRC and 29 ms of AES-GCM. These are diagnostic observations, not promised
+optimization savings. Fresh matched baseline and optimized measurements will use
+the same native timer and independent stock-Go/KAS and ZIP checks.
+
+Root completed a fresh unchanged-package Python baseline under ignored
+`.local/benchmarks/python-buffer-before-2026-10-03/`: one warmup plus five timed
+pairs at each size, with medians 159.719 ms (1 MiB), 266.688 ms (10 MiB) and
+1144.598 ms (50 MiB). All 18 archives passed stock-Go real-KAS decryption and
+independent ZIP CRC checks. Root checked actual archive hashes and all 113
+installed Python package members against the accepted wheel. Raw result SHA256 is
+`a3358bd7f8408813aa3430dbc4ef11dc724b3806f6860aa59d54e7c41241a273`.
+These are baseline measurements; implementation acceptance and optimized results
+are pending.
+
+## Local buffer optimization accepted — 2026-10-03
+
+Root accepted the worker's exact 16-file production/test whitelist and verified
+actual focused JSON events: 14 top-level tests plus 47 subtests, no failures or
+skips. Checks preserve precredential CRC/manifest/profile errors, cached-state
+ownership, late-segment and metadata rejection, queued typed/multidimensional/
+strided snapshots, overlap and native/host lifecycle behavior. Native crypto
+passed 133 assertions, importing generated library 71 and installed boundary 31.
+
+The shared SDK now prepares an opaque, owned archive once and retains all MAC,
+segment and metadata authentication. Manifest inspection/result snapshots are
+deep-owned. Python removes duplicate immutable input allocations and intermediate
+slice copies while retaining mutable input snapshots and aliased-copy temporaries.
+Both Python package build paths match; all 113 installed members match the wheel.
+All seven targets compile/emit the changed SDK. The fresh Python BASIC matrix
+passed 35 actual comparisons, native provider/ownership checks and 11 rejection
+categories; its 69 recorded commands all exited zero. Earlier non-Python native
+and EC/DPoP acceptance remains historical rather than a newly replayed claim.
+
+Matched optimized E2E medians are 155.304 ms (1 MiB), 199.594 ms (10 MiB) and
+710.351 ms (50 MiB). Reductions against the fresh baseline are 2.8%, 25.2% and
+37.9%; 1 MiB remains within observed sample variation. Each campaign contains
+three cells, 15 timed pairs and 18 independently validated archives. Root checked
+all actual archive hashes, stock-Go/KAS and ZIP receipts, segment defaults and
+raw medians. The timer/harness and native cryptography binary are unchanged.
+See [local methodology/results](python-buffer-optimization.md).
+
+Goalchemy was committed locally as signed
+`4f5b428bf662a09991e05140484d4380e0401513` and the SDK compiler/CI pins now follow
+that unpublished commit. Measured producing source matches the accepted freeze;
+the subsequent pin/documentation edits do not change any timed operation.
+The released packages, README table, public results and existing PR branch remain
+unchanged. No push, release, package publication or hosted CI was triggered.

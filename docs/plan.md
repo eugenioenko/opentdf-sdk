@@ -6,6 +6,32 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Local buffer optimization follow-up
+
+Optimize shared SDK decryption to process each archive once, and reduce redundant
+Python buffer copies without weakening CRC, manifest, policy-binding, root or
+segment authentication. Preserve snapshots of mutable public inputs at submission,
+overlapping Go slice behavior, independent public results and zero plaintext on
+failure. Changes stay on local `perf/python-buffer-handling-local` branches in both
+repositories; do not push, publish or replace the existing README benchmark table.
+
+One worker implements shared SDK and reusable Python compiler/runtime changes
+with focused ownership, overlap and tamper tests. Root reviews the changes before
+fresh package builds and real-KAS verification. Run both reference interoperability
+directions and negative cases appropriate to the changed decryption path, plus
+Python E2E measurements at 1 MiB, 10 MiB and 50 MiB. Use the unchanged native
+benchmark harness, one warmup and five timed pairs per size, with independent
+stock-Go/KAS decryption and ZIP CRC validation outside timing. Preserve accepted
+v0.2.0 packages and previous measurements; use distinct ignored output directories
+and fresh matched baseline measurements to distinguish optimization from run
+variation. Record artifact identities, checks and before/after medians locally.
+Commit accepted changes separately in each repository without publication.
+
+Status: implementation, focused ownership/tamper checks, fresh Python package,
+all-seven compiler emission, real BASIC KAS interoperability and matched Python
+benchmarks passed root acceptance. See [local results](python-buffer-optimization.md).
+The source remains on local branches; nothing is pushed or published.
+
 ## Goalchemy 0.2.0 release and fresh benchmark follow-up
 
 The current follow-up supersedes the earlier CRC32 benchmark campaign. Release

@@ -345,6 +345,56 @@ func verifyMAC(key, data, mac []byte, label string) error {
 	return nil
 }
 
+// PreparedDecryption owns a CRC-checked archive and its validated manifest.
+// Its zero value cannot decrypt. Mutable state is never exposed to callers.
+type PreparedDecryption struct {
+	archive  Archive
+	manifest Manifest
+	ready    bool
+}
+
+// PrepareDecryption checks ZIP CRCs, parses the manifest and validates its
+// supported profile once. Stage preserves the client's pre-rewrap errors.
+func PrepareDecryption(data []byte) (PreparedDecryption, string, error) {
+	archive, e := ReadArchive(data, DefaultArchiveLimits())
+	if e != nil {
+		return PreparedDecryption{}, "archive", e
+	}
+	m, e := ParseManifest(archive.Manifest)
+	if e != nil {
+		return PreparedDecryption{}, "manifest", e
+	}
+	if e := m.ValidateModern(len(archive.Payload)); e != nil {
+		return PreparedDecryption{}, "unsupported_manifest", e
+	}
+	return PreparedDecryption{archive: archive, manifest: m, ready: true}, "", nil
+}
+
+func clonePreparedJSON(v j.Value) j.Value {
+	r := v
+	r.Names = append([]string(nil), v.Names...)
+	r.Children = nil
+	for _, child := range v.Children {
+		r.Children = append(r.Children, clonePreparedJSON(child))
+	}
+	return r
+}
+
+func clonePreparedManifest(m Manifest) Manifest {
+	r := m
+	r.Encryption.KeyAccess = append([]KeyAccess(nil), m.Encryption.KeyAccess...)
+	r.Encryption.Integrity.Segments = append([]Segment(nil), m.Encryption.Integrity.Segments...)
+	r.Raw = clonePreparedJSON(m.Raw)
+	r.Assertions = nil
+	for _, assertion := range m.Assertions {
+		r.Assertions = append(r.Assertions, clonePreparedJSON(assertion))
+	}
+	return r
+}
+
+// Manifest returns an owned snapshot for KAS routing and inspection.
+func (p PreparedDecryption) Manifest() Manifest { return clonePreparedManifest(p.manifest) }
+
 // DecryptWithPayloadKey authenticates and decrypts a complete bounded archive
 // given an independently recovered 32-byte payload key. It performs no rewrap.
 // Failure always returns a zero Decrypted, including failures in the last segment
@@ -353,17 +403,20 @@ func DecryptWithPayloadKey(data, key []byte) (Decrypted, error) {
 	if len(key) != 32 {
 		return Decrypted{}, errors.New("decryption: payload key must be 32 bytes")
 	}
-	archive, e := ReadArchive(data, DefaultArchiveLimits())
+	p, _, e := PrepareDecryption(data)
 	if e != nil {
 		return Decrypted{}, e
 	}
-	m, e := ParseManifest(archive.Manifest)
-	if e != nil {
-		return Decrypted{}, e
+	return p.Decrypt(key)
+}
+
+// Decrypt authenticates policy, root, every segment and metadata before
+// publishing any plaintext. It retains no caller-visible mutable aliases.
+func (p PreparedDecryption) Decrypt(key []byte) (Decrypted, error) {
+	if !p.ready || len(key) != 32 {
+		return Decrypted{}, errors.New("decryption: invalid prepared archive or payload key")
 	}
-	if e := m.ValidateModern(len(archive.Payload)); e != nil {
-		return Decrypted{}, e
-	}
+	archive, m := p.archive, p.manifest
 	k := m.Encryption.KeyAccess[0]
 	bh, e := encoding.Base64Decode(k.Binding.Hash)
 	if e != nil {
@@ -444,5 +497,5 @@ func DecryptWithPayloadKey(data, key []byte) (Decrypted, error) {
 			return Decrypted{}, e
 		}
 	}
-	return Decrypted{Payload: plain, Metadata: metadata, Manifest: m}, nil
+	return Decrypted{Payload: plain, Metadata: metadata, Manifest: clonePreparedManifest(m)}, nil
 }

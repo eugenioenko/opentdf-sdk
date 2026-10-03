@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab
+          ref: 4f5b428bf662a09991e05140484d4380e0401513
           path: goalchemy
       - run: bash sdk/scripts/delivery-offline.sh
 
@@ -49,7 +49,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab
+          ref: 4f5b428bf662a09991e05140484d4380e0401513
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
