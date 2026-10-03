@@ -105,7 +105,7 @@ def _options(options):
         if name in ('Attributes','Dissem'):
             if value is not None and type(value) not in (list,tuple):raise rt.LibraryFailure('invalid_argument')
             result[name]=None if value is None else [_text(x) for x in value]
-        elif name=='Metadata':result[name]=None if value is None else bytes(rt.library_bytes(value))
+        elif name=='Metadata':result[name]=rt.library_snapshot_bytes(value)
         else:result[name]=_text(value) if field.type is str else value
     return result
 
@@ -152,14 +152,14 @@ def encrypt(config: Config, payload: bytes | bytearray | memoryview | None, opti
     """Submit an owned, serialized call. Operation.cancel requests cleanup ACK."""
     try:
         native=_config(config);call=_call(native,provider)
-        return Operation(_generated.Encrypt(native,None if payload is None else bytes(rt.library_bytes(payload)),_options(options),call))
+        return Operation(_generated.Encrypt(native,rt.library_snapshot_bytes(payload),_options(options),call))
     except rt.LibraryFailure as failure:return _failed(failure)
 
 def decrypt(config: Config, archive: bytes | bytearray | memoryview | None, *, provider: Callable | None = None) -> Operation[Decrypted]:
     try:
         native=_config(config);call=_call(native,provider)
         def result(v):return Decrypted(v['Payload'] or b'',v['Metadata'] or b'',v['HasMetadata'],v['ManifestJSON'].decode('utf-8','strict'))
-        return Operation(_generated.Decrypt(native,None if archive is None else bytes(rt.library_bytes(archive)),call),result)
+        return Operation(_generated.Decrypt(native,rt.library_snapshot_bytes(archive),call),result)
     except rt.LibraryFailure as failure:return _failed(failure)
 
 def encrypt_sync(config: Config,payload: bytes,options: EncryptOptions | None = None,*,provider: Callable | None = None) -> bytes:return encrypt(config,payload,options,provider=provider).result()

@@ -22,6 +22,11 @@ try:
   rejection(value)
  released=memoryview(b'a');released.release();rejection(released)
  mutable=bytearray(b'abcd');view=memoryview(mutable).cast('B',shape=[2,2]);copied=library.library_bytes(view);mutable[:]=b'wxyz';check(bytes(copied)==b'abcd','helper owns multidimensional bytes')
+ immutable=b'abcd';check(library.library_snapshot_bytes(immutable) is immutable,'immutable input snapshot needs no duplicate allocation')
+ for value,make in ((b'abcd',lambda b:memoryview(b).cast('I')),(b'abcd',lambda b:memoryview(b).cast('B',shape=[2,2])),(b'axbxcxdx',lambda b:memoryview(b)[::2])):
+  mutable=bytearray(value);view=make(mutable)
+  before=bytes(view);snapshot=library.library_snapshot_bytes(view);mutable[:]=b'Z'*len(mutable)
+  check(snapshot==before,'typed/multidimensional/strided immutable submission snapshot')
  entered=[]
  original_encrypt=sdk._generated.Encrypt;original_decrypt=sdk._generated.Decrypt
  def spy_encrypt(config,payload,options,call):

@@ -409,18 +409,11 @@ func (c *Client) Decrypt(ctx context.Context, data []byte) (tdf.Decrypted, error
 	if e := c.check(ctx, "decrypt"); e != nil {
 		return tdf.Decrypted{}, e
 	}
-	archive, e := tdf.ReadArchive(data, tdf.DefaultArchiveLimits())
+	prepared, stage, e := tdf.PrepareDecryption(data)
 	if e != nil {
-		return tdf.Decrypted{}, failure("decrypt", "archive", e)
+		return tdf.Decrypted{}, failure("decrypt", stage, e)
 	}
-	m, e := tdf.ParseManifest(archive.Manifest)
-	if e != nil {
-		return tdf.Decrypted{}, failure("decrypt", "manifest", e)
-	}
-	e = m.ValidateModern(len(archive.Payload))
-	if e != nil {
-		return tdf.Decrypted{}, failure("decrypt", "unsupported_manifest", e)
-	}
+	m := prepared.Manifest()
 	if m.Encryption.KeyAccess[0].Type != "wrapped" && m.Encryption.KeyAccess[0].Type != "ec-wrapped" {
 		return tdf.Decrypted{}, failure("decrypt", "unsupported_kas_algorithm", nil)
 	}
@@ -446,7 +439,7 @@ func (c *Client) Decrypt(ctx context.Context, data []byte) (tdf.Decrypted, error
 	if e != nil {
 		return tdf.Decrypted{}, e
 	}
-	decrypted, e := tdf.DecryptWithPayloadKey(data, result)
+	decrypted, e := prepared.Decrypt(result)
 	// Best-effort zeroing of the recovered share; host allocations may retain copies.
 	for i := range result {
 		result[i] = 0

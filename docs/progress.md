@@ -1023,3 +1023,138 @@ Historical samples/profiles remain separately attributed. Unrelated full
 protocol matrices were not repeated. Goalchemy release CI is still running;
 SDK hosted CI will run on the user-authorized PR and is not claimed as passed.
 Root owns the signed SDK commit and PR publication.
+
+## Local buffer optimization started — 2026-10-03
+
+The user authorized local implementation and measurement of duplicate archive
+processing and redundant Python copies. Root isolated both repositories on
+`perf/python-buffer-handling-local`; the published release, SDK PR branch and
+accepted v0.2.0 installed packages remain intact. One worker owns the shared
+decryption path, Python facade and reusable Goalchemy buffer changes with focused
+tamper, snapshot, overlap and independent-output tests. Root owns review, matched
+Python 1/10/50 MiB benchmark acceptance and separate signed local commits.
+No push, publication or README benchmark replacement is authorized for this task.
+
+The preceding installed 50 MiB profile identifies repeated archive parsing and
+CRC/payload copying plus native-boundary slice temporaries. Its selected self-time
+buckets were 721 ms of allocation/copy bodies, 155 ms of generated JSON, 97 ms
+of CRC and 29 ms of AES-GCM. These are diagnostic observations, not promised
+optimization savings. Fresh matched baseline and optimized measurements will use
+the same native timer and independent stock-Go/KAS and ZIP checks.
+
+Root completed a fresh unchanged-package Python baseline under ignored
+`.local/benchmarks/python-buffer-before-2026-10-03/`: one warmup plus five timed
+pairs at each size, with medians 159.719 ms (1 MiB), 266.688 ms (10 MiB) and
+1144.598 ms (50 MiB). All 18 archives passed stock-Go real-KAS decryption and
+independent ZIP CRC checks. Root checked actual archive hashes and all 113
+installed Python package members against the accepted wheel. Raw result SHA256 is
+`a3358bd7f8408813aa3430dbc4ef11dc724b3806f6860aa59d54e7c41241a273`.
+These are baseline measurements; implementation acceptance and optimized results
+are pending.
+
+## Local buffer optimization accepted — 2026-10-03
+
+Root accepted the worker's exact 16-file production/test whitelist and verified
+actual focused JSON events: 14 top-level tests plus 47 subtests, no failures or
+skips. Checks preserve precredential CRC/manifest/profile errors, cached-state
+ownership, late-segment and metadata rejection, queued typed/multidimensional/
+strided snapshots, overlap and native/host lifecycle behavior. Native crypto
+passed 133 assertions, importing generated library 71 and installed boundary 31.
+
+The shared SDK now prepares an opaque, owned archive once and retains all MAC,
+segment and metadata authentication. Manifest inspection/result snapshots are
+deep-owned. Python removes duplicate immutable input allocations and intermediate
+slice copies while retaining mutable input snapshots and aliased-copy temporaries.
+Both Python package build paths match; all 113 installed members match the wheel.
+All seven targets compile/emit the changed SDK. The fresh Python BASIC matrix
+passed 35 actual comparisons, native provider/ownership checks and 11 rejection
+categories; its 69 recorded commands all exited zero. Earlier non-Python native
+and EC/DPoP acceptance remains historical rather than a newly replayed claim.
+
+Matched optimized E2E medians are 155.304 ms (1 MiB), 199.594 ms (10 MiB) and
+710.351 ms (50 MiB). Reductions against the fresh baseline are 2.8%, 25.2% and
+37.9%; 1 MiB remains within observed sample variation. Each campaign contains
+three cells, 15 timed pairs and 18 independently validated archives. Root checked
+all actual archive hashes, stock-Go/KAS and ZIP receipts, segment defaults and
+raw medians. The timer/harness and native cryptography binary are unchanged.
+See [local methodology/results](python-buffer-optimization.md).
+
+Goalchemy was committed locally as signed
+`4f5b428bf662a09991e05140484d4380e0401513` and the SDK compiler/CI pins now follow
+that unpublished commit. Measured producing source matches the accepted freeze;
+the subsequent pin/documentation edits do not change any timed operation.
+The released packages, README table, public results and existing PR branch remain
+unchanged. No push, release, package publication or hosted CI was triggered.
+
+## All-target local benchmark requested — 2026-10-03
+
+The user requested benchmarks for every native target to assess the shared archive
+optimization beyond Python. Root and one worker preserve SDK commit
+`a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy commit
+`4f5b428bf662a09991e05140484d4380e0401513` as the unchanged local candidate.
+The worker prepares fresh non-Python packages and independent consumers, reusing
+the previously verified candidate Python package. Cache reuse requires exact
+dependency hashes; existing accepted v0.2.0 packages remain untouched.
+
+Fresh baseline and candidate campaigns will run sequentially after builds, each
+with original Go and all seven generated native SDKs at 1/10/50 MiB, one warmup
+and five timed pairs per cell. Root prepared new baseline provenance using frozen
+accepted binaries without copying any timing samples. The control, native timer,
+configuration and independent stock-Go/KAS plus ZIP validation stay identical.
+Artifacts live under ignored `.local/buffer-all-targets-2026-10-03/`. No new
+result or cross-target performance improvement is claimed yet; README/public
+results and remote repositories remain unchanged.
+
+## All-target local benchmark accepted — 2026-10-03
+
+Fresh relative/absolute package builds and native installed consumers passed for
+Go, Node, Java, C#, Rust and C. Python reused the exact accepted candidate wheel,
+with its 113 actual import members reverified. The unchanged baseline packages
+remained separate. Root selected the exact baseline original-Go binary as the
+control in both campaigns, retaining an amendment for the unused freshly built
+reference binary. No production source, benchmark harness or timing boundary
+changed during this task.
+
+Both sequential full campaigns passed: original Go plus seven generated SDKs at
+1/10/50 MiB, one warmup and five measured E2E pairs per cell. All 288 archives
+passed independent stock-Go/KAS decryption, exact plaintext and ZIP CRC checks.
+Python 50 MiB falls 1085.96 to 702.17 ms (35.3%); Node falls 792.19 to 729.85 ms
+(7.9%), with nonoverlapping observed sample ranges. Go/Rust/C have lower 50 MiB
+medians but overlapping ranges; Java/C# barely change. Original-Go control
+variation prevents blanket attribution of small-file changes to this optimization.
+
+Root repeated only Java 1 MiB and C 10 MiB after their large initial slowdowns.
+The Java direction reversed (175.22 baseline to 119.47 candidate ms); C's repeat
+was 269.19 to 287.24 ms, a 6.7% slowdown rather than the initial 95.9%.
+Ranges overlap for both repeats. The original full results remain untouched;
+repeat samples are retained separately. These add 24 validated archives, making
+312 total across 52 cells and 260 measured pairs.
+
+Root verified all raw medians, statuses, actual archive hashes/byte counts and
+uniqueness, plus 1,637 producing source hashes, 1,290 package/install member hashes
+and 113 actual Python import members. Ignored artifacts and receipts are under
+`.local/buffer-all-targets-2026-10-03/`. See the
+[comparison and limitations](all-target-buffer-benchmarks.md). The README/public
+benchmark table, released packages, main and existing PR branch remain unchanged.
+No push, publication, EC/DPoP replay or hosted CI was triggered. Acceptance is
+recorded in a signed local documentation commit; producing source remains SDK
+`a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy
+`4f5b428bf662a09991e05140484d4380e0401513`.
+
+
+## Buffer optimization PR publication authorized — 2026-10-03
+
+The user requested PR creation after accepting the all-target benchmark conclusion.
+Root published the unchanged Goalchemy runtime commit on its review branch and
+opened [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10) against
+main. The SDK PR is based on the existing benchmark PR branch so it contains only
+the buffer optimization, tests, compiler pin and comparison documentation; merge
+[SDK PR #1](https://github.com/eugenioenko/opentdf-sdk/pull/1) first. The obsolete
+`local_only` reference marker is removed now that the exact compiler commit is
+publicly fetchable. Source pins and measured producing source remain unchanged.
+
+Publication metadata/documentation is checked for links, source identity and
+whitespace. No previously accepted benchmarks or tests are rerun for these
+metadata edits. Main branches, released packages and README/public benchmark
+results remain unchanged. Hosted CI may run normally upon opening the PRs;
+local benchmark acceptance does not claim those remote checks have passed.
