@@ -762,3 +762,41 @@ platform. CI workflow/orchestration and final coverage/review are still pending;
 this checkpoint does not claim final delivery acceptance or completed CI.
 Generated packages, private fixtures, keys, logs and local services remain ignored.
 The repository is named `eugenioenko/opentdf-sdk` and is public at user request.
+
+## Final delivery accepted — 2026-10-02
+
+The sole delivery worker finished; root's single final review accepted the
+47-file handoff. Root independently verified all 2,106 source hashes, 1,607
+named artifact/status hashes, package/compiler/consumer identities, exact worker
+scope and requirement references. Fourteen focused target/profile environments
+passed; canonical coverage across 24 native/browser profile environments combines
+preserved accepted matrices with individually hashed new gap cases. Production
+sources match accepted final packages; Go differs only in diagnostic comments.
+
+All seven two-path packages and independent imports pass. BASIC native/browser,
+Go/TypeScript explicit-empty-metadata EC/DPoP cases and actual Chromium profile
+checks pass. The original Go fixture self-copy and C fixture parsed-config GC
+root failures remain preserved; bounded corrections changed test fixtures, with
+successful preceding invocations retained. Python's current helper reproduces
+identical already-tested wheel bytes; Rust's 410 installed members match its
+immutable crate and corrupted-member rejection is proven. Coverage mutations
+reject missing/duplicate pairs, nonzero events and unreadable browser nonce.
+
+Only the private phase7 project was removed. Root restored the original stack
+and verified health, client-credentials Bearer issuer/audience and real RSA KAS
+key r1. A restart ordering race was repaired by waiting for the actual provisioned
+OIDC endpoint before platform startup; bounded order/failure proof passes.
+
+The seven-target workflow is executable with focused default/full manual mode.
+Actual local jobs are recorded, without claiming remote CI or a fresh full replay.
+Goalchemy pin remains765fcbc; separately observed external CLI-formatting work
+was preserved and excluded from compiled-source identities. SDK top-level
+licensing and public registry/module identities remain release decisions.
+
+The SDK repository is public and its checkpoint c16bc26 is already on main.
+Root commits this accepted delivery handoff next. The user separately requested
+README encryption and decryption performance tables: SDK rows,1/10/50MiB columns,
+original pinned GoSDK baseline1.00x for each operation/size. A sole benchmark
+worker measures accepted packages; the harness goal remains active until those
+new tables are measured, reviewed and committed. No correctness-matrix replay
+is required for that performance work.

@@ -67,7 +67,9 @@ int main(int argc,char **argv){assert(argc==5);GC_INIT();GC_allow_register_threa
  tdf3_operation *queued=tdf3_decrypt_submit(&c,(tdf3_bytes){result.Payload.data,result.Payload.length},&calls,&e);assert(queued);tdf3_operation_cancel(queued);assert(tdf3_operation_drive(queued,-1));tdf3_result empty={0};assert(tdf3_operation_take(queued,&empty,&e)==6);assert(!atomic_load(&held_released)&&!empty.Payload.data);tdf3_error_free(&e);tdf3_operation_destroy(&queued);
  tdf3_operation_cancel(active);tdf3_operation_wake(active);assert(tdf3_operation_drive(active,-1));assert(tdf3_operation_take(active,&empty,&e)==1);assert(atomic_load(&held_released)&&!empty.Payload.data);tdf3_error_free(&e);tdf3_operation_destroy(&active);
  for(int i=0;i<12;i++){tdf3_result next={0};assert(!tdf3_decrypt(&c,(tdf3_bytes){result.Payload.data,result.Payload.length},&calls,&next,&e));assert(next.Payload.length==4&&!memcmp(next.Payload.data,expected,4));tdf3_result_free(&next);tdf3_error_free(&e);}
- tdf3_result_free(&result);assert(!memcmp(decrypted.Payload.data,expected,4));tdf3_result_free(&decrypted);free((void *)c.AllowedKAS);puts("PASS async snapshots/owned metadata + queued/active cancel actual provider release + drive/wake/take/destroy/recovery");return 0;}
+ // Parsed JSON owns strings referenced by the malloc-backed route array.
+ // Keep that caller input alive across every async/repeated submission.
+ tdf3_result_free(&result);assert(!memcmp(decrypted.Payload.data,expected,4));tdf3_result_free(&decrypted);GC_reachable_here(j);free((void *)c.AllowedKAS);puts("PASS async snapshots/owned metadata + queued/active cancel actual provider release + drive/wake/take/destroy/recovery");return 0;}
  if(!strcmp(mode,"controlled")){
  c.TokenProviderName=str("controlled");gxc_options controlled_calls={.provider=provider,.provider_state=&ps};ps.config=c;ps.case_name="invalid-token";
  snprintf(path,sizeof path,"%s/archive.tdf",run);raw=readfile(path,&n);assert(raw);tdf3_operation *op=tdf3_decrypt_submit(&c,(tdf3_bytes){raw,n},&controlled_calls,&e);assert(op);free(raw);

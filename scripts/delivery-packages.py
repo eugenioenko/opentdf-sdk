@@ -54,7 +54,7 @@ def command(args, cwd, env, log, timeout=1800):
         raise RuntimeError('command failed; see '+str(log))
 
 
-def build(target, base, compiler):
+def build(target, base, compiler, compiler_revision=None):
     destination = base/'packages'/target
     destination.mkdir(parents=True, exist_ok=True)
     env = os.environ.copy()
@@ -83,12 +83,15 @@ def build(target, base, compiler):
     prior_sources = production_sources(old, target) if old.exists() else {}
     delta = {p: {'accepted': prior_sources.get(p), 'final': current_sources.get(p)}
              for p in sorted(set(current_sources)|set(prior_sources)) if current_sources.get(p) != prior_sources.get(p)}
-    receipt = {'target': target, 'compiler_sha256': sha(compiler), 'compiler_revision': subprocess.check_output(['git', '-C', str(SDK.parent/'goalchemy'), 'rev-parse', 'HEAD'], text=True).strip(),
+    host_revision = subprocess.check_output(['git', '-C', str(SDK.parent/'goalchemy'), 'rev-parse', 'HEAD'], text=True).strip()
+    receipt = {'target': target, 'compiler_sha256': sha(compiler), 'compiler_revision': compiler_revision or host_revision,
+               'compiler_revision_provenance': 'explicit source pin; match binary SHA to compiler build receipt' if compiler_revision else 'current Goalchemy checkout at build',
+               'host_goalchemy_revision': host_revision,
                'helper_sha256': sha(SDK/('scripts/build-generated-'+target+'.sh')),
                'caller_path_proofs': ['relative destination and relative compiler from independent caller', 'absolute destination and compiler from another independent caller'],
                'deliverable_members': hashes[0], 'repeatable': repeatable,
                'second_deliverable_members': hashes[1], 'production_sources': current_sources,
-               'accepted_artifact_tree': str(old), 'accepted_artifact_source_delta': delta,
+               'historical_default_artifact_tree': str(old), 'historical_default_artifact_source_delta': delta,
                'native_dependencies_lock_sha256': sha(SDK/('hosts/'+target+'/dependencies.lock.json')) if (SDK/('hosts/'+target+'/dependencies.lock.json')).exists() else None,
                'status': 0 if repeatable else 1, 'time': time.time()}
     (destination/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
@@ -102,9 +105,10 @@ def main():
     parser.add_argument('target', choices=(*TARGETS, 'all'))
     parser.add_argument('--base', type=Path, default=SDK/'.local/phase7')
     parser.add_argument('--compiler', type=Path, default=SDK/'.local/phase7/compiler/goalchemy')
+    parser.add_argument('--compiler-revision', help='Recorded build source pin for a previously frozen compiler; binary hash remains authoritative')
     args = parser.parse_args()
     for target in TARGETS if args.target == 'all' else (args.target,):
-        build(target, args.base.resolve(), args.compiler.resolve())
+        build(target, args.base.resolve(), args.compiler.resolve(),args.compiler_revision)
 
 
 if __name__ == '__main__':

@@ -53,7 +53,7 @@ Do not transpile the reference SDK and its dependency tree wholesale. Goalchemy 
 - [x] Phase 4: Seven-target byte/host foundation and generated Go library
 - [x] Phase 5: TypeScript SDK for Node and browsers
 - [x] Phase 6: Java, C#, Python, Rust, and C SDKs in sequence
-- [ ] Phase 7: Interop CI and TDF3 delivery readiness
+- [x] Phase 7: Interop CI and TDF3 delivery readiness
 
 ## Phase 0 Reference audit and compatibility inventory
 
@@ -183,14 +183,18 @@ headers and cancellable operations. BASIC/EC/enforced-DPoP seven-case matrices
 and focused native/collector/sanitizer checks pass. Its single acceptance review
 repaired first-caller collector ownership and HTTP gzip/header/bound semantics;
 original matrices retain their artifact identity and focused supplements prove
-the repaired package. See [C delivery](generated-c-library.md). Phase 6 is
-accepted; Phase 7 clean-package and executable CI delivery remains open.
+the repaired package. See [C delivery](generated-c-library.md). Phase 6 and final clean-package/focused local delivery are accepted;
+see [final delivery](final-delivery.md).
 
 ## Phase 7 Interop CI and TDF3 delivery readiness
 
-The sole delivery worker is active after all seven target phase commits. Root
-coordinates platform profiles, reviews final evidence and commits the accepted
-delivery phase. Clean packages and actual execution of required jobs remain open.
+The delivery worker has finished. Root accepted reproducible packages,
+independent native imports, 14 focused local target/profile environments and
+canonical 24-environment source/case correspondence to preserved matrices.
+At user request, unchanged full matrices were reused rather than replayed.
+Remote CI is unexecuted; the executable workflow defaults to focused mode and
+provides explicit manual full mode. A separate requested performance comparison
+will add encryption/decryption tables with SDK rows and file-size columns.
 
 Run a pinned platform stack in CI with separate bounded jobs for targets. Test seven targets in both directions against both reference SDKs: 28 baseline producer/consumer pairs. The TypeScript browser environment is an additional run of the TypeScript target. RSA/EC, Bearer/DPoP, payload sizes, and negative cases expand each applicable pair rather than being implied by the count.
 
@@ -198,7 +202,7 @@ Provide fast offline format/conformance tests and a clearly named integration su
 
 Document APIs, setup, dependencies, limits, supported TDF profiles, unsupported features, and package installation. Check clean builds and ownership/error behavior at host boundaries. Keep release artifacts reproducible; do not publish packages without an explicit release instruction.
 
-Acceptance: the complete baseline matrix and required negative cases pass in CI; generated packages work from native consumers; documentation matches the supported TDF3 profile and explicit limitations; Phase 0 through Phase 6 criteria and the delivery checklist are satisfied. This completes the current seven-target TDF3/KAS goal. Public package publication is a separate action requiring an explicit release instruction.
+Acceptance: complete baseline/negative evidence is preserved and matched to final production sources, with focused final jobs actually executed locally; generated packages work from native consumers; documentation matches the supported TDF3 profile and explicit limitations; Phase 0 through Phase 6 criteria and the delivery checklist are satisfied. This completes the current seven-target TDF3/KAS goal. Public package publication is a separate action requiring an explicit release instruction.
 
 ## Deferred reference features outside this goal
 

@@ -5,7 +5,7 @@ from pathlib import Path
 SDK=Path(__file__).resolve().parents[3]
 BASE=Path(os.environ.get('TDF_JAVA_CONTROLLED_OUT',str(SDK/'.local/java-tdf-library/controlled')))
 BASE.mkdir(parents=True,exist_ok=True)
-archive=SDK/'.local/java-tdf-library/basic-result-fix/binary.generated.tdf'
+archive=Path(os.environ.get('TDF_DELIVERY_ARCHIVE',str(SDK/'.local/java-tdf-library/basic-result-fix/binary.generated.tdf')))
 key,cert=BASE/'server.key',BASE/'server.crt'
 subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(cert),'-days','1','-subj','/CN=localhost'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 key.chmod(0o600)

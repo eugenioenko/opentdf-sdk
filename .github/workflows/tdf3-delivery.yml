@@ -1,0 +1,91 @@
+name: Seven-target TDF3 delivery
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      coverage:
+        description: Focused final-package checks or explicitly requested full interoperability matrices
+        type: choice
+        options: [focused, full]
+        default: focused
+
+permissions:
+  contents: read
+
+jobs:
+  offline-format-protocol:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: sdk
+      - run: bash sdk/scripts/delivery-offline.sh
+
+  real-kas-native-packages:
+    name: Real KAS ${{ matrix.target }} (${{ inputs.coverage || 'focused' }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        target: [go, typescript, java, csharp, python, rust, c]
+    env:
+      GOTOOLCHAIN: go1.25.14
+      RUSTUP_TOOLCHAIN: 1.98.0
+      TDF_COMPOSE_PROJECT: phase7-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+      TDF_PLATFORM_IMAGE: phase7-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}-platform:local
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          path: sdk
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: eugenioenko/goalchemy
+          ref: 765fcbc51241204d283ae68ff15e9957bc91c865
+          path: goalchemy
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: opentdf/platform
+          ref: f2635158b681fa970aafce7eacf108a453521f63
+          path: platform
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: opentdf/web-sdk
+          ref: 55a0521b1499b392c75373e11ec5930c6a43f0c7
+          path: web-sdk
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.15.0
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            goalchemy/.toolchains/downloads
+            sdk/.local/npm-cache
+            sdk/.local/go-mod-cache
+            ~/.cargo/registry
+          key: tdf3-linux-x64-${{ matrix.target }}-go1.25.14-node24.15.0-rust1.98.0-${{ hashFiles('goalchemy/toolchains.lock', 'sdk/hosts/**/dependencies.lock.json', 'sdk/hosts/rust/Cargo.lock', 'sdk/hosts/delivery/package-lock.json', 'platform/**/go.sum', 'web-sdk/lib/package-lock.json', 'web-sdk/cli/package-lock.json') }}
+      - name: Native build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends build-essential pkg-config cmake perl python3.10-venv python3-pip
+          if [ '${{ matrix.target }}' = c ]; then
+            sudo apt-get install --no-install-recommends --allow-downgrades libssl-dev=3.0.2-0ubuntu1.29 libssl3=3.0.2-0ubuntu1.29 openssl=3.0.2-0ubuntu1.29
+          fi
+          if [ '${{ matrix.target }}' = rust ]; then rustup toolchain install 1.98.0 --profile minimal; fi
+          if [ '${{ matrix.target }}' = typescript ]; then npx --yes playwright@1.58.2 install-deps chromium; fi
+      - name: Pinned native packages and actual real-service jobs
+        run: python3 sdk/scripts/delivery-job.py '${{ matrix.target }}' --mode '${{ inputs.coverage || 'focused' }}'
+      - name: Remove this job's isolated services
+        if: always()
+        run: timeout 90 docker compose --project-name "$TDF_COMPOSE_PROJECT" --env-file sdk/dev/images.env -f sdk/dev/compose.yaml down --remove-orphans
+      - name: Safe artifact manifests (no private keys, credentials or token diagnostics)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: tdf3-${{ matrix.target }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: sdk/.local/phase7/public
+          if-no-files-found: error
+          retention-days: 14

@@ -1,28 +1,56 @@
 # OpenTDF SDK with Goalchemy
 
-This repository contains one shared Go TDF3 encryption/decryption SDK, compiled by Goalchemy into libraries for Go, TypeScript, Java, C#, Python, Rust, and C. TypeScript supports Node and browsers. Generated packages are build outputs; the shared source and all seven build helpers live in this repository.
+One shared Go implementation provides TDF3 encryption/decryption libraries for
+**Go, TypeScript, Java, C#, Python, Rust and C**. TypeScript supports Node and
+browsers. The shared source, native adapters and all seven build helpers live
+in this repository; generated packages are ignored build outputs.
 
-The goal is to ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS. TypeScript includes Node and browsers. The [delivery checklist](docs/delivery-checklist.md) defines completion; broader Go SDK feature parity is outside this goal.
+All seven libraries have passed interoperability checks against the pinned
+OpenTDF Go and Web SDKs through real KAS. The supported byte API includes
+RSA-2048/P-256 wrapping and response sessions, RS256/ES256 signing, Bearer and
+enforced DPoP, encrypted metadata, owned results and cancellation. See
+[verified delivery and build instructions](docs/final-delivery.md) and
+[profile limits](docs/compatibility.md). Full OpenTDF API parity is outside scope.
 
-Phases 0–5 are accepted for the shared implementation and compiler foundation. The native Go SDK has verified shared [formats](docs/format.md), an [encryption/integrity engine](docs/crypto-engine.md), and a [client](docs/client.md) with [RSA/P256 wrapping and response sessions](docs/ec-client.md), Bearer authentication and [enforced DPoP/nonce handling](docs/dpop-client.md). Independent live tests passed both directions against the pinned Go and TypeScript reference formats, with stock Web DPoP authentication limitations recorded separately. The [importable generated Go SDK](docs/generated-go-library.md) has also passed real KAS RSA/P256, Bearer/enforced-DPoP and negative checks against both references. The [generated TypeScript SDK](docs/generated-typescript-library.md) is accepted for Node and actual Chromium, including WebCrypto/fetch, imported ESM packages, RSA/P256, Bearer/enforced DPoP, ownership, cancellation and rejection checks. The [generated Java SDK](docs/generated-java-library.md) is accepted as an importable JAR with native crypto/HTTP, real-KAS profile and negative checks, owned values and cancellable asynchronous calls. The [generated C# SDK](docs/generated-csharp-library.md) is accepted as a .NET 8 class library with built-in crypto/HTTP, owned typed results, cancellable tasks and real-KAS interoperability. The [generated Python SDK](docs/generated-python-library.md) is accepted as an installable package with maintained crypto, bounded HTTP, owned sync/async calls and real-KAS interoperability. The [generated Rust SDK](docs/generated-rust-library.md) is accepted as an importable locked Cargo library with maintained crypto/HTTP, owned cancellable Result/Future calls and real-KAS interoperability. The [generated C SDK](docs/generated-c-library.md) is accepted as a C17 native archive with OpenSSL/libcurl, owned values, explicit releases, cancellable operations and real-KAS interoperability. Final clean-package and CI delivery remains Phase 7. The [implementation plan](docs/plan.md) and [progress log](docs/progress.md) record the remaining work; [references.lock.json](references.lock.json) pins the reference revisions.
+| SDK | Package | API and prerequisites |
+| --- | --- | --- |
+| Go | Importable Go module | [Go](docs/generated-go-library.md) |
+| TypeScript | Portable ESM and declarations for Node/browser | [TypeScript](docs/generated-typescript-library.md) |
+| Java | JAR with locked provider | [Java](docs/generated-java-library.md) |
+| C# | .NET 8 class library | [C#](docs/generated-csharp-library.md) |
+| Python | Installable wheel | [Python](docs/generated-python-library.md) |
+| Rust | Locked Cargo crate | [Rust](docs/generated-rust-library.md) |
+| C | C17 headers, static library and source archive | [C](docs/generated-c-library.md) |
 
-From this directory, run `make platform-up`, `make platform-ready`, and `make interop-smoke`. See [platform setup](docs/platform.md) for prerequisites, configuration, and lifecycle commands.
+## Build and run
 
-The native Go module is `opentdf-local/sdk`. Its current byte API exposes `New`, `Create`, `Decrypt`, `PublicKey`, and `Close`; see [client configuration and limitations](docs/client.md). Run `GOTOOLCHAIN=go1.25.14 go test -race ./...` for native checks (Node is needed for the independent URL oracle). Phase 4 has verified generated Go executable HTTP and an initial real-KAS RSA/Bearer interoperability probe against both reference CLIs, plus [TypeScript host scheduling](../goalchemy/docs/typescript-host-operations.md) in Node and actual Chromium, the [Java host lifecycle](../goalchemy/docs/java-host-operations.md) on the JVM, [C# host scheduling](../goalchemy/docs/csharp-host-operations.md) on .NET, the [Python host lifecycle](../goalchemy/docs/python-host-operations.md) on CPython, the [Rust host lifecycle](../goalchemy/docs/rust-host-operations.md) with native and emitted-program checks, and the [C host lifecycle](../goalchemy/docs/c-host-operations.md) with collector, sanitizer and emitted-program checks. All seven byte backends and generic host prerequisites are accepted. The generated Go library owns per-call initialization, copied inputs/results, cancellation, keys and scoped native token providers. TypeScript adds portable WebCrypto/fetch adapters and an importable ESM SDK for Node and browsers. Java adds a named-package JAR and JDK 21 capabilities, with pinned BC 1.86 for HKDF and omitted-public-point P-256 imports. C# adds a .NET 8 class library with built-in crypto/HTTP and native token providers. Python adds an installable wheel with cryptography 50.0.2, bounded standard-library HTTP and owned cancellable sync/async operations. Rust adds a locked Cargo library with OpenSSL/reqwest, typed owned results and cancellable native Futures. C adds a native archive and explicit-length headers with owned results, collector-safe source owners and cancellable operations; final all-target package/CI delivery remains in Phase 7.
+Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts at the revisions
+in [references.lock.json](references.lock.json). Build the pinned Goalchemy binary
+and run the corresponding `scripts/build-generated-<target>.sh` helper; both
+relative and absolute output/compiler paths are supported. Exact toolchains,
+installation commands and native dependencies are documented in
+[final delivery](docs/final-delivery.md).
 
-The [root API index](docs/reference-api.json) and [public subpackage index](docs/reference-subpackages.json) preserve the pinned Go API for reference and possible future work. Their broader service and helper APIs are outside the current delivery scope.
+From this directory, run `make platform-up`, `make platform-ready` and
+`make interop-smoke` for the authenticated BASIC Docker setup. See
+[platform setup](docs/platform.md) and [EC/DPoP profiles](docs/secure-profiles.md).
 
-## Workspace
+## Verification
 
-| Directory | Role |
-| --- | --- |
-| `../goalchemy/` | Compiler, runtime contracts, native capabilities, and generated library support |
-| `../platform/sdk/` | Go SDK reference |
-| `../platform/otdfctl/` | Go CLI for setup and reference encryption/decryption |
-| `../web-sdk/lib/` | TypeScript SDK reference for Node and browser behavior |
-| `../web-sdk/cli/` | Node CLI for reference encryption/decryption |
-| `./` | Shared SDK source, development platform setup, interop harness, and generated package configuration |
+Each package was built reproducibly and imported by an independent native
+consumer. Final local focused real-KAS checks cover all seven targets plus
+actual Chromium, with additional EC/DPoP metadata cases and a readable browser
+nonce challenge. Existing full interoperability and rejection matrices were
+preserved and matched to final production sources. The only generated Go source
+difference is diagnostic line comments. See [evidence and limitations](docs/final-delivery.md).
 
-## Progress
+[GitHub Actions](.github/workflows/tdf3-delivery.yml) defines focused checks for
+pull requests and manual runs, with full matrices as a manual option. Remote CI
+and a repeated full matrix are not claimed as executed final-delivery results.
+Generated packages, local credentials, keys and test outputs stay out of Git.
 
-The orchestrator coordinates one worker agent at a time, reviews each result, and records the evidence before advancing. See the phase checklist in the plan for accepted work and outstanding tasks. Generated artifacts, local credentials, keys, and test outputs must stay out of source control.
+The [delivery checklist](docs/delivery-checklist.md) and
+[progress log](docs/progress.md) record acceptance. The
+[reference API index](docs/reference-api.json) preserves broader APIs for future
+work. Package names remain development identities; package-registry publication
+and the repository's top-level license decision are separate release work.

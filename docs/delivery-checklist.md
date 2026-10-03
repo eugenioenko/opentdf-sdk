@@ -78,16 +78,17 @@ required case, mock KAS or self-round-trip cannot satisfy these checks.
 
 | Target | Accepted work | Delivery evidence still required |
 | --- | --- | --- |
-| Go | Importable generated SDK/native consumer; RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| TypeScript | Importable Node/browser ESM SDK, native WebCrypto/fetch, RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| Java | Importable JAR/native consumer; JCA/BC crypto, bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| C# | Importable .NET 8 DLL/native consumer; built-in crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| Python | Installable wheel/native consumer; cryptography and bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| Rust | Importable locked Cargo library/native consumer; maintained crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| C | Importable native archive/headers; OpenSSL/libcurl, owned values, collector/sanitizer lifecycle, RSA/P256, Bearer/enforced-DPoP and SDK/KAS matrices | Final clean package/CI delivery checks in Phase 7 |
+| Go | Importable generated SDK/native consumer; RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
+| TypeScript | Importable Node/browser ESM SDK, native WebCrypto/fetch, RSA/P256, RS256/ES256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
+| Java | Importable JAR/native consumer; JCA/BC crypto, bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
+| C# | Importable .NET 8 DLL/native consumer; built-in crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
+| Python | Installable wheel/native consumer; cryptography and bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
+| Rust | Importable locked Cargo library/native consumer; maintained crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
+| C | Importable native archive/headers; OpenSSL/libcurl, owned values, collector/sanitizer lifecycle, RSA/P256, Bearer/enforced-DPoP and SDK/KAS matrices | Verified clean packages/imports and focused local jobs; see [final delivery](final-delivery.md) |
 
-Update this ledger from terminal evidence, not implementation intent. All seven
-target SDK phases are accepted; Phase 7 CI/package checks remain required for
-all seven targets. Commit after each verified phase in SDK and, when changed, Goalchemy.
+Update this ledger from terminal evidence, not implementation intent. All seven target SDKs and final clean-package/focused local delivery are accepted.
+Preserved full matrices are matched to the final sources; remote CI/full replay
+are explicitly unexecuted. The user additionally requested measured README
+encryption/decryption comparisons, which remain in progress. Commit after each verified phase in SDK and, when changed, Goalchemy.
 Shipping here means reviewable, reproducible packages and passing delivery
 evidence; public publishing requires a separate release instruction.

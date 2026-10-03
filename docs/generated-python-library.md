@@ -234,5 +234,6 @@ DPoP limitations remain separately recorded; retained stock-Go/Web formats
 created under Bearer are consumed by generated Python under enforced DPoP.
 Successful generated auth is not a claim of successful stock Web enforced auth.
 BASIC was restored and verified by the root after the enforced profile.
-Rust, C and final Phase 7 package/CI delivery remain open. Publishing is a
-separate release action.
+All seven target libraries are accepted. [Final delivery](final-delivery.md)
+records clean package and CI evidence separately. Package-registry publication
+requires a separate release action.

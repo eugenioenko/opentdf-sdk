@@ -138,6 +138,8 @@ up() {
     provision
     date -u +%FT%TZ > "$LOCAL/provisioned"
   fi
+  # Restarted/provisioned stacks still need the issuer before platform startup.
+  wait_url http://localhost:8888/auth/realms/opentdf/.well-known/openid-configuration
   compose up -d platform
   wait_url http://localhost:8080/healthz
   check_profile

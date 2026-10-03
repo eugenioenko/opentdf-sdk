@@ -5,7 +5,8 @@ The generated `OpenTDF.TDF3.dll` exposes `OpenTDF.TDF3` from the shared
 inside the imported assembly; the production path has no Go process, compiler
 internals or stock SDK dependency. Root acceptance and the seven-target delivery
 ledger remain in [the plan](plan.md) and [delivery checklist](delivery-checklist.md).
-Python, Rust, C and final Phase7 package/CI delivery remain required.
+All seven targets have accepted native libraries. [Final delivery](final-delivery.md)
+records clean packages and the scope of final-package and CI validation.
 
 Build from any working directory with Bash, Python3, the .NET8 SDK and a built
 Goalchemy compiler. The checkout pins SDK8.0.425/runtime8.0.31 under

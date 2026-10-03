@@ -93,6 +93,7 @@ def install(target, base):
     elif target == 'rust':
         env.update(TDF_RUST_CONSUMER_OUT=str(destination), TDF_RUST_PACKAGE=str(build/'target/package/opentdf-tdf3-0.1.0.crate'))
         run([source/'install-consumer.sh'])
+        package = destination/'installed/opentdf-tdf3-0.1.0'
         command = [str(destination/'consumer/target/release/tdf3-native-consumer')]
     else:
         env.update(TDF_C_CONSUMER_OUT=str(destination), TDF_C_PACKAGE=str(build/'opentdf-tdf3-c-0.1.0-linux-x86_64.tar.gz'))
@@ -106,7 +107,8 @@ def install(target, base):
              '-L'+prefix+'/usr/lib/x86_64-linux-gnu', '-lcurl', '-lssl', '-lcrypto',
              SDK.parent/'goalchemy/.toolchains/bdwgc/lib/libgc.a', '-lpthread', '-ldl',
              '-o', destination/'no-preinit-consumer'])
-    receipt = {'target': target, 'consumer_command': command, 'environment': {k: v for k, v in env.items() if k.startswith(('TDF_', 'TDF3_')) or k in ('LD_LIBRARY_PATH', 'JAVA_HOME')},
+    exported = {'TDF_TS_PACKAGE','TDF_RUST_CONSUMER_OUT','TDF_RUST_PACKAGE','TDF_C_CONSUMER_OUT','TDF_C_PACKAGE','TDF3_CURL_PREFIX','LD_LIBRARY_PATH','JAVA_HOME'}
+    receipt = {'target': target, 'consumer_command': command, 'environment': {k: v for k, v in env.items() if k in exported},
                'installed_package_members': {str(p.relative_to(destination)): packages.sha(p) for p in sorted(package.rglob('*')) if p.is_file()},
                'source_consumer_members': {str(p.relative_to(SDK)): packages.sha(p) for p in sorted(source.glob('*')) if p.is_file() and p.suffix in ('.go', '.mjs', '.java', '.cs', '.py', '.rs', '.c', '.in')},
                'commands': logs, 'status': 0, 'independent_build_output': True}

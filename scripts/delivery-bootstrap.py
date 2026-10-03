@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -26,6 +27,15 @@ def main():
     environment = os.environ.copy()
     environment['GOTOOLCHAIN'] = 'go1.25.14'
     commands = []
+    versions = {}
+
+    def version(name, command):
+        versions[name] = subprocess.check_output([str(value) for value in command],env=environment,stderr=subprocess.STDOUT,text=True).strip()
+        return versions[name]
+
+    assert version('go',['go','version']).startswith('go version go1.25.14 '), 'Go1.25.14 required'
+    assert version('node',['node','--version']) == 'v24.15.0', 'Node24.15.0 required for stock Web and browser tooling'
+    version('python',['python3','--version'])
 
     def run(command, cwd=SDK, timeout=1800):
         log = base/('bootstrap-'+str(len(commands))+'.log')
@@ -43,10 +53,25 @@ def main():
         assert actual == pin['revision'], name+' pin mismatch'
         assert not subprocess.check_output(['git','-C',str(path),'status','--porcelain','--untracked-files=no']), name+' tracked source dirty'
     artifacts = {}
+    toolchains = SDK.parent/'goalchemy/.toolchains'
+    toolchain_lock = dict(re.findall(r"^([A-Z0-9_]+)='([^']*)'$",(SDK.parent/'goalchemy/toolchains.lock').read_text(),re.M))
+    native_archives = {'jdk':('JDK','OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz'),
+                      'dotnet':('DOTNET','dotnet-sdk-8.0.425-linux-x64.tar.gz'),
+                      'bdwgc':('BDWGC','gc-8.2.8.tar.gz')}
     targets = ('go','typescript','java','csharp','python','rust','c') if args.target == 'all' else (args.target,)
     for target, tool in (('java','jdk'),('csharp','dotnet'),('c','bdwgc')):
         if target in targets:
             run([SDK.parent/'goalchemy/scripts/fetch-toolchains.sh',tool])
+            prefix,name = native_archives[tool]
+            archive = toolchains/'downloads'/name
+            assert sha(archive) == toolchain_lock[prefix+'_SHA256']
+            artifacts[name] = sha(archive)
+            if tool == 'jdk':
+                version('java',[toolchains/'jdk-21.0.12.1+1/bin/java','-version'])
+            elif tool == 'dotnet':
+                assert version('dotnet',[toolchains/'dotnet/dotnet','--version']) == '8.0.425'
+            else:
+                artifacts['bdwgc/lib/libgc.a'] = sha(toolchains/'bdwgc/lib/libgc.a')
     if 'typescript' in targets:
         tooling = base/'tooling'
         tooling.mkdir(exist_ok=True)
@@ -74,7 +99,7 @@ def main():
         run([venv/'bin/python','-m','pip','install','--no-index','--no-deps',*sorted(wheels.glob('*.whl'))])
         environment.update(TDF_PYTHON=str(venv/'bin/python'),TDF_WHEELHOUSE=str(wheels))
     if 'rust' in targets:
-        assert subprocess.check_output(['rustc','--version'],text=True).startswith('rustc 1.98.0 '), 'Rust1.98.0 required'
+        assert version('rustc',['rustc','--version']).startswith('rustc 1.98.0 '), 'Rust1.98.0 required'
     if 'c' in targets:
         lock = json.loads((SDK/'hosts/c/dependencies.lock.json').read_text())
         prefix = base/'curl-prefix'
@@ -93,7 +118,7 @@ def main():
         environment['TDF3_CURL_PREFIX'] = str(prefix)
     exported = {key:value for key,value in environment.items() if key in ('GOTOOLCHAIN','TSC_BIN','TDF_BROWSER_TOOLING','PLAYWRIGHT_BROWSERS_PATH','TDF_PYTHON','TDF_WHEELHOUSE','TDF3_CURL_PREFIX')}
     (base/'environment.json').write_text(json.dumps(exported,indent=2)+'\n')
-    (base/'bootstrap-receipt.json').write_text(json.dumps({'status':0,'targets':targets,'references':refs,'artifacts':artifacts,'commands':commands,'environment':exported},indent=2)+'\n')
+    (base/'bootstrap-receipt.json').write_text(json.dumps({'status':0,'targets':targets,'references':refs,'artifacts':artifacts,'versions':versions,'toolchains_lock_sha256':sha(SDK.parent/'goalchemy/toolchains.lock'),'commands':commands,'environment':exported},indent=2)+'\n')
     print('PASS pinned bootstrap',','.join(targets))
 
 

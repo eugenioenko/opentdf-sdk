@@ -3,8 +3,9 @@
 The shared façade is [`library`](../library/library.go). Goalchemy lowers its
 Encrypt and Decrypt exports and all reachable SDK code into an importable Go
 package. The emitted package imports its bundled standard-library capabilities;
-it never imports the original SDK implementation. Other target libraries and
-non-Go production HTTP/crypto adapters remain unavailable.
+it never imports the original SDK implementation. All seven native target
+libraries are now available; [final delivery](final-delivery.md) describes their
+packages and the separately attributed validation evidence.
 
 ## Build and import
 
@@ -135,9 +136,9 @@ constructor/init failure. SDK native tests check exact token wire ranges and
 stable error fields. The independent live consumer/reference sources are under
 `tests/interop/generatedlibrary` and `tests/interop/generatedreference`.
 
-Generated Go profile/negative/KAS acceptance and all-seven SDK delivery must be
-reported from terminal evidence separately. This boundary does not complete
-Phase 4 or the seven-target delivery goal.
+Generated Go profile/negative/KAS acceptance is recorded in the delivery ledger.
+The [final delivery record](final-delivery.md) distinguishes those accepted
+matrices from final-package checks and executable CI definitions.
 
 Successful value/error ownership conversion runs inside the active owner before
 source-global reset, runtime retirement or reservation release. This includes

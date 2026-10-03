@@ -13,7 +13,9 @@ An optional destination argument selects a local package directory;
 GOALCHEMY_BIN selects a rebuilt compiler binary. The script compiles from the
 SDK module, adds the typed adapter, and emits JavaScript and declarations with
 tsc. Verified tooling is TypeScript6.0.3 and Go1.25.14. Node requires22.6 or later;
-current Node24.15.0 and Chromium147 evidence use native WebCrypto/fetch.
+accepted Node24.15.0 and Chromium147 evidence use native WebCrypto/fetch.
+The focused [final-package jobs](final-delivery.md) used pinned Playwright1.58.2
+Chromium145.0.7632.6 with the independently installed ESM package.
 
 The output package is `@opentdf-local/tdf3`. A native consumer can run
 `npm install /absolute/path/to/generated/package` and import it normally.

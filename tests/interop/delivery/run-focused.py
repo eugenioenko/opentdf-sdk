@@ -118,7 +118,8 @@ def run(target, profile, packages_base, output_base):
                 for source in ('go', 'web', 'generated'):
                     label = name+'.'+source
                     archive = output/((name if source == 'generated' else producer)+'.'+source+'.tdf')
-                    shutil.copyfile(archive, output/(label+'.tdf'))
+                    if archive != output/(label+'.tdf'):
+                        shutil.copyfile(archive, output/(label+'.tdf'))
                     event = native('decrypt', label)
                     assert (output/(label+'.out')).read_bytes() == payload
                     assert (output/(label+'.metadata')).read_bytes() == b''
