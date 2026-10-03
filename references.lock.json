@@ -3,7 +3,7 @@
   "repositories": {
     "goalchemy": {
       "path": "../goalchemy",
-      "revision": "106b6a53ffcd08a775fca4950f6f5146e3ed2220",
+      "revision": "967dfa5c51ae423a7939c83476ad4108958c51ef",
       "baseline_revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907"
     },
     "platform": {

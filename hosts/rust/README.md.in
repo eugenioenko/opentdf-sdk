@@ -1,0 +1,93 @@
+# OpenTDF TDF3 Rust SDK
+
+`opentdf-tdf3` is a Cargo library that executes the generated shared Go TDF3
+implementation. Production calls need no compiler, Go process or stock SDK.
+The supplied Cargo.lock pins native crypto, verified HTTPS and all dependencies.
+The tested platform is Rust 1.98.0 on x86_64 Linux GNU. Dependency metadata
+requires Rust 1.88 or later. Native builds need a C compiler, CMake, Make and Perl.
+Vendored OpenSSL and AWS-LC are built from the pinned crate archives.
+
+```rust,no_run
+use opentdf_tdf3::{Config, EncryptOptions, CallOptions, encrypt, decrypt};
+let config = Config {
+    platform_url: "https://platform.example".into(),
+    kas_url: "https://platform.example/kas".into(),
+    issuer_url: "https://issuer.example".into(),
+    client_id: "server-client".into(),
+    client_secret: "read-from-server-storage".into(),
+    ..Default::default()
+};
+let archive = encrypt(config.clone(), vec![0, 255],
+    EncryptOptions { include_metadata: true, metadata: vec![], ..Default::default() },
+    CallOptions::default()).wait()?;
+let result = decrypt(config, archive, CallOptions::default()).wait()?;
+assert_eq!(result.Payload, vec![0, 255]);
+assert!(result.HasMetadata && result.Metadata.is_empty());
+# Ok::<(), opentdf_tdf3::LibraryError>(())
+```
+
+`encrypt` and `decrypt` consume owned configuration, byte vectors and options
+before submission. Inputs contain no borrowed source references. Nested routes,
+strings and vectors move into the operation; native results own their bytes.
+Rust String inputs are UTF-8; the generic compiler byte-string boundary preserves
+arbitrary Go string bytes separately. Exact signed int64 values are retained.
+Absent metadata and explicitly empty metadata differ through include_metadata.
+Results expose Payload, Metadata, HasMetadata and ManifestJSON byte fields.
+
+Operation implements Future<Output=Result<T, LibraryError>> and also has wait(),
+cancel() and cancellation(). Calls safely serialize initialization, execution
+and retirement. Each acquired call owns a fresh 16 MiB source thread. Native
+values and errors detach on that owner, then resource retirement and thread
+join/TLS teardown finish before publication. This does not require an async
+executor when wait() is used; awaiting works in a native executor.
+
+Queued cancellation releases queued inputs before settlement without waiting
+for an active call. Active cancellation cancels source contexts and native
+transport/provider work; settlement waits for actual cleanup. Dropping an
+Operation requests stop and lets its owned worker finish retirement. Drop does
+not acknowledge cleanup; retain and wait/await when a release acknowledgment is
+needed. Cancellation after committed source success does not revoke that result.
+CPU/native crypto completes before its next source cancellation boundary. Threads
+are never forcibly terminated. Library entry does not replace process panic
+hooks, change host thread/TLS policy, or install a global rustls crypto provider.
+
+LibraryError distinguishes Source, Canceled, DeadlineExceeded, SourcePanic,
+SourceFatal, HostFault and InvalidArgument. Its owned fields preserve declared
+SDK Code, Operation, HTTPStatus, ServerCode, ServerMessage, RequiredObligations
+and CauseCategory. text(name) and integer(name) inspect common fields. Failures
+return no partial plaintext. Source panic formatting stays on the owner. The
+host must use Rust panic=unwind; stack limits are bounded generated-source
+checks, not recovery from native stack exhaustion or catastrophic native faults.
+
+Use token_provider to bridge a native callback returning AccessToken. Insert it
+under Config.token_provider_name in CallOptions.providers. The callback receives
+owned ProviderRequest.payload and a Cancellation flag. It runs on a native
+worker outside source locks. Return only after releasing resources, including
+when canceled. A callback that never releases prevents safe settlement. An async
+provider can drive its own executor inside that worker and await its cleanup.
+ProviderError::Rejected is a declared provider failure; Fault or unwinding is a
+typed host fault. Reentrant providers must not block waiting for another call to
+this serialized library. DPoP requires an explicit matching auth_private_key_pem
+and the token's scheme, exact expiry and confirmation_jkt binding.
+
+Keys remain internal owner-associated native registry identities. PEM imports
+are owned per operation and released on success, error and cancellation. Aliases
+share Close state; Close prevents new acquisitions and follows completion of
+held synchronous native snapshots. No private-material erasure guarantee is
+made. Crypto parameters are RSA-2048 OAEP SHA1/MGF1SHA1, RS256, P-256 ECDH32,
+ES256 P1363, AES256-GCM, HKDF/HMAC/SHA256, native constant-time MAC verification
+and randomness. PEM, JWK and base64 inputs are strict and bounded.
+
+HTTP uses dedicated reqwest/rustls transports, default verified roots and
+hostname checks, GET/POST, no redirects, bounded request/response headers and
+bodies, real monotonic deadlines and active cancellation. The native runtime and
+sockets are released before ACK. OS resolver jobs may delay settlement until
+they release. HTTP/1 parser buffering is independently bounded by maintained
+Hyper, and accepted header bytes are limited to 64 KiB. Generic crypto byte
+arguments are bounded to 64 MiB; shared TDF limits and segmentation remain in
+the source implementation. Unsupported mandatory features fail explicitly.
+
+Cargo.lock and dependencies.lock.json record exact dependency archive hashes,
+licenses and declared MSRVs. All transitive and bundled native notices are under
+licenses/ with separate package/version paths. Use cargo build --locked --offline
+once the verified Cargo archive cache is populated. This package is not published.

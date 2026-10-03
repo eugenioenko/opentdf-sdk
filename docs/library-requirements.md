@@ -16,9 +16,8 @@ idempotent, cancels in-flight requests and preserves caller-owned keys.
 key handles and structured manifest data. [Error](../errors.go) preserves
 stable categories, operation, service fields, obligations and a cause.
 
-The [driver](../../goalchemy/internal/driver/emit.go) gates library emission
-for Rust with `GCE006`. Go, TypeScript, Java, C# and Python value-library
-emission is accepted; terminal acceptance is recorded in
+The [driver](../../goalchemy/internal/driver/emit.go) supports value-library emission
+for Go, TypeScript, Java, C#, Python and Rust; terminal acceptance is recorded in
 [the delivery ledger](delivery-checklist.md). The existing
 [C library emitter](../../goalchemy/internal/emit/c/c.go) rejects suspending
 exports and only supports a limited scalar/string boundary. Neither this C API
@@ -36,7 +35,9 @@ class library, built-in crypto/HTTP, native token providers, owned cancellable
 Tasks and 93 boundary/lifecycle checks plus real-KAS matrices. The
 [generated Python library](generated-python-library.md) is accepted with an
 installable wheel, maintained crypto, bounded HTTP and owned cancellable
-sync/async operations. The remaining Rust and C boundaries and final package/CI matrix
+sync/async operations. The [generated Rust library](generated-rust-library.md)
+is accepted with owned Result/Future calls, locked native dependencies and
+real-KAS interoperability. The C boundary and final package/CI matrix
 follow in Phases 6–7; terminal acceptance is recorded in
 [the delivery ledger](delivery-checklist.md).
 

@@ -598,3 +598,92 @@ Accepted signed Goalchemy commit: `106b6a53ffcd08a775fca4950f6f5146e3ed2220`
 (`feat(python): add native capabilities and cancellable value libraries`).
 The SDK compiler pin now references this revision; the signed SDK phase commit
 is recorded in `.local/root-python-phase6-commits.json`.
+
+
+## Phase 6 Rust SDK underway — 2026-10-02
+
+The sole Sol High worker `/root/rust_tdf_library` starts from signed SDK
+`56b974a05d9f75c18316e4a01793fed2892c0f7f` and Goalchemy
+`106b6a53ffcd08a775fca4950f6f5146e3ed2220`. The manifest and all 1,916
+post-Python source hashes match before mutation. Scope is the Rust Cargo
+library boundary, native capabilities, dependency/lock/license delivery,
+owned cancellable operations and importing consumers, followed by focused
+checks and the required BASIC/EC/enforced-DPoP seven-case KAS matrix.
+Root owns profiles, common documentation, acceptance and signed phase commits.
+
+Rust dependency APIs are inspected before selection. Existing dedicated-owner
+traced source values remain on their owner; native workers use owned wires and
+cleanup acknowledgments. No source Rc/RefCell/frame crosses a native thread.
+The worker preserves accepted Go/TypeScript/Java/C#/Python and generic C work.
+C and final Phase 7 clean packages/CI remain open. Ignored task/baseline/profile
+receipts record the assignment and current verified BASIC platform state.
+
+Root prepared the missing future C libcurl development prerequisites under
+ignored storage without a system installation. Matching amd64 runtime/development
+packages have recorded apt metadata artifact hashes and license notices; an
+isolated strict compile/link/runtime probe passes. This establishes development
+readiness only; C production adapters and SDK acceptance still follow Rust.
+Original multiarch selection and sysroot linker probe failures are preserved.
+
+
+## Phase 6 Rust SDK accepted — 2026-10-02
+
+Rust delivers an independently importable `opentdf-tdf3` Cargo package executing
+the shared Go facade, with owned byte/configuration/results, typed errors and
+cancellable native Future/wait operations. Source values stay on a dedicated
+16 MiB owner; publication follows native release, owner retirement and join.
+The library changes no process panic policy or global TLS provider. OpenSSL
+0.10.81 (vendored 3.6.3), reqwest 0.13.5, Tokio 1.53.1 and base64 0.22.1 are
+locked with 173 external archive checksums and 316 packaged license notices.
+Rust 1.98/Linux x86_64 GNU is tested; declared MSRV 1.88 is untested. Native
+compiler/CMake/Make/Perl and unwind/release limits are documented in
+[Rust delivery](generated-rust-library.md).
+
+The sole Sol High worker verified all 1,916 prior source hashes before mutation.
+Root accepted the final 97 worker files (SDK18/Goalchemy79), preserving all
+other accepted targets and tracked-clean pinned references. Focused compiler,
+Rust language/integration/contracts, 24 std-only host and four byte probes pass.
+Final native/boundary proofs pass136 checks, strict contracts203/203, catalog
+13types/95functions/7targets and freshness644 files. Independent native Go
+verifies signatures, OAEP and empty-key/empty-message HMAC, including32 mismatches.
+
+Original real-KAS evidence passes BASIC35 comparisons/11 negatives, controlled
+HTTP/TLS11, EC280/8 and enforced-DPoP226/10, covering all seven payload/metadata
+cases, both stock references/directions and required key/session/signing/provider
+combinations. Root independently checked541 payloads,478 metadata results,359
+producer-manifest presence results and682 statuses. Four stock Web nonce401
+limitations remain explicit; stock Bearer archives are separately labeled.
+Stock Go omits empty metadata; Web encrypts empty metadata and its reader does
+not expose it. Root restored and verified BASIC.
+
+The single acceptance review repaired three concrete findings: unchecked native
+collection length narrowing (proved with a zero-sized record vector of length
+4,294,967,296), imported private/public key validation, and crypto-free library
+cleanup dependency/optional-feature wiring. Native private-key validation rejects
+inconsistent material; Go's actual EC-point/effective-CRT normalization differences
+are documented accurately. Valid RSA/P256, exponent3 and omitted-Q PKCS8 pass.
+Pure importers pass40 results with native features and40 without, plus a std-only
+executable. Root replayed its unchanged failing Echo source: compile0/check0.
+
+Original matrix crate SHA256 is
+`c68a42c0c464416dd1f000c996d7208f06a9ee3a0b163fb9d86d088c48945aad`.
+Final crate SHA256 is
+`08a7093aff4ec2d377921e83de833c4068f4b72ea3f45b7c26aee036785aa5e1`.
+Exactly four of410 package members differ: generated collection conversion,
+checked library length, imported-key validation and native module reexport guards.
+The other406 members, including protocol/facade/HTTP/auth/dependencies/notices,
+are identical. All83 authored runtime members match current source. Focused
+positive/negative/importing proofs cover the delta; default native bindings are
+identical. No demonstrated valid-input KAS gap required replay, and original
+matrices retain their original artifact identity. Original3330 evidence files,
+two-area926 evidence entries and all original failures/repair freezes remain
+preserved. Cargo lock byte ordering differs in packages while every semantic
+dependency record remains identical.
+
+`.local/root-rust-library-accepted-evidence.json` records root closure; original
+and separate repair freezes/handoffs live under `.local/rust-tdf-library/`.
+No worker committed, switched profiles or published. C and final Phase7 clean
+seven-target package/CI delivery remain open. Root now records the signed Rust
+phase pair before assigning C.
+
+Rust phase Goalchemy commit: `967dfa5c51ae423a7939c83476ad4108958c51ef` (verified SSH signature `G`). The SDK commit records this compiler pin and the accepted Rust source/package evidence.

@@ -83,11 +83,11 @@ required case, mock KAS or self-round-trip cannot satisfy these checks.
 | Java | Importable JAR/native consumer; JCA/BC crypto, bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | C# | Importable .NET 8 DLL/native consumer; built-in crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | Python | Installable wheel/native consumer; cryptography and bounded HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
-| Rust | Native byte storage and reviewed owned-wire/native-thread host lifecycle | Production adapters, Cargo SDK and SDK/KAS matrix |
+| Rust | Importable locked Cargo library/native consumer; maintained crypto/HTTP, RSA/P256, Bearer/enforced-DPoP, metadata, ownership/cancellation and rejection matrices | Final clean package/CI delivery checks in Phase 7 |
 | C | Native byte storage and reviewed native-wire/collector/sanitizer host lifecycle | Production adapters, headers/library and SDK/KAS matrix |
 
-Update this ledger from terminal evidence, not implementation intent. Rust and C
-libraries, production adapters and real interop remain open, together with
+Update this ledger from terminal evidence, not implementation intent. C
+library, production adapters and real interop remain open, together with
 Phase 7 CI/package checks for all seven targets. Commit after each verified phase in SDK and, when changed, Goalchemy.
 Shipping here means reviewable, reproducible packages and passing delivery
 evidence; public publishing requires a separate release instruction.
