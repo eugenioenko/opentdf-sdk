@@ -49,8 +49,12 @@ def install(target, base):
         for name in ('main.mjs', 'token-provider.mjs'):
             shutil.copyfile(source/name, destination/name)
         env['TDF_TS_PACKAGE'] = str(package/'dist/index.js')
+        env['TDF_TS_NODE_PACKAGE'] = str(package/'dist/node-index.js')
+        scope = destination/'node_modules/@opentdf-local'
+        scope.mkdir(parents=True)
+        (scope/'tdf3').symlink_to(package, target_is_directory=True)
         # Type declarations must be usable through the package's public export.
-        (destination/'type-consumer.ts').write_text("import {encrypt, decrypt, type Config} from './package/dist/index.js';\nconst cfg:Config={PlatformURL:'https://platform.invalid'};\nvoid encrypt(cfg,new Uint8Array());void decrypt(cfg,new Uint8Array());\n")
+        (destination/'type-consumer.ts').write_text("import {encrypt, decrypt, type Config} from '@opentdf-local/tdf3';\nconst cfg:Config={PlatformURL:'https://platform.invalid'};\nvoid encrypt(cfg,new Uint8Array());void decrypt(cfg,new Uint8Array());\n")
         (destination/'package.json').write_text('{"type":"module"}\n')
         run([env.get('TSC_BIN', 'tsc'), '--noEmit', '--target', 'ES2022', '--module', 'NodeNext', '--strict', '--skipLibCheck', 'type-consumer.ts'])
         command = ['node', str(destination/'main.mjs')]
@@ -69,7 +73,7 @@ def install(target, base):
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(build/name, path)
         shutil.copyfile(source/'Consumer.cs', destination/'Consumer.cs')
-        (destination/'consumer.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>package/lib/OpenTDF.TDF3.dll</HintPath></Reference></ItemGroup></Project>\n')
+        (destination/'consumer.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>package/lib/OpenTDF.TDF3.dll</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>package/lib/System.IO.Hashing.dll</HintPath></Reference></ItemGroup></Project>\n')
         dotnet = env.get('DOTNET_BIN', str(SDK.parent/'goalchemy/.toolchains/dotnet/dotnet'))
         run([dotnet, 'build', 'consumer.csproj', '-c', 'Release', '-o', destination/'bin', '--nologo'])
         command = [dotnet, str(destination/'bin/consumer.dll')]
@@ -107,7 +111,7 @@ def install(target, base):
              '-L'+prefix+'/usr/lib/x86_64-linux-gnu', '-lcurl', '-lssl', '-lcrypto',
              SDK.parent/'goalchemy/.toolchains/bdwgc/lib/libgc.a', '-lpthread', '-ldl',
              '-o', destination/'no-preinit-consumer'])
-    exported = {'TDF_TS_PACKAGE','TDF_RUST_CONSUMER_OUT','TDF_RUST_PACKAGE','TDF_C_CONSUMER_OUT','TDF_C_PACKAGE','TDF3_CURL_PREFIX','LD_LIBRARY_PATH','JAVA_HOME'}
+    exported = {'TDF_TS_PACKAGE','TDF_TS_NODE_PACKAGE','TDF_RUST_CONSUMER_OUT','TDF_RUST_PACKAGE','TDF_C_CONSUMER_OUT','TDF_C_PACKAGE','TDF3_CURL_PREFIX','LD_LIBRARY_PATH','JAVA_HOME'}
     receipt = {'target': target, 'consumer_command': command, 'environment': {k: v for k, v in env.items() if k in exported},
                'installed_package_members': {str(p.relative_to(destination)): packages.sha(p) for p in sorted(package.rglob('*')) if p.is_file()},
                'source_consumer_members': {str(p.relative_to(SDK)): packages.sha(p) for p in sorted(source.glob('*')) if p.is_file() and p.suffix in ('.go', '.mjs', '.java', '.cs', '.py', '.rs', '.c', '.in')},

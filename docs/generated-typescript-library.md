@@ -21,7 +21,13 @@ The output package is `@opentdf-local/tdf3`. A native consumer can run
 `npm install /absolute/path/to/generated/package` and import it normally.
 `npm pack` makes a reviewable local tarball; neither build nor packing publishes
 anything. Browser applications bundle the ESM package with their normal
-bundler. Production has no extra dependencies or Node imports/polyfills.
+bundler. Production has no extra package dependencies. Conditional exports
+select `dist/node-index.js` in Node, installing the standard `node:zlib.crc32`
+adapter, and `dist/index.js` for browser/default consumers. The portable browser
+graph has no Node imports or polyfills. Direct `dist/index.js` imports choose the
+portable CRC fallback even in Node; use the package name or `dist/node-index.js`
+for Node native CRC. Executable stdout/exit adapters are not installed by the
+Node library entry.
 
 ```typescript
 import { encrypt, decrypt, TDFError, type Config } from '@opentdf-local/tdf3';

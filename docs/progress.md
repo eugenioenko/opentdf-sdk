@@ -952,3 +952,74 @@ safe frozen export, including all 160 samples, runtime/package identities and
 previous profiles/package evidence remains explicitly historical. Root owns the
 signed SDK commit and the user-authorized main push. The known unrelated
 Goalchemy CI failure was not repaired or treated as a CRC acceptance requirement.
+
+## Goalchemy 0.2.0 and replacement benchmarks — 2026-10-03
+
+The user requested a Goalchemy 0.2.0 release followed by a fresh original-Go plus
+seven-native-target E2E benchmark for 1 MiB, 10 MiB and 50 MiB, and an SDK PR.
+The previous README timing cells are superseded and will not populate the new
+table. The existing POC/work-in-progress status remains applicable.
+
+Goalchemy main now has signed release commit
+`90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab` and a verified signed `v0.2.0` tag.
+The [public release](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.0)
+was published at 2026-10-03T20:15:47Z. The release changes the compiler version
+and external-install fixture requirement. Installed-compiler integration,
+CLI/emitted-manifest version checks, focused Go vet, capability catalog validation
+(13 types, 96 functions, seven targets), and generated-source freshness (680 files)
+passed. Compiler binary SHA256 is
+`61dec71c6b3dde1634f598f4476608b703ce965cecc33912afd3fc930e22040b`.
+The merged CRC32 feature had already passed seven-target hosted CI; the new
+release commit's hosted CI has not yet been used as an acceptance claim.
+
+The bounded worker is rebuilding fresh packages from the published revision.
+Preparation corrected Node native entry selection, C# hashing DLL/license
+packaging and direct-assembly consumer deployment, and the Rust direct CRC
+lock dependency. The new runner supports 50 MiB, rejects old output in fresh mode,
+and returns failure if a cell fails. Timing code and original-client lifetime
+remain unchanged. Preparation syntax and whitespace checks and local BASIC
+platform health/authentication passed. No new timing result or package acceptance
+is claimed here; final receipts and review are pending.
+
+## Fresh v0.2.0 benchmark accepted — 2026-10-03
+
+All seven SDK packages were rebuilt with the published release compiler and
+passed independent relative/absolute build reproducibility and installed-consumer
+checks. Node public SDK calls observed six real `node:zlib.crc32` invocations;
+the portable browser graph retained 88 inputs with no Node imports/globals.
+C# packaged and deployed System.IO.Hashing 8.0.0 with its lock and notices;
+installed native delegation and unsigned/nil/empty/slice/ownership checks passed.
+Rust's installed package directly pins crc32fast 1.5.2 and its native consumer
+links the implementation. The initial Java dependency download hit a temporary
+DNS failure; only that absolute build was recovered from checksum-verified
+cached bytes and rerun. Accepted packages and measurements were not replayed.
+
+The fresh campaign ran from 2026-10-03T20:27:25Z to 20:35:34Z. All 24 cells passed
+for original Go plus seven generated native SDKs at 1 MiB, 10 MiB and 50 MiB.
+There are 120 timed samples, 24 warmups and 144 distinct fresh archives. Every
+archive passed independent stock-Go decryption through real KAS, full plaintext
+comparison and standard-library ZIP CRC checks. All manifests retain AES-256-GCM,
+GMAC and 2 MiB segment defaults, with one, five and 25 segments. Safe platform
+audit counts confirm 288 distinct rewrap requests, covering the native pairs
+and independent validators. Browser benchmarks remain excluded.
+
+Root reviewed the 23-file worker whitelist, actual package/install command logs,
+CRC-route proofs, source snapshots and public documentation. The acceptance
+script verified all actual raw/public samples, medians, archive hashes, package
+members from both build paths, installed package members and compiler pins.
+All 157 measured source inputs match the delivered producing source except two
+explicit post-campaign corrections: the future package-directory CLI default
+and the offline CI compiler checkout. The measured controller is preserved,
+and its hash matches the campaign environment. Timing and client lifetimes did
+not change. Root clarified README compiler provenance and documentation spacing
+without changing any timing cell.
+
+The README now contains only the new 1/10/50 MiB milliseconds table and retains
+the POC/work-in-progress notice. Public result SHA256 is
+`f9432a292e1fe39dbe3e6255ec42cc664dec30a00a4d011f7b808034e76a89a1`;
+raw result SHA256 is
+`707d17ecdfccefb8c12b907909f99c717e22caffa91c58c8393d647d66a928ad`.
+Historical samples/profiles remain separately attributed. Unrelated full
+protocol matrices were not repeated. Goalchemy release CI is still running;
+SDK hosted CI will run on the user-authorized PR and is not claimed as passed.
+Root owns the signed SDK commit and PR publication.

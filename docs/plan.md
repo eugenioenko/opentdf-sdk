@@ -6,16 +6,32 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
-## CRC32 and benchmark follow-up
+## Goalchemy 0.2.0 release and fresh benchmark follow-up
 
-Add a native IEEE CRC32 capability across all seven Goalchemy targets and open a
-Goalchemy PR. Use that capability in the shared SDK ZIP implementation, rebuild
-all seven SDK packages, and rerun original Go plus every generated native SDK
-against real KAS for 10 KiB, 100 KiB, 1 MiB and 10 MiB. Publish one README table
-of measured end-to-end milliseconds, with five samples and one warmup per cell.
-Browser benchmarks are excluded; browser CRC32 support still requires a focused
-check. The existing Goalchemy CI failure is outside this follow-up. Root owns
-the PR and the user-authorized SDK main commit and push.
+The current follow-up supersedes the earlier CRC32 benchmark campaign. Release
+Goalchemy 0.2.0 from merged main, then rebuild all seven native SDK packages from
+that exact published revision. Check installed consumers and native CRC32 routes,
+including Node conditional exports, C# hashing dependency deployment, and Rust's
+direct pinned `crc32fast` dependency. Preserve the portable browser entry.
+
+Run original Go and all seven generated native SDKs against real KAS for exactly
+1 MiB, 10 MiB, and 50 MiB, with five measured encrypt/decrypt pairs and one warmup
+per cell. Use a fresh output directory: no previous measurement may populate the
+new table. Independently decrypt all 144 retained archives using stock Go and real
+KAS, verify plaintext and ZIP CRCs, and publish one README table in milliseconds
+containing only the 24 new cells. Preserve the existing timing boundaries and
+client lifetimes; browser benchmarks remain excluded.
+
+Root owns the signed Goalchemy release, acceptance review, plan and progress log,
+and a signed SDK commit on a new branch. The user authorized publishing the
+Goalchemy release and opening an SDK PR; the SDK changes are not pushed directly
+to main. Preserve the README POC/work-in-progress notice. Run focused checks and
+the required benchmark validation without replaying unrelated passed matrices.
+
+Status: Goalchemy v0.2.0 is published at signed commit
+`90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab`. All seven fresh packages and installed consumers passed their focused checks.
+The new 24-cell benchmark and independent validation of all 144 archives passed
+root acceptance. The SDK changes are accepted for publication through a signed commit and PR.
 
 ## Execution and review
 

@@ -1,141 +1,142 @@
 # Native SDK end-to-end benchmark
 
-The README reports one table for **10 KiB, 100 KiB, 1 MiB and 10 MiB** of binary
-plaintext. Each cell is the median elapsed **milliseconds** of five newly
-measured complete encrypt/decrypt pairs. The timer is contiguous: encryption
-produces an archive, decryption consumes that same archive through the real KAS,
-and the timer stops after complete owned plaintext is available. These values
-are actual end-to-end measurements; they are not sums of earlier separate
-operation medians. All eight implementations were run again in a fresh campaign using SDK packages
-rebuilt with native CRC32 from Goalchemy commit
-`a3f92ee60273a74ec75f9bb5136c719e190f6c33`. No old timing cells are reused.
+The README table contains only fresh **1 MiB, 10 MiB and 50 MiB** measurements
+from the 2026-10-03 campaign. Each cell reports median elapsed **milliseconds**
+from five complete encrypt/decrypt pairs after one warmup. All seven generated
+native packages were rebuilt with released Goalchemy **v0.2.0**, commit
+`90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab`. The original OpenTDF Go SDK is the
+eighth implementation. Earlier sample cells are not reused.
 
 ## Reproduce
 
-Use the accepted installed packages indexed by
-`.local/crc32/delivery`, the pinned platform checkout in
-`references.lock.json`, and the existing BASIC profile with real KAS at
-`http://localhost:8080/kas` and local IdP at port 8888. Package and runtime
-installation follow the delivery instructions. The runner does not start,
-stop or reconfigure services and does not invoke the Goalchemy compiler.
-
-To rebuild that package index after installing the documented prerequisites,
-run from the SDK repository with Goalchemy checked out at the pinned revision.
-The package/consumer index directory must be empty for these build commands:
+Use adjacent checkouts at [references.lock.json](../references.lock.json), the
+[documented native prerequisites](final-delivery.md), and the BASIC platform
+profile with real KAS at `http://localhost:8080/kas` and local IdP at port 8888.
+The runner does not start or reconfigure services. Build packages and installed
+consumers first, using a new package directory:
 
 ```sh
-mkdir -p .local/crc32/compiler
+mkdir -p .local/v020/compiler
 (cd ../goalchemy && GOTOOLCHAIN=go1.25.14 go build -trimpath \
-  -o ../sdk/.local/crc32/compiler/goalchemy ./cmd/goalchemy)
-python3 scripts/delivery-packages.py all --base .local/crc32/delivery \
-  --compiler .local/crc32/compiler/goalchemy \
-  --compiler-revision a3f92ee60273a74ec75f9bb5136c719e190f6c33
-python3 scripts/delivery-consumers.py all --base .local/crc32/delivery
+  -o ../sdk/.local/v020/compiler/goalchemy ./cmd/goalchemy)
+python3 scripts/delivery-packages.py all --base .local/v020/delivery \
+  --compiler .local/v020/compiler/goalchemy \
+  --compiler-revision 90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab
+python3 scripts/delivery-consumers.py all --base .local/v020/delivery
+python3 scripts/benchmark-sdk.py --packages .local/v020/delivery \
+  --output .local/benchmarks/e2e-v020-reproduction \
+  --sizes 1MiB,10MiB,50MiB --samples 5 --fresh
 ```
 
-From the SDK repository, choose a new output directory:
+The measured campaign used the released compiler binary with SHA256
+`61dec71c6b3dde1634f598f4476608b703ce965cecc33912afd3fc930e22040b`.
+A local rebuild can have a different binary hash; package receipts record its
+actual identity. SDK package versions remain 0.1.0. Both relative and absolute
+output-path builds must pass before consumers or measurements run.
 
-```sh
-python3 scripts/benchmark-sdk.py --packages .local/crc32/delivery \
-  --output .local/benchmarks/e2e-reproduction
-```
+The defaults select all eight implementations and `1MiB,10MiB,50MiB`.
+`--fresh` rejects an existing raw-results file; always choose a new output
+directory for a new campaign. `--build-only` prepares native benchmark consumers;
+`--skip-build --fresh` runs those consumers without rebuilding. The completed
+campaign used explicit `--packages .local/v020/delivery`. The later correction
+of that CLI default does not affect its recorded controller or timings.
 
-The defaults select all eight implementations and `10KiB,100KiB,1MiB,10MiB`.
-`--build-only` builds native benchmark consumers; `--skip-build` reuses those
-consumers. Existing successful end-to-end cells are reused only within their
-output directory; a new directory produces a new campaign. `--rerun` explicitly
-selects a `TARGET:e2e:SIZE` cell when needed. Rust links the accepted consumer's
-already compiled SDK rlib. C, Java and C# link installed native archives/JARs/
-assemblies. Go imports the accepted generated package; Node and Python import
-installed modules. The reference consumer imports the pinned `../platform/sdk`
-public API. Both Go consumers are built with `GOTOOLCHAIN=go1.25.1`.
+Rust links the installed consumer's compiled SDK rlib. C, Java and C# link
+installed native archives, JARs and assemblies. Go imports the installed module;
+Node imports its native entry and Python its installed wheel. The reference
+consumer imports the pinned `../platform/sdk` public API. Both benchmark Go
+binaries use Go 1.25.1; the package compiler was built with Go 1.25.14.
 
 ## Setup and lifecycle
 
-Original Go `SDK.New` executes **once before the warmup and timing loop** for
-each implementation/size cell. Its RSA2048 response-session key and ES256 signer
-are reused for all six pairs. `CreateTDF`, `LoadTDF` and `io.ReadAll` run inside
-each end-to-end interval. `LoadTDF` uses the constructor's default session key;
-the wrapper does not request `WithSessionKeyType` and generate a replacement.
-Client `Close` executes after the loop, outside timing.
+Original Go `SDK.New` runs **once before the warmup and timing loop** for each
+size cell. Its RSA2048 response-session key and ES256 signer are reused across
+all six pairs. `CreateTDF`, `LoadTDF` and `io.ReadAll` remain inside each interval.
+`LoadTDF` uses the constructor's default session key; the wrapper does not
+request `WithSessionKeyType`. Client `Close` runs outside timing after the loop.
 
-All hosts prepare their public configuration, token provider, and encryption
-options outside the timer. Generated portable APIs expose stateless encryption
-and decryption facades. Their internal per-operation client/signing-key
-construction and per-decrypt RSA2048 session generation remain inside the timed
-public API calls. The original reusable client/session and generated facade
-session lifecycles therefore differ. This table compares the actual supported
-public APIs with harness setup removed; it does not claim equal key lifecycles.
-No production or exported API changes were made to create a synthetic match.
+Every host prepares public configuration, token providers and encryption
+options outside the timer. Generated APIs expose stateless facades, so their
+internal per-operation client/signing-key setup and per-decrypt RSA2048 session
+creation remain timed. This compares the supported public APIs with harness
+setup removed; their key lifecycles differ. No API changes were made to equalize
+those lifecycles.
 
-OAuth tokens and the shared public KAS PEM/kid are acquired before each host
-batch. The original uses `oauth2.StaticTokenSource`; generated native providers
-return the same externally acquired Bearer token during public API calls.
-Neither OAuth acquisition nor public-key discovery is timed. Public KAS-key
-import and any internal SDK authentication work remain timed. Each batch fits
-the local token lifetime. No private-key PEMs are supplied. Algorithms are
-RSA2048 KAS wrapping and response sessions, ES256 signing, GMAC segment integrity,
-and 2 MiB segment size, with the same permitted attribute and no metadata or
-compression.
+OAuth tokens and the public KAS PEM/kid are acquired before each host batch.
+The original uses `oauth2.StaticTokenSource`; generated native providers return
+the same externally acquired Bearer token during public calls. OAuth acquisition
+and public-key discovery are untimed; SDK key import and internal authentication
+work remain timed. No private-key PEM is supplied. All cells use RSA2048 wrapping
+and response sessions, ES256 signing, GMAC segment integrity, 2 MiB segments,
+the same permitted attribute, and no metadata or compression.
 
 ## Timing and correctness
 
-Each process preloads deterministic input, executes one untimed warmup pair,
-then records five pairs using its native monotonic clock. Timing includes
-public API input/output ownership copies, crypto, policy/key wrapping, ZIP
-construction/parsing, actual KAS request and unwrap, integrity verification,
-and plaintext materialization. File reads/writes, process/module startup,
-configuration/provider/options construction, and exact-output checking are
-outside timing. Result disposal after checking is also outside timing.
+Each process preloads deterministic input, performs one untimed warmup, then
+records five pairs with its native monotonic clock. A single contiguous timer
+covers public encryption followed by decryption of that same new archive,
+including owned result copies, crypto, policy/key wrapping, ZIP construction
+and parsing, a real KAS request and unwrap, integrity checks, and complete
+plaintext materialization. File I/O, process/module startup, harness setup,
+exact plaintext checking and result disposal are outside timing.
 
-Rust's APIs consume `Vec<u8>` inputs. The harness prepares fresh owned input,
-configuration/options clones and provider registries before each timer. To
-retain every encrypted archive for independent validation, it clones the
-newly produced archive for the consuming decrypt call **inside** the contiguous
-interval. This Rust-specific retention cost is included and recorded; the
-harness never pauses or splits the interval for an untimed copy.
+Rust's API consumes `Vec<u8>` inputs. Fresh owned input, configuration/options
+clones and provider registries are prepared before each timer. Retaining the
+new archive for independent validation requires an archive clone for the
+consuming decrypt call **inside** the interval; this cost remains included.
 
-Every warmup and timed pair compares the complete final plaintext byte for byte
-with the input after timing. Every freshly encrypted archive is also retained
-and independently decrypted by stock Go through the real KAS outside timing,
-then checked exactly. There are 32 cells, 192 complete pairs including warmups,
-160 measured samples, and 192 independent archive validation checks. The
-reused original response-session key is not a plaintext-key cache: each fresh
-archive still requires a real KAS rewrap request. Generated decryption does the
-same. No mock KAS or private/offline crypto shortcut is used.
+Every pair compares the full plaintext against its input after timing. All
+**144 archives** (24 cells, 120 measured pairs and 24 warmups) are retained and
+independently decrypted by stock Go through real KAS outside timing, then
+checked exactly. Python's standard ZIP reader separately reads both members to
+EOF, verifying CRC values. The controller records both validations per archive.
+Platform audit logs confirm **288 distinct real KAS rewrap requests**: 144 native
+pair decryptions and 144 independent stock-Go checks. Only safe audit counts and
+hashes are exported. The reused original session key does not cache plaintext
+keys: every archive still requires KAS rewrap.
 
-Inputs are deterministic arbitrary binary bytes: byte `i` is
-`(i * 131 + (i >> 8) * 17) & 255`. The three smaller sizes fit one segment; 10 MiB uses five 2 MiB segments.
-The shared ZIP code now calls Goalchemy’s `lib/checksum.CRC32IEEE`. Go, Java and
-Python use their native standard checksum libraries; the other four hosts use
-slicing-by-8 implementations. No new checksum dependency was added. Archive
-layout and CRC verification remain unchanged.
-Targets run sequentially on one host with no other SDK benchmark load. There
-is no forced garbage collection, allocator reset, CPU pinning or heap tuning;
-natural allocation/GC during each interval remains timed. One warmup and five
-samples describe this local run, not steady-state JIT behavior or long-tail
-latency. RSA randomness and KAS/scheduling variation contribute to sample spread.
-Browser execution is excluded at the user's request.
+Inputs are deterministic binary bytes: byte `i` is
+`(i * 131 + (i >> 8) * 17) & 255`. The three sizes use one, five and 25 segments.
+Every manifest was checked for AES-256-GCM, GMAC and the expected segment count.
 
-## Receipts and prior experiments
+The measured packages delegate IEEE CRC32 to Go `hash/crc32`, Java
+`java.util.zip.CRC32`, Python `zlib.crc32` and Node `node:zlib.crc32`. Node package
+exports automatically select its native entry; browser/default exports retain
+the portable fallback. C# deploys Microsoft's official **System.IO.Hashing 8.0.0**
+NuGet package and uses `Crc32.HashToUInt32`; it is a first-party dependency rather
+than part of the shared runtime. Rust directly depends on **crc32fast 1.5.2**.
+C and browser TypeScript retain slicing-by-8 fallback because their standard
+platforms provide no CRC32 API. Acceleration is chosen by the runtime or library;
+these results do not claim a particular hardware instruction executed.
 
-The fresh accepted campaign is under ignored
-`.local/benchmarks/e2e-crc32-2026-10-03`. `raw.jsonl` retains the actual five sample
-values per cell, medians, ranges, standard deviations, exact commands, payload/
-archive hashes, correctness results, expected KAS call counts and source hashes.
-`summary.json` contains the 32 end-to-end cells; `tables.md` is the single
-milliseconds-only table. `environment.json` records hardware/kernel/toolchains,
-SDK/platform heads, package receipts/member hashes, linked Rust rlib identity,
-source hashes and compiled consumer hashes. Frozen source/module inputs and
-symbolizable consumer binaries remain in the ignored campaign directory.
-Private token files stay ignored and use mode 0600. Safe exports contain no tokens.
+Installed-package checks observed real Node builtin CRC calls during public
+KAS encrypt/decrypt, verified C# native IL delegation and deployed dependency,
+and verified Rust's direct dependency and linked implementation. The portable
+browser package graph still contains no Node imports, `Buffer` or `process`.
 
-The run uses the same AMD Ryzen 7 6800H Linux x86_64 host as the earlier experiments,
-with fresh native packages compiled from the CRC32 revision. Both benchmark Go binaries use Go 1.25.1;
-other installed runtimes are recorded in the campaign receipt. The CPU profiles
-in [Go profiling findings](go-profiles.md) belong to the earlier **fresh-client,
-separate-operation** experiment. They explain that old lifecycle comparison;
-they do not describe the new reused-original-client end-to-end table. Historical
-samples and profiles remain separately attributed and are neither summed nor
-relabelled as end-to-end samples. The former redundant-RSA baseline correction
-also remains historical evidence; all 24 current cells are newly measured.
+Targets ran sequentially on one AMD Ryzen 7 6800H Linux x86_64 host without
+competing SDK builds or benchmarks. There is no forced GC, allocator reset,
+CPU pinning or heap tuning. Natural allocation/GC, RSA randomness, local KAS
+and scheduling variation remain in these samples. Five samples and one warmup
+characterize this local run, not steady-state JIT or long-tail latency. Browser
+execution is excluded.
+
+## Receipts
+
+Safe samples, environment, package/member hashes, source identities, archive
+manifest checks and validation counts are in
+[benchmark-results.json](benchmark-results.json). The ignored campaign directory
+`.local/benchmarks/e2e-v020-2026-10-03` retains `raw.jsonl`, `summary.json`,
+`tables.md`, `environment.json`, all archives, input fixtures and compiled
+consumers. Private token files stay ignored with mode 0600 and are not exported.
+
+The initial preparation freeze and actual measured-source freeze are preserved
+separately. The final source freeze records two post-campaign changes: adding
+the missing pinned compiler checkout to offline CI and updating the future
+package-directory default. Neither changes measured timing code, installed
+packages or the explicit campaign command. No campaign was replayed.
+
+[Earlier Go profiles](go-profiles.md) describe a historical fresh-client,
+separate-operation experiment. They are not samples from this table and were
+not summed, relabelled or reused. Unrelated full interoperability matrices were
+not repeated for this benchmark update; hosted SDK CI remains a separate check.

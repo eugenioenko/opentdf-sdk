@@ -21,6 +21,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           path: sdk
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: eugenioenko/goalchemy
+          ref: 90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab
+          path: goalchemy
       - run: bash sdk/scripts/delivery-offline.sh
 
   real-kas-native-packages:
@@ -44,7 +49,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: a3f92ee60273a74ec75f9bb5136c719e190f6c33
+          ref: 90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

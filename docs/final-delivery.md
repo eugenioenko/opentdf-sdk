@@ -17,8 +17,8 @@ GitHub Actions run or a newly replayed full interoperability matrix.
 
 Use adjacent `sdk`, `goalchemy`, `platform`, and `web-sdk` checkouts. Exact source
 revisions are in [references.lock.json](../references.lock.json); Goalchemy is
-pinned to `a3f92ee60273a74ec75f9bb5136c719e190f6c33` for the
-[CRC32 follow-up](https://github.com/eugenioenko/goalchemy/pull/6), platform to
+pinned to released [v0.2.0](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.0),
+commit `90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab`, platform to
 `f2635158b681fa970aafce7eacf108a453521f63`, and Web SDK to
 `55a0521b1499b392c75373e11ec5930c6a43f0c7`.
 
@@ -42,7 +42,7 @@ packages, consumer builds, caches, logs, keys, and profiles stay ignored.
 | Go | Source module with bundled runtime; separate importing Go module and executable | Go1.25.14; [Go API](generated-go-library.md) |
 | TypeScript | ESM JavaScript, public declarations and notices; packed npm archive, extracted Node consumer, declaration compilation and browser bundle | Node24.15.0, TypeScript6.0.3; [Node/browser API](generated-typescript-library.md) |
 | Java | `tdf3-java.jar` and locked provider JAR; separate `javac` consumer | Temurin21.0.12.1+1, Bouncy Castle1.86; [Java API](generated-java-library.md) |
-| C# | `OpenTDF.TDF3.dll`, dependency metadata and notices; separate .NET project referencing the assembly | .NET SDK8.0.425/runtime8.0.31; [C# API](generated-csharp-library.md) |
+| C# | `OpenTDF.TDF3.dll`, `System.IO.Hashing.dll`, locked dependency metadata and notices; separate .NET project referencing both assemblies | .NET SDK8.0.425/runtime8.0.31, Microsoft System.IO.Hashing8.0.0; [C# API](generated-csharp-library.md) |
 | Python | Wheel; isolated venv installs the wheel and hash-verified runtime wheels with no index | Python3.10, cryptography50.0.2/CFFI2.1.1; [Python API](generated-python-library.md) |
 | Rust | `opentdf-tdf3-0.1.0.crate`; independent extraction, native consumer and Cargo target directory | Rust1.98.0, locked Cargo dependencies; [Rust API](generated-rust-library.md) |
 | C | Linux x86_64 archive containing headers, generated sources and `libtdf3.a`; separate archive-linked native consumers | GCC11.4.0/C17, OpenSSL3.0.2, curl7.81.0, Boehm8.2.8; [C API](generated-c-library.md) |
@@ -70,6 +70,13 @@ library, target or spec source.
 The current compiler pin and CI now include native CRC32. Fresh packages built
 from that pin are used for the [new end-to-end benchmark](benchmarks.md); the
 original package hashes above remain historical acceptance evidence.
+The released compiler binary SHA256 is
+`61dec71c6b3dde1634f598f4476608b703ce965cecc33912afd3fc930e22040b`.
+SDK package versions remain 0.1.0; the compiler's version is 0.2.0. Node package
+imports select its native CRC entry; browser/default imports remain portable.
+C# deploys Microsoft's first-party hashing package, Rust directly uses
+`crc32fast`, and C keeps its slicing-by-8 fallback. Host APIs choose acceleration;
+no particular hardware instruction is guaranteed.
 
 ## Executable jobs and observed coverage
 
