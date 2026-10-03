@@ -1,0 +1,3319 @@
+{
+  "schema_version": 1,
+  "scope": "48 measured native SDK cells; browser and discarded larger experiments excluded",
+  "sizes_bytes": [
+    10240,
+    102400,
+    1048576
+  ],
+  "warmup_per_cell": 1,
+  "measured_samples_per_cell": 5,
+  "ratio": "target median_ms / reference median_ms for same operation and size; lower faster",
+  "results": [
+    {
+      "target": "reference",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "correct": true,
+      "samples_ms": [
+        88.371078,
+        32.666145,
+        34.653041,
+        47.900367,
+        26.729531
+      ],
+      "status": "ok",
+      "median_ms": 34.653041,
+      "minimum_ms": 26.729531,
+      "maximum_ms": 88.371078,
+      "stdev_ms": 24.883705954219273,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "7d5df0841a766a140ca67274b7a47c552e6dd58f20e7c0c9d8c27236069785bf",
+          "archive_bytes": 1050294,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "1614ee442adbe6728191e4f4d99398f6c937e624f8477b271d55cba15347794e",
+          "archive_bytes": 1050294,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "0db7addeefac2bd2fe49a1fb3df5db6376ceceb94d5d13c074b26b54e8f08bb5",
+          "archive_bytes": 1050294,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "e607a088dc62d0d58a18ac117ac8f2a440e42e1c86f146b4bb95ca3fc225be72",
+          "archive_bytes": 1050294,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "b2cb55c46ee46941db693116707a52debc191950762839134b8fd6b6a6256806",
+          "archive_bytes": 1050294,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "2c004a141c62deab5387c4946f5c074911f95e989d8639b2a4d96c96fca9060b",
+          "archive_bytes": 1050294,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 2.3026516437530518,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "032d2a0fd88e6f4c9ef824db7c0fe2cc1d8cc5c6f7290d1c52a16f192e22d08d"
+    },
+    {
+      "target": "reference",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "correct": true,
+      "samples_ms": [
+        149.713124,
+        229.259218,
+        214.729443,
+        178.85107,
+        238.367763
+      ],
+      "status": "ok",
+      "median_ms": 214.729443,
+      "minimum_ms": 149.713124,
+      "maximum_ms": 238.367763,
+      "stdev_ms": 37.07202019437919,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.1649789810180664,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "d7c2475bb0e2e449be8e1f19edbdf37c0034a983a529e24f9b9ee3a23dbdf56e"
+    },
+    {
+      "target": "go",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "correct": true,
+      "samples_ms": [
+        4.675755,
+        5.987218,
+        4.94604,
+        4.490658,
+        3.629178
+      ],
+      "status": "ok",
+      "median_ms": 4.675755,
+      "minimum_ms": 3.629178,
+      "maximum_ms": 5.987218,
+      "stdev_ms": 0.8511849295007521,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "f7bb5a3b5044c4bc2edb6ddeb65d125a141999add8123427a6b74fa38160696c",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "3a5cfe2d55123a3165c962f334b57c957001298580c91b239c6a09f4e8909257",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "3035dc4f8cbd0b96c7d0ce2dc7a8c08ca4d0a58548ebbe2a035e47dcf3533ed0",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "f8144b5baa5de52c1d29af98f553fdb6bf3ec38e5b65e89de3222c767e9ac399",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "62978fa92843813b50d0fbc4799737601b67d203ad045320274092152f0d6ada",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "2e41c50844ed48f8aef9eab4fd1d930bf5eaf568f62af1e800f18a09776483c7",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.1059515476226807,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "f0a0d5c270af3b2e50bbd0d1782f640a66a8fed6dff60ad41a137b0a0e0b7ae8"
+    },
+    {
+      "target": "go",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "correct": true,
+      "samples_ms": [
+        228.343195,
+        83.237717,
+        75.275225,
+        55.72424,
+        99.655513
+      ],
+      "status": "ok",
+      "median_ms": 83.237717,
+      "minimum_ms": 55.72424,
+      "maximum_ms": 228.343195,
+      "stdev_ms": 68.86209379446919,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.6344740390777588,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "e912f08de2863b89150b9d262d98f5d0fa0d0e1f0ac2b83544658ad9c933b978"
+    },
+    {
+      "target": "typescript",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        111.58362200000002,
+        100.69358399999999,
+        99.43729500000006,
+        95.69202100000007,
+        111.18059900000003
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 100.69358399999999,
+      "minimum_ms": 95.69202100000007,
+      "maximum_ms": 111.58362200000002,
+      "stdev_ms": 7.23612910972569,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "3d4161fe80be19e6638d0ee738e60b75749f63dc55fb0ed58ca8285db3a5030b",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "c7c8e1be52f1454c1ea173ff20e302023d610c6e7651d9ec5af4cfb800a04e00",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "37241d86252aaa3ad6fd3495f7b5e0015233ec1fd617d5acebbf615b4322afb8",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "1ce6dc1c24e7cf1963cce30f06d6f7efa24c9d81c1dd66db3bf197ace9480ad3",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "37ac1b1e7dbf15d4ce963351f43e135ee056cc0ad43e45528e07ed2baa981d43",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "d278137d4ebfbec4a4e55f6032de8300491c28d9fe633387f40120bb2516d1fc",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.852860689163208,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "5391fdae74a0cfedb1ead927fa7e9ca6cb832f3d78a054fd874992387ac754bc"
+    },
+    {
+      "target": "typescript",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        260.47150300000004,
+        257.43967299999997,
+        240.64838900000007,
+        295.61915999999997,
+        263.47846700000014
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 260.47150300000004,
+      "minimum_ms": 240.64838900000007,
+      "maximum_ms": 295.61915999999997,
+      "stdev_ms": 19.99832145226175,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.8544039726257324,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "1d57aa0288d8559a1f6b392963ec8020427daa31e33ff57d79cf0cbd263c4b34"
+    },
+    {
+      "target": "java",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        39.162565,
+        34.472944,
+        33.263983,
+        35.994068,
+        33.479616
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 34.472944,
+      "minimum_ms": 33.263983,
+      "maximum_ms": 39.162565,
+      "stdev_ms": 2.425958916662378,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "218ffb33c6290870794dea58d8164cbffd9b83e3c2a79991707805168be4b08c",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "8984ffa6b2b5bed9d3ee23c71664e1e0a07bcc446c0029c7057b95af5ae3f263",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "c1636d4e3e58b613ca17118cf9dd20ae83caa707ec931d7f7ef17ae928c218a1",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "c3bde166269cc4cbc1bc98c9b7bd9f836b2dc2e5890f528d831b9b861db53628",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "af2489e72f684bca7a9e45c35b6d4ef6ab65fda61918aef3c46e56b6f2d102a4",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "b4a9b6bb1990f19b45b9209c74446f2d37088ebdeca6e3eaed54dca0733579f1",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.9468989372253418,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "fbcc3053298c7cab982ad60cf4475ebf29e84c71111e548789bf589981bccaab"
+    },
+    {
+      "target": "java",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        294.915474,
+        141.684049,
+        119.087897,
+        108.716541,
+        118.666209
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 119.087897,
+      "minimum_ms": 108.716541,
+      "maximum_ms": 294.915474,
+      "stdev_ms": 78.25057663402914,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.657928705215454,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "9d776eae3ecfc6b8b821c54ce22c65c96ea19f1bd613b4fac4b87c17249762c4"
+    },
+    {
+      "target": "csharp",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        24.4518,
+        18.3427,
+        17.0229,
+        16.6545,
+        17.4481
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 17.4481,
+      "minimum_ms": 16.6545,
+      "maximum_ms": 24.4518,
+      "stdev_ms": 3.230308607548201,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "e8888e7d431b1bc75d039b12530e4aee77e45c9400d19f8c3c5cf5787cae770b",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "928101517b6b37e0362485928666352dcce25cac3a97221f5c79102ddc38638a",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "8b84dec780a04b478cc8a07b794b2db8ad65a6b49b5c9106aae1421559510768",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "6b4911dd817ae2b6a0a412dfa0a2f85a9e3b4990eaed3c0a1db43b2ea9cd017c",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "935de359e6d5abe8477a62a5f4b2d236f4b680bcf1a2e0a960d7403ddf20b04e",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "452189f7a0a8c3f4e4689e3ca73ef74fa75a1864ac706d350a2674f50c8755c3",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.640789270401001,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "97180021f9af1b678071705efd4049a707c5342c55c7633b0213386563a4024e"
+    },
+    {
+      "target": "csharp",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        205.3986,
+        178.4409,
+        200.6061,
+        302.2068,
+        160.3952
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 200.6061,
+      "minimum_ms": 160.3952,
+      "maximum_ms": 302.2068,
+      "stdev_ms": 54.923541965417705,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.51362943649292,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "3bc2e77bad6c68ba2a4041fb0974688e1f19591186cf8585eafbc25a842f7995"
+    },
+    {
+      "target": "python",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        1249.049231,
+        1247.886557,
+        1249.265176,
+        1331.292761,
+        1266.171137
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 1249.265176,
+      "minimum_ms": 1247.886557,
+      "maximum_ms": 1331.292761,
+      "stdev_ms": 35.78165716361057,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "934f661709f8735e90b486810151e9ea7b276bae1227dad416b838071d7dbd6b",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "41f66d26e572eb9093ec62884d261beae561d8caad03a489546f632daf5fac96",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "454235eec9b1146331ada56696dba53e1ecffe45977335a59d64581f3a6468dd",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "42403cdc5abab6ac0638d21f6589a03bd4addfe31fa5e6aef4ba2cc34957b728",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "fead78275928b79f4668a6972440c6f15ce47267816a3e1ac5198ffe951eef01",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "c10984b5772203d6cb2c23acb1b76c783c422ba934cb5230202829fc20670c09",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 8.901544570922852,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "d5172a76c5caba2aa23599c9528e7aa7f4b882a172991b7661935fd74eaf5481"
+    },
+    {
+      "target": "python",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        2612.4978,
+        2471.997667,
+        2476.000266,
+        2445.57341,
+        2426.345721
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 2471.997667,
+      "minimum_ms": 2426.345721,
+      "maximum_ms": 2612.4978,
+      "stdev_ms": 73.29653689425561,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 15.11683702468872,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "7d9475a97beec6cc45fc02c78f24100af79e9f3877ec407114f9e5a311336aaf"
+    },
+    {
+      "target": "rust",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "correct": true,
+      "samples_ms": [
+        154.599015,
+        149.316595,
+        148.598833,
+        153.48037200000002,
+        146.305654
+      ],
+      "status": "ok",
+      "median_ms": 149.316595,
+      "minimum_ms": 146.305654,
+      "maximum_ms": 154.599015,
+      "stdev_ms": 3.4743344840503942,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "e655e4fdc9b50ffceeeb71fdb5cc834e65894ce7a3dd668ad8a8df8c2950a560",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "566ad0d96e4983cfdae96c0166cbb2916f29b4f1c3ffb9ec0531a4233d139a5f",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "693f7e33f97ae32cf169fd622291d2e26c276dce3b9422e9dffbfd54474518bd",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "d38ec87ff82568d6bf87780a7af52775f3d891b8c5ad94fdb10fe708b3590193",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "a4b216da08f8e3d2c68d1afa7d063f19a6aaa177bbcf5bc563b512eded2247b4",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "49b6e650cf568c64ca8d491f71c34f9abfd6765f760da67a3decf19e9562dae2",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 2.3379199504852295,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "d022b9e01fc56ac47c00d3da9b2dc8277d5d8d6c237b1a8cf8dd960e0aec29c0"
+    },
+    {
+      "target": "rust",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "correct": true,
+      "samples_ms": [
+        350.535142,
+        363.72909799999996,
+        348.03905299999997,
+        345.894792,
+        356.100381
+      ],
+      "status": "ok",
+      "median_ms": 350.535142,
+      "minimum_ms": 345.894792,
+      "maximum_ms": 363.72909799999996,
+      "stdev_ms": 7.172830282886431,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 2.1251730918884277,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "7ab75e3af9d1a52a5d3127517553aaefc7fb6624b6b60cba87bb977d5833e044"
+    },
+    {
+      "target": "c",
+      "operation": "encrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        74.447627962,
+        73.237043977,
+        71.031768978,
+        71.436375976,
+        72.262601972
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 72.262601972,
+      "minimum_ms": 71.031768978,
+      "maximum_ms": 74.447627962,
+      "stdev_ms": 1.3854975578116402,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "aed61498abf87537d7f8824b5f821715d055a261a88998c6233d87fb2c49c669",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "6410dc81799fb7c9517692cc62311e7f752463930a52b2c7b8fe76f4e4428423",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "b047d96cb5dc445ec661c0d80e7434cdfbf046f7f37f40e96ff4fe639b86247d",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "6a4cddd14b2f361019b3df37b606a218112f2b145f8865fbaf36fc3770c8e8f7",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "cc4d3056be3b1c42043bf60867cd462bff160f0ce3ffa42f89faee8a0dfc6d9b",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "c801af09681f7641ba641e90fa36ef7b66eb5258f0b7b9fe649b198870d52362",
+          "archive_bytes": 1050198,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.5836949348449707,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "da11a389c50edb08ac173aceb73f58b6d7880e0688365ef912c41b17d4976076"
+    },
+    {
+      "target": "c",
+      "operation": "decrypt",
+      "size_mib": 1,
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "d0e764d63df5b2f5f808f3e67ea376b32e2a29b3d43ab9ba0ca9534120a91b9d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "1",
+        "5"
+      ],
+      "samples_ms": [
+        273.054260015,
+        223.258768022,
+        258.792376995,
+        407.948031008,
+        438.263980031
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 273.054260015,
+      "minimum_ms": 223.258768022,
+      "maximum_ms": 438.263980031,
+      "stdev_ms": 96.21592850876968,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 2.187035322189331,
+      "size_bytes": 1048576,
+      "size_label": "1MiB",
+      "derived_from_raw_sha256": "9d17fd8bc9a2343a22bc1c9726dcec4376e8ccd1d4e9da4984a7d70163fd6198"
+    },
+    {
+      "target": "reference",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        20.908657,
+        40.893015,
+        97.770605,
+        53.488202,
+        74.008662
+      ],
+      "status": "ok",
+      "median_ms": 53.488202,
+      "minimum_ms": 20.908657,
+      "maximum_ms": 97.770605,
+      "stdev_ms": 29.685995337563515,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "15d7ada0cb55c6ce4e743bf196742993dedd6a4ba14d81ff3d81ac88e4354dbe",
+          "archive_bytes": 11954,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "c5786c2620f05ff9d96cfc6c4b47fae0f7ab9694ce26dc50c0c461046795e817",
+          "archive_bytes": 11954,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "81d7c91cad517001856f2e5233c1a4c6b2235c4f207942e707fe8ee3f84195d9",
+          "archive_bytes": 11954,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "3f4f6e653507d45bf6263aacae81338bb6512467b3d5e9d99a51e6f296f0908f",
+          "archive_bytes": 11954,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "41149031f4565d6e37e84c98e2f72bd29786a4b60d071d654df35625a42cdd7f",
+          "archive_bytes": 11954,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "85c01b73b45529ec39f3ff933de0e6ca1ff41cda50bded1661ffb0a371315c42",
+          "archive_bytes": 11954,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.334381341934204,
+      "derived_from_raw_sha256": "968760102389418957080e56c6b133a546f6c8692e2c621bd918a42fc0b1cd85"
+    },
+    {
+      "target": "reference",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        98.609986,
+        76.869213,
+        111.006331,
+        274.606101,
+        100.588406
+      ],
+      "status": "ok",
+      "median_ms": 100.588406,
+      "minimum_ms": 76.869213,
+      "maximum_ms": 274.606101,
+      "stdev_ms": 80.49480514825149,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.7599442005157471,
+      "derived_from_raw_sha256": "f1810a796ad79029fe992a5a2dfb94c4bdc5947ab786db352f909592e2e4d47e"
+    },
+    {
+      "target": "go",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        0.324086,
+        0.305461,
+        0.281587,
+        0.242804,
+        0.276788
+      ],
+      "status": "ok",
+      "median_ms": 0.281587,
+      "minimum_ms": 0.242804,
+      "maximum_ms": 0.324086,
+      "stdev_ms": 0.030819630233018695,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "9da8d5613736c55b7383fde34274f0d9523eccfe6099f6064e30c285879515f1",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "d622252ac06fa496aff14052ea739de43d69c8179a3677a9412e03078590673d",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "8f4b0541cf87e18b79c1eea4d16eebd132d5452a76fa46537f55c7617eaa7509",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "ca5ec27bad285117990af651ba9f9073c1f50e0e6f17b80eac75527b2bd2ae9b",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "025387365a3990da3f742fc7abf5bcf0c56ee2f76e8c11c5eb867edba31a9ea7",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "d94fe26c039bb773b5f69737fbc845e07d8e17ff32010a4ba3747c0b1d149564",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 0.6919083595275879,
+      "derived_from_raw_sha256": "eec9391333616c86309a45d82beaa53f517242e5c81fe3939d769252d5603ced"
+    },
+    {
+      "target": "go",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        72.869482,
+        96.15251,
+        45.812145,
+        47.491316,
+        66.11571
+      ],
+      "status": "ok",
+      "median_ms": 66.11571,
+      "minimum_ms": 45.812145,
+      "maximum_ms": 96.15251,
+      "stdev_ms": 20.65194851222816,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.4049961566925049,
+      "derived_from_raw_sha256": "312a066c3a44b82963cc8cd02d3ae6c3be4b0fb4b0969dfc14f1cf6be44c2a1e"
+    },
+    {
+      "target": "typescript",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        22.259322999999995,
+        21.251567999999992,
+        21.310827999999987,
+        21.532003000000003,
+        19.704454
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 21.310827999999987,
+      "minimum_ms": 19.704454,
+      "maximum_ms": 22.259322999999995,
+      "stdev_ms": 0.9331819575070546,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "efd716bb0481f4fb5c67e8cd0dc9d73711c2d3be4d64eba8770aa1e77591f194",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "52ca9ab5139d57f3952495d71a6ddc2b1bfed0f6580e22eedaac694594edf17f",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "73983cb43a12eedb8fa4faaa9a5ae36064824c0766f263170862e542caecd715",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "b31b59caef549791c01c843dc5d4e4829ca69db1d8fb494a480d15c0ba035e35",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "63e35165b01705d9405bafb23ed90ab848c16d442f4b0bf34e1d66e7d5c1e519",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "73f22ba538c682bc134a91def7fe7a97961f1320b10e6b566f13051e0b149493",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.0453407764434814,
+      "derived_from_raw_sha256": "9f45cc6df125c1e6ef9f0717491099fe0465f338d94609863fb5bf3ebcfae007"
+    },
+    {
+      "target": "typescript",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        91.91517400000004,
+        91.41123199999998,
+        92.06235899999996,
+        135.36208599999998,
+        121.44617800000003
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 92.06235899999996,
+      "minimum_ms": 91.41123199999998,
+      "maximum_ms": 135.36208599999998,
+      "stdev_ms": 20.647175555307154,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.8310849666595459,
+      "derived_from_raw_sha256": "a3876d01ab67c440fb1b33a070d543160b57a52e929a793d3a79436ada4789be"
+    },
+    {
+      "target": "java",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        18.173972,
+        13.127934,
+        10.626415,
+        8.902661,
+        9.413206
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 10.626415,
+      "minimum_ms": 8.902661,
+      "maximum_ms": 18.173972,
+      "stdev_ms": 3.7930854077140546,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "26b4831cccf28c0a9757f4111054fa8ee422fe73e0a79477526a23ade2660c3b",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "5899ecd8a6efb921b79abe626c2b5c9bc07f0686c459f1561e13992fabfe0d53",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "981e1dfb8832dfbedd8587e29c616fa5fc336942dc6182ce19c4d5418b4b7865",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "5d9db3b67c06f5db0f2f2625b82f8682468c9f7609fb56281655a62abc06db45",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "59b495f8bcd7bc786cdf1bc97b5a235dc346c4cad23753d95f466cecec83d8d6",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "82399f7f305018ef62c10a8fa13c413c7e44cdbb7bbeb1975ebeca62b91d7999",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.3811595439910889,
+      "derived_from_raw_sha256": "6d2df01fad146b653a91a2e171d811fab6af08e17e0eef33d45e9db20ea11a40"
+    },
+    {
+      "target": "java",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        161.150228,
+        103.330114,
+        144.351859,
+        133.04966,
+        75.294818
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 133.04966,
+      "minimum_ms": 75.294818,
+      "maximum_ms": 161.150228,
+      "stdev_ms": 34.183616923665994,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.3015410900115967,
+      "derived_from_raw_sha256": "804796b390b5b82e89a7a432aea14e4b11cb81dd4776a0dae097e8c009392025"
+    },
+    {
+      "target": "csharp",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        8.1462,
+        9.685,
+        6.8588,
+        6.3827,
+        6.6399
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 6.8588,
+      "minimum_ms": 6.3827,
+      "maximum_ms": 9.685,
+      "stdev_ms": 1.3767741670295826,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "cb93b75ab073b30e4d4aea8b92af3c8863e75b3c7955fc2607403c1c7b3d6e32",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "9b4db23b5d5e921d08e913ef65d374ba2c0ee5a083e0336ad43b043978f92ec4",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "0372ab6c8e6256c371744f4b1c1723df62470f6a8f31c7f52fad6d105face5cb",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "0c998752f25458ec26333b622d63375262709d420967f5b22b3bf4a6a67d0a7e",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "20aa64d747ce5e5febb1e4190a3cd74f01d742786838da8c6ee33f422d1a29b6",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "20693885ae3eb59f157b1f67d4537e6e0731ea6b2e596b57157c45f81141a995",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.105720043182373,
+      "derived_from_raw_sha256": "cd9ce24b7d0cbf64ea54a893a827afe1cf8e9c9dd3e3a9a049cccbe97eaaea5a"
+    },
+    {
+      "target": "csharp",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        232.7643,
+        107.487,
+        100.0159,
+        197.424,
+        171.5104
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 171.5104,
+      "minimum_ms": 100.0159,
+      "maximum_ms": 232.7643,
+      "stdev_ms": 57.372602285298164,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.2617785930633545,
+      "derived_from_raw_sha256": "39648b8ec9d775a6e405118250fa808336b679e8a64e668d98a9576a36ff0309"
+    },
+    {
+      "target": "python",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        32.817931,
+        32.385111,
+        33.284564,
+        33.304862,
+        31.706072
+      ],
+      "correct": true,
+      "untimed_oauth_refreshes": 6,
+      "status": "ok",
+      "median_ms": 32.817931,
+      "minimum_ms": 31.706072,
+      "maximum_ms": 33.304862,
+      "stdev_ms": 0.6724076804822363,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "b8cd29b0be8a2f7c4569091e2e81b1ec2c7fb2e2e9e17999aadfb34f65a9dbec",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "a11885f43d1a2465d46a037fcedc37eed2329afb45e2f0c75902460711257c28",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "05641ba25dbfa4eac10f40827631caae29261072e2e21c646f027b1c0ab2f192",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "848e2d3fa3868fa3da211fa2a365f4b247880127e4264e5f76060018e7fa054c",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "fbe0502ffeef8ae9424e2db4b2e78a6c6a20cfaba9db3647ebf7a28add2908eb",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "9917052adc3d17953d2ba6c689c69781588415fff44b553e12e95539af50dacc",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.2237205505371094,
+      "derived_from_raw_sha256": "fa952f77cbb12725d2b6ace63554d31f4d2442d95f4b3a74eb271ad0312d3c5b"
+    },
+    {
+      "target": "python",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        169.434183,
+        154.987872,
+        174.692477,
+        150.808415,
+        173.157196
+      ],
+      "correct": true,
+      "untimed_oauth_refreshes": 6,
+      "status": "ok",
+      "median_ms": 169.434183,
+      "minimum_ms": 150.808415,
+      "maximum_ms": 174.692477,
+      "stdev_ms": 10.966455188163048,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.1351358890533447,
+      "derived_from_raw_sha256": "3afdc563485f503ef46c7815fca8ab617e900906d1763bc5614ddc887e9f8bee"
+    },
+    {
+      "target": "rust",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        4.466464,
+        4.433823,
+        5.240622,
+        4.468217,
+        4.224201000000001
+      ],
+      "status": "ok",
+      "median_ms": 4.466464,
+      "minimum_ms": 4.224201000000001,
+      "maximum_ms": 5.240622,
+      "stdev_ms": 0.3901534554547734,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "b4c631c063b57c4bf1fb0fef65d701f8ca8ac4bb97be7eef5bc92ed422934f30",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "8cb5979bfccb3e2d9ff80faabd8d6596b6da305ed6f324fc1d769de95bfbe15f",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "e8601062887f3437c7c009e4ab8d9f7725d4f99204fe333ccc626d8b4d03a140",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "ef859f845744881016643f216d69cc04e718fe9d2fbc9237c92295d32bc9f632",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "da64f78d89ec9880377e14cc667e51172c734e846e0f4abc6bf1edb2e6e0153e",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "51f2050579e02030d63164ba341e7d922034d0130f9010af95e3bc6c5c3c1025",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 0.8128414154052734,
+      "derived_from_raw_sha256": "7b6f98a67707cd93626c88dd21536c84e047b836c6ada1c799944f2c67f676ee"
+    },
+    {
+      "target": "rust",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        79.920901,
+        82.07209399999999,
+        87.59249,
+        81.693225,
+        70.800101
+      ],
+      "status": "ok",
+      "median_ms": 81.693225,
+      "minimum_ms": 70.800101,
+      "maximum_ms": 87.59249,
+      "stdev_ms": 6.094805084512933,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.48886966705322266,
+      "derived_from_raw_sha256": "4731b03980c28ccda87d54d36183cd74a0233584eb3956f2e2836313d461181d"
+    },
+    {
+      "target": "c",
+      "operation": "encrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        5.538578987,
+        5.677007973,
+        5.637755036,
+        4.778757989,
+        6.080271959
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 5.637755036,
+      "minimum_ms": 4.778757989,
+      "maximum_ms": 6.080271959,
+      "stdev_ms": 0.47425779566608883,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "96a2493cbfbd454c93001ebddd2279265d48eefb77885e1f9bf456f6afc42ba8",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "3b67a1c94c86c00dfafa5cac3dee57ed0b219a6deba0cd01a548641dc45c07d0",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "3afba3d45234b5c208d9db3dd6ebc35ce51d2a079b07fa8ff1e15adeb076c1c2",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "7273f831bb97e7e7967e2a8d40a786b48a11ed7bb567c00beebba1d22bfbdf08",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "9e905baea33e35ae63a3cfd01c8897b5e7de67264011b73d1cf566d4dff72dcf",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "ec985d4a69ff6b56183b43596b6de1dd8d07ee052d4d2a83c6c8eed8c1eb89d3",
+          "archive_bytes": 11858,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.0440034866333008,
+      "derived_from_raw_sha256": "be42b612d1c14b9419b0e46626796d8957f970549bf89f8ecc2db654ead18789"
+    },
+    {
+      "target": "c",
+      "operation": "decrypt",
+      "fixture_id": "10KiB",
+      "size_bytes": 10240,
+      "size_label": "10KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "9ff9fa5eb72929450756b77c3bf30502810f1b1e92afed998e0775892125445b",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "10KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        203.977160037,
+        109.185817003,
+        188.913957,
+        119.860372007,
+        137.859526038
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 137.859526038,
+      "minimum_ms": 109.185817003,
+      "maximum_ms": 203.977160037,
+      "stdev_ms": 42.2203152776257,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.936657190322876,
+      "derived_from_raw_sha256": "9a9bb1f120512992f3ffd0de0f00964cab5ef46e2b585df9347af27cc5daca91"
+    },
+    {
+      "target": "reference",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        89.085852,
+        28.788104,
+        111.94154,
+        62.678522,
+        55.361837
+      ],
+      "status": "ok",
+      "median_ms": 62.678522,
+      "minimum_ms": 28.788104,
+      "maximum_ms": 111.94154,
+      "stdev_ms": 31.971640873652262,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "b8bfe0d9505b72db0accf74df7b8116d8b1bd6eac136d7e53cc39b224ce50a19",
+          "archive_bytes": 104116,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "35bc64d0eb9930c999c8ca2cb87cbc9d1f86b0915a208afe1bee661766e23dd2",
+          "archive_bytes": 104116,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "05fe35a2ebfa1017599dcdb76d5cbc5a7635145b98f741bbfdac7c7d7e09d3b3",
+          "archive_bytes": 104116,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "71e2637ce63353486fb9162e15a2aa0864b45642293c217682bea6b4641a1a0b",
+          "archive_bytes": 104116,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "d74da34da2c526ce747415a048f192ece36f4a8b8cd3ebf474df7a44542e2629",
+          "archive_bytes": 104116,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "dfceb82ca534eee8396f0496f93643ee4fd0db2d855480a5a9994ba55ffc582e",
+          "archive_bytes": 104116,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.3199405670166016,
+      "derived_from_raw_sha256": "e6d873f55eb1e6352ef24452b60ad357a388bc2bdd064c605c3835b9e457ac4f"
+    },
+    {
+      "target": "reference",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        98.18984,
+        91.596729,
+        87.701073,
+        98.545887,
+        85.697525
+      ],
+      "status": "ok",
+      "median_ms": 91.596729,
+      "minimum_ms": 85.697525,
+      "maximum_ms": 98.545887,
+      "stdev_ms": 5.893386934280254,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.6489980220794678,
+      "derived_from_raw_sha256": "02fa4a50d01ad159db27e34cded5c5431c204f757808a2f3715c87f95eb475fa"
+    },
+    {
+      "target": "go",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        0.704187,
+        0.765973,
+        0.751595,
+        1.25113,
+        0.547965
+      ],
+      "status": "ok",
+      "median_ms": 0.751595,
+      "minimum_ms": 0.547965,
+      "maximum_ms": 1.25113,
+      "stdev_ms": 0.26440214888877134,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "a1131bc184c869148da024b121e2ac0c02cc05ee3e9c71965cd1ecce405a35ee",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "503711f9bc2a1c2157a0e8de263804bf2eb28100ae25684f1f931b6a1eff540a",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "7732f0e738518c89688d0e207a3800e9acb3ed8d7733ea5d51e0668ccd973998",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "d6e9fb565f16c474920347a0f5d55a621be6ea8d81782461c88fc9edee578d18",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "3eb68ff10cde0f51f79070c3020c7cfcf1aea39c60b77b5d1e8b8ea1e8b56078",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "b1b855ac0b29c4cdc0362ecb7879ca8e8515119cc2c37373f15b5a1a50d29bed",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 0.9436063766479492,
+      "derived_from_raw_sha256": "d090a7adfa14a9fad29ff8802f47a55211b7d869f4fbd341d694d13990742752"
+    },
+    {
+      "target": "go",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        68.235896,
+        76.255776,
+        39.958106,
+        77.912805,
+        128.629954
+      ],
+      "status": "ok",
+      "median_ms": 76.255776,
+      "minimum_ms": 39.958106,
+      "maximum_ms": 128.629954,
+      "stdev_ms": 32.04983838673409,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.464310884475708,
+      "derived_from_raw_sha256": "38adf08cabfb9bde8e2a76e8a001e89816cc872450e0ec6c9d827094df78e872"
+    },
+    {
+      "target": "typescript",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        31.314690000000013,
+        30.989221000000015,
+        30.249276999999978,
+        34.08651500000002,
+        28.88785999999999
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 30.989221000000015,
+      "minimum_ms": 28.88785999999999,
+      "maximum_ms": 34.08651500000002,
+      "stdev_ms": 1.9101555359905515,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "2acca8496882fad73f6da0c1a95f51f205bba53fbcb5fc0f8aec12d6e46a6eb9",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "387e50bd95eac6f83c4b068dcfc910ce843a7e3abef5ef8ae3e31f65d03b8ab8",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "a2a0f0a8f7e8a21d06b1001e67fdb2f1a77010aa65868438fd8e8f77cfed05b9",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "14319eeb91328f0764267be40e2586067bef465ab8f8298e1a24e75dfdb6f47b",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "2f3a3b674222cf713e1e5c7e6a705e061990b342154981eec8bb65d591d475db",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "c7ba2051c8ca836f707ab00b2707fe311982ba2be8c982a772e259a2b0e02aa1",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.3681926727294922,
+      "derived_from_raw_sha256": "6b8424cac34a956c560b4d63fdd031a1b080364e23f7233044faa96ae4b877a8"
+    },
+    {
+      "target": "typescript",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        133.89300799999995,
+        99.860905,
+        98.28086000000002,
+        79.14891699999998,
+        127.95808799999998
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 99.860905,
+      "minimum_ms": 79.14891699999998,
+      "maximum_ms": 133.89300799999995,
+      "stdev_ms": 22.70306901574687,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.8342320919036865,
+      "derived_from_raw_sha256": "c0bc7d2292807db9ab3d18ff52ec0969c73e2ef7cb0efb42b74787dd3a99a8f8"
+    },
+    {
+      "target": "java",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        22.116466,
+        16.396146,
+        17.630215,
+        16.067091,
+        12.918442
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 16.396146,
+      "minimum_ms": 12.918442,
+      "maximum_ms": 22.116466,
+      "stdev_ms": 3.3341481138523967,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "1ac237cddfdec0f95ea1e239948fbaa8ef7d22e4fb9413f92fc9c16c5af23529",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "a3917c76fa1c46afdc934197255485cecbbdb3ea854ea7c381adc6aee2b835e0",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "1cb6cf193b968ee0a3e368eaee7802b47712ef0bbb89d31c5830f59183e7e763",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "fc6d4a8cdd9c0416c34af3bd9065105c0d5d5b2cc333570e44220da762b199fb",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "e08dbea147c93e4b271c41d07ddf09b65a45d572b04c0f23791438f6bdaa734f",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "0c53d82e69e4a0afc56e84a431c1fbbfe848531ef579957ee62b178b31cfcc98",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.5884180068969727,
+      "derived_from_raw_sha256": "051838ebfc70499649606741f7186f4005336141582e30e1f3a644347e38d919"
+    },
+    {
+      "target": "java",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        106.404064,
+        351.325565,
+        140.521526,
+        76.414963,
+        412.564594
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 140.521526,
+      "minimum_ms": 76.414963,
+      "maximum_ms": 412.564594,
+      "stdev_ms": 153.40505475466315,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 2.766416311264038,
+      "derived_from_raw_sha256": "f5bbb6e797f78d614b043f23ea89d63587f315d562bdce55084603da52d4d65e"
+    },
+    {
+      "target": "csharp",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        9.4363,
+        12.8504,
+        8.9995,
+        7.4765,
+        8.1024
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 8.9995,
+      "minimum_ms": 7.4765,
+      "maximum_ms": 12.8504,
+      "stdev_ms": 2.0884777056506976,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "26472cbacddffe133e7dccf995941b227b23391942b2626dd2725b47d9ab3769",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "9a1e0ca75055caee7ce1b02de51957b89c6706dc37e03665d8ba947d191d17f6",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "7c8590a345344649b388b7c1316e0d0fe3cce7f86a5ed8c07c2ac4fd8358f56e",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "a498fa9203fb46139144f2bb1339501451c310b57e1006415318c2bad6362de1",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "04b00c21cda60f96b57a9d9e69bac190b40a32b3698d8b5d2a1463e61360ca71",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "1f47fa7243148910e381941c6301ddf7797b91e43c85e7ce980fcfd45b48b078",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.1699535846710205,
+      "derived_from_raw_sha256": "5fbb257ecfcd33bdc96e66006ef4c8144fb6b0608cc2c8d097b707e3c25df5f2"
+    },
+    {
+      "target": "csharp",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        190.3542,
+        255.8484,
+        250.1733,
+        301.7862,
+        144.5523
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 250.1733,
+      "minimum_ms": 144.5523,
+      "maximum_ms": 301.7862,
+      "stdev_ms": 61.42239661831017,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.7719767093658447,
+      "derived_from_raw_sha256": "bce4499baa0029c76281d81b9cd20283bb3f10a6bff5023598f2b4635613e5ff"
+    },
+    {
+      "target": "python",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        167.10156,
+        144.691275,
+        168.771403,
+        168.444482,
+        164.232233
+      ],
+      "correct": true,
+      "untimed_oauth_refreshes": 6,
+      "status": "ok",
+      "median_ms": 167.10156,
+      "minimum_ms": 144.691275,
+      "maximum_ms": 168.771403,
+      "stdev_ms": 10.196607662509692,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "da3d21f11b8b676e62bd1c82e37ef749aeb85d4f60ae39666cc4bc3ba9995f12",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "88463e5d42f993571d34400c148ea9c04d23bed5feb4336fc8744d4db08d0477",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "569c99a4e31fe175e52c1dd44b6b26110a14db25f31ebd71c886e5e644ff207b",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "9c10969d9dcc37c703eb7976789c20c4e02ec3387e21e17532495bf3f7735c8a",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "41863380e3c655212e6af094729d8d5c53b0c54b9dc92bfa19f79ebb20410315",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "b22495dc9d8aa7460a0f4f98829ca3b3b4ddc3031321165125f7eb39f9ec62a4",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 2.3398497104644775,
+      "derived_from_raw_sha256": "2a6ccac2133f721c295be231000600e15ac22b52a1241614c1d577c050d09efd"
+    },
+    {
+      "target": "python",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        428.940033,
+        475.099839,
+        455.231368,
+        439.785037,
+        513.821632
+      ],
+      "correct": true,
+      "untimed_oauth_refreshes": 6,
+      "status": "ok",
+      "median_ms": 455.231368,
+      "minimum_ms": 428.940033,
+      "maximum_ms": 513.821632,
+      "stdev_ms": 33.495190816036455,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 2.949117422103882,
+      "derived_from_raw_sha256": "c4af70b1715b0547a3e7bfe2d2c686bb37514f541e6ca8a327448f9a2845b983"
+    },
+    {
+      "target": "rust",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        20.035193,
+        19.572377,
+        18.123308,
+        19.067994000000002,
+        23.564473999999997
+      ],
+      "status": "ok",
+      "median_ms": 19.572377,
+      "minimum_ms": 18.123308,
+      "maximum_ms": 23.564473999999997,
+      "stdev_ms": 2.0768834137843877,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "b23a449f1ed59788946d994a9cb6279cd76717ef372406abe66b9fd2d61bbb9f",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "6f6d3182b70d0b620073d8b3c79f00c9b60db28f0f20435ba99c865f368c089a",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "18dd52c8aa88b507cf28d9cba38764c36c8b4a76101e7313fb0703ef65fdbb5b",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "21dbace5cf52d62e3f967dfc8a8716c64c54568cc5b2ebbaf857afa70b300b5b",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "25c24633828445e00b8b79cd3f611f032ea8d281890b870d7fd4e6dd75328237",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "7850cab4ad91f82fcb1632efa1c55bcfe544d42a6bb63f3911d288c91135379e",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.2874717712402344,
+      "derived_from_raw_sha256": "94d112798050de90a5ec47c6ee0d42340d97d85ef48ef98b5a82603dba83c3a9"
+    },
+    {
+      "target": "rust",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "correct": true,
+      "samples_ms": [
+        114.208831,
+        209.208336,
+        106.007041,
+        112.22962,
+        112.34186
+      ],
+      "status": "ok",
+      "median_ms": 112.34186,
+      "minimum_ms": 106.007041,
+      "maximum_ms": 209.208336,
+      "stdev_ms": 43.941400754119314,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 0.7741327285766602,
+      "derived_from_raw_sha256": "d0dea193496e40bafb6a62a056806d4ac4ace97200469e1f05cd72378ef6ccd7"
+    },
+    {
+      "target": "c",
+      "operation": "encrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "encrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        21.104903996,
+        14.330624044,
+        13.595297992,
+        13.640150964,
+        12.046119988
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 13.640150964,
+      "minimum_ms": 12.046119988,
+      "maximum_ms": 21.104903996,
+      "stdev_ms": 3.544350942162676,
+      "encrypted_samples_validated": [
+        {
+          "sample": -1,
+          "archive_sha256": "f8c9a92b2452fbc93e8e5b2ddebcde88055e4e49c225beed53c339589f4e830e",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 0,
+          "archive_sha256": "19843c0fcd0fb4d8674b9dfed6e29adf959e9f31f5285185da42c1a41039b47b",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 1,
+          "archive_sha256": "7a81c615dd6761f2f1cb89348eb74e83f6eda51755e890168f1c632e6b8a0f63",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 2,
+          "archive_sha256": "8b408adc9f8e15a4aa965f4fd5f3c96b8eb6e8d3d6bd0f63bf70e42b225c2f35",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 3,
+          "archive_sha256": "4a42ede6e441f094cbc545385108c42f7bb01eecad566b7cab2a7ebd20f27a4b",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        },
+        {
+          "sample": 4,
+          "archive_sha256": "978fcb960858f70c5e9ad532d0d3b817b2c23849f2158fae0cc504b0e1d42b88",
+          "archive_bytes": 104020,
+          "stock_go_real_kas": true
+        }
+      ],
+      "wall_seconds": 1.117089033126831,
+      "derived_from_raw_sha256": "78daac024af98098c9a44eb83410e67177c4fa2400f34bab00bce0abc2d34af3"
+    },
+    {
+      "target": "c",
+      "operation": "decrypt",
+      "fixture_id": "100KiB",
+      "size_bytes": 102400,
+      "size_label": "100KiB",
+      "samples_requested": 5,
+      "warmup_count": 1,
+      "payload_sha256": "7b53370089957be491120b2a768e2c5853e41a187577ab705955e8956770f62d",
+      "command": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign",
+        "decrypt",
+        "100KiB",
+        "5"
+      ],
+      "harness_sources": {
+        "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+        "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+        "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+        "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+        "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+        "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+        "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+        "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+        "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+      },
+      "samples_ms": [
+        236.174842954,
+        335.89567697,
+        228.82359302,
+        220.092411995,
+        180.656754017
+      ],
+      "correct": true,
+      "status": "ok",
+      "median_ms": 228.82359302,
+      "minimum_ms": 180.656754017,
+      "maximum_ms": 335.89567697,
+      "stdev_ms": 57.560658421733606,
+      "encrypted_samples_validated": [],
+      "wall_seconds": 1.4279289245605469,
+      "derived_from_raw_sha256": "afa1a905fa1f88393b16756e1435ec89ff55979060fc6768f65265ce85feefdb"
+    }
+  ],
+  "environment": {
+    "sdk_head": "4c77e58f5aca5b82dc7059e1e21cd9129c61e245",
+    "platform_head": "f2635158b681fa970aafce7eacf108a453521f63",
+    "references_lock_sha256": "8c327f3f7728f86e7a36dbd60bf39c2f9716fe48910824924bd86ff55e96cb66",
+    "packages": {
+      "go": {
+        "consumer_receipt_sha256": "84396a04b201260e6ddc420f359fbe9518b001965b2870684f72856d4ac29244",
+        "package_receipt_sha256": "efa2495ef15ca43c295a2b32226a87124abe35bcd909254866e0638105da82c7",
+        "installed_members": {
+          "package/cap/clock/clock.go": "c893fde9dbeb4cb7e207cbdc5100d86a0a9a1e9b6749140d45f13130fd3d6392",
+          "package/cap/crypto/crypto.go": "a07f9530a807d533d52a57d5bd1dcbbc29c839ff7b29c3dace3dd2eef6862ae8",
+          "package/cap/encoding/encoding.go": "854197eec91304516968372f100098aaff675945ddbd3c25651f647d3b5ec075",
+          "package/cap/http/http.go": "d787340710ae589a10f15ae43ed49301124f3bb857345041c7ebc621bc3e5613",
+          "package/go.mod": "df4b6d17cd49c65e153823f14982dc5bdbede2e926288a2e58d28e6ec47db18f",
+          "package/licenses/Goalchemy-LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "package/main.go": "40d6e949852de222eef78d1c80c9233884e8ecf03bceb208414f4b7fdcc8c9f4",
+          "package/rt/chan_close.go": "40ec29a6a949edf61bd55289db5518bfb64f2d3d942366b8d50d630ac2e546bd",
+          "package/rt/chan_make.go": "d6f1e645657155f75a620b65342a70f44b542eac81295b50cc29792e99370478",
+          "package/rt/chan_recv.go": "13eb6a63450afd20b98096acaf016851bd90123e6b55f23023fb6a871b6f38ed",
+          "package/rt/chan_send.go": "83f40af1fe6d82722204c737c0aaa6ca26f88fc65f2491624bdfc2896058ec03",
+          "package/rt/lib_callback_request.go": "fc72b41e36c3ce689e53266cf0c4fafa776167f346163a083ac1b2f8fdb5cd75",
+          "package/rt/lib_clock_unix.go": "8166b2bccf6e9f7a931c64646f09432c864af268a88ab11eb40dc5628e44a708",
+          "package/rt/lib_crypto_aes256_gcm_decrypt.go": "3e4bc030a9fc6b61bc4642b2a44647f1be719da5d1d7d8d01105ce10eef48a91",
+          "package/rt/lib_crypto_aes256_gcm_encrypt.go": "9c84b995a865045d8ea3e1281063b0116a5cd831e734b996213fc45ecdb9e759",
+          "package/rt/lib_crypto_close.go": "c1200ea0161b9d4be659b09d65ebcda647640e023c2f0fc54a5fd810fccaba78",
+          "package/rt/lib_crypto_ecdh.go": "53b5413308c23b79920b8f2a6fbc948b1d773490294660a7e9614fcc7e201827",
+          "package/rt/lib_crypto_es256_sign.go": "37d185c6abec726c815806fe8aeb4f3996e9b4f75b1b017adc0b28de76b16a61",
+          "package/rt/lib_crypto_generate_p256.go": "b17a3e57827cad2063ac6b49cb2e6921e0768b924c54aea2b0dde9df03358617",
+          "package/rt/lib_crypto_generate_rsa2048.go": "2da654ffcc3cbc4b9ccbaf9c97a6814d34f50c931ee5ffd4f644ab16e39b46dd",
+          "package/rt/lib_crypto_hkdf_sha256.go": "448a0f64cbfa38b08431e8645327a87d82469e257bc97005f0eaf989eb950e9d",
+          "package/rt/lib_crypto_hmac_sha256.go": "3c77cfc04a5b54db8ec29c5a99768f96d546d7b9d11b23eb1161af3acdf60db5",
+          "package/rt/lib_crypto_hmac_sha256_verify.go": "ac38b640ac6b843d14f9b44b63ba647f4afab6e45e1575e186e7f5d6ca64dc41",
+          "package/rt/lib_crypto_import_pem.go": "c88c35af0ddfb3ea4450b924bc4c0b4a7c1a7575ecdfd541069c334ef4a1dd32",
+          "package/rt/lib_crypto_public_jwk.go": "8c3c952916189c8e7a8fcf8b5a9c33a3017fa3d62807708fa9ff24bd7d53e548",
+          "package/rt/lib_crypto_public_pem.go": "76ec8bebabc98d06e7f0d04eb8da309d61508dec5e1b636cac36faed838d846d",
+          "package/rt/lib_crypto_random.go": "57fd72b6020af36707f07c29a2f33a00c31f1c775d394cf12d6d38b48033e380",
+          "package/rt/lib_crypto_rs256_sign.go": "06ad3a6b1f39a05aced7362e596d357cca5b5b41d14f1034743b298aa6fdfecd",
+          "package/rt/lib_crypto_rsa_oaep_decrypt.go": "adc52c2494ae9e68e9c471b49415e1aa9c646c79064eccb12e736af3aa9fd0e4",
+          "package/rt/lib_crypto_rsa_oaep_encrypt.go": "953eae05b8e18aa869785a8a8e9fb2a0c912b0705d015cf14bbb4786fa92a73d",
+          "package/rt/lib_crypto_sha256.go": "ecc7e311296879266de0c6edc1f3c4509b782244c6be6ed5c6be76112e88601d",
+          "package/rt/lib_encoding_base64_decode.go": "6744ac179b7e0c13dbb206d7f586034947571ebaccdaa82a62780f3caa378013",
+          "package/rt/lib_encoding_base64_encode.go": "469070fe73acf52abee180c812c32ecb640d124497e54a3450e86639acb22bf7",
+          "package/rt/lib_encoding_base64_url_decode.go": "acb278d53d09652d2e724d1be5274eb49d982fdb9a6c6df8bc31c50109a376f7",
+          "package/rt/lib_encoding_base64_url_encode.go": "9005575817bc3d2aae0e49246f0f089221fe2b3db04bab07aca796c7781c5d9c",
+          "package/rt/lib_http_do.go": "7a41e165c3c31160a25a3b5a3d968d57d27ebd8d067356e3f3fa5f4af29d9e5a",
+          "package/rt/library.go": "541aad79aecc8061743e610f0834f0e62fd555b66379f3c95c84c8ebe2eb829b",
+          "package/rt/map_lookup.go": "50a34b60f46428c1f4c2e7cd01e36d57dc6a7b1abac990ab0e199a2ba294ec7c",
+          "package/rt/map_make.go": "e5eea7e7134f6fa7bd12f988fc4960f64e79608aa92607baf9271c1b48b73edf",
+          "package/rt/map_store.go": "ee7d5191a9852a9b79ccf4a0adf32576843a3e256f09e8d63b5359d635cc401d",
+          "package/rt/panic.go": "16901c28a492638ecf3067755f9ccff6da535f831172b86b2dd9a083e1c72b64",
+          "package/rt/rt.go": "a60482ba9fd90f35930a66a945386162ee5c5ba6dc3cc85d454285b06301bf61",
+          "package/rt/select.go": "9ca1795d56a1104b1b1982a4e4fb04cf97432e1b3edf2111893afc3214ceedd4",
+          "package/rt/slice_append.go": "3cd8ae892a14122f896f11688d729d0727a9290abdaa9fe6ec0777940e86ea7b",
+          "package/rt/std_context_background.go": "e6c7c0ef0e2c51397f8aeb935229683c8d5cf3e55a37019c3ec8c5f8c0804335",
+          "package/rt/std_context_canceled.go": "6ab944a258fb5b3f101b2321d26d177c78ff860e63c829349419824b89ca202a",
+          "package/rt/std_context_deadline_exceeded.go": "b08c6e5d1da178adfce695982d62e69e21224c375a561bda5627deac739f877f",
+          "package/rt/std_context_done.go": "f9557fc66bd6117e0869a78f55fdc0489d3fec11500e0ad38632d166f0ed6b3b",
+          "package/rt/std_context_err.go": "318abd3f1ac5da50c875708b914ad7c235c15bf1e38f6138abd17588e5d97890",
+          "package/rt/std_context_with_cancel.go": "b4995ed09b8f2622b8d5da6e5fd767066821c00cf10fdc6eb60099babeda120e",
+          "package/rt/std_context_with_timeout.go": "12abee5b0f13f8a8dfc4de27c5b63b10dd1b123aa64a0bc75359325d373da7ff",
+          "package/rt/std_errors_is.go": "bbd5f3f4dc1ffa6ff4d5373618983f5a3de470ced98b3f59cbbe9d463156a969",
+          "package/rt/std_errors_new.go": "30f88e2664027b9e29fdc7f474b8a7774c125f79f511c8d4724e3780a3a0d79c",
+          "package/rt/std_sync_mutex_lock.go": "110144a0f640ed41893d475e8b986e6b11710970d589066dfcf482b96fa03d2e",
+          "package/rt/std_sync_mutex_unlock.go": "7c7309d1c2b062cc7f22ee8e74deab9fa9e6443fb3fdb4738cd0831ccbef4cac",
+          "package/rt/string_to_bytes.go": "9bb4722865ffb50f7a9c233bb17d4fd545dc2e874a35a72a39d59f938a8524f9",
+          "package/rt/task_spawn.go": "bc07352180ed3698b1b63b431dc1336717ecbd1d6b0f1985b59263fff02b5e83",
+          "package/rt/type_integer.go": "63f2949f3df43cc9ef3bb2471dd92bbc6f05de93110481bf7eb966ac274148b7",
+          "package/rt/type_map.go": "9854029c251a7c10e2682b03eb153134757202b09bd5365b556e7aee12fab555",
+          "package/token.go": "1bd8bf28bba8f53bdaafa0e4eba212c8b3cf9b13cdf86b780a5efbbe5059ed84"
+        }
+      },
+      "typescript": {
+        "consumer_receipt_sha256": "91f62fcd2a80590a54de6824001b66cf339401e9e65f0e272c7040c9dfec558b",
+        "package_receipt_sha256": "30aca25e847ebb8b95e28f456cbb29ab4eb1f04d4a4f9c0fe67982d95a08f09b",
+        "installed_members": {
+          "package/README.md": "f1e214deaee786575363b73271ac02d6df0719114876712c1c1c4f311130203d",
+          "package/dist/index.d.ts": "fcd494f004e77099f28d60a761d0c85d1052524c1ddc9ae0e560aec7b089f4fe",
+          "package/dist/index.js": "13f035b5ff86ea2f7f400f0d5a02025e1bb89be349f60e940b7ca236fa29e8d9",
+          "package/dist/main.d.ts": "0d569a87e0ccc9e389a47ce508dfe6eedd84d06a1805613297d2fa14cea891fb",
+          "package/dist/main.js": "be9ebeed54f40d0a877a648dd79b6921d7875c660abcf513024ee3504ed213ad",
+          "package/dist/rt/index.d.ts": "52876fdc41d935de8006af694cacae846c33afb90547661e4b3611f94868c6cc",
+          "package/dist/rt/index.js": "d78ed2f72e3d5c9cfcbec16ccd503ab0834c97b1f7e56b1fc00627278f945ae1",
+          "package/dist/rt/runtime/chan_close.d.ts": "023ba42cd58a50744a53d6d0fafaac586fde490f3fb204eb98dfd736f7f286be",
+          "package/dist/rt/runtime/chan_close.js": "b680e2cc7ecafe09fbaeb134bf6bde15bd71f586955d033c07b2a88a007c5389",
+          "package/dist/rt/runtime/chan_make.d.ts": "d3fa90a1fc1af2d81c1ddc2f1648cdf8e011de0056c5ecc7309cd03790ce8945",
+          "package/dist/rt/runtime/chan_make.js": "53ded0e1750e5ccffce94078819edd299b8a60226a19f8f2fdff790c2ba2e5a7",
+          "package/dist/rt/runtime/chan_recv.d.ts": "46fb42d827a05224a7ae07bb29b8fc36c1525e740f740342016a2898254e6c9b",
+          "package/dist/rt/runtime/chan_recv.js": "d602bb4df5e5207e6ae53ebb27c6e9dfb80424974141e8d3e857ef0b63d0105e",
+          "package/dist/rt/runtime/chan_send.d.ts": "8349e53da0f796440864b51aeb690558010fc479b9a751a0a80c49b3fda2db8d",
+          "package/dist/rt/runtime/chan_send.js": "a52e4f6fb844eb0ebe82eea0303cb9b82ea711218e275af0a40d03dfadee20ad",
+          "package/dist/rt/runtime/integer_add.d.ts": "397735bf8139b4beee8d995dbbca5519ac3ed43eddf53f18accfbf6e40f0b315",
+          "package/dist/rt/runtime/integer_add.js": "1bfa33843149fae9780ca9e748a70d8490056dc557ba9fc8411b76cec599da3d",
+          "package/dist/rt/runtime/integer_and.d.ts": "ad101b385995924b067041b641c4009c136c16fa5b6e905c7b78fcf53c8df52f",
+          "package/dist/rt/runtime/integer_and.js": "fc4fb678bb6b636b56039438a82cdbce4738f03a7a3310fbdd3adca3eeffbc2f",
+          "package/dist/rt/runtime/integer_convert.d.ts": "b3836fe479bcc9b542f8455f23c8377574c4139c2a2c66e47b6f34ce39701c3f",
+          "package/dist/rt/runtime/integer_convert.js": "a2577b19ba72b8fb0bc9b6683eb6ad63144a9eb1dde0de42db96195c910fe00b",
+          "package/dist/rt/runtime/integer_div.d.ts": "b525798c6e43af39fd2c488fa302fe05a01bffb0156d2e430cf3136d2f7f463a",
+          "package/dist/rt/runtime/integer_div.js": "c19c47db7f8295cc2b987f94a27049bf0de9c0ad3a272c32187d7894a4e369e0",
+          "package/dist/rt/runtime/integer_mul.d.ts": "429cdfbc10902e51339b3f1f937750d98fdcca62d01ca4df9e27230e3f1ab4f1",
+          "package/dist/rt/runtime/integer_mul.js": "e6eed523eaff67de6ddcc1ba1751af581a41ea175a5ca17fc318397c218e1e01",
+          "package/dist/rt/runtime/integer_neg.d.ts": "4b6aa5d6a1dc2013f31b473b257ffe278deacd75aa925753c13c2118d8c7f657",
+          "package/dist/rt/runtime/integer_neg.js": "1e82382f44289c560db36d4877b27f0cbaa8ec7081835bb6a4bc538d727dd72c",
+          "package/dist/rt/runtime/integer_not.d.ts": "61e4b63fa87bcf76fcd4ec5afc9cfd3d4c4bbcf551a26c56e9fe25fcdb9b722c",
+          "package/dist/rt/runtime/integer_not.js": "f4df33bb70f092a879630027580d678f30b5ed5c5cb018357f5e27721579d41e",
+          "package/dist/rt/runtime/integer_or.d.ts": "57c7d798b9258afefc0d52960fca524d8da465e0c38471b2be3b28a141a49edd",
+          "package/dist/rt/runtime/integer_or.js": "79bf769b4830c90e11864f92d007e2167640b41c66521a3abe792fad822db29d",
+          "package/dist/rt/runtime/integer_rem.d.ts": "8a6bf7b5dc3e24b580ce69d98ac449f65b442c288f0c487d4175578a4da2e18d",
+          "package/dist/rt/runtime/integer_rem.js": "37e6292c05fd6f7453f5250d9cc165f077c3ff788b552677860b7631ccbc21bf",
+          "package/dist/rt/runtime/integer_shl.d.ts": "ee69f0a45ef04a01a5fe46caed0a9f0c0a9eef7c19ab33871b0cd49d68ea4395",
+          "package/dist/rt/runtime/integer_shl.js": "46f41a733d2880513cd31ecf392d950e01633aebec171a832b38c913f598f9a7",
+          "package/dist/rt/runtime/integer_shr.d.ts": "b23e38de37513f80308c863147d4c1e1c7d43911df6e934740bb493b58fe8814",
+          "package/dist/rt/runtime/integer_shr.js": "2b30aee0fe2241ca4c856c9635b1fa102c26cd0cb947ab4737cb25d83c885456",
+          "package/dist/rt/runtime/integer_sub.d.ts": "20052bcad19aec4114e07f6a5c1171a4f333ab0993e2ae6c227c794f4427366a",
+          "package/dist/rt/runtime/integer_sub.js": "b8b04534424fbcc478e165706f5ad61902f417568044ccf6308bdf3419ab1e98",
+          "package/dist/rt/runtime/integer_xor.d.ts": "f4c0929bb5f799984927e658f2f1d00bfcaa6152ad6812b8477c9622bd9b5526",
+          "package/dist/rt/runtime/integer_xor.js": "4ead44432076df70516cba06cc37326ac7ec20e2d2cff58b1ed3911f0e5bec67",
+          "package/dist/rt/runtime/lib_callback_request.d.ts": "ffab92b96ff78c615f1f63de2842703b4ea4adab8253a5af98fe9717d15c29ac",
+          "package/dist/rt/runtime/lib_callback_request.js": "eef4c85b0fb4df452694ef5092b9842404561587b82c1351e718e0802353e06c",
+          "package/dist/rt/runtime/lib_clock_unix.d.ts": "48ede48fa7aa696af1207b36f0adbcdd7221ed84d50c991042fc2951a9d398e4",
+          "package/dist/rt/runtime/lib_clock_unix.js": "779dddd6570a1b4b7a380567ba97590ac04f06b0930c711cb7e1914ca2022e28",
+          "package/dist/rt/runtime/lib_crypto_aes256_gcm_decrypt.d.ts": "f0edeca39205280e2e1ed39022867982b8f079d190f135c6bba7904b0c45f9d7",
+          "package/dist/rt/runtime/lib_crypto_aes256_gcm_decrypt.js": "e08b580a90583ec8b96b481b15d1f939b55952fe0f48724f8245503ea5c27991",
+          "package/dist/rt/runtime/lib_crypto_aes256_gcm_encrypt.d.ts": "195befc20150f79fc5bae8de0358518030196e4cb5af15249ccb778a06b2f684",
+          "package/dist/rt/runtime/lib_crypto_aes256_gcm_encrypt.js": "cb841cb9d0ad3954a9b0146d3b171cb5a813c61a5d1ece84ee631344387a6575",
+          "package/dist/rt/runtime/lib_crypto_close.d.ts": "94348eb2d5d1cf7a0c5a268a4d59e4049e6dda3b6c74e7933d2b1a849899b435",
+          "package/dist/rt/runtime/lib_crypto_close.js": "c35a8fe3a72362bc34c8afb62502a0f8f91ca95994a6327a15bcf16864ba90cd",
+          "package/dist/rt/runtime/lib_crypto_ecdh.d.ts": "40f464465e225ed060514d4e34e3741f6825ff92be7b1a70cebfdd78fd0a640b",
+          "package/dist/rt/runtime/lib_crypto_ecdh.js": "0ffd04739685ca928c4e32b6b7d8e7109e990cf98df5762eee3e08ee42eeda86",
+          "package/dist/rt/runtime/lib_crypto_es256_sign.d.ts": "5b16cb271d9b566e89df270aad67f716b68aab447815348af92b4965c865240a",
+          "package/dist/rt/runtime/lib_crypto_es256_sign.js": "0f571307d6bb2b06c8ee9d4170dc00f2460d5bdae7539a3d8b0b78597937d949",
+          "package/dist/rt/runtime/lib_crypto_generate_p256.d.ts": "c025209ac383fe06a253219c576e2f0fc32328a4a0b2eb39beb81affb06b5808",
+          "package/dist/rt/runtime/lib_crypto_generate_p256.js": "f4d194364f2baf47dda5053749abe18cff91adfafad9ad1158b1593269f7a6da",
+          "package/dist/rt/runtime/lib_crypto_generate_rsa2048.d.ts": "e3113270f67431cf8057234704500bad5d8cb121ab0d18558dcd12d9672239dc",
+          "package/dist/rt/runtime/lib_crypto_generate_rsa2048.js": "502ce9374b8414320b7e003307aa7da0c66f5505d71fa1cae196b4890328ccbb",
+          "package/dist/rt/runtime/lib_crypto_hkdf_sha256.d.ts": "2e984e6ee185bafb74e86791ab3c0222a6f3b3a134d1ad6b62dcfde6cb2a8eac",
+          "package/dist/rt/runtime/lib_crypto_hkdf_sha256.js": "cb2340c832d72b58099b32d2713a09b5aeadc4f69c4b8f2530e2ba58e5e684e1",
+          "package/dist/rt/runtime/lib_crypto_hmac_sha256.d.ts": "3182c0f85401e04d8dbe4b438e7f37f33eeba54ec90c60cc342dbc4f9bfbadd7",
+          "package/dist/rt/runtime/lib_crypto_hmac_sha256.js": "fe8a30dd1bf448252fd97277702161e44615a7605a2d758b320f886149388ae4",
+          "package/dist/rt/runtime/lib_crypto_hmac_sha256_verify.d.ts": "caf86e3129209280d49749b58488b9726e93d8b3d028d6fd7b64ec8acdd21a7d",
+          "package/dist/rt/runtime/lib_crypto_hmac_sha256_verify.js": "36fc18bd5d0b32771468b7bd7668416ea007f23ae21ee72f0726a72d20f90ec9",
+          "package/dist/rt/runtime/lib_crypto_import_pem.d.ts": "82ccd9b9aeb9eabbd7b0eb26cacfbe81ca555882f27e432d558bdac272f4365a",
+          "package/dist/rt/runtime/lib_crypto_import_pem.js": "5b12673269a81337d79a9e07676d57d811cc12cec7243fa18a6944f1c43acfb9",
+          "package/dist/rt/runtime/lib_crypto_public_jwk.d.ts": "99b5f8e206bb426e9c71d31c6bfb5eda0b8c9eeb23e05f014ac4d8fd844b43d0",
+          "package/dist/rt/runtime/lib_crypto_public_jwk.js": "a5de2ef0a8d64a838a38d69f7ad18bd8f2be28c4a8674d515946e4c19a7c4869",
+          "package/dist/rt/runtime/lib_crypto_public_pem.d.ts": "d1ebf9f1d92d6839b5611045ac8fb43642c57a6d1cbeaaf8d1c141d201258adb",
+          "package/dist/rt/runtime/lib_crypto_public_pem.js": "2833bd1da3d125e44373fc0052f2c8c4845afe8979f412ce32f98d9255a6513d",
+          "package/dist/rt/runtime/lib_crypto_random.d.ts": "e965a8570ae0aa29743911924df3a374a197f513acc35b7dcfdb44e68c5784b9",
+          "package/dist/rt/runtime/lib_crypto_random.js": "f088cd32185a1b5fae8d49c3ac49f9c00c2253aac324db61cf023d16237f91d4",
+          "package/dist/rt/runtime/lib_crypto_rs256_sign.d.ts": "5a7d7bf6688f4fedec54d22cf6c2276966ff62fa5bc9bda7062ea0e451bbf5e1",
+          "package/dist/rt/runtime/lib_crypto_rs256_sign.js": "c6bf26f9c15e165c7b3a0f4668d3758cdc869a5230ca4eb6586529128d640eb1",
+          "package/dist/rt/runtime/lib_crypto_rsa_oaep_decrypt.d.ts": "273fb26a86e931d495890d4d9ea5b5dbe7fbf028b7984fe5cc6436340a18dcfb",
+          "package/dist/rt/runtime/lib_crypto_rsa_oaep_decrypt.js": "1edc636c397743c7f109fd25d8f786dd30624c082e2f4e873bab9f309cd36be9",
+          "package/dist/rt/runtime/lib_crypto_rsa_oaep_encrypt.d.ts": "b207318c9ef37bfa4e801483f8fafc2607e685c43fd15a4e7ce87a0e6f5fd02e",
+          "package/dist/rt/runtime/lib_crypto_rsa_oaep_encrypt.js": "992af4417de9ede1dc17a433e01b97f649bb138c06eba6a18ddd200df92591ba",
+          "package/dist/rt/runtime/lib_crypto_sha256.d.ts": "0ac4f0051a9d1870589d73b94fcea064c79e2d431873f2b07f5758cd7ee93aae",
+          "package/dist/rt/runtime/lib_crypto_sha256.js": "811b26a3475ce90d01d43cfe0de8294f43e4c0659558ca39e1a62e854fac65e8",
+          "package/dist/rt/runtime/lib_encoding_base64_decode.d.ts": "f2b3630288f90c4ed123d96ee171fa1e90b6848bf90e8e4ac29a251bbfc98d50",
+          "package/dist/rt/runtime/lib_encoding_base64_decode.js": "4bb66679cbd04a343e402b4800aa581c26d61bd619f13991baa44b616017bb53",
+          "package/dist/rt/runtime/lib_encoding_base64_encode.d.ts": "c63708c9c6c9d06f28c627b0e5e6f90b71771011be938eb4014eb69ab17089a0",
+          "package/dist/rt/runtime/lib_encoding_base64_encode.js": "7de6480c084586d156b7ba7c6a8014c79289c59684a62d7b5d74126fd034de4e",
+          "package/dist/rt/runtime/lib_encoding_base64_url_decode.d.ts": "6ff43aecd2564bcf40956428c2ab362b3acbc3f7004505dcc0712d5ca1ce7254",
+          "package/dist/rt/runtime/lib_encoding_base64_url_decode.js": "14304519c7baeafdf1dbe155fb6fdc5764828d4d60850d67dc648bbe3e1099a1",
+          "package/dist/rt/runtime/lib_encoding_base64_url_encode.d.ts": "38296e4bb0791e6887c40f9bfe6e2f90a751c0988052e1c1cd2554223fb01761",
+          "package/dist/rt/runtime/lib_encoding_base64_url_encode.js": "2ebab64e6cd6e2262e4532810db9b6e2577db52d92d7f4ca9c162ce384b8075b",
+          "package/dist/rt/runtime/lib_http_do.d.ts": "838d9ddbb437e47ba6ff91957aa6e97a62d6abaad3ac5cdfb366805d48b32da5",
+          "package/dist/rt/runtime/lib_http_do.js": "66a4b5109075731e0a5304a061f967a2ec62cd43909dc6d59a655cd642f39df1",
+          "package/dist/rt/runtime/library.d.ts": "13bcc045c284ebdf4e93fcc52a339d28a153bbd2cf7b854d382519b9ed35ffd9",
+          "package/dist/rt/runtime/library.js": "ed5e369569b5afd697702cdcbb97a89abe17eb1f6e1590d1d0c81a4f784371b0",
+          "package/dist/rt/runtime/map_lookup.d.ts": "6b8f51271623b620fb80710a65cc109d923e3b729222ae0955a64068f7225f06",
+          "package/dist/rt/runtime/map_lookup.js": "35b43c6f2125bbd859965019a4f989594d71869c608f4fd6c6bc838582527072",
+          "package/dist/rt/runtime/map_make.d.ts": "a4db379dbfb6b19dac2192a75e4ddc6fa19133e1a836392c1b5e4293ce43e161",
+          "package/dist/rt/runtime/map_make.js": "148a7d554f3f6b42aeb559c687af3a967e90ed4930efd6a5a6a41753c31a5621",
+          "package/dist/rt/runtime/map_store.d.ts": "0b07ca0aefe593b0fc9a6049194fdb4e068565ff64b68fab406d38dff08e10df",
+          "package/dist/rt/runtime/map_store.js": "21fa532aa14d22a3a676e3b4caeceed5d091009618cc5e8439031705c3a48d07",
+          "package/dist/rt/runtime/select.d.ts": "8606715db9f189d144f70e9a7d1b9181e747c95d61e5b1c1348d8409839b9423",
+          "package/dist/rt/runtime/select.js": "0b3b5e5c32953c2c99b9cb53b659ac252a5530c6d782195905d940e7ce489b7b",
+          "package/dist/rt/runtime/slice_append.d.ts": "51a2d3cf03bd16d72a5a51a79eddd9095ab65cbed36af72ee2f3e6c079c5ec17",
+          "package/dist/rt/runtime/slice_append.js": "47d4b34cf439208e90fd3e31cb701588ce36da613b0567e5fe5aa5bdb645d55a",
+          "package/dist/rt/runtime/slice_copy.d.ts": "ae08859afbcd7065b88470206a3188fdb3a008963b31e23800066e1b2bd9a0fb",
+          "package/dist/rt/runtime/slice_copy.js": "eb75f073e40df8d312ffd390bc9de5f6a93533233ff2805f2716d4830a920254",
+          "package/dist/rt/runtime/slice_index.d.ts": "30a34d0b0ad782b3c2fc14a16afa4c89306629052b248c5013c385024e05aca8",
+          "package/dist/rt/runtime/slice_index.js": "aa74693e98249e41b54af418b1702b140f483fe8c01f569c54b8cf684966f68a",
+          "package/dist/rt/runtime/slice_make.d.ts": "29b56c273120c7e1f8120bbd30383f5ccc8a2adf9ba8abd3b9b305d3b61b002a",
+          "package/dist/rt/runtime/slice_make.js": "062904bee1fbd70d086c2eedc05f1e5e709f900c71c53f6e79d8f8bac16f4eb4",
+          "package/dist/rt/runtime/slice_slice.d.ts": "039cfeb92829a9beddea1849e3648ad7cd88dd600390ad338e3bfad53ca0a276",
+          "package/dist/rt/runtime/slice_slice.js": "905c3c9d668670268eb5acc15230ac8fd56ab2dd7f347c7e2251d3713d4b2032",
+          "package/dist/rt/runtime/slice_store.d.ts": "01d21b0cfb03e97e479dd5350f7fd635cc425ffb7bcc28ff0445c59b7853ef8a",
+          "package/dist/rt/runtime/slice_store.js": "663ac97b4a22cb384c850e376aa6df6cc87780f9306b7ab6716c3e1ea280a46f",
+          "package/dist/rt/runtime/std_context_background.d.ts": "05b8be48b3f885b458cdaf8d7059ca84b21e99e7ac55b7e29e3e89fc4b2e59e5",
+          "package/dist/rt/runtime/std_context_background.js": "dad3064b4a11dd81ec825fa065930e0304ec8088d279f2b3a660a1a8318a373f",
+          "package/dist/rt/runtime/std_context_canceled.d.ts": "253ae911f817e33f761329e0f53928da0260c596fa79ce979c05e029e2bc03eb",
+          "package/dist/rt/runtime/std_context_canceled.js": "9da0820c8370cfe1e26a11eb4a33c9f1dba0d628b2f43889e79fbd2c35b01183",
+          "package/dist/rt/runtime/std_context_deadline_exceeded.d.ts": "fc2ceb0ed45ebcb3fe0fe69c7abc0770b39990d29090cfc95b67e7f6bb5f3fef",
+          "package/dist/rt/runtime/std_context_deadline_exceeded.js": "a82816289580684558e07fcf3b4f10c363d1944da8a366e6812aa7d0498dcee1",
+          "package/dist/rt/runtime/std_context_done.d.ts": "417b4780d81af72aa7c693876e4e46b703306041e2e8b92a2f606131350a65b9",
+          "package/dist/rt/runtime/std_context_done.js": "2910c651ccaf35b121552906d9861f1c48ca57b34622209a171bc6ba548864cf",
+          "package/dist/rt/runtime/std_context_err.d.ts": "8dc60d4be1c2063db70b2c96e68825f2cb9bff229255274642bb0c534944b6ef",
+          "package/dist/rt/runtime/std_context_err.js": "d75473ce97e7f521718bb000f25280793d68597f61481a7392d1e40d3720d935",
+          "package/dist/rt/runtime/std_context_with_cancel.d.ts": "5f2b4bd4288f1323742f0fb5d556540acee652b7a4b426a5d1e12172465e9ddf",
+          "package/dist/rt/runtime/std_context_with_cancel.js": "9d5839ff8a2d36891ebb7ebec2ece93c05f53d72e6621ae9c50c7576fe78a424",
+          "package/dist/rt/runtime/std_context_with_timeout.d.ts": "893bbe494e5bff8b2bfeda6bbde23099bbc45fa6e3e3a00919304cc2da0421e9",
+          "package/dist/rt/runtime/std_context_with_timeout.js": "c18a76300a514a744300adaba082d8a8f5a7a3aad81e263bbc5663b3dd43229c",
+          "package/dist/rt/runtime/std_errors_is.d.ts": "a5f71b787ace69c5f3fc1afb7fd0a938f983041890345fa0eab3c4f16cd58fcb",
+          "package/dist/rt/runtime/std_errors_is.js": "315b2b965d6e88cd7f0311d80dc81cbe4671bed8304b2481f1d80dbd2e6bf941",
+          "package/dist/rt/runtime/std_errors_new.d.ts": "b95ddee6737977c9dd98fbb51f81f128e31d3ed16a6a13ca4d213cac2a264f9a",
+          "package/dist/rt/runtime/std_errors_new.js": "09d14fb2caab6da4d59a436cf6c05b7824c437e85564a13e20ec40b531df8ff4",
+          "package/dist/rt/runtime/std_sync_mutex_lock.d.ts": "94b308c3a0c68e888fcd425bc4fc5d758f57c60964569492bccd636010599421",
+          "package/dist/rt/runtime/std_sync_mutex_lock.js": "bb4a67d56e04768a2f7b342023b14c95dc0a71537a505c0590d46b2ad86628de",
+          "package/dist/rt/runtime/std_sync_mutex_unlock.d.ts": "eab7521ec0dc0e299d29a3bcb973378589f2a261cfd4d1cec9d03ec37f019ec9",
+          "package/dist/rt/runtime/std_sync_mutex_unlock.js": "7a8234edaa3b338deb6e8129c46369bbf626c9c1b07b9d7c987a3a8b494c5ad6",
+          "package/dist/rt/runtime/string_concat.d.ts": "7da8ff1e8e4789f0c2055d510c0aec0e662d93092630b53a998bb2eb7fb50def",
+          "package/dist/rt/runtime/string_concat.js": "615456ad9769ff0cdf8cd4b516b151b27b718800f50c5104b9abaefd8804b8db",
+          "package/dist/rt/runtime/string_from_bytes.d.ts": "19842d7b1ae57f8f8da7c99d92178ad9d8a8d5383b1e204d5b55c055cc069b9c",
+          "package/dist/rt/runtime/string_from_bytes.js": "55396b63f91e79631eff3ae5ee20a60b5b4d1994322052137af35f4ad9f193a1",
+          "package/dist/rt/runtime/string_index.d.ts": "8194c0e556e874de3e32b4f3e76a042fec01ad27ebaafae1d74ab211f46d8dc4",
+          "package/dist/rt/runtime/string_index.js": "a924b19abff8fb4b8bdf9ca4b0eb2a01496fde519e1efcb4181b90978c6660f6",
+          "package/dist/rt/runtime/string_slice.d.ts": "07c58de69c40937b5877b7fd0949dfa2021b1619d7b8b0962431d68d13236d31",
+          "package/dist/rt/runtime/string_slice.js": "39867bc7104b7010a7084c1b144313cecd348fb5797f813e168dcbd06be10ae1",
+          "package/dist/rt/runtime/string_to_bytes.d.ts": "db1c2605acda6f809acc6718c38b38535a31ae1ed702240b87f8de434060477e",
+          "package/dist/rt/runtime/string_to_bytes.js": "5a7bb0d5560f7fd455c818aca6bc1ca40f9d8b7167966d8cb98b19eeede31c3f",
+          "package/dist/rt/runtime/task_spawn.d.ts": "7fb3a59288fc89309259cb2a7d4ccde489e81adfde5ba5372a10ca26863166af",
+          "package/dist/rt/runtime/task_spawn.js": "3bbb12579037f352d4821e4718012abc043a6c849c042eac1f96181376e47805",
+          "package/dist/rt/types/bounds.d.ts": "27fa26be7f7dbd28d6203535478375ba6b921e030e63c8afae2063f821ec2b3a",
+          "package/dist/rt/types/bounds.js": "3ab948148ae281acdc0d89dc055ff444460d975e06ec5566e49d321fded3709a",
+          "package/dist/rt/types/callback.d.ts": "1ea4e99b0fa3d9b03ef170ed96cd238134ff2048d9119c2ecb5053533493aaf4",
+          "package/dist/rt/types/callback.js": "fc6596922289e2954bea4f668f1849921c3e65a7a595d62b1a2bc4f336f4674b",
+          "package/dist/rt/types/crypto.d.ts": "6cd5cd5f140928ec21b5a0d32767b3ed22757689566a6fff4041f7aed3cf9db1",
+          "package/dist/rt/types/crypto.js": "c03f74a0ff16e189e6e548c2eb8a32233ea26f3098eef84d06f6038ca7cad373",
+          "package/dist/rt/types/der.d.ts": "c273cd930f726abf4813abfa17b780eac83e82a2c076e8d38f6ee071a6107518",
+          "package/dist/rt/types/der.js": "1314736b2592cedfa762145408e1be6fae0632787f5f7d1cb1bb2459efe4d1f4",
+          "package/dist/rt/types/host.d.ts": "6fa0c4424f2fb8e021c54e22682df5e232183eea9e520dbca1c8abd58d654935",
+          "package/dist/rt/types/host.js": "6fb19836cb8cf18da954571987f590903e0a62e9c37f075b31b1d8421451316b",
+          "package/dist/rt/types/iface.d.ts": "fee40c71d131382add54d5cf1da82d7d1f3ac34bfa9f736eeede0f80b4d37019",
+          "package/dist/rt/types/iface.js": "20a2093b8185455e0cadf76345cdf70186a9dbd99de6a47e6b38a55d16e3ef05",
+          "package/dist/rt/types/integer.d.ts": "63c20a2ada079bdc57c148ef1a95b5a69bdeaea2449e65b8557c7a611d7d9438",
+          "package/dist/rt/types/integer.js": "ab0fedacc07c2364412e41792691fd67eb68ce9371bfc992c05da0561a5164ca",
+          "package/dist/rt/types/map.d.ts": "20a853f4b70662ec17feea4ce5c78d4674c584575a857e24b78a65990756ab31",
+          "package/dist/rt/types/map.js": "d488a11ee1bc1a92f79c7ece701a94b019da7997320d4202a5ffe808bf3dd311",
+          "package/dist/rt/types/native.d.ts": "366562541377f9ddc0ce89432a0cbecfb2a54a3f0c3e75f01bc2db3de9be9a7e",
+          "package/dist/rt/types/native.js": "91825364314df3dd6edc91243ee85099bbb5d5d640be7751070a962a289b24fd",
+          "package/dist/rt/types/panic.d.ts": "4f0a3b263b6ae49871112c28622a20062c4a4381435f4809715d3a130a6e62aa",
+          "package/dist/rt/types/panic.js": "081712bfb694ded15a914e72e469cd2a65d92482c2b77bf91c616e626a005c83",
+          "package/dist/rt/types/print.d.ts": "feed10a5b4a7d9882f99efca4566f5db4d2ef8c005c459bccff90d9bb2ff50e0",
+          "package/dist/rt/types/print.js": "cae28f8cf6c173d1fb65f7eeafa2b6aef818c4155fc2fc651efdb66ff92b0fd7",
+          "package/dist/rt/types/program.d.ts": "e6dcb4238555c31c6618e5f2f048517c273e450825c932b0a96d97943b64443e",
+          "package/dist/rt/types/program.js": "e83c19fa5eeaf4f3b45a648d1cfab2d02e57b47ca3e6153512d3b3a6d5e693bd",
+          "package/dist/rt/types/ref.d.ts": "2789a7095600b71671d59755a55d5d7bca0aee1bd669538fde415abc9f850481",
+          "package/dist/rt/types/ref.js": "86378aab6f4906dbe6eb522f58310bc71808249ae1809a064f30f29f78c10e69",
+          "package/dist/rt/types/slice.d.ts": "c76cd8523a574cbcae43d4bdbe023f2e2a93435e363a42cdd1ff70fd4daa8c69",
+          "package/dist/rt/types/slice.js": "71b62898f4cde306d7cde9aa99c2d97871d321d1aa025e796a83e5761accc8f5",
+          "package/dist/rt/types/utf8.d.ts": "9ce8305d6484f2e29cf2d5652cb62b8a438b60e823b58ff9c6fce0ba98fda592",
+          "package/dist/rt/types/utf8.js": "59f6027e567943aa3885c48507f6214f1b0c6a3cc59a43e2b0b08820896becb3",
+          "package/licenses/Goalchemy-LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "package/package.json": "49915a833df57bee24019b6fc5658c8934b1e159cbc54dde0a9e1ee1233dfd3d"
+        }
+      },
+      "java": {
+        "consumer_receipt_sha256": "f44c0c356fd81e52f25f4bc981b8262462c75f8ab50305fa2e7b97c2174cb9c0",
+        "package_receipt_sha256": "5b53ca38dcd1cfa4f4d74289208dd2d92db5ffd7c2c07e9734fa24b75f9006c2",
+        "installed_members": {
+          "package/dependencies.lock.json": "09f260df92b6c77cd0121c787ef2ae75f50fad3a2188f9101f8ec016fd7a2f4f",
+          "package/lib/bcprov-jdk18on-1.86.jar": "2af190b300cbb0b35e248ccf5f4a06b6072030aeb3da7a98ec73abe5b4cb371f",
+          "package/licenses/Bouncy-Castle-LICENSE.md": "0e01f1549c9022f406392ac2947d32223b7c2e977d21ea2f8c182fdeb4dae5fd",
+          "package/licenses/Goalchemy-LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "package/tdf3-java.jar": "0bf2c89bae6cedfba714a9a900b81c5b71ec3bda8a8a29337d1e4f32e8434418"
+        }
+      },
+      "csharp": {
+        "consumer_receipt_sha256": "f642042f7abd6e9c32f9c76537fb15b4519ca1a4217cde1c7ada5b9f2a643272",
+        "package_receipt_sha256": "9c7313a79de1630d92d7b636de334eae9508dd7c3a3380a1ab89306962325ee3",
+        "installed_members": {
+          "package/dependencies.lock.json": "cadf8d4da1dd33e72115cfc384793d504b49ba6e601d88069a25dbef66ebeb98",
+          "package/lib/OpenTDF.TDF3.deps.json": "ad3fbd54c931604631b696508243632b3031868849ec49910a7f5b9464af0d5a",
+          "package/lib/OpenTDF.TDF3.dll": "fc1bad17fc6ecc852d9585de8ae6359fab3a78de2d4a1a94a35d2783592575e6",
+          "package/licenses/DotNet-LICENSE": "cfc21f5e8bd655ae997eec916138b707b1d290b83272c02a95c9f821b8c87310",
+          "package/licenses/DotNet-ThirdPartyNotices": "fb47c97d2919d9584f25564058f973de424da8b500d51b46e406391c6e9adca6",
+          "package/licenses/Goalchemy-LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      },
+      "python": {
+        "consumer_receipt_sha256": "0f313aaeda4ecf95d066c925fcf225ab1d2c6b44293f43c28d959fcc26667b4f",
+        "package_receipt_sha256": "b5c0144a1814ec2e2b3adc005087c0fe539c38ff02a8993a809798c760162aac",
+        "installed_members": {
+          "package/opentdf_tdf3-0.1.0-py3-none-any.whl": "b0fcf60e4154765426d971ddd6bd7edbde509b8b37bb399911f8bc72e483f2b6"
+        }
+      },
+      "rust": {
+        "consumer_receipt_sha256": "d627262f896ba4acf4e7fe6ea0b63a5b49f365d7625bb3109fda3691ccc674ec",
+        "package_receipt_sha256": "10d89e556973e8719f9b473394b207a7e7d199c79c1593eb66b92a5332579e39",
+        "installed_members": {},
+        "linked_rlib_sha256": "52d9c7a10030e6e97c9b9b399a2b4a77a12f4ab570d25b22ad5ca37c5ef7c6fc"
+      }
+    },
+    "sources": {
+      "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+      "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+      "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+      "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+      "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+      "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+      "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+      "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+      "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+    },
+    "commands": {
+      "go": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark"
+      ],
+      "reference": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark"
+      ],
+      "java": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/jdk-21.0.12.1+1/bin/java",
+        "-cp",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/java:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/tdf3-java.jar:/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/java/package/lib/bcprov-jdk18on-1.86.jar",
+        "consumer.Benchmark"
+      ],
+      "csharp": [
+        "/home/enko/Workspaces/tdf/goalchemy/.toolchains/dotnet/dotnet",
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/csharp/bin/benchmark.dll"
+      ],
+      "rust": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/rust/benchmark"
+      ],
+      "c": [
+        "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/c/benchmark"
+      ],
+      "python": [
+        "/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/python/venv/bin/python",
+        "-I",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/python.py"
+      ],
+      "typescript": [
+        "node",
+        "/home/enko/Workspaces/tdf/sdk/tests/bench/node.mjs"
+      ]
+    },
+    "built_consumers": {
+      "go": "cd0450ea3c9c5cc5ec2ba9135466ef88edd7b49f0db183fe572f28f1ba1d8299",
+      "reference": "31613bbd85ad2ed6d9e4ee35e22c1e2f6564781a79bf57bbbbed345cd423ad26",
+      "rust": "62c948dfa79511df81dc80f2cfec16fe1b884ff71fde2b7f6b1b077e005fe087",
+      "c": "12aef520d59c7ee7738f511452e7d9b160b2d7612b8ba79a9cdea5e00b2842c1"
+    },
+    "system": {
+      "system": "Linux",
+      "node": "gem10",
+      "release": "6.8.0-87-generic",
+      "version": "#88~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Tue Oct 14 14:03:14 UTC 2",
+      "machine": "x86_64",
+      "processor": "x86_64"
+    },
+    "cpu": "AMD Ryzen 7 6800H with Radeon Graphics",
+    "memory_kib": "MemTotal:       32118324 kB",
+    "toolchains": {
+      "go": "go version go1.25.14 linux/amd64",
+      "node": "v24.15.0",
+      "python": "Python 3.10.12",
+      "java": "openjdk version \"21.0.12.1\" 2026-08-18 LTS\nOpenJDK Runtime Environment Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS)\nOpenJDK 64-Bit Server VM Temurin-21.0.12.1+1 (build 21.0.12.1+1-LTS, mixed mode, sharing)",
+      "dotnet": "8.0.425",
+      "rust": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+      "cc": "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0\nCopyright (C) 2021 Free Software Foundation, Inc.\nThis is free software; see the source for copying conditions.  There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+    }
+  },
+  "harness_v1": {
+    "scope": "pilot samples; original built Go source copies restore exact source before later gofmt; other sources copied before further formatting/token-refresh changes",
+    "files": {
+      "generated-go.go": "5414db98c57e84803129987180c43e110373901f28db436ed9343389bdade4d0",
+      "Benchmark.cs": "c40aa1870dbfd1741bff455eaa2d2bf755a464515bb33036f7ff8b8ad137e13c",
+      "Benchmark.java": "95f6587de3f15d41170a3282b89eda469699f705bbf534a77bf132cb16f0c0b7",
+      "environment.json": "a812c415b90d38f03525fb961a9611adc994d765af11f5ef50b894891f45bdcb",
+      "go-benchmark": "314b29a25438a77d1c750898cd881902c0c2a1b3818c64605e8ae4374f5fb7fc",
+      "c-benchmark": "91bf65e8025f53a418f8a8d99c2a7c53addd6589471f5c89cf0b112ff1d934e5",
+      "python.py": "9fbfc4a9d8cccf92f88fe52bc1d7f7aeb1c3ab66113e6b0cd91f293c6e1066d3",
+      "benchmark-sdk.py": "0c9bb09f659ad92737172efe1c20a907b824ebdbea03ee851e36446e1a15e9b3",
+      "node.mjs": "f7e6c73b8112c0bcfae128ae1ab23929e0fb3e62af99c70b61d660bca732c131",
+      "reference-go.go": "ea50bca3db3da3a6e86eb51b2b6d46ab41fa7831a48026b2f3188b7546384652",
+      "c.c": "f6dee7824acd900a39c943370571a139a085e957b21e2c8a29ba0fc45568c51b",
+      "reference-benchmark": "5881e9e9e78a46b6d002bfb997e85a631b12ebd18721163d24d5246eb2a1de88",
+      "rust-benchmark": "62c948dfa79511df81dc80f2cfec16fe1b884ff71fde2b7f6b1b077e005fe087",
+      "typescript.mjs": "d0be199cce9cd378dc26bdeca381423e87bf8cfbac16daaf4812cc712677c567",
+      "browser.mjs": "85484a870cbea638e774208c631ad25caf4cc24c4cdfe8dbb6db8e6f2df967d9",
+      "rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+    }
+  },
+  "harness_v2": {
+    "scope": "compiled native benchmark wrapper source and binaries used by completed 10 KiB and 100 KiB measurements; wrapper source also used in excluded 10 MiB experiment",
+    "harness_sources": {
+      "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+      "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+      "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+      "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+      "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+      "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+      "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+      "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+      "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+    },
+    "consumer_binary_hashes": {
+      "build/go/benchmark": "cd0450ea3c9c5cc5ec2ba9135466ef88edd7b49f0db183fe572f28f1ba1d8299",
+      "build/java/consumer/Json.class": "084fad625b62219ac76e56e05632f611e7bc7680269bad01041967ae7cad2fbf",
+      "build/java/consumer/Benchmark.class": "33ec1487a64330683b0246087e9c3d0eff47f22b33b74af27b8090a33df8c9d7",
+      "build/java/consumer/Consumer.class": "cbba5b773d53ac4a2bf7abe5d0dcaa4690c19397b6cd4eb0e0b0b28f8bc3404d",
+      "build/c/benchmark": "12aef520d59c7ee7738f511452e7d9b160b2d7612b8ba79a9cdea5e00b2842c1",
+      "build/csharp/obj/Release/net8.0/benchmark.dll": "da0a4e10f1ea9164e703ce39764e216633fa32ad2c03e1b78896296449029366",
+      "build/csharp/obj/Release/net8.0/ref/benchmark.dll": "8a7ef5cf8a8fcc1f48b74d4c5e866d44514e1472713553481d37f546b257b54c",
+      "build/csharp/obj/Release/net8.0/refint/benchmark.dll": "8a7ef5cf8a8fcc1f48b74d4c5e866d44514e1472713553481d37f546b257b54c",
+      "build/csharp/bin/benchmark": "1e04f66761bb2295c6aa275542c5723c989b2bcdc4cd63681829793627a22334",
+      "build/csharp/bin/benchmark.dll": "da0a4e10f1ea9164e703ce39764e216633fa32ad2c03e1b78896296449029366",
+      "build/csharp/bin/OpenTDF.TDF3.dll": "fc1bad17fc6ecc852d9585de8ae6359fab3a78de2d4a1a94a35d2783592575e6",
+      "build/rust/benchmark": "62c948dfa79511df81dc80f2cfec16fe1b884ff71fde2b7f6b1b077e005fe087",
+      "build/reference/benchmark": "31613bbd85ad2ed6d9e4ee35e22c1e2f6564781a79bf57bbbbed345cd423ad26"
+    },
+    "controller_source_sha256": "6b4ffad5518d5bf5b5526575b483187d2564ee1ddc148db0b8e2e01455939a01",
+    "controller_history_note": "Consumer build at 10/50 MiB routing revision; later controller changes only units/labels, user-requested browser omission, derived table filtering and skip-completed routing; compiled SDK operation boundaries unchanged",
+    "go_binary_build_info": {
+      "reference": "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/reference/benchmark: go1.25.1\n\tpath\topentdf-local/generated-library-reference\n\tmod\topentdf-local/generated-library-reference\t(devel)\t\n\tdep\tbuf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go\tv1.36.11-20260709200747-435963d16310.1\th1:fXh8CsdNpjRr8R5vFdqtIxPt/Lno2IIJlYOdZBIZn0w=\n\tdep\tconnectrpc.com/connect\tv1.20.0\th1:6TNDAB+WeNd2uolWNlYczB5E0KNNaVMNUEx8JEUsPmQ=\n\tdep\tgithub.com/Masterminds/semver/v3\tv3.5.0\th1:kQceYJfbupGfZOKZQg0kou0DgAKhzDg2NZPAwZ/2OOE=\n\tdep\tgithub.com/cloudflare/circl\tv1.6.3\th1:9GPOhQGF9MCYUeXyMYlqTR6a5gTrgR/fBLXvUgtVcg8=\n\tdep\tgithub.com/google/uuid\tv1.6.0\th1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=\n\tdep\tgithub.com/gowebpki/jcs\tv1.0.1\th1:Qjzg8EOkrOTuWP7DqQ1FbYtcpEbeTzUoTN9bptp8FOU=\n\tdep\tgithub.com/lestrrat-go/blackmagic\tv1.0.4\th1:IwQibdnf8l2KoO+qC3uT4OaTWsW7tuRQXy9TRN9QanA=\n\tdep\tgithub.com/lestrrat-go/httpcc\tv1.0.1\th1:ydWCStUeJLkpYyjLDHihupbn2tYmZ7m22BGkcvZZrIE=\n\tdep\tgithub.com/lestrrat-go/httprc\tv1.0.6\th1:qgmgIRhpvBqexMJjA/PmwSvhNk679oqD1RbovdCGW8k=\n\tdep\tgithub.com/lestrrat-go/iter\tv1.0.2\th1:gMXo1q4c2pHmC3dn8LzRhJfP1ceCbgSiT9lUydIzltI=\n\tdep\tgithub.com/lestrrat-go/jwx/v2\tv2.1.7\th1:bnYeET+S8IOyAw6W4LTc6SEeK7Xs58SKKZkR7scb3Ko=\n\tdep\tgithub.com/lestrrat-go/option\tv1.0.1\th1:oAzP2fvZGQKWkvHa1/SAcFolBEca1oN+mQ7eooNBEYU=\n\tdep\tgithub.com/opentdf/platform/lib/ocrypto\tv0.14.0\n\t=>\t/home/enko/Workspaces/tdf/platform/lib/ocrypto\t(devel)\t\n\t\n\tdep\tgithub.com/opentdf/platform/protocol/go\tv0.41.0\n\t=>\t/home/enko/Workspaces/tdf/platform/protocol/go\t(devel)\t\n\t\n\tdep\tgithub.com/opentdf/platform/sdk\tv0.0.0\n\t=>\t/home/enko/Workspaces/tdf/platform/sdk\t(devel)\t\n\t\n\tdep\tgithub.com/xeipuuv/gojsonpointer\tv0.0.0-20190905194746-02993c407bfb\th1:zGWFAtiMcyryUHoUjUJX0/lt1H2+i2Ka2n+D3DImSNo=\n\tdep\tgithub.com/xeipuuv/gojsonreference\tv0.0.0-20180127040603-bd5ef7bd5415\th1:EzJWgHovont7NscjpAxXsDA8S8BMYve8Y5+7cuRE7R0=\n\tdep\tgithub.com/xeipuuv/gojsonschema\tv1.2.0\th1:LhYJRs+L4fBtjZUfuSZIKGeVu0QRy8e5Xi7D17UxZ74=\n\tdep\tgolang.org/x/crypto\tv0.55.0\th1:+KWHjbgOaAQ66dh/YlkZKHlz9ZUlq61AFirAR9ntP8M=\n\tdep\tgolang.org/x/net\tv0.58.0\th1:ynWG7rqYi4ccpTEuPZ2QGWHktVEM9DMCj9yzDE0Q7To=\n\tdep\tgolang.org/x/oauth2\tv0.36.0\th1:peZ/1z27fi9hUOFCAZaHyrpWG5lwe0RJEEEeH0ThlIs=\n\tdep\tgolang.org/x/sys\tv0.47.0\th1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=\n\tdep\tgolang.org/x/text\tv0.41.0\th1:vz/seA0lnX87Othu2f/0L24RcgrXD9/YFTSuGjj3rH8=\n\tdep\tgoogle.golang.org/genproto/googleapis/rpc\tv0.0.0-20260526163538-3dc84a4a5aaa\th1:mZHHdPZl0dbGHCflZgAq/Q468DWVFcU2whhB2KAo8fk=\n\tdep\tgoogle.golang.org/grpc\tv1.83.2\th1:EManeRomTObA0BU7I8vXgg/78uE5MJ9M8B39EX2WscU=\n\tdep\tgoogle.golang.org/protobuf\tv1.36.11\th1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=1\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=4c77e58f5aca5b82dc7059e1e21cd9129c61e245\n\tbuild\tvcs.time=2026-10-03T06:15:15Z\n\tbuild\tvcs.modified=true\n",
+      "go": "/home/enko/Workspaces/tdf/sdk/.local/benchmarks/campaign/build/go/benchmark: go1.25.1\n\tpath\tbenchmark-generated\n\tmod\tbenchmark-generated\t(devel)\t\n\tdep\tgoalchemyout\tv0.0.0\n\t=>\t/home/enko/Workspaces/tdf/sdk/.local/phase7/consumers/go/package\t(devel)\t\n\t\n\tbuild\t-buildmode=exe\n\tbuild\t-compiler=gc\n\tbuild\t-trimpath=true\n\tbuild\tCGO_ENABLED=1\n\tbuild\tGOARCH=amd64\n\tbuild\tGOOS=linux\n\tbuild\tGOAMD64=v1\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=4c77e58f5aca5b82dc7059e1e21cd9129c61e245\n\tbuild\tvcs.time=2026-10-03T06:15:15Z\n\tbuild\tvcs.modified=true\n"
+    }
+  },
+  "raw_history_sha256": "598ffef241a30557b2ab424359044b2bc9cabe4e7f637a77e21cecf26203a850",
+  "methodology_sha256": "ab4cab7c0a8f80bce6bf55ee1480908a9b0391c06982cf0b8df3009630f14058",
+  "ignored_receipt_count": 12,
+  "source_whitelist_sha256": {
+    "scripts/benchmark-sdk.py": "6b4ffad5518d5bf5b5526575b483187d2564ee1ddc148db0b8e2e01455939a01",
+    "docs/benchmarks.md": "ab4cab7c0a8f80bce6bf55ee1480908a9b0391c06982cf0b8df3009630f14058",
+    "tests/bench/generated-go.go": "e16e878bc14e02f894bc04c4e6a1eb387bfd6e5d03a7516bb26a467a292670a4",
+    "tests/bench/Benchmark.cs": "f105ad3d179e414f1f5d4a65581f3cc8c5adc66ce8dca50964ce49f82ae82123",
+    "tests/bench/Benchmark.java": "512568d0dc822622105bfb76b9e49bdf89b60707e96a9dbf4fac21dc30e4a8be",
+    "tests/bench/python.py": "e90f1eb949bf334fec052c33f5e61fb43303735d1660f7295f966fe372ffe16f",
+    "tests/bench/node.mjs": "81445b4d1d366c12304c44bdb615a7d9471d3fcb9ad3e0d1bfadc3987ff19bcd",
+    "tests/bench/reference-go.go": "3f351ebc6dd482e3598523de20ba5d992967bdff08c6c6b73eb59bd29952ae9a",
+    "tests/bench/c.c": "b8a23ed9427cdca09ed4b1fc85e59a63c0c10cf2ef50c7218f50cf6f9cc4ba33",
+    "tests/bench/typescript.mjs": "7ff29748a9abcc476e82a19323ed4691394ad53fb8991043595611f5d664ad54",
+    "tests/bench/rust.rs": "9ec60328c4d0e6c416c03c7305d565a13fba2cd22c9496b30d2b375ae68b044a"
+  }
+}

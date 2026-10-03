@@ -1,5 +1,7 @@
 # OpenTDF SDK with Goalchemy
 
+**Proof of concept (POC). Work in progress. The implementation may change.**
+
 One shared Go implementation provides TDF3 encryption/decryption libraries for
 **Go, TypeScript, Java, C#, Python, Rust and C**. TypeScript supports Node and
 browsers. The shared source, native adapters and all seven build helpers live
@@ -21,6 +23,46 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 | Python | Installable wheel | [Python](docs/generated-python-library.md) |
 | Rust | Locked Cargo crate | [Rust](docs/generated-rust-library.md) |
 | C | C17 headers, static library and source archive | [C](docs/generated-c-library.md) |
+
+## Performance
+
+Median of **five timed runs**, following one warmup, on a local workstation.
+Columns are plaintext sizes. Each cell shows **milliseconds (duration ratio)**;
+the original OpenTDF Go SDK is **1.00×** for each size and operation, and lower
+ratios are faster.
+
+These measurements include a fresh public SDK operation and complete in-memory
+output; decryption includes **real KAS rewrap**. The original Go lifecycle also
+includes client construction, which generates an RSA session key even for
+encryption. File I/O, OAuth acquisition and correctness validation are untimed.
+All 144 encryption outputs were decrypted and verified through original Go and
+real KAS. See [methodology](docs/benchmarks.md) and [samples and runtime versions](docs/benchmark-results.json).
+
+### Encryption
+
+| SDK | 10 KiB | 100 KiB | 1 MiB |
+| --- | ---: | ---: | ---: |
+| Original OpenTDF Go | 53.49 ms (1.00×) | 62.68 ms (1.00×) | 34.65 ms (1.00×) |
+| Generated Go | 0.28 ms (0.01×) | 0.75 ms (0.01×) | 4.68 ms (0.13×) |
+| TypeScript (Node) | 21.31 ms (0.40×) | 30.99 ms (0.49×) | 100.69 ms (2.91×) |
+| Java | 10.63 ms (0.20×) | 16.40 ms (0.26×) | 34.47 ms (0.99×) |
+| C# | 6.86 ms (0.13×) | 9.00 ms (0.14×) | 17.45 ms (0.50×) |
+| Python | 32.82 ms (0.61×) | 167.10 ms (2.67×) | 1249.27 ms (36.05×) |
+| Rust | 4.47 ms (0.08×) | 19.57 ms (0.31×) | 149.32 ms (4.31×) |
+| C | 5.64 ms (0.11×) | 13.64 ms (0.22×) | 72.26 ms (2.09×) |
+
+### Decryption
+
+| SDK | 10 KiB | 100 KiB | 1 MiB |
+| --- | ---: | ---: | ---: |
+| Original OpenTDF Go | 100.59 ms (1.00×) | 91.60 ms (1.00×) | 214.73 ms (1.00×) |
+| Generated Go | 66.12 ms (0.66×) | 76.26 ms (0.83×) | 83.24 ms (0.39×) |
+| TypeScript (Node) | 92.06 ms (0.92×) | 99.86 ms (1.09×) | 260.47 ms (1.21×) |
+| Java | 133.05 ms (1.32×) | 140.52 ms (1.53×) | 119.09 ms (0.55×) |
+| C# | 171.51 ms (1.71×) | 250.17 ms (2.73×) | 200.61 ms (0.93×) |
+| Python | 169.43 ms (1.68×) | 455.23 ms (4.97×) | 2472.00 ms (11.51×) |
+| Rust | 81.69 ms (0.81×) | 112.34 ms (1.23×) | 350.54 ms (1.63×) |
+| C | 137.86 ms (1.37×) | 228.82 ms (2.50×) | 273.05 ms (1.27×) |
 
 ## Build and run
 

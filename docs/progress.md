@@ -800,3 +800,30 @@ original pinned GoSDK baseline1.00x for each operation/size. A sole benchmark
 worker measures accepted packages; the harness goal remains active until those
 new tables are measured, reviewed and committed. No correctness-matrix replay
 is required for that performance work.
+
+## Native benchmark tables accepted — 2026-10-02
+
+Published the accepted single-SDK delivery as signed commit
+`4c77e58f5aca5b82dc7059e1e21cd9129c61e245` on the public repository's `main`.
+The user requested separate encryption and decryption performance tables, then
+selected 10 KiB, 100 KiB and 1 MiB and excluded browser measurements.
+
+A separate benchmark worker used the accepted installed packages and existing
+BASIC platform. All 48 operation/size/implementation cells passed, using one
+warmup and five timed calls each. The 144 encryption archives were independently
+decrypted with original Go through real KAS; every measured decryption matched
+the exact input. Root checked all sample medians, matching-size duration ratios,
+payload/archive hashes, frozen sources and retained consumer binary identities.
+The original 1 MiB measurements were retained; obsolete larger/browser attempts
+are excluded from the final tables. No production changes or correctness matrix
+replays were required.
+
+The README includes the two tables, normalized to original Go at 1.00×, and
+marks the project as a proof of concept and work in progress, with an explicit
+notice that the implementation may change, at the user's request.
+`docs/benchmarks.md` explains the fresh-operation timing boundary, original Go's
+constructor cost, actual toolchains, and initial Java/C# binary preservation
+limitation. `docs/benchmark-results.json` contains the safe sample/environment
+export; the reproducible consumer harnesses are under `tests/bench` and
+`scripts/benchmark-sdk.py`. Raw credentials, fixture archives and private
+receipts remain ignored. Benchmark work is accepted; root owns commit and push.
