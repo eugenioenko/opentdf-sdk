@@ -500,3 +500,101 @@ Ignored receipts include `.local/csharp-tdf-library-worker-handoff.txt`,
 `.local/root-csharp-final-terminal-audit.json` and the paired signed-commit record
 `.local/root-csharp-phase6-commits.json`. Platform BASIC is restored and verified.
 Python is next, followed by Rust and C. Phase 6 and Phase 7 remain open.
+
+
+## Phase 6 Python SDK underway — 2026-10-02
+
+The sole Sol High worker `/root/python_tdf_library` starts from signed SDK
+`874f2a11aa8687e4aa0937f4b0600099a42547bb` and Goalchemy
+`fe54f04fe692b5fae46f7bf820f7d326c25d627e`. All 1,841 postcommit source hashes
+match before mutation. Scope is Python value-library emission, native owned
+sync/async/cancellation boundaries, production capabilities, an installable
+package and real-KAS interop. Shared SDK protocol remains outside this worker's
+edit scope. Root coordinates profiles, acceptance and paired phase commits.
+
+The worker installs dependencies into an ignored isolated venv. Root verifies
+six wheel hashes and 26 non-directory license hashes against the dependency
+manifest; Python 3.10.12 imports cryptography 50.0.2 with its bundled OpenSSL
+4.0.3 backend. This checkpoint establishes artifact identity, not primitive or
+SDK acceptance. Runtime versus build-only pins and package licenses will be
+recorded in the delivery lock. HTTP uses a bounded standard-library adapter.
+
+Ignored task/baseline/orchestration receipts retain this assignment. The later
+Rust task is drafted from actual Cargo/emitter and host-runtime sources, with
+no second worker, production source edits or dependency selection. Python must
+pass focused checks and required BASIC/EC/enforced-DPoP matrices before one
+acceptance review and commits. Rust, C and Phase 7 remain open.
+
+## Phase 6 Python SDK accepted — 2026-10-02
+
+Python delivers an independently installable `opentdf-tdf3` wheel executing the
+shared SDK, with owned byte/configuration/metadata values, typed errors,
+serialized cancellable operations and native sync/async entry points. Maintained
+cryptography 50.0.2 and bounded TLS-verifying standard-library HTTP provide
+production capabilities. No compiler, Go process or stock SDK is needed by a
+production consumer. The observed CPython 3.10.12/Linux x86-64 dependency wheels,
+runtime/build roles and six artifact/license inventories are locked; other
+platform artifacts require separate validation. See [Python delivery](generated-python-library.md).
+
+The single acceptance review preserved the 1,841-file post-C# baseline and
+accepted only Python backend/runtime/capability/export work, associated
+Python driver/spec/test branches and focused regression fixtures. Shared SDK
+protocol, IR/effects/lowering/declarations and other targets remain unchanged.
+Root common documentation and compiler pin changes are separate from worker
+source freezes. The paired signed commits are recorded below.
+
+Focused checks pass Python compiler/specgen/driver branches, native byte and
+generic host preservation, actual generated library consumers, Python language
+regression and 203/203 conformance cases. The final repaired boundary passes
+131 native checks including independent Go PKCS#8/public/signature/ECDH parity,
+53 generated library checks and 27 installed SDK buffer/ownership checks.
+Catalog validation remains 13 types/95 functions/seven targets; all 616 derived
+files are current. Native imports do not mutate global recursion, thread or TLS
+policy. Owned outputs/errors publish after source/native/provider retirement.
+
+Artifact-scoped real-KAS matrices pass BASIC 35 comparisons/11 typed negatives,
+EC 280/8 and enforced DPoP 226/10, covering seven payload/metadata cases, both
+stock references/directions, RSA/P256 wrapping and sessions, RS256/ES256,
+discovery/explicit keys and matching credential-free native token providers.
+Eleven controlled HTTP/TLS/limits/deadline/cancellation cases pass with zero
+plaintext and actual release barriers. Four stock Web enforced-nonce401 limits
+remain explicit; stock formats produced under Bearer are labeled separately.
+Root independently verified 1,015 retained plaintext/metadata hashes and 682
+matrix statuses, including those four expected stock failures.
+
+The original BASIC-tested wheel SHA256 is
+`a90aeced52b990e76deba3b622ff394690f08e099a8f0b3947359303812a45ef`.
+The packaging repair's reproducible wheel SHA256 is
+`56ff5044543e7c4f36c01077e76900eedca665753d1f3edaa2f2a5bc44f530eb`;
+its 86 executable Python entries match the original matrix runtime.
+The acceptance review found valid omitted-public-point P256 PKCS#8 rejection
+and a memoryview bound that counted elements rather than bytes. Maintained PEM
+parsing now accepts the valid key while rejecting mislabeled/trailing inputs;
+byte conversion checks nbytes before copying and maps released views to typed
+invalid_argument. The final reproducible wheel SHA256 is
+`b0fcf60e4154765426d971ddd6bd7edbde509b8b37bb399911f8bc72e483f2b6`.
+Only lib_crypto_close.py and types/library.py plus wheel RECORD differ from
+56ff; all 80 packaged runtime modules match current repository bytes. Focused
+native/generated/installed checks cover this two-module delta. Original KAS
+matrices retain their original artifact scope; they are not relabeled as runs
+of the final repaired wheel. No protocol/transport change required another matrix.
+
+Original exploratory compile/defer/result failures, terminal-result loss,
+foreign-owner fixture assertion, base64 result arity, stale-license packaging,
+controlled cancellation-code assertion and the installed proof's unused-export
+fixture error remain retained with corrections and scopes. The installed proof
+uses maintained verification rather than widening SDK exports. Cancellation
+may wait for native crypto/DNS/acquisition; uncooperative token providers must
+acknowledge cleanup before safe completion. No secret-erasure guarantee or
+persistent public client/key handles are claimed.
+
+Ignored evidence includes `.local/python-tdf-library/terminal-handoff.txt`,
+its original `terminal-freeze.json`, `.local/python-tdf-library-acceptance-repair/`,
+`.local/root-python-original-matrix-audit.json` and root acceptance/paired-commit
+receipts. Platform BASIC is restored and verified. Rust is next, followed by C;
+Phase 6 and final Phase 7 clean package/CI delivery remain open.
+
+Accepted signed Goalchemy commit: `106b6a53ffcd08a775fca4950f6f5146e3ed2220`
+(`feat(python): add native capabilities and cancellable value libraries`).
+The SDK compiler pin now references this revision; the signed SDK phase commit
+is recorded in `.local/root-python-phase6-commits.json`.

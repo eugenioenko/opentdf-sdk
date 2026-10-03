@@ -19,8 +19,8 @@ The user's current cadence for each remaining SDK target is: implement the targe
 → next target. Run broader preservation checks when a shared change or concrete
 failure requires them. Retain failures and use focused repairs at the original
 budgets; repeat passed checks only when a new change or demonstrated gap warrants
-it. This cadence supersedes older per-target broad-suite workflows. Java and C# have
-been accepted and committed; Python is the next sole worker.
+it. This cadence supersedes older per-target broad-suite workflows. Java, C# and Python have
+been accepted; Rust is next, followed by C.
 
 After each handoff, the orchestrator reads the changes, runs the appropriate checks, and either accepts the task or assigns a focused repair. Required repository instructions apply to changes inside each clone. Do not count skipped tests, a mock KAS, an executable wrapper, or a successful self-round-trip as evidence of generated SDK compatibility.
 
@@ -137,8 +137,8 @@ BASIC/EC/enforced-DPoP matrices pass, with stock Web enforced-nonce401 limitatio
 recorded separately. Ownership, queued/active cancellation, source failures,
 crypto lifetimes, UTF-8 and transport rejection checks pass. Original compiler
 campaign failures and its cache-processing termination remain retained alongside
-terminal current supplements. Java and C# are accepted in Phase 6; three remaining
-SDKs and Phase 7 stay open. See [TypeScript delivery](generated-typescript-library.md)
+terminal current supplements. Java, C# and Python are accepted in Phase 6; Rust, C
+and Phase 7 stay open. See [TypeScript delivery](generated-typescript-library.md)
 and [the progress log](progress.md) for precise evidence and limits.
 
 ## Phase 6 Remaining target SDKs
@@ -149,7 +149,7 @@ Implement and accept each target before starting the next. Each target needs cap
 | --- | --- | --- |
 | 1 | Java (accepted) | JDK 21 JCA/HTTP plus pinned BC 1.86 for HKDF/omitted-Q P256, named-package JAR, owned bytes and cancellable async/error API |
 | 2 | C# (accepted) | .NET crypto and `HttpClient`, class library with byte APIs, cancellation, and async calls |
-| 3 | Python | `cryptography` plus a bounded HTTP adapter, installable package and documented sync/async behavior |
+| 3 | Python (accepted) | `cryptography` plus a bounded HTTP adapter, installable package and documented sync/async behavior |
 | 4 | Rust | Maintained crypto/HTTP crates, generated Cargo package and lockfile, idiomatic `Result` and clear key/resource ownership |
 | 5 | C | OpenSSL and libcurl, headers/library, explicit handles/buffer release, documented async driving model, existing collector integration |
 
@@ -167,8 +167,13 @@ Original broad failures and passing scoped repairs remain visible in
 BASIC/EC/enforced-DPoP matrices. Focused final checks cover cancellation,
 callback fault handling and detached source-panic ownership; current emitted
 runtime files match the repository. See [C# delivery](generated-csharp-library.md).
-Python is the next sole worker, followed by Rust and C; Phase 6 and final
-Phase 7 delivery remain open.
+Python is accepted with a reproducible installable wheel, 131 native crypto
+checks, 53 generated boundary checks, 27 installed buffer/ownership checks and
+artifact-scoped BASIC/EC/enforced-DPoP matrices. The single acceptance review
+repaired omitted-public-point PKCS#8 import and memoryview byte bounds; focused
+evidence covers the two changed runtime modules while original matrices retain
+their tested artifact identity. See [Python delivery](generated-python-library.md).
+Rust is next, followed by C; Phase 6 and Phase 7 remain open.
 
 ## Phase 7 Interop CI and TDF3 delivery readiness
 

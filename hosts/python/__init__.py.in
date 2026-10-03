@@ -1,0 +1,168 @@
+"""Importable TDF3 byte API. Calls own their source/client/key state."""
+from dataclasses import dataclass, fields
+import asyncio
+import json
+from concurrent.futures import Future
+from typing import Generic, TypeVar, Callable, Awaitable
+T = TypeVar('T')
+from . import _generated
+from ._generated import rt
+from ._generated.rt.runtime.lib_callback_request import ProviderRejected, ProviderRequest
+
+@dataclass
+class KASRoute:
+    url: str = ''
+    api_base_url: str = ''
+@dataclass
+class Config:
+    platform_url: str = ''
+    kas_url: str = ''
+    allowed_kas: list[KASRoute] | None = None
+    issuer_url: str = ''
+    token_url: str = ''
+    client_id: str = ''
+    client_secret: str = ''
+    token_provider_name: str = ''
+    allow_http: bool = False
+    timeout_millis: int = 0
+    kas_public_key_pem: str = ''
+    kid: str = ''
+    kas_algorithm: str = ''
+    session_algorithm: str = ''
+    auth_private_key_pem: str = ''
+    auth_algorithm: str = ''
+    dpop: bool = False
+@dataclass
+class EncryptOptions:
+    policy_base64: str = ''
+    attributes: list[str] | None = None
+    dissem: list[str] | None = None
+    segment_size: int = 0
+    has_segment_size: bool = False
+    segment_hash_algorithm: str = ''
+    mime_type: str = ''
+    metadata: bytes | None = None
+    include_metadata: bool = False
+@dataclass(frozen=True)
+class AccessToken:
+    value: str
+    scheme: str
+    expires_at: int
+    confirmation_jkt: str = ''
+@dataclass(frozen=True)
+class Decrypted:
+    payload: bytes
+    metadata: bytes
+    has_metadata: bool
+    manifest_json: str
+
+class TDFError(Exception):
+    def __init__(self, failure):
+        def text(name):
+            value=failure.fields.get(name,b'')
+            return value.decode('utf-8','strict') if type(value) is bytes else ''
+        self.kind=failure.kind
+        self.cause_category=text('CauseCategory')
+        if self.cause_category in ('canceled','deadline_exceeded'): self.kind=self.cause_category
+        self.code=text('Code') or self.kind
+        self.operation=text('Operation')
+        self.http_status=failure.fields.get('HTTPStatus',0)
+        self.server_code=text('ServerCode');self.server_message=text('ServerMessage')
+        self.required_obligations=tuple(x.decode('utf-8','strict') for x in (failure.fields.get('RequiredObligations') or ()))
+        super().__init__('tdf: '+self.code+' ('+self.operation+')')
+
+_CONFIG_NAMES=('PlatformURL','KASURL','AllowedKAS','IssuerURL','TokenURL','ClientID','ClientSecret','TokenProviderName','AllowHTTP','TimeoutMillis','KASPublicKeyPEM','KID','KASAlgorithm','SessionAlgorithm','AuthPrivateKeyPEM','AuthAlgorithm','DPoP')
+_OPTION_NAMES=('PolicyBase64','Attributes','Dissem','SegmentSize','HasSegmentSize','SegmentHashAlgorithm','MimeType','Metadata','IncludeMetadata')
+
+def _text(value):
+    if type(value) is not str:raise rt.LibraryFailure('invalid_argument')
+    try:return value.encode('utf-8','strict')
+    except UnicodeError:raise rt.LibraryFailure('invalid_argument')
+
+def _config(config):
+    if config is None:config=Config()
+    if type(config) is not Config:raise rt.LibraryFailure('invalid_argument')
+    result={}
+    for field,name in zip(fields(Config),_CONFIG_NAMES):
+        value=getattr(config,field.name)
+        if name=='AllowedKAS':
+            if value is None:result[name]=None;continue
+            if type(value) not in (list,tuple):raise rt.LibraryFailure('invalid_argument')
+            routes=[]
+            for route in value:
+                if type(route) is not KASRoute:raise rt.LibraryFailure('invalid_argument')
+                routes.append({'URL':_text(route.url),'APIBaseURL':_text(route.api_base_url)})
+            result[name]=routes
+        else:result[name]=_text(value) if field.type is str else value
+    return result
+
+def _options(options):
+    if options is None:options=EncryptOptions()
+    if type(options) is not EncryptOptions:raise rt.LibraryFailure('invalid_argument')
+    result={}
+    for field,name in zip(fields(EncryptOptions),_OPTION_NAMES):
+        value=getattr(options,field.name)
+        if name in ('Attributes','Dissem'):
+            if value is not None and type(value) not in (list,tuple):raise rt.LibraryFailure('invalid_argument')
+            result[name]=None if value is None else [_text(x) for x in value]
+        elif name=='Metadata':result[name]=None if value is None else bytes(rt.library_bytes(value))
+        else:result[name]=_text(value) if field.type is str else value
+    return result
+
+def _token(token):
+    if type(token) is not AccessToken or type(token.expires_at) is not int or not 0<=token.expires_at<1<<63:raise ProviderRejected('provider: invalid token')
+    if any(type(v) is not str or len(v)>limit for v,limit in ((token.value,65536),(token.scheme,128),(token.confirmation_jkt,256))):raise ProviderRejected('provider: invalid token')
+    try:
+        for v in (token.value,token.scheme,token.confirmation_jkt):v.encode('utf-8','strict')
+    except UnicodeError:raise ProviderRejected('provider: invalid token')
+    return json.dumps({'value':token.value,'scheme':token.scheme,'expiresAt':str(token.expires_at),'confirmationJKT':token.confirmation_jkt},ensure_ascii=False,separators=(',',':')).encode('utf-8')
+
+def _provider(provider):
+    def call(request):
+        value=provider(request)
+        if asyncio.iscoroutine(value):
+            async def mapped():return _token(await value)
+            return mapped()
+        if type(value) is Future:value=value.result()
+        return _token(value)
+    return call
+
+class Operation(Generic[T]):
+    def __init__(self,native,convert=lambda value:value):self._native=native;self._convert=convert
+    def cancel(self) -> bool:return self._native.cancel()
+    def done(self) -> bool:return self._native.done()
+    def result(self,timeout: float | None = None) -> T:
+        try:return self._convert(self._native.result(timeout))
+        except rt.LibraryFailure as failure:raise TDFError(failure) from None
+    async def wait(self) -> T:
+        try:return self._convert(await self._native)
+        except rt.LibraryFailure as failure:raise TDFError(failure) from None
+    def __await__(self):return self.wait().__await__()
+
+def _failed(failure):
+    op=rt.LibraryOperation();op._future.set_exception(failure);return Operation(op)
+
+def _call(config,provider):
+    if provider is None:return None
+    if not callable(provider):raise rt.LibraryFailure('invalid_argument')
+    config['TokenProviderName']=b'access-token'
+    return {'callbacks':{'access-token':_provider(provider)}}
+
+def encrypt(config: Config, payload: bytes | bytearray | memoryview | None, options: EncryptOptions | None = None, *, provider: Callable | None = None) -> Operation[bytes]:
+    """Submit an owned, serialized call. Operation.cancel requests cleanup ACK."""
+    try:
+        native=_config(config);call=_call(native,provider)
+        return Operation(_generated.Encrypt(native,None if payload is None else bytes(rt.library_bytes(payload)),_options(options),call))
+    except rt.LibraryFailure as failure:return _failed(failure)
+
+def decrypt(config: Config, archive: bytes | bytearray | memoryview | None, *, provider: Callable | None = None) -> Operation[Decrypted]:
+    try:
+        native=_config(config);call=_call(native,provider)
+        def result(v):return Decrypted(v['Payload'] or b'',v['Metadata'] or b'',v['HasMetadata'],v['ManifestJSON'].decode('utf-8','strict'))
+        return Operation(_generated.Decrypt(native,None if archive is None else bytes(rt.library_bytes(archive)),call),result)
+    except rt.LibraryFailure as failure:return _failed(failure)
+
+def encrypt_sync(config: Config,payload: bytes,options: EncryptOptions | None = None,*,provider: Callable | None = None) -> bytes:return encrypt(config,payload,options,provider=provider).result()
+def decrypt_sync(config: Config,archive: bytes,*,provider: Callable | None = None) -> Decrypted:return decrypt(config,archive,provider=provider).result()
+async def encrypt_async(config: Config,payload: bytes,options: EncryptOptions | None = None,*,provider: Callable | None = None) -> bytes:return await encrypt(config,payload,options,provider=provider)
+async def decrypt_async(config: Config,archive: bytes,*,provider: Callable | None = None) -> Decrypted:return await decrypt(config,archive,provider=provider)
