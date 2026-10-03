@@ -854,3 +854,30 @@ sources, four profile/report hashes, phase statistics and retained encryption
 archives. `docs/go-profiles.md`, `docs/go-profile-results.json` and
 `scripts/profile-go-sdk.py` preserve findings and reproduction instructions.
 No SDK/compiler/service changes or correctness matrix replays were required.
+
+## Fresh end-to-end comparison accepted — 2026-10-03
+
+The user requested a new run of original Go and all seven targets, one complete
+encrypt/decrypt table, and milliseconds only. All eight consumers now prepare
+configuration/providers/options before timing. Original Go creates and reuses
+one SDK client/session outside the entire loop; generated stateless facades
+retain their internal initialization and per-decrypt RSA session cost. Rust's
+archive-retention clone is timed and documented. Each contiguous interval
+encrypts input and decrypts that same freshly produced archive through real KAS
+until complete plaintext is available.
+
+The fresh `e2e-2026-10-03` campaign executed all 24 cells again: five measured
+pairs and one warmup per implementation/size, totaling 120 measured pairs and
+24 warmups. No prior timings were reused or summed. All 144 plaintexts matched
+exactly; all 144 distinct archives passed independent stock-Go/real-KAS
+decryption. Root reviewed every native timing boundary, exact sample medians,
+payload/archive hashes, frozen sources, compiled artifacts, actual matching
+Go 1.25.1 binaries, and original-client initialization count.
+
+The README replaces both earlier performance tables with the single new
+end-to-end milliseconds table for 10 KiB, 100 KiB and 1 MiB. Methodology and safe
+results explain the supported public APIs' different session lifecycles.
+Earlier profiles remain historical diagnostics of fresh-client separate
+operations; they are not attributed to this new run. No SDK/compiler/services
+changed and no broader correctness matrices were replayed. Root owns commit
+and the user-authorized main push.

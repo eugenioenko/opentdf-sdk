@@ -24,55 +24,34 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 | Rust | Locked Cargo crate | [Rust](docs/generated-rust-library.md) |
 | C | C17 headers, static library and source archive | [C](docs/generated-c-library.md) |
 
-## Performance
+## End-to-end performance
 
-Median of **five timed runs**, following one warmup, on a local workstation.
-Columns are plaintext sizes. Each cell shows **milliseconds (duration ratio)**;
-the original OpenTDF Go SDK is **1.00×** for each size and operation, and lower
-ratios are faster.
+Median **milliseconds** from five timed runs after one warmup. Each run encrypts
+the input, then decrypts the freshly produced archive through **real KAS** and
+materializes the complete plaintext. All eight SDKs were measured again;
+these results are not sums of the earlier encryption/decryption timings.
 
-These measurements include a fresh public SDK operation and complete in-memory
-output; decryption includes **real KAS rewrap**. The original Go lifecycle also
-includes client construction, which generates an RSA session key even for
-encryption. File I/O, OAuth acquisition and correctness validation are untimed.
-All 144 encryption outputs were decrypted and verified through original Go and
-real KAS. See [methodology](docs/benchmarks.md) and [samples and runtime versions](docs/benchmark-results.json).
-
-### Encryption
+Original Go reuses a client initialized before the timing loop. Configuration,
+token providers and encryption options are prepared outside timing for every
+SDK. Generated APIs are stateless facades, so their internal per-operation
+initialization and decryption session-key generation remain timed. File I/O,
+OAuth acquisition, public-key discovery and correctness checks are untimed.
 
 | SDK | 10 KiB | 100 KiB | 1 MiB |
 | --- | ---: | ---: | ---: |
-| Original OpenTDF Go | 53.49 ms (1.00×) | 62.68 ms (1.00×) | 34.65 ms (1.00×) |
-| Generated Go | 0.28 ms (0.01×) | 0.75 ms (0.01×) | 4.68 ms (0.13×) |
-| TypeScript (Node) | 21.31 ms (0.40×) | 30.99 ms (0.49×) | 100.69 ms (2.91×) |
-| Java | 10.63 ms (0.20×) | 16.40 ms (0.26×) | 34.47 ms (0.99×) |
-| C# | 6.86 ms (0.13×) | 9.00 ms (0.14×) | 17.45 ms (0.50×) |
-| Python | 32.82 ms (0.61×) | 167.10 ms (2.67×) | 1249.27 ms (36.05×) |
-| Rust | 4.47 ms (0.08×) | 19.57 ms (0.31×) | 149.32 ms (4.31×) |
-| C | 5.64 ms (0.11×) | 13.64 ms (0.22×) | 72.26 ms (2.09×) |
+| Original OpenTDF Go | 26.22 ms | 24.49 ms | 46.91 ms |
+| Generated Go | 87.92 ms | 54.63 ms | 101.52 ms |
+| TypeScript (Node) | 108.50 ms | 132.14 ms | 348.25 ms |
+| Java | 102.25 ms | 141.72 ms | 218.01 ms |
+| C# | 158.08 ms | 133.94 ms | 192.40 ms |
+| Python | 197.69 ms | 498.08 ms | 3759.84 ms |
+| Rust | 94.71 ms | 110.95 ms | 499.22 ms |
+| C | 207.71 ms | 185.64 ms | 408.15 ms |
 
-### Decryption
-
-| SDK | 10 KiB | 100 KiB | 1 MiB |
-| --- | ---: | ---: | ---: |
-| Original OpenTDF Go | 69.87 ms (1.00×) | 67.80 ms (1.00×) | 137.10 ms (1.00×) |
-| Generated Go | 66.12 ms (0.95×) | 76.26 ms (1.12×) | 83.24 ms (0.61×) |
-| TypeScript (Node) | 92.06 ms (1.32×) | 99.86 ms (1.47×) | 260.47 ms (1.90×) |
-| Java | 133.05 ms (1.90×) | 140.52 ms (2.07×) | 119.09 ms (0.87×) |
-| C# | 171.51 ms (2.45×) | 250.17 ms (3.69×) | 200.61 ms (1.46×) |
-| Python | 169.43 ms (2.42×) | 455.23 ms (6.71×) | 2472.00 ms (18.03×) |
-| Rust | 81.69 ms (1.17×) | 112.34 ms (1.66×) | 350.54 ms (2.56×) |
-| C | 137.86 ms (1.97×) | 228.82 ms (3.37×) | 273.05 ms (1.99×) |
-
-The large encryption advantage comes mainly from fresh-client setup. In the
-separate **1 MiB CPU profiles**, original Go spent **94.38%** of sampled CPU time
-on RSA key generation in `SDK.New`; generated Go creates that session key when
-decrypting. Original Go's instrumented medians were **69.28 ms** for construction
-and **1.65 ms** for `CreateTDF`, compared with **6.80 ms** for generated Go's full
-encryption call. These diagnostic timings are separate from the table samples;
-reusing an original Go client would change the comparison. Generated encryption's
-largest sampled cost was ZIP CRC32 (**40.26%**). See [profiling findings](docs/go-profiles.md)
-and [profile results](docs/go-profile-results.json).
+All 144 warmup/measured archives passed independent original-Go decryption
+through KAS, and every end-to-end plaintext matched its input exactly.
+See [methodology and lifecycle details](docs/benchmarks.md) and
+[individual samples and runtime versions](docs/benchmark-results.json).
 
 ## Build and run
 

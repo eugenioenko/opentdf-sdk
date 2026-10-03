@@ -48,85 +48,58 @@ static double clockms(void){
     assert(!clock_gettime(CLOCK_MONOTONIC,&t));
     return (double)t.tv_sec*1000.+(double)t.tv_nsec/1e6;
 }
-int main(int argc,char **argv){
-    assert(argc==5);
-    const char *run=argv[1],*op=argv[2],*size=argv[3];
-    int samples=atoi(argv[4]);
+int main(int argc, char **argv) {
+    assert(argc == 5);
+    const char *run = argv[1], *op = argv[2], *size = argv[3];
+    assert(!strcmp(op, "e2e"));
+    int samples = atoi(argv[4]);
     char path[4096];
-    size_t n,an=0,pn,kn,tn;
-    snprintf(path,sizeof path,"%s/%s.input",run,size);
-    uint8_t *input=readfile(path,&n),*archive=NULL;
-    if(!strcmp(op,"decrypt")){
-        snprintf(path,sizeof path,"%s/%s.reference.tdf",run,size);
-        archive=readfile(path,&an);
-    }
-    snprintf(path,sizeof path,"%s/kas.pem",run);
-    uint8_t *pem=readfile(path,&pn);
-    snprintf(path,sizeof path,"%s/kid",run);
-    uint8_t *kid=readfile(path,&kn);
-    snprintf(path,sizeof path,"%s/token-response.json",run);
-    uint8_t *token=readfile(path,&tn);
+    size_t n, pn, kn, tn;
+    snprintf(path, sizeof path, "%s/%s.input", run, size);
+    uint8_t *input = readfile(path, &n);
+    snprintf(path, sizeof path, "%s/kas.pem", run);
+    uint8_t *pem = readfile(path, &pn);
+    snprintf(path, sizeof path, "%s/kid", run);
+    uint8_t *kid = readfile(path, &kn);
+    snprintf(path, sizeof path, "%s/token-response.json", run);
+    uint8_t *token = readfile(path, &tn);
+    tdf3_kas_route route = {text("http://localhost:8080/kas"), text("http://localhost:8080")};
+    tdf3_config cfg = {
+        .PlatformURL = text("http://localhost:8080"), .KASURL = text("http://localhost:8080/kas"),
+        .AllowHTTP = true, .AllowedKAS = &route, .AllowedKASLength = 1,
+        .KASPublicKeyPEM = {pem, pn}, .KID = {kid, kn},
+        .KASAlgorithm = text("rsa:2048"), .SessionAlgorithm = text("rsa:2048"),
+        .AuthAlgorithm = text("ES256"), .TokenProviderName = text("access-token")
+    };
+    tdf3_bytes attr = text("https://example.com/attr/attr1/value/value1");
+    tdf3_encrypt_options options = {
+        .Attributes = &attr, .AttributesLength = 1, .SegmentSize = 2 << 20,
+        .HasSegmentSize = true, .SegmentHashAlgorithm = text("GMAC")
+    };
+    gxc_options call = {.provider = provider, .provider_state = token};
     printf("{\"samples_ms\":[");
-    for(int i=-1;i<samples;i++){
-        double start=clockms();
-        tdf3_kas_route route={
-            text("http://localhost:8080/kas"),text("http://localhost:8080")
-        }
-        ;
-        tdf3_config c={
-            .PlatformURL=text("http://localhost:8080"),.KASURL=text("http://localhost:8080/kas"),.AllowHTTP=true,.AllowedKAS=&route,.AllowedKASLength=1,.KASPublicKeyPEM={
-                pem,pn
-            }
-            ,.KID={
-                kid,kn
-            }
-            ,.KASAlgorithm=text("rsa:2048"),.SessionAlgorithm=text("rsa:2048"),.AuthAlgorithm=text("ES256"),.TokenProviderName=text("access-token")
-        }
-        ;
-        tdf3_bytes attr=text("https://example.com/attr/attr1/value/value1");
-        tdf3_encrypt_options opts={
-            .Attributes=&attr,.AttributesLength=1,.SegmentSize=2<<20,.HasSegmentSize=true,.SegmentHashAlgorithm=text("GMAC")
-        }
-        ;
-        gxc_options call={
-            .provider=provider,.provider_state=token
-        }
-        ;
-        tdf3_result result={
-            0
-        }
-        ;
-        tdf3_error err={
-            0
-        }
-        ;
-        int rc=!strcmp(op,"encrypt")?tdf3_encrypt(&c,(tdf3_bytes){
-            input,n
-        }
-        ,&opts,&call,&result,&err):tdf3_decrypt(&c,(tdf3_bytes){
-            archive,an
-        }
-        ,&call,&result,&err);
-        double elapsed=clockms()-start;
-        if(rc){
-            fprintf(stderr,"C failure kind %d code %.*s\n",rc,(int)err.Code.length,err.Code.data);
+    for (int i = -1; i < samples; i++) {
+        tdf3_result archive = {0}, plaintext = {0};
+        tdf3_error err = {0};
+        double start = clockms();
+        int rc = tdf3_encrypt(&cfg, (tdf3_bytes){input, n}, &options, &call, &archive, &err);
+        if (!rc) rc = tdf3_decrypt(&cfg, (tdf3_bytes){archive.Payload.data, archive.Payload.length}, &call, &plaintext, &err);
+        double elapsed = clockms() - start;
+        if (rc) {
+            fprintf(stderr, "C failure kind %d code %.*s\n", rc, (int)err.Code.length, err.Code.data);
             return 1;
         }
-        if(!strcmp(op,"decrypt")){
-            assert(result.Payload.length==n&&!memcmp(result.Payload.data,input,n));
-        }
-        else{
-            snprintf(path,sizeof path,"%s/c-%s-%d.tdf",run,size,i);
-            writefile(path,result.Payload.data,result.Payload.length);
-        }
-        tdf3_result_free(&result);
+        assert(plaintext.Payload.length == n && !memcmp(plaintext.Payload.data, input, n));
+        snprintf(path, sizeof path, "%s/c-%s-%d.tdf", run, size, i);
+        writefile(path, archive.Payload.data, archive.Payload.length);
+        tdf3_result_free(&archive);
+        tdf3_result_free(&plaintext);
         tdf3_error_free(&err);
-        if(i>=0)printf("%s%.9f",i?",":"",elapsed);
+        if (i >= 0) printf("%s%.9f", i ? "," : "", elapsed);
         fflush(stdout);
     }
-    printf("],\"correct\":true}\n");
+    printf("],\"correct\":true,\"kas_calls_expected\":%d}\n", samples + 1);
     free(input);
-    free(archive);
     free(pem);
     free(kid);
     free(token);

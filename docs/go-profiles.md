@@ -1,5 +1,10 @@
 # Go CPU profiles at 1 MiB
 
+> Historical fresh-client, separate-operation diagnostics. These profiles do not
+> describe the current end-to-end table, which reuses the original Go client
+> initialized outside timing. No old operation medians or profile timings were
+> summed or relabelled to produce that new table.
+
 The main reason for the large encryption ratio is the fresh-client lifecycle:
 the original SDK constructs an RSA2048 response-session key even for encryption.
 The generated SDK creates its response-session key during decryption. CPU

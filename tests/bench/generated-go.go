@@ -1,4 +1,4 @@
-// Native benchmark consumer of the accepted installed Go package.
+// End-to-end native consumer of the accepted installed Go package.
 package main
 
 import (
@@ -13,16 +13,19 @@ import (
 	"time"
 )
 
-func must(e error) {
-	if e != nil {
-		panic(e)
+func must(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
-func read(p string) []byte { b, e := os.ReadFile(p); must(e); return b }
+func read(path string) []byte { value, err := os.ReadFile(path); must(err); return value }
 func main() {
 	run, op, size := os.Args[1], os.Args[2], os.Args[3]
-	n, e := strconv.Atoi(os.Args[4])
-	must(e)
+	if op != "e2e" {
+		panic("generated Go consumer supports e2e only")
+	}
+	n, err := strconv.Atoi(os.Args[4])
+	must(err)
 	var raw struct {
 		Config  g.Config
 		Token   string
@@ -30,36 +33,26 @@ func main() {
 	}
 	must(json.Unmarshal(read(filepath.Join(run, "private.json")), &raw))
 	input := read(filepath.Join(run, size+".input"))
-	archive := []byte(nil)
-	if op == "decrypt" {
-		archive = read(filepath.Join(run, size+".reference.tdf"))
-	}
+	cfg := raw.Config
+	callbacks := g.TokenCallbacks(func(context.Context) (g.AccessToken, error) {
+		return g.AccessToken{Value: raw.Token, Scheme: "Bearer", ExpiresAt: raw.Expires}, nil
+	})
+	options := g.EncryptOptions{Attributes: []string{"https://example.com/attr/attr1/value/value1"}, SegmentSize: 2 << 20, HasSegmentSize: true, SegmentHashAlgorithm: "GMAC"}
 	samples := []float64{}
 	for i := -1; i < n; i++ {
 		start := time.Now()
-		cfg := raw.Config
-		callbacks := g.TokenCallbacks(func(context.Context) (g.AccessToken, error) {
-			return g.AccessToken{Value: raw.Token, Scheme: "Bearer", ExpiresAt: raw.Expires}, nil
-		})
-		var output []byte
-		if op == "encrypt" {
-			output, e = g.Encrypt(context.Background(), cfg, input, g.EncryptOptions{Attributes: []string{"https://example.com/attr/attr1/value/value1"}, SegmentSize: 2 << 20, HasSegmentSize: true, SegmentHashAlgorithm: "GMAC"}, callbacks)
-		} else {
-			var result g.Decrypted
-			result, e = g.Decrypt(context.Background(), cfg, archive, callbacks)
-			output = result.Payload
-		}
+		archive, err := g.Encrypt(context.Background(), cfg, input, options, callbacks)
+		must(err)
+		result, err := g.Decrypt(context.Background(), cfg, archive, callbacks)
+		must(err)
 		elapsed := float64(time.Since(start).Nanoseconds()) / 1e6
-		must(e)
-		if op == "decrypt" && !bytes.Equal(input, output) {
+		if !bytes.Equal(input, result.Payload) {
 			panic("plaintext mismatch")
 		}
-		if op == "encrypt" {
-			must(os.WriteFile(filepath.Join(run, fmt.Sprintf("go-%s-%d.tdf", size, i)), output, 0600))
-		}
+		must(os.WriteFile(filepath.Join(run, fmt.Sprintf("go-%s-%d.tdf", size, i)), archive, 0600))
 		if i >= 0 {
 			samples = append(samples, elapsed)
 		}
 	}
-	must(json.NewEncoder(os.Stdout).Encode(map[string]any{"samples_ms": samples, "correct": true}))
+	must(json.NewEncoder(os.Stdout).Encode(map[string]any{"samples_ms": samples, "correct": true, "kas_calls_expected": n + 1}))
 }

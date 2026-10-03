@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build native benchmark consumers, measure public APIs, validate through real KAS.
+"""Build native consumers and measure contiguous public encrypt/decrypt pairs through real KAS.
 
 Uses existing accepted installed packages; never invokes the Goalchemy compiler.
 Raw outputs and private token inputs are placed under ignored .local/benchmarks.
@@ -27,6 +27,7 @@ def setup(base, packages):
     receipts = {t: json.loads((consumers / t / 'receipt.json').read_text()) for t in TARGETS if t != 'reference'}
     env = os.environ.copy()
     env.update(receipts['go']['environment'])
+    env['GOTOOLCHAIN'] = 'go1.25.1'
     commands = {}
     identities = {}
     for (target, receipt) in receipts.items():
@@ -76,10 +77,13 @@ def setup(base, packages):
     commands['python'] = receipts['python']['consumer_command'][:2] + [str(SRC / 'python.py')]
     commands['typescript'] = ['node', str(SRC / 'node.mjs')]
     env['TDF_TS_PACKAGE'] = str((consumers / 'typescript/package/dist/index.js').resolve())
-    snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(), 'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(), 'references_lock_sha256': sha(SDK / 'references.lock.json'), 'packages': identities, 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}, 'commands': commands, 'built_consumers': {t: sha(Path(cmd[0])) for (t, cmd) in commands.items() if t in ('reference', 'go', 'c', 'rust')}, 'system': platform.uname()._asdict(), 'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''), 'memory_kib': Path('/proc/meminfo').read_text().splitlines()[0], 'toolchains': {}}
+    snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(), 'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(), 'references_lock_sha256': sha(SDK / 'references.lock.json'), 'packages': identities, 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}, 'timing_scope': 'one contiguous encrypt then decrypt interval; fixture/setup/OAuth/validation untimed', 'original_client_lifecycle': 'SDK.New once before warmup, reused client and default RSA2048 response session for all pairs in each cell', 'generated_client_lifecycle': 'stateless public facades; internal per-operation client setup and per-decrypt ephemeral RSA session remain timed', 'commands': commands, 'built_consumers': {t: sha(Path(cmd[0])) for (t, cmd) in commands.items() if t in ('reference', 'go', 'c', 'rust')}, 'system': platform.uname()._asdict(), 'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''), 'memory_kib': Path('/proc/meminfo').read_text().splitlines()[0], 'toolchains': {}}
     for (name, args) in [('go', ['go', 'version']), ('node', ['node', '--version']), ('python', [commands['python'][0], '--version']), ('java', [java_command[0], '-version']), ('dotnet', [dotnet, '--version']), ('rust', ['rustc', '--version']), ('cc', ['cc', '--version'])]:
         v = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         snapshot['toolchains'][name] = (v.stdout + v.stderr).decode().strip()
+    snapshot['controller_sha256'] = sha(Path(__file__))
+    snapshot['built_source_sha256'] = {t: sha(build / t / 'main.go') for t in ('reference', 'go')}
+    snapshot['consumer_artifacts_sha256'] = {str(p.relative_to(base)): sha(p) for p in build.rglob('*') if p.is_file() and (p.name == 'benchmark' or p.suffix in ('.dll', '.class'))}
     (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
     return (commands, env)
 
@@ -111,7 +115,7 @@ def normalized_results(base):
     rows = [json.loads(v) for v in (base / 'raw.jsonl').read_text().splitlines()]
     latest = {}
     for row in rows:
-        if row['target'] not in TARGETS:
+        if row['target'] not in TARGETS or row['operation'] != 'e2e':
             continue
         size_bytes = row.get('size_bytes', row.get('size_mib', 0) * 1024 * 1024)
         if size_bytes not in [v[1] for v in SIZES.values()]:
@@ -129,26 +133,20 @@ def normalized_results(base):
 def tables(base):
     latest = normalized_results(base)
     names = {'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
-    parts = []
-    for op in ['encrypt', 'decrypt']:
-        parts += ['Encryption' if op == 'encrypt' else 'Decryption', '', '| SDK | 10 KiB | 100 KiB | 1 MiB |', '| --- | ---: | ---: | ---: |']
-        for target in TARGETS:
-            cells = []
-            for _, size_bytes in SIZES.values():
-                row = latest.get((target, op, size_bytes))
-                ref = latest.get(('reference', op, size_bytes))
-                if not row:
-                    cell = 'Not measured'
-                elif row.get('status') != 'ok':
-                    cell = 'Failed (' + row.get('failure', 'unknown') + ')'
-                elif not ref or ref.get('status') != 'ok':
-                    cell = f"{row['median_ms']:.2f} ms"
-                else:
-                    cell = f"{row['median_ms']:.2f} ms ({row['median_ms'] / ref['median_ms']:.2f}×)"
-                cells.append(cell)
-            parts.append('| ' + names[target] + ' | ' + ' | '.join(cells) + ' |')
-        parts.append('')
-    (base / 'tables.md').write_text('\n'.join(parts))
+    parts = ['| SDK | 10 KiB | 100 KiB | 1 MiB |', '| --- | ---: | ---: | ---: |']
+    for target in TARGETS:
+        cells = []
+        for _, size_bytes in SIZES.values():
+            row = latest.get((target, 'e2e', size_bytes))
+            if not row:
+                cell = 'Not measured'
+            elif row.get('status') != 'ok':
+                cell = 'Failed (' + row.get('failure', 'unknown') + ')'
+            else:
+                cell = f"{row['median_ms']:.2f} ms"
+            cells.append(cell)
+        parts.append('| ' + names[target] + ' | ' + ' | '.join(cells) + ' |')
+    (base / 'tables.md').write_text('\n'.join(parts) + '\n')
     (base / 'summary.json').write_text(json.dumps(list(latest.values()), indent=2) + '\n')
 
 def main():
@@ -168,7 +166,7 @@ def main():
     reruns = set()
     for selector in args.rerun:
         fields = selector.split(':')
-        if len(fields) != 3 or fields[0] not in TARGETS or fields[1] not in ('encrypt', 'decrypt') or fields[2] not in SIZES:
+        if len(fields) != 3 or fields[0] not in TARGETS or fields[1] != 'e2e' or fields[2] not in SIZES:
             parser.error('--rerun must name TARGET:OPERATION:SIZE from the supported targets, operations and sizes')
         reruns.add(tuple(fields))
     base = args.output.resolve()
@@ -178,6 +176,7 @@ def main():
         commands = snapshot['commands']
         env = os.environ.copy()
         env.update(json.loads((args.packages / 'consumers/go/receipt.json').read_text())['environment'])
+        env['GOTOOLCHAIN'] = 'go1.25.1'
         env['TDF_TS_PACKAGE'] = str((args.packages / 'consumers/typescript/package/dist/index.js').resolve())
 
     else:
@@ -193,7 +192,7 @@ def main():
             chunk = bytes((i * 131 + (i >> 8) * 17 & 255 for i in range(1 << 20)))
             fixture.write_bytes((chunk * ((size_bytes + len(chunk) - 1) // len(chunk)))[:size_bytes])
         for target in args.targets.split(','):
-            for op in ['encrypt', 'decrypt']:
+            for op in ['e2e']:
                 previous = accepted.get((target, op, size_bytes))
                 selected_rerun = (target, op, label) in reruns
                 if previous and previous.get('status') == 'ok' and not selected_rerun:
@@ -221,7 +220,7 @@ def main():
                     samples = result['samples_ms']
                     assert result['correct'] and len(samples) == args.samples and all((v > 0 for v in samples))
                     validation = []
-                    if op == 'encrypt':
+                    if op == 'e2e':
                         prefix = 'reference' if target == 'reference' else target
                         for i in range(-1, args.samples):
                             archive = base / f'{prefix}-{size}-{i}.tdf'
@@ -229,6 +228,10 @@ def main():
                             check = json.loads(invoke(commands['reference'] + [str(base), 'validate', str(archive), '0', str(size)], SDK, env, 180))
                             assert check['correct']
                             validation.append({'sample': i, 'archive_sha256': sha(archive), 'archive_bytes': archive.stat().st_size, 'stock_go_real_kas': True})
+                    assert result['kas_calls_expected'] == args.samples + 1
+                    event['reference_client_initializations'] = result.get('client_initializations') if target == 'reference' else None
+                    event['timing_scope'] = 'contiguous public encryption then same-archive public decryption; exact plaintext verification outside timer'
+                    event['consumer_artifact_sha256'] = sha(Path(commands[target][0])) if target in ('reference', 'go', 'c', 'rust') else None
                     event.update(result, status='ok', median_ms=statistics.median(samples), minimum_ms=min(samples), maximum_ms=max(samples), stdev_ms=statistics.stdev(samples) if len(samples) > 1 else 0, encrypted_samples_validated=validation, wall_seconds=time.time() - started)
                 except Exception as e:
                     event.update(status='failed', failure=type(e).__name__, diagnostic_sha256=hashlib.sha256(str(e).encode()).hexdigest(), wall_seconds=time.time() - started)
