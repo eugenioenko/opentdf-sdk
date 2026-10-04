@@ -44,8 +44,8 @@ The original matrix archive `c68a42c0c464416dd1f000c996d7208f06a9ee3a0b163fb9d86
 is retained unchanged. The repaired archive has 410 files including source, Cargo.lock, the inventory and notices. It contains
 no VCS receipt. The preserved pre-format archive is separate from this final
 artifact. These identities belong to the earlier delivery acceptance; fresh
-Goalchemy v0.2.0 package identities are recorded with the
-[new benchmark receipts](benchmark-results.json). Packaging is local; nothing is published.
+performance measurements appear in the
+[current performance table](../README.md#end-to-end-performance). Packaging is local; nothing is published.
 
 | Direct dependency | Role | License |
 | --- | --- | --- |

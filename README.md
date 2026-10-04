@@ -51,8 +51,7 @@ Original Go reuses a client initialized before timing; generated facades'
 internal setup and session-key generation remain timed. File I/O, OAuth,
 public-key discovery and correctness checks are untimed. Inputs use 2 MiB
 segments. Browser execution is excluded. See the
-[methodology](docs/benchmarks.md) and
-[samples and runtime versions](docs/benchmark-results.json).
+[methodology](docs/benchmarks.md).
 
 ## Build and run
 

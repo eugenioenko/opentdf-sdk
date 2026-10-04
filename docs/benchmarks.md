@@ -89,7 +89,7 @@ warmups with the same 40 bulk warmups, three fresh processes, five samples and
 immutable native binaries. All three extended cells replace their initial
 cells regardless of whether their measured median improved. Their late timing
 windows varied rather than showing a repeated downward trend; these histories
-and superseded results remain in the safe ledger. No old and new samples are
+and superseded results remain in ignored local storage. No old and new samples are
 pooled, and none of the other 21 cells was rerun.
 Bulk warmup exercises the full segmentation, crypto and allocation paths before
 the smaller size is measured. This intentionally reports performance after
@@ -170,9 +170,8 @@ that a particular hardware instruction executed.
 
 ## Receipts and limits
 
-Safe samples, warmup histories, runtime settings, package/member hashes,
-source identities and independent archive checks are in
-[benchmark-results.json](benchmark-results.json). The ignored campaign directory
+The README contains the published results. Detailed samples and validation
+receipts are retained only in ignored local storage. The campaign directory
 `.local/steady-state-2026-10-04/campaign` retains raw receipts, summaries,
 environment metadata, retained archives, fixtures and compiled consumers.
 Private token files remain ignored with mode 0600 and are not exported.

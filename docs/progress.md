@@ -1395,3 +1395,12 @@ root proof is retained under ignored steady-state storage and copied into the
 ledger. PR #4 publishes the benchmark/report independently of source-layout
 PR #3. Both PRs require passing hosted checks before merge; generated
 distribution files remain deferred to their subsequent follow-up.
+
+## Benchmark result file removed at user request — 2026-10-04
+
+The user requested deleting `docs/benchmark-results.json` from PR #4 because
+the README table is sufficient. The file is removed, current documentation
+links point to the README or methodology, and detailed samples remain only
+in ignored local storage. Earlier entries describe the file as it existed
+at their respective publication checkpoints. No benchmark numbers, SDK code
+or harness behavior changed; no benchmark or test matrix rerun is needed.
