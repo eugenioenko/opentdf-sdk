@@ -1,5 +1,5 @@
 {
-  "compiler": "0.3.0",
+  "compiler": "0.4.0",
   "target": "python",
   "target_version": "0.1.0",
   "source_profile": {
@@ -442,7 +442,7 @@
     "rt/types/__init__.py"
   ],
   "distribution": {
-    "compiler_revision": "de6405d0da9b71834f0d7bcd30a3d08735019d4c",
+    "compiler_revision": "6b623760dd8819f8ad7e48ebe01041e5bff7f06f",
     "formatted": true,
     "diagnostic_line_maps": "omitted after formatting"
   }

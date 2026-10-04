@@ -12,7 +12,7 @@ import urllib.request
 
 SDK = Path(__file__).resolve().parents[1]
 TARGETS = ('go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c')
-PIN = 'de6405d0da9b71834f0d7bcd30a3d08735019d4c'
+PIN = '6b623760dd8819f8ad7e48ebe01041e5bff7f06f'
 TOOLS = SDK / '.local/dist-formatters'
 EXCLUDE = {'classes', 'lib', 'obj', 'bin', 'target', 'dist', 'package', 'build', '__pycache__',
            'opentdf_tdf3.egg-info', 'node_modules'}
@@ -91,7 +91,7 @@ def regenerate(targets, base, destination):
     goalchemy = SDK.parent / 'goalchemy'
     revision = subprocess.check_output(['git', '-C', goalchemy, 'rev-parse', 'HEAD'], text=True).strip()
     if revision != PIN:
-        raise RuntimeError('Goalchemy checkout must match released v0.3.0: ' + PIN)
+        raise RuntimeError('Goalchemy checkout must match released v0.4.0: ' + PIN)
     if subprocess.check_output(['git', '-C', goalchemy, 'status', '--porcelain', '--untracked-files=no']):
         raise RuntimeError('Goalchemy tracked sources must be clean')
     run(['go', 'build', '-trimpath', '-o', compiler, './cmd/goalchemy'], cwd=goalchemy,

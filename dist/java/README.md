@@ -1,6 +1,6 @@
 # OpenTDF TDF3 — java
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
 `bash build-sdk.sh` (JDK 21). Import `io.opentdf.tdf3.TDF3` with `tdf3-java.jar` and the pinned Bouncy Castle JAR on the classpath.
 

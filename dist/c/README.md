@@ -1,6 +1,6 @@
 # OpenTDF TDF3 — c
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
 `bash build-sdk.sh` (C17, OpenSSL 3, libcurl and BDWGC 8.2.8 development files). Include `tdf3.h` and link `libtdf3.a`, libcurl, libssl, libcrypto, libgc, pthread and dl.
 

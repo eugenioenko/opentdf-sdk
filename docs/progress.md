@@ -1519,3 +1519,24 @@ manifests, local documentation links, ignored artifacts and compiler pins; no
 machine-specific paths or private keys were found. Shared source, existing CI
 commands and the historical benchmark table remain unchanged. No new KAS matrix
 was run for this packaging change. CI and Make automation remain follow-ups #7/#8.
+
+
+## Readable distribution refresh — 2026-10-04
+
+The user requested updating existing distribution PR #9 to Goalchemy v0.4.0,
+whose default emission preserves Go-derived identifier stems. The signed release
+pins compiler revision `6b623760dd8819f8ad7e48ebe01041e5bff7f06f`; the SDK module,
+reference lock, regeneration helper and existing CI checkout pins now agree.
+All seven formatted source distributions were regenerated, including TypeScript
+Node and browser adapters. Public facade and adapter files retain their contents;
+shared SDK implementation and historical benchmark measurements are unchanged.
+
+Acceptance passed seven relative/absolute native package pairs, native builds
+and independent consumer builds from formatted distribution copies, repeated
+formatting, equality across all 984 formatted files, manifest/source checks and
+25 existing CI-harness unit tests. Local receipts and logs remain ignored under
+`.local/dist-work/v040-*`. No new CI jobs or real-KAS matrix were added; existing
+CI continues to build and exercise ephemeral packages. The C# usage command now
+uses supported `-p:RestoreLockedMode=true`, and regeneration drops four redundant
+C notice copies while preserving identical notices under `dist/c/licenses/`.
+PR #9 remains the review destination; merging it is not requested.

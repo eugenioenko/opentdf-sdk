@@ -1,6 +1,6 @@
 # OpenTDF TDF3 — rust
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
 `cargo build --release --locked` (Rust 1.98.0). Add a path dependency named `opentdf-tdf3` to this directory.
 

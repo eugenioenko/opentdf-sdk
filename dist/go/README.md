@@ -1,6 +1,6 @@
 # OpenTDF TDF3 — go
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
 `go build ./...` (Go 1.25.14). Import `goalchemyout` using a local module replacement for this directory.
 

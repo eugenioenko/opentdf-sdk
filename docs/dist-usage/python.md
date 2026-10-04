@@ -1,6 +1,6 @@
 # OpenTDF TDF3 — python
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
 `python -m pip install .` (Python 3.10+). Import `opentdf_tdf3`; pinned runtime dependencies are declared in `pyproject.toml`.
 

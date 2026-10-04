@@ -14,12 +14,16 @@ PR #3 and benchmark PR #4 merged. Both prerequisites have now merged. Follow
 formatted generated source packages under root `dist/<language>/` for Go,
 TypeScript (Node/browser), Java, C#, Python, Rust and C.
 
-Generate with released Goalchemy v0.3.0, pin compiler and formatter versions,
+Generate with released Goalchemy v0.4.0, pin compiler and formatter versions,
 and provide one command to regenerate and format every distribution. Commit
 the required source, host adapters, package/build manifests, dependency locks,
 licenses and usage instructions. Keep compiled artifacts, downloaded dependencies,
 build caches, local credentials and logs ignored. Existing benchmark numbers
 remain historical v0.2.1 measurements.
+
+The distribution PR now uses the compiler's default readable internal names,
+combining Go-derived identifier stems with deterministic prefixes and IDs.
+Keep public exports intact and regenerate all seven targets without compact names.
 
 Acceptance requires reproducible and idempotent generation/formatting and bounded
 local package/consumer build checks. The user explicitly deferred additional CI

@@ -104,8 +104,9 @@ Shared implementation lives under `src/`. The seven committed source distributio
 under [`dist/`](dist/) contain generated code, native adapters, dependency manifests
 and notices; each target README describes building and importing it without a
 Goalchemy executable. Compiled packages, caches and downloaded dependencies stay
-ignored. Current distributions use Goalchemy **v0.3.0**; the benchmark table above
-remains the historical v0.2.1 measurement.
+ignored. Current distributions use Goalchemy **v0.4.0** with its default readable
+source-derived identifiers; the benchmark table above remains the historical
+v0.2.1 measurement.
 
 To regenerate and format every distribution, check out the compiler revision in
 `references.lock.json`, bootstrap the pinned prerequisites with

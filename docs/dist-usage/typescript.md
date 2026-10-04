@@ -1,6 +1,6 @@
 # OpenTDF TDF3 — typescript
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
 `npm ci && npm run build` (Node 24.15.0). Import `@opentdf-local/tdf3`; conditional exports select the Node CRC adapter, and the browser/default export uses portable Web Crypto and fetch.
 

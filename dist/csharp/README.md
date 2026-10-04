@@ -1,8 +1,8 @@
 # OpenTDF TDF3 — csharp
 
-Generated from shared `src/` with released Goalchemy v0.3.0.
+Generated from shared `src/` with released Goalchemy v0.4.0.
 
-`dotnet build main.csproj -c Release --locked-mode` (.NET SDK 8.0.425). Reference `OpenTDF.TDF3.dll` and deploy `System.IO.Hashing.dll` alongside it.
+`dotnet build main.csproj -c Release -p:RestoreLockedMode=true` (.NET SDK 8.0.425). Reference `OpenTDF.TDF3.dll` and deploy `System.IO.Hashing.dll` alongside it.
 
 See [API and examples](../../docs/generated-csharp-library.md) and the [native consumer](../../tests/interop/generatedcsharp) for encrypt/decrypt configuration, cancellation and ownership. This SDK supports the documented TDF3 byte profile, not the complete OpenTDF API. Credentials and local outputs must stay outside the distribution.
 
