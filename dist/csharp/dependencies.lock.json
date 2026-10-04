@@ -1,0 +1,19 @@
+{
+  "sdk": ".NET SDK 8.0.425",
+  "runtime": "Microsoft.NETCore.App 8.0.31",
+  "dependencies": [
+    {
+      "name": "System.IO.Hashing",
+      "version": "8.0.0",
+      "artifact": "system.io.hashing.8.0.0.nupkg",
+      "url": "https://api.nuget.org/v3-flatcontainer/system.io.hashing/8.0.0/system.io.hashing.8.0.0.nupkg",
+      "sha256": "b33386b744cd068e9d11d0b781fe87f9ef585b7370d30a1ae949c218618ae5c1",
+      "nuget_content_hash": "ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA==",
+      "license": "MIT",
+      "role": "IEEE CRC32; official Microsoft NuGet API; runtime controls acceleration"
+    }
+  ],
+  "licenses": [".NET MIT", "Goalchemy Apache-2.0", "System.IO.Hashing MIT"],
+  "nativeCrypto": "System.Security.Cryptography (.NET8, OpenSSL on Linux)",
+  "nativeHTTP": "System.Net.Http.HttpClient (.NET8)"
+}

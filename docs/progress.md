@@ -1492,3 +1492,30 @@ the combined publication branch before PR #4 is merged.
 The reconciled branch passed all ten benchmark-policy tests, including the
 three Node contract checks, and the staged whitespace check. No measurements
 were repeated during reconciliation.
+
+## Committed distribution follow-up started — 2026-10-04
+
+Source-layout PR #3 and benchmark PR #4 are merged; current main is `ebc7685`.
+The user now authorized a PR committing generated SDK packages under root
+`dist/`. The isolated `feat/committed-distributions` worktree preserves the
+original dirty benchmark checkout. One packaging worker is implementing the
+seven formatted distributions and reproducible generation from issue #6.
+The user deferred extra distribution CI to
+[issue #7](https://github.com/eugenioenko/opentdf-sdk/issues/7), and a Make
+build/regeneration entrypoint to
+[issue #8](https://github.com/eugenioenko/opentdf-sdk/issues/8). Existing CI
+continues to build ephemeral packages; this PR adds no CI jobs.
+
+Goalchemy float-support PR #11 passed the full hosted suite and all-seven
+float differential/runtime checks, then merged as `6d5442b`. Goalchemy v0.3.0
+was published from signed release commit `de6405d`; its version, generated-spec
+freshness and external-module test passed. New distribution generation will
+pin that release. Existing README benchmark values and their historical
+v0.2.1 compiler provenance remain unchanged. Distribution packaging checks passed locally: all seven package builds and
+installed native consumer builds, independently emitted relative/absolute source
+assemblies, repeated native formatting, final C syntax checks and the 25 existing
+CI-harness unit tests. The final source-only tree contains 988 files. Root reviewed
+manifests, local documentation links, ignored artifacts and compiler pins; no
+machine-specific paths or private keys were found. Shared source, existing CI
+commands and the historical benchmark table remain unchanged. No new KAS matrix
+was run for this packaging change. CI and Make automation remain follow-ups #7/#8.

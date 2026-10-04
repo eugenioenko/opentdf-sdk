@@ -5,7 +5,8 @@
 One shared Go implementation provides TDF3 encryption/decryption libraries for
 **Go, TypeScript, Java, C#, Python, Rust and C**. TypeScript supports Node and
 browsers. The shared source, native adapters and all seven build helpers live
-in this repository; generated packages are ignored build outputs.
+in this repository. Generated source distributions are committed under `dist/`;
+compiled packages remain ignored build outputs.
 
 All seven libraries have passed interoperability checks against the pinned
 OpenTDF Go and Web SDKs through real KAS. The supported byte API includes
@@ -91,10 +92,35 @@ difference is diagnostic line comments. See [evidence and limitations](docs/fina
 [GitHub Actions](.github/workflows/tdf3-delivery.yml) defines focused checks for
 pull requests and manual runs, with full matrices as a manual option. Remote CI
 and a repeated full matrix are not claimed as executed final-delivery results.
-Generated packages, local credentials, keys and test outputs stay out of Git.
+Compiled packages, local credentials, keys and test outputs stay out of Git.
 
 The [delivery checklist](docs/delivery-checklist.md) and
 [progress log](docs/progress.md) record acceptance. The
 [reference API index](docs/reference-api.json) preserves broader APIs for future
 work. Package names remain development identities; package-registry publication
 and the repository's top-level license decision are separate release work.
+
+Shared implementation lives under `src/`. The seven committed source distributions
+under [`dist/`](dist/) contain generated code, native adapters, dependency manifests
+and notices; each target README describes building and importing it without a
+Goalchemy executable. Compiled packages, caches and downloaded dependencies stay
+ignored. Current distributions use Goalchemy **v0.3.0**; the benchmark table above
+remains the historical v0.2.1 measurement.
+
+To regenerate and format every distribution, check out the compiler revision in
+`references.lock.json`, bootstrap the pinned prerequisites with
+`python3 scripts/delivery-bootstrap.py all --base .local/dist-bootstrap`, then run:
+
+```sh
+python3 scripts/dist-distributions.py regenerate --base .local/dist-regeneration
+```
+
+Use a fresh ignored `--base` for each run. `check` regenerates into ignored storage
+and fails on any committed drift, then formats twice to verify idempotence.
+Formatter versions are pinned in `scripts/dist-formatters.json`, with explicit
+configuration beside it. Pre-format diagnostic line maps are omitted.
+Existing CI retains its ephemeral generation/build/KAS checks. Distribution build
+and CI coverage are tracked in [issue #7](https://github.com/eugenioenko/opentdf-sdk/issues/7);
+no additional CI jobs are introduced here. Native source build commands are in each
+distribution README. A root Make entrypoint is tracked in
+[issue #8](https://github.com/eugenioenko/opentdf-sdk/issues/8).

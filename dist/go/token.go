@@ -1,0 +1,38 @@
+// Token convenience adapter; shared SDK source validates scheme, expiry and
+// DPoP key binding after this bounded native wire conversion.
+package generated
+
+import (
+	"context"
+	"encoding/json"
+	"strconv"
+)
+
+// AccessToken is supplied by a host provider. ExpiresAt is UTC Unix seconds.
+type AccessToken struct {
+	Value           string
+	Scheme          string
+	ExpiresAt       int64
+	ConfirmationJKT string
+}
+
+// TokenProvider runs on the owned host worker and must observe cancellation.
+// A panic is an adapter fault. A returned error is a declared provider rejection.
+type TokenProvider func(context.Context) (AccessToken, error)
+
+const TokenProviderName = "access-token"
+
+// TokenCallbacks binds a provider for one generated operation. Set
+// Config.TokenProviderName to TokenProviderName and pass these callbacks.
+func TokenCallbacks(provider TokenProvider) Callbacks {
+	return Callbacks{TokenProviderName: func(ctx context.Context, _ []byte, settle func([]byte, error)) func() {
+		token, err := provider(ctx)
+		if err != nil {
+			settle(nil, err)
+			return nil
+		}
+		data, err := json.Marshal(map[string]string{"value": token.Value, "scheme": token.Scheme, "expiresAt": strconv.FormatInt(token.ExpiresAt, 10), "confirmationJKT": token.ConfirmationJKT})
+		settle(data, err)
+		return nil
+	}}
+}

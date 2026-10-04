@@ -1,0 +1,10 @@
+{
+  "go": "gofmt go1.25.14",
+  "typescript": "prettier 3.5.3",
+  "java": "google-java-format 1.28.0",
+  "csharp": "dotnet format whitespace SDK 8.0.425",
+  "python": "black 25.1.0",
+  "rust": "rustfmt toolchain 1.98.0",
+  "c": "clang-format 18.1.8",
+  "config": "prettier 3.5.3"
+}
