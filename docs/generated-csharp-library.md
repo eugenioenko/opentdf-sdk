@@ -11,10 +11,13 @@ records clean packages and the scope of final-package and CI validation.
 Build from any working directory with Bash, Python3, the .NET8 SDK and a built
 Goalchemy compiler. The checkout pins SDK8.0.425/runtime8.0.31 under
 `goalchemy/.toolchains/dotnet`. On Linux the native runtime uses the system
-OpenSSL/libc prerequisites of .NET8. There are no NuGet packages or downloaded
-crypto libraries. Exact dependency versions/licenses are in
+OpenSSL/libc prerequisites of .NET8. Crypto and HTTP use .NET built-ins.
+IEEE CRC32 uses the official Microsoft `System.IO.Hashing` 8.0.0 NuGet package,
+with an exact version/content-hash lock; it is separate from the shared runtime.
+Exact dependency versions/licenses are in
 [dependencies.lock.json](../hosts/csharp/dependencies.lock.json); output includes
-Goalchemy Apache2 and .NET MIT/third-party notices. Native APIs and pinned runtime
+Goalchemy Apache2, .NET MIT/third-party notices, and the hashing package's MIT
+license/notices. Native APIs and pinned runtime
 imports provide HKDF and omitted-public-point P256 support.
 
 ```bash
@@ -27,14 +30,20 @@ GOALCHEMY_BIN=out/csharp-tdf-library/goalchemy \
 `GOALCHEMY_BIN` and destination paths resolve against the invocation directory;
 `DOTNET_BIN` optionally supplies another .NET8 SDK executable. The helper compiles
 the shared library, copies the facade, builds a deterministic named DLL, records
-package hashes and ships licenses. Independently reference its `lib/OpenTDF.TDF3.dll`
-from a net8.0 project. The runtime-only consumer needs the .NET8 runtime and DLL,
+package hashes and ships licenses. Independently reference both
+`lib/OpenTDF.TDF3.dll` and `lib/System.IO.Hashing.dll` from a net8.0 project;
+the helper packages both DLLs. A project reference to generated `main.csproj`
+instead carries the NuGet dependency transitively. The runtime-only consumer
+needs the .NET8 runtime and both deployed DLLs,
 not Bash, Python3, Go, the SDK source or stock SDKs.
 
 ```xml
 <ItemGroup>
   <Reference Include="OpenTDF.TDF3">
     <HintPath>/absolute/package/lib/OpenTDF.TDF3.dll</HintPath>
+  </Reference>
+  <Reference Include="System.IO.Hashing">
+    <HintPath>/absolute/package/lib/System.IO.Hashing.dll</HintPath>
   </Reference>
 </ItemGroup>
 ```

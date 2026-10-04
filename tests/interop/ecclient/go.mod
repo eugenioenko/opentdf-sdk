@@ -3,7 +3,7 @@ module opentdf-local/ecclient-interop
 go 1.25.0
 
 require (
-	github.com/eugenioenko/goalchemy v0.0.0
+	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/sdk v0.0.0
 	opentdf-local/sdk v0.0.0
 )
@@ -14,6 +14,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
+	github.com/eugenioenko/goalchemy v0.2.1 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gowebpki/jcs v1.0.1 // indirect
@@ -23,7 +24,6 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.1.7 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
-	github.com/opentdf/platform/lib/ocrypto v0.14.0 // indirect
 	github.com/opentdf/platform/protocol/go v0.41.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect

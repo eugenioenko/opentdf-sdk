@@ -38,12 +38,14 @@ checkout. Cargo fetch populates the archive cache before offline builds. The
 archive checksum, license, declared MSRV and 316 retained notice files,
 including bundled native notices in separate package/version paths.
 
-The delivered archive SHA-256 is
+The historical final-phase archive SHA-256 is
 `08a7093aff4ec2d377921e83de833c4068f4b72ea3f45b7c26aee036785aa5e1`.
 The original matrix archive `c68a42c0c464416dd1f000c996d7208f06a9ee3a0b163fb9d86d088c48945aad`
 is retained unchanged. The repaired archive has 410 files including source, Cargo.lock, the inventory and notices. It contains
 no VCS receipt. The preserved pre-format archive is separate from this final
-artifact. Packaging is local; nothing is published.
+artifact. These identities belong to the earlier delivery acceptance; fresh
+Goalchemy v0.2.0 package identities are recorded with the
+[new benchmark receipts](benchmark-results.json). Packaging is local; nothing is published.
 
 | Direct dependency | Role | License |
 | --- | --- | --- |
@@ -51,9 +53,12 @@ artifact. Packaging is local; nothing is published.
 | reqwest 0.13.5 | Verified HTTP with rustls and gzip | MIT OR Apache-2.0 |
 | tokio 1.53.1 | Dedicated native transport runtime | MIT |
 | base64 0.22.1 | Strict canonical encoding | MIT OR Apache-2.0 |
+| crc32fast 1.5.2 | Direct IEEE CRC32 API with host-selected CPU acceleration | MIT OR Apache-2.0 |
 
 Transitive rustls uses AWS-LC; reqwest selects a local provider without installing
 a process-global default. Full native and transitive license texts are packaged.
+`crc32fast` was already present in the transitive inventory and is now also a
+direct dependency of the generated SDK; its checksum and notices remain pinned.
 
 ## Owned API
 

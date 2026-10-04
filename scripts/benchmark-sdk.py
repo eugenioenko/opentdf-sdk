@@ -4,12 +4,12 @@
 Uses existing accepted installed packages; never invokes the Goalchemy compiler.
 Raw outputs and private token inputs are placed under ignored .local/benchmarks.
 """
-import argparse, hashlib, json, os, platform, shutil, statistics, subprocess, time, urllib.request, urllib.parse
+import argparse, hashlib, json, os, platform, shutil, statistics, subprocess, time, urllib.request, urllib.parse, zipfile
 from pathlib import Path
 SDK = Path(__file__).resolve().parents[1]
 SRC = SDK / 'tests/bench'
 TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
-SIZES = {'10KiB': ('10KiB', 10 * 1024), '100KiB': ('100KiB', 100 * 1024), '1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024)}
+SIZES = {'1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024), '50MiB': ('50', 50 * 1024 * 1024)}
 
 def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -55,7 +55,7 @@ def setup(base, packages):
     csharp.mkdir(exist_ok=True)
     shutil.copyfile(SRC / 'Benchmark.cs', csharp / 'Benchmark.cs')
     dll = (consumers / 'csharp/package/lib/OpenTDF.TDF3.dll').resolve()
-    (csharp / 'benchmark.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>' + str(dll) + '</HintPath></Reference></ItemGroup></Project>')
+    (csharp / 'benchmark.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>' + str(dll) + '</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>' + str(dll.with_name('System.IO.Hashing.dll')) + '</HintPath></Reference></ItemGroup></Project>')
     dotnet = receipts['csharp']['consumer_command'][0]
     invoke([dotnet, 'build', '-c', 'Release', '-o', csharp / 'bin', '--nologo'], csharp, env)
     commands['csharp'] = [dotnet, str(csharp / 'bin/benchmark.dll')]
@@ -76,7 +76,7 @@ def setup(base, packages):
     commands['c'] = [str(cdir / 'benchmark')]
     commands['python'] = receipts['python']['consumer_command'][:2] + [str(SRC / 'python.py')]
     commands['typescript'] = ['node', str(SRC / 'node.mjs')]
-    env['TDF_TS_PACKAGE'] = str((consumers / 'typescript/package/dist/index.js').resolve())
+    env['TDF_TS_NODE_PACKAGE'] = str((consumers / 'typescript/package/dist/node-index.js').resolve())
     snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(), 'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(), 'references_lock_sha256': sha(SDK / 'references.lock.json'), 'packages': identities, 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}, 'timing_scope': 'one contiguous encrypt then decrypt interval; fixture/setup/OAuth/validation untimed', 'original_client_lifecycle': 'SDK.New once before warmup, reused client and default RSA2048 response session for all pairs in each cell', 'generated_client_lifecycle': 'stateless public facades; internal per-operation client setup and per-decrypt ephemeral RSA session remain timed', 'commands': commands, 'built_consumers': {t: sha(Path(cmd[0])) for (t, cmd) in commands.items() if t in ('reference', 'go', 'c', 'rust')}, 'system': platform.uname()._asdict(), 'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''), 'memory_kib': Path('/proc/meminfo').read_text().splitlines()[0], 'toolchains': {}}
     for (name, args) in [('go', ['go', 'version']), ('node', ['node', '--version']), ('python', [commands['python'][0], '--version']), ('java', [java_command[0], '-version']), ('dotnet', [dotnet, '--version']), ('rust', ['rustc', '--version']), ('cc', ['cc', '--version'])]:
         v = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -153,17 +153,22 @@ def tables(base):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--packages', type=Path, default=SDK / '.local/crc32/delivery')
-    parser.add_argument('--sizes', default='10KiB,100KiB,1MiB,10MiB')
+    parser.add_argument('--packages', type=Path, default=SDK / '.local/v020/delivery')
+    parser.add_argument('--sizes', default='1MiB,10MiB,50MiB')
     parser.add_argument('--targets', default=','.join(TARGETS))
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--build-only', action='store_true')
     parser.add_argument('--skip-build', action='store_true')
+    parser.add_argument('--fresh', action='store_true', help='Require no existing raw measurements in the campaign directory.')
     parser.add_argument('--rerun', action='append', default=[], metavar='TARGET:OPERATION:SIZE',
                         help='Rerun only an explicitly selected completed cell; repeat for multiple cells.')
     parser.add_argument('--correction-note', default='', help='Attribution recorded on explicitly selected rerun receipts.')
     args = parser.parse_args()
+    if any(label not in SIZES for label in args.sizes.split(',')):
+        parser.error('--sizes must select 1MiB,10MiB,50MiB')
+    if any(target not in TARGETS for target in args.targets.split(',')) or args.samples < 1:
+        parser.error('select supported targets and a positive sample count')
     reruns = set()
     for selector in args.rerun:
         fields = selector.split(':')
@@ -172,13 +177,15 @@ def main():
         reruns.add(tuple(fields))
     base = args.output.resolve()
     base.mkdir(parents=True, exist_ok=True)
+    if args.fresh and (base / 'raw.jsonl').exists():
+        parser.error('--fresh requires a campaign with no previous raw measurements')
     if args.skip_build:
         snapshot = json.loads((base / 'environment.json').read_text())
         commands = snapshot['commands']
         env = os.environ.copy()
         env.update(json.loads((args.packages / 'consumers/go/receipt.json').read_text())['environment'])
         env['GOTOOLCHAIN'] = 'go1.25.1'
-        env['TDF_TS_PACKAGE'] = str((args.packages / 'consumers/typescript/package/dist/index.js').resolve())
+        env['TDF_TS_NODE_PACKAGE'] = str((args.packages / 'consumers/typescript/package/dist/node-index.js').resolve())
 
     else:
         (commands, env) = setup(base, args.packages.resolve())
@@ -225,10 +232,19 @@ def main():
                         prefix = 'reference' if target == 'reference' else target
                         for i in range(-1, args.samples):
                             archive = base / f'{prefix}-{size}-{i}.tdf'
+                            # Independently read both ZIP members to EOF so the
+                            # standard reader verifies every recorded IEEE CRC.
+                            # This validation remains outside the native timer.
+                            with zipfile.ZipFile(archive) as zipped:
+                                assert set(zipped.namelist()) == {'0.payload', '0.manifest.json'}
+                                for member in zipped.infolist():
+                                    with zipped.open(member) as stream:
+                                        while stream.read(1 << 20):
+                                            pass
                             configure(base)
                             check = json.loads(invoke(commands['reference'] + [str(base), 'validate', str(archive), '0', str(size)], SDK, env, 180))
                             assert check['correct']
-                            validation.append({'sample': i, 'archive_sha256': sha(archive), 'archive_bytes': archive.stat().st_size, 'stock_go_real_kas': True})
+                            validation.append({'sample': i, 'archive_sha256': sha(archive), 'archive_bytes': archive.stat().st_size, 'stock_go_real_kas': True, 'independent_zip_crc': True})
                     assert result['kas_calls_expected'] == args.samples + 1
                     event['reference_client_initializations'] = result.get('client_initializations') if target == 'reference' else None
                     event['timing_scope'] = 'contiguous public encryption then same-archive public decryption; exact plaintext verification outside timer'
@@ -242,5 +258,9 @@ def main():
                 record(base, event)
                 tables(base)
                 print('DONE', target, op, size, event['status'], round(event.get('median_ms', 0), 2), 'ms', flush=True)
+    latest = normalized_results(base)
+    if any(latest.get((target, 'e2e', SIZES[label][1]), {}).get('status') != 'ok'
+           for label in args.sizes.split(',') for target in args.targets.split(',')):
+        raise SystemExit('one or more selected benchmark cells failed; see raw.jsonl')
 if __name__ == '__main__':
     main()

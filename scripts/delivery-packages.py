@@ -27,7 +27,7 @@ def members(root, target):
     elif target == 'java':
         files = [root/'tdf3-java.jar', root/'dependencies.lock.json', *list((root/'lib').glob('*.jar')), *list((root/'licenses').rglob('*'))]
     elif target == 'csharp':
-        files = [p for p in (root/'lib').iterdir() if p.suffix in ('.dll', '.json')] + [root/'dependencies.lock.json', *list((root/'licenses').rglob('*'))]
+        files = [p for p in (root/'lib').iterdir() if p.suffix in ('.dll', '.json')] + [root/'dependencies.lock.json', root/'packages.lock.json', *list((root/'licenses').rglob('*'))]
     elif target == 'python':
         files = [*list((root/'dist').glob('*.whl')), root/'dependencies.lock.json']
     elif target == 'rust':
@@ -76,6 +76,12 @@ def build(target, base, compiler, compiler_revision=None):
             (output/'target/package').mkdir(parents=True, exist_ok=True)
             shutil.copyfile(base/'rust-package-build-cache/package/opentdf-tdf3-0.1.0.crate', output/'target/package/opentdf-tdf3-0.1.0.crate')
         outputs.append(output)
+    finish(target, base, compiler, outputs, compiler_revision)
+
+
+def finish(target, base, compiler, outputs, compiler_revision=None):
+    """Freeze the verified pair, including after a scoped failed-build recovery."""
+    destination = base/'packages'/target
     hashes = [members(output, target) for output in outputs]
     repeatable = hashes[0] == hashes[1]
     old = SDK.parent/'goalchemy/out'/(target+'-tdf-library/sdk')

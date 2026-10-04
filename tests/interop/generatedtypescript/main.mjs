@@ -1,7 +1,7 @@
 // Independent native importing consumer; no shared SDK/compiler/reference import.
 import{readFile,writeFile}from'node:fs/promises';import{resolve}from'node:path';import{pathToFileURL}from'node:url';import{acquireToken}from'./token-provider.mjs';
 const[sdk,run,mode,name]=process.argv.slice(2);if(!name)throw new Error('consumer sdk run mode case');
-const g=await import(pathToFileURL(resolve(process.env.TDF_TS_PACKAGE??resolve(sdk,'../goalchemy/out/typescript-tdf-library/sdk/dist/index.js'))).href);
+const g=await import(pathToFileURL(resolve(process.env.TDF_TS_NODE_PACKAGE??process.env.TDF_TS_PACKAGE??resolve(sdk,'../goalchemy/out/typescript-tdf-library/sdk/dist/node-index.js'))).href);
 const cfg=JSON.parse(await readFile(resolve(run,'config.json'),'utf8'));if(cfg.TimeoutMillis!==undefined)cfg.TimeoutMillis=BigInt(cfg.TimeoutMillis);
 const read=n=>readFile(resolve(run,n));const write=(n,b)=>writeFile(resolve(run,n),b??new Uint8Array(),{mode:0o600});
 function assert(ok,label){if(!ok)throw new Error(label);}

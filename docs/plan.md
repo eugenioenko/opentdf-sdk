@@ -6,16 +6,119 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
-## CRC32 and benchmark follow-up
+## CI repair and patch release
 
-Add a native IEEE CRC32 capability across all seven Goalchemy targets and open a
-Goalchemy PR. Use that capability in the shared SDK ZIP implementation, rebuild
-all seven SDK packages, and rerun original Go plus every generated native SDK
-against real KAS for 10 KiB, 100 KiB, 1 MiB and 10 MiB. Publish one README table
-of measured end-to-end milliseconds, with five samples and one warmup per cell.
-Browser benchmarks are excluded; browser CRC32 support still requires a focused
-check. The existing Goalchemy CI failure is outside this follow-up. Root owns
-the PR and the user-authorized SDK main commit and push.
+Current objective: get the existing work ready to merge. First repair Goalchemy
+PR #10 and require successful hosted CI, then merge it and release Goalchemy
+0.2.1. Next update the compiler reference and CI pins on SDK PR #1 to that
+release, repair its actual CI failures and require every hosted check to pass.
+The user merged SDK PR #2 into PR #1; work continues on
+`perf/goalchemy-0.2.0-e2e-benchmarks`. Leave SDK PR #1 open and ready for review.
+
+One worker owns the current repository's implementation/tests; root owns review,
+phase commits, release publication, pins and documentation. Preserve failing logs
+in ignored storage and fix established causes without skipping required checks.
+Reuse accepted checks when producing source is unchanged. Prepare the independent SDK bootstrap repair while Goalchemy checks run, but
+publish the SDK release bump after the compiler release.
+User instructions authorize the compiler merge/release and pushes needed for both
+PR repairs; they do not request merging SDK PR #1. Goalchemy PR #10 passed all
+hosted checks and merged; signed v0.2.1 is published. The SDK bootstrap repair,
+release pin and eleven regression cases passed local acceptance, including actual
+cold-cache bootstrap. Subsequent hosted runs passed bootstrap and compiler build
+but exposed a missing `GOROOT` during package generation. The build-environment
+repair exports and verifies the selected Go toolchain root; hosted SDK checks
+remain the final acceptance gate.
+
+## Buffer optimization PR publication
+
+After local acceptance, the user authorized PR creation. Publish the Goalchemy
+runtime change against main and the SDK optimization against the existing
+benchmark PR branch, `perf/goalchemy-0.2.0-e2e-benchmarks`, to keep its review
+focused. The SDK PR depends on [SDK PR #1](https://github.com/eugenioenko/opentdf-sdk/pull/1)
+and [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10). This
+supersedes the earlier local-only constraint for branch pushes and PR creation;
+main branches and releases remain unchanged. Reuse accepted checks and benchmark
+evidence. Hosted CI starts through the ordinary PR workflow.
+
+## All-target local buffer benchmark follow-up
+
+The user requested measurements for every supported native SDK before concluding
+whether the buffer changes improve performance. Reuse the accepted optimized
+Python package and build/install fresh packages for Go, Node, Java, C#, Rust and
+C from the same local committed source and frozen compiler. Keep existing
+v0.2.0 packages intact. Browser benchmarks remain excluded.
+
+Once native builds finish, run fresh baseline and candidate campaigns sequentially
+without concurrent builds. Each campaign measures original Go plus all seven
+generated native SDKs at 1 MiB, 10 MiB and 50 MiB, with one warmup and five timed
+pairs per cell. Use unchanged native harnesses, lifecycles, configuration and
+timing boundaries, with original Go as an unchanged control. Independently
+validate all 288 retained archives through stock Go/KAS and ZIP CRCs outside
+timing. Compare per-target medians and sample ranges, qualifying effects that
+overlap run variation rather than assuming every median change is causal.
+
+The worker owns ignored build/install/campaign artifacts; root owns review,
+comparative documentation and a signed local acceptance commit. Do not alter
+production code to improve numbers, replace the README table, push, publish or
+trigger hosted CI. Existing local code commits remain the candidate; report
+blocking native build failures before any source repair. Status: fresh native
+packages, matched campaigns and focused anomaly repeats passed root acceptance.
+All 312 archives passed independent stock-Go/KAS and ZIP validation. See
+[all-target comparison](all-target-buffer-benchmarks.md): Python and Node show
+clearer 50 MiB gains; other target effects remain qualified by observed variation.
+
+## Local buffer optimization follow-up
+
+Optimize shared SDK decryption to process each archive once, and reduce redundant
+Python buffer copies without weakening CRC, manifest, policy-binding, root or
+segment authentication. Preserve snapshots of mutable public inputs at submission,
+overlapping Go slice behavior, independent public results and zero plaintext on
+failure. Changes stay on local `perf/python-buffer-handling-local` branches in both
+repositories; do not push, publish or replace the existing README benchmark table.
+
+One worker implements shared SDK and reusable Python compiler/runtime changes
+with focused ownership, overlap and tamper tests. Root reviews the changes before
+fresh package builds and real-KAS verification. Run both reference interoperability
+directions and negative cases appropriate to the changed decryption path, plus
+Python E2E measurements at 1 MiB, 10 MiB and 50 MiB. Use the unchanged native
+benchmark harness, one warmup and five timed pairs per size, with independent
+stock-Go/KAS decryption and ZIP CRC validation outside timing. Preserve accepted
+v0.2.0 packages and previous measurements; use distinct ignored output directories
+and fresh matched baseline measurements to distinguish optimization from run
+variation. Record artifact identities, checks and before/after medians locally.
+Commit accepted changes separately in each repository without publication.
+
+Status: implementation, focused ownership/tamper checks, fresh Python package,
+all-seven compiler emission, real BASIC KAS interoperability and matched Python
+benchmarks passed root acceptance. See [local results](python-buffer-optimization.md).
+This acceptance occurred locally before the subsequent authorized PR publication.
+
+## Goalchemy 0.2.0 release and fresh benchmark follow-up
+
+The current follow-up supersedes the earlier CRC32 benchmark campaign. Release
+Goalchemy 0.2.0 from merged main, then rebuild all seven native SDK packages from
+that exact published revision. Check installed consumers and native CRC32 routes,
+including Node conditional exports, C# hashing dependency deployment, and Rust's
+direct pinned `crc32fast` dependency. Preserve the portable browser entry.
+
+Run original Go and all seven generated native SDKs against real KAS for exactly
+1 MiB, 10 MiB, and 50 MiB, with five measured encrypt/decrypt pairs and one warmup
+per cell. Use a fresh output directory: no previous measurement may populate the
+new table. Independently decrypt all 144 retained archives using stock Go and real
+KAS, verify plaintext and ZIP CRCs, and publish one README table in milliseconds
+containing only the 24 new cells. Preserve the existing timing boundaries and
+client lifetimes; browser benchmarks remain excluded.
+
+Root owns the signed Goalchemy release, acceptance review, plan and progress log,
+and a signed SDK commit on a new branch. The user authorized publishing the
+Goalchemy release and opening an SDK PR; the SDK changes are not pushed directly
+to main. Preserve the README POC/work-in-progress notice. Run focused checks and
+the required benchmark validation without replaying unrelated passed matrices.
+
+Status: Goalchemy v0.2.0 is published at signed commit
+`90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab`. All seven fresh packages and installed consumers passed their focused checks.
+The new 24-cell benchmark and independent validation of all 144 archives passed
+root acceptance. The SDK changes are accepted for publication through a signed commit and PR.
 
 ## Execution and review
 

@@ -3,7 +3,6 @@ module opentdf-local/client-interop
 go 1.25.0
 
 require (
-	github.com/eugenioenko/goalchemy v0.0.0
 	github.com/opentdf/platform/sdk v0.0.0
 	opentdf-local/sdk v0.0.0
 )
@@ -14,6 +13,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
+	github.com/eugenioenko/goalchemy v0.2.1 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gowebpki/jcs v1.0.1 // indirect

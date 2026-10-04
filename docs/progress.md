@@ -952,3 +952,339 @@ safe frozen export, including all 160 samples, runtime/package identities and
 previous profiles/package evidence remains explicitly historical. Root owns the
 signed SDK commit and the user-authorized main push. The known unrelated
 Goalchemy CI failure was not repaired or treated as a CRC acceptance requirement.
+
+## Goalchemy 0.2.0 and replacement benchmarks — 2026-10-03
+
+The user requested a Goalchemy 0.2.0 release followed by a fresh original-Go plus
+seven-native-target E2E benchmark for 1 MiB, 10 MiB and 50 MiB, and an SDK PR.
+The previous README timing cells are superseded and will not populate the new
+table. The existing POC/work-in-progress status remains applicable.
+
+Goalchemy main now has signed release commit
+`90b1a019bd6def8ad59ebcf7f5bc0e8487d77bab` and a verified signed `v0.2.0` tag.
+The [public release](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.0)
+was published at 2026-10-03T20:15:47Z. The release changes the compiler version
+and external-install fixture requirement. Installed-compiler integration,
+CLI/emitted-manifest version checks, focused Go vet, capability catalog validation
+(13 types, 96 functions, seven targets), and generated-source freshness (680 files)
+passed. Compiler binary SHA256 is
+`61dec71c6b3dde1634f598f4476608b703ce965cecc33912afd3fc930e22040b`.
+The merged CRC32 feature had already passed seven-target hosted CI; the new
+release commit's hosted CI has not yet been used as an acceptance claim.
+
+The bounded worker is rebuilding fresh packages from the published revision.
+Preparation corrected Node native entry selection, C# hashing DLL/license
+packaging and direct-assembly consumer deployment, and the Rust direct CRC
+lock dependency. The new runner supports 50 MiB, rejects old output in fresh mode,
+and returns failure if a cell fails. Timing code and original-client lifetime
+remain unchanged. Preparation syntax and whitespace checks and local BASIC
+platform health/authentication passed. No new timing result or package acceptance
+is claimed here; final receipts and review are pending.
+
+## Fresh v0.2.0 benchmark accepted — 2026-10-03
+
+All seven SDK packages were rebuilt with the published release compiler and
+passed independent relative/absolute build reproducibility and installed-consumer
+checks. Node public SDK calls observed six real `node:zlib.crc32` invocations;
+the portable browser graph retained 88 inputs with no Node imports/globals.
+C# packaged and deployed System.IO.Hashing 8.0.0 with its lock and notices;
+installed native delegation and unsigned/nil/empty/slice/ownership checks passed.
+Rust's installed package directly pins crc32fast 1.5.2 and its native consumer
+links the implementation. The initial Java dependency download hit a temporary
+DNS failure; only that absolute build was recovered from checksum-verified
+cached bytes and rerun. Accepted packages and measurements were not replayed.
+
+The fresh campaign ran from 2026-10-03T20:27:25Z to 20:35:34Z. All 24 cells passed
+for original Go plus seven generated native SDKs at 1 MiB, 10 MiB and 50 MiB.
+There are 120 timed samples, 24 warmups and 144 distinct fresh archives. Every
+archive passed independent stock-Go decryption through real KAS, full plaintext
+comparison and standard-library ZIP CRC checks. All manifests retain AES-256-GCM,
+GMAC and 2 MiB segment defaults, with one, five and 25 segments. Safe platform
+audit counts confirm 288 distinct rewrap requests, covering the native pairs
+and independent validators. Browser benchmarks remain excluded.
+
+Root reviewed the 23-file worker whitelist, actual package/install command logs,
+CRC-route proofs, source snapshots and public documentation. The acceptance
+script verified all actual raw/public samples, medians, archive hashes, package
+members from both build paths, installed package members and compiler pins.
+All 157 measured source inputs match the delivered producing source except two
+explicit post-campaign corrections: the future package-directory CLI default
+and the offline CI compiler checkout. The measured controller is preserved,
+and its hash matches the campaign environment. Timing and client lifetimes did
+not change. Root clarified README compiler provenance and documentation spacing
+without changing any timing cell.
+
+The README now contains only the new 1/10/50 MiB milliseconds table and retains
+the POC/work-in-progress notice. Public result SHA256 is
+`f9432a292e1fe39dbe3e6255ec42cc664dec30a00a4d011f7b808034e76a89a1`;
+raw result SHA256 is
+`707d17ecdfccefb8c12b907909f99c717e22caffa91c58c8393d647d66a928ad`.
+Historical samples/profiles remain separately attributed. Unrelated full
+protocol matrices were not repeated. Goalchemy release CI is still running;
+SDK hosted CI will run on the user-authorized PR and is not claimed as passed.
+Root owns the signed SDK commit and PR publication.
+
+## Local buffer optimization started — 2026-10-03
+
+The user authorized local implementation and measurement of duplicate archive
+processing and redundant Python copies. Root isolated both repositories on
+`perf/python-buffer-handling-local`; the published release, SDK PR branch and
+accepted v0.2.0 installed packages remain intact. One worker owns the shared
+decryption path, Python facade and reusable Goalchemy buffer changes with focused
+tamper, snapshot, overlap and independent-output tests. Root owns review, matched
+Python 1/10/50 MiB benchmark acceptance and separate signed local commits.
+No push, publication or README benchmark replacement is authorized for this task.
+
+The preceding installed 50 MiB profile identifies repeated archive parsing and
+CRC/payload copying plus native-boundary slice temporaries. Its selected self-time
+buckets were 721 ms of allocation/copy bodies, 155 ms of generated JSON, 97 ms
+of CRC and 29 ms of AES-GCM. These are diagnostic observations, not promised
+optimization savings. Fresh matched baseline and optimized measurements will use
+the same native timer and independent stock-Go/KAS and ZIP checks.
+
+Root completed a fresh unchanged-package Python baseline under ignored
+`.local/benchmarks/python-buffer-before-2026-10-03/`: one warmup plus five timed
+pairs at each size, with medians 159.719 ms (1 MiB), 266.688 ms (10 MiB) and
+1144.598 ms (50 MiB). All 18 archives passed stock-Go real-KAS decryption and
+independent ZIP CRC checks. Root checked actual archive hashes and all 113
+installed Python package members against the accepted wheel. Raw result SHA256 is
+`a3358bd7f8408813aa3430dbc4ef11dc724b3806f6860aa59d54e7c41241a273`.
+These are baseline measurements; implementation acceptance and optimized results
+are pending.
+
+## Local buffer optimization accepted — 2026-10-03
+
+Root accepted the worker's exact 16-file production/test whitelist and verified
+actual focused JSON events: 14 top-level tests plus 47 subtests, no failures or
+skips. Checks preserve precredential CRC/manifest/profile errors, cached-state
+ownership, late-segment and metadata rejection, queued typed/multidimensional/
+strided snapshots, overlap and native/host lifecycle behavior. Native crypto
+passed 133 assertions, importing generated library 71 and installed boundary 31.
+
+The shared SDK now prepares an opaque, owned archive once and retains all MAC,
+segment and metadata authentication. Manifest inspection/result snapshots are
+deep-owned. Python removes duplicate immutable input allocations and intermediate
+slice copies while retaining mutable input snapshots and aliased-copy temporaries.
+Both Python package build paths match; all 113 installed members match the wheel.
+All seven targets compile/emit the changed SDK. The fresh Python BASIC matrix
+passed 35 actual comparisons, native provider/ownership checks and 11 rejection
+categories; its 69 recorded commands all exited zero. Earlier non-Python native
+and EC/DPoP acceptance remains historical rather than a newly replayed claim.
+
+Matched optimized E2E medians are 155.304 ms (1 MiB), 199.594 ms (10 MiB) and
+710.351 ms (50 MiB). Reductions against the fresh baseline are 2.8%, 25.2% and
+37.9%; 1 MiB remains within observed sample variation. Each campaign contains
+three cells, 15 timed pairs and 18 independently validated archives. Root checked
+all actual archive hashes, stock-Go/KAS and ZIP receipts, segment defaults and
+raw medians. The timer/harness and native cryptography binary are unchanged.
+See [local methodology/results](python-buffer-optimization.md).
+
+Goalchemy was committed locally as signed
+`4f5b428bf662a09991e05140484d4380e0401513` and the SDK compiler/CI pins now follow
+that unpublished commit. Measured producing source matches the accepted freeze;
+the subsequent pin/documentation edits do not change any timed operation.
+The released packages, README table, public results and existing PR branch remain
+unchanged. No push, release, package publication or hosted CI was triggered.
+
+## All-target local benchmark requested — 2026-10-03
+
+The user requested benchmarks for every native target to assess the shared archive
+optimization beyond Python. Root and one worker preserve SDK commit
+`a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy commit
+`4f5b428bf662a09991e05140484d4380e0401513` as the unchanged local candidate.
+The worker prepares fresh non-Python packages and independent consumers, reusing
+the previously verified candidate Python package. Cache reuse requires exact
+dependency hashes; existing accepted v0.2.0 packages remain untouched.
+
+Fresh baseline and candidate campaigns will run sequentially after builds, each
+with original Go and all seven generated native SDKs at 1/10/50 MiB, one warmup
+and five timed pairs per cell. Root prepared new baseline provenance using frozen
+accepted binaries without copying any timing samples. The control, native timer,
+configuration and independent stock-Go/KAS plus ZIP validation stay identical.
+Artifacts live under ignored `.local/buffer-all-targets-2026-10-03/`. No new
+result or cross-target performance improvement is claimed yet; README/public
+results and remote repositories remain unchanged.
+
+## All-target local benchmark accepted — 2026-10-03
+
+Fresh relative/absolute package builds and native installed consumers passed for
+Go, Node, Java, C#, Rust and C. Python reused the exact accepted candidate wheel,
+with its 113 actual import members reverified. The unchanged baseline packages
+remained separate. Root selected the exact baseline original-Go binary as the
+control in both campaigns, retaining an amendment for the unused freshly built
+reference binary. No production source, benchmark harness or timing boundary
+changed during this task.
+
+Both sequential full campaigns passed: original Go plus seven generated SDKs at
+1/10/50 MiB, one warmup and five measured E2E pairs per cell. All 288 archives
+passed independent stock-Go/KAS decryption, exact plaintext and ZIP CRC checks.
+Python 50 MiB falls 1085.96 to 702.17 ms (35.3%); Node falls 792.19 to 729.85 ms
+(7.9%), with nonoverlapping observed sample ranges. Go/Rust/C have lower 50 MiB
+medians but overlapping ranges; Java/C# barely change. Original-Go control
+variation prevents blanket attribution of small-file changes to this optimization.
+
+Root repeated only Java 1 MiB and C 10 MiB after their large initial slowdowns.
+The Java direction reversed (175.22 baseline to 119.47 candidate ms); C's repeat
+was 269.19 to 287.24 ms, a 6.7% slowdown rather than the initial 95.9%.
+Ranges overlap for both repeats. The original full results remain untouched;
+repeat samples are retained separately. These add 24 validated archives, making
+312 total across 52 cells and 260 measured pairs.
+
+Root verified all raw medians, statuses, actual archive hashes/byte counts and
+uniqueness, plus 1,637 producing source hashes, 1,290 package/install member hashes
+and 113 actual Python import members. Ignored artifacts and receipts are under
+`.local/buffer-all-targets-2026-10-03/`. See the
+[comparison and limitations](all-target-buffer-benchmarks.md). The README/public
+benchmark table, released packages, main and existing PR branch remain unchanged.
+No push, publication, EC/DPoP replay or hosted CI was triggered. Acceptance is
+recorded in a signed local documentation commit; producing source remains SDK
+`a46fd1e23ae4a7633062e3e5f7243c3a3532e6e4` and Goalchemy
+`4f5b428bf662a09991e05140484d4380e0401513`.
+
+
+## Buffer optimization PR publication authorized — 2026-10-03
+
+The user requested PR creation after accepting the all-target benchmark conclusion.
+Root published the unchanged Goalchemy runtime commit on its review branch and
+opened [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10) against
+main. The SDK PR is based on the existing benchmark PR branch so it contains only
+the buffer optimization, tests, compiler pin and comparison documentation; merge
+[SDK PR #1](https://github.com/eugenioenko/opentdf-sdk/pull/1) first. The obsolete
+`local_only` reference marker is removed now that the exact compiler commit is
+publicly fetchable. Source pins and measured producing source remain unchanged.
+
+Publication metadata/documentation is checked for links, source identity and
+whitespace. No previously accepted benchmarks or tests are rerun for these
+metadata edits. Main branches, released packages and README/public benchmark
+results remain unchanged. Hosted CI may run normally upon opening the PRs;
+local benchmark acceptance does not claim those remote checks have passed.
+
+
+## Compiler-first CI repair and release started — 2026-10-03
+
+The user merged SDK PR #2 into PR #1, then requested Goalchemy PR #10 be fixed
+first, followed by a compiler release, SDK compiler bump and SDK PR #1 CI repair.
+SDK PR #1 is the single remaining SDK review branch. Root fetched and
+fast-forwarded that branch to `eb0b697`; no uncommitted changes were lost.
+
+One worker is investigating Goalchemy run `37162996216`. Its actual job log shows
+catalog freshness rejects five generated Python specs after runtime edits; vet
+passed and the subsequent tests did not run. The worker will regenerate those
+specs with the official generator and verify the minimal repair. The earlier SDK
+run `37152493845` passed offline checks but all seven native jobs failed in
+bootstrap; child diagnostics were hidden in a non-uploaded log, so that run's
+exact underlying error was not established. Current SDK checks will be diagnosed
+and repaired after the compiler release, without treating earlier local benchmarks
+as hosted CI success.
+
+
+Root accepted the seven-file Goalchemy metadata repair and signed/pushed
+`f08a4ac03f333dedc0366fdd4e37c2346c1c9ede`: five generated implementation hashes
+plus compiler/external-module version 0.2.1. Local catalog validation, freshness,
+vet, CLI/emitted-manifest version and three focused tests pass with no focused
+skips. Hosted run `37163614355` has passed the formerly failing freshness step;
+full hosted tests and runtime conformance remain required before release.
+
+Root reproduced the SDK failure using an isolated cold Go module cache. Go emits
+its automatic toolchain-download notice to stderr; bootstrap merged that with
+stdout and falsely rejected the correct Go 1.25.14 version. Reconstructing the
+assertion traceback produces SHA256
+`88a6d14b06493d3e479935d16497655ae9c3432fc3b12658734881b775b9ac76`, identical
+to the bootstrap log hash in all seven original failed job receipts. The isolated
+reproduction, actual job logs/receipts and hash proof are retained under ignored
+`.local/pr1-ci-investigation/`. The SDK helper repair is deferred until the compiler
+release, as requested.
+
+
+## Goalchemy v0.2.1 released; SDK CI repair accepted locally — 2026-10-03
+
+[Goalchemy hosted run 37163614355](https://github.com/eugenioenko/goalchemy/actions/runs/37163614355)
+passed on exact PR head `f08a4ac`, including vet, catalog freshness, the short
+repository suite and unshort all-seven runtime conformance. Root merged PR #10
+as `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`, verified the merged tree exactly
+matches that tested head, rebuilt the compiler from main with Go 1.25.14, and
+passed actual version/catalog/freshness checks. The signed annotated tag
+[v0.2.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.1) is published.
+The verified local build of released source has SHA256
+`9dc17a1c599bb3c9e535bcd3763b2d192474941f248634c3446a46a680880043`;
+this release publishes source, not a separately uploaded binary asset.
+
+SDK module, reference lock and both workflow checkouts now pin released v0.2.1.
+Version probes preserve stderr diagnostics separately from stdout, with explicit
+Java stderr-version handling; wrong versions and failed commands still fail.
+The Python dependency-version variable no longer shadows the later Rust probe
+when using target `all`. Bootstrap failures expose only an allowlisted tool/reason
+summary; raw bootstrap and service logs remain private.
+
+Eleven actual subprocess/CLI regressions pass without skips, covering cold notices,
+strict versions/channels, nonzero diagnostics, Java, all-target continuation and
+private-log canaries. They are wired into the offline hosted job. The actual Go
+bootstrap also passed using a newly empty module cache and the released reference:
+it downloaded Go 1.25.14, retained the notice on stderr, and recorded exactly
+`go version go1.25.14 linux/amd64`. All real reference hashes and tracked-tree
+cleanliness checks passed. Root reviewed the minimal helper/test diff and checked
+source identities, publication metadata, documentation links and whitespace.
+Ignored handoff/native receipts are under `.local/pr1-ci-repair/`; release proof
+is `.local/pr-buffer/released-compiler.json`.
+
+The benchmark values remain the original measured artifacts; no benchmark was
+repeated for hash/version metadata or CI-only edits. README distinguishes the
+v0.2.0 baseline table from the later buffer comparison. The SDK repair will be
+pushed to PR #1 and all hosted checks must pass before merge readiness is claimed.
+SDK main remains unchanged and PR #1 remains open.
+
+## Hosted package diagnosis — 2026-10-03
+
+The initial SDK repair was signed and pushed as `0c21246`. Hosted run
+[37165219812](https://github.com/eugenioenko/opentdf-sdk/actions/runs/37165219812)
+passed offline checks, bootstrap and compiler builds, but all seven native jobs
+failed at the first package helper. The parent traceback hid the actual child
+error. Diagnostic commit `a39d150` now publishes only allowlisted, pre-service
+compiler/package logs with receipt hashes; bootstrap and service logs remain
+private. Twelve subprocess regressions passed, including generic child errors
+and private-log exclusion.
+
+[Run 37166163896](https://github.com/eugenioenko/opentdf-sdk/actions/runs/37166163896)
+exposed the package failure: the relocated compiler built with `-trimpath` had
+no `GOROOT` on the hosted runner, so declaration validation could not import
+standard packages such as `context`, `hash/crc32` and `crypto`. The local shell
+environment masked this missing toolchain path. Bootstrap must carry the actual
+pinned Go toolchain's root into compiler and package subprocesses. These are
+build-environment repairs; benchmark values and production SDK source are
+unchanged. All hosted checks still need to pass before PR #1 is merge-ready.
+
+The repair discovers `go env GOROOT`, validates its version metadata, standard
+library sources and actual local Go executable, then exports that root to build
+subprocesses. Fifteen CLI regressions passed with inherited `GOROOT` removed.
+A native before/after replay reproduced the hosted failure without the root;
+patched bootstrap downloaded Go 1.25.14 into a newly empty module cache, then
+the same relocated compiler passed both relative and absolute Go package builds.
+No compiler, SDK runtime, protocol or benchmark code changed.
+
+Goalchemy's post-merge [main run 37164839517](https://github.com/eugenioenko/goalchemy/actions/runs/37164839517)
+also passed on the exact released `de26e4a` commit.
+
+## Hosted package and BASIC acceptance; profile module repair — 2026-10-03
+
+Signed repair `734fe4e` was tested in
+[run 37166625136](https://github.com/eugenioenko/opentdf-sdk/actions/runs/37166625136).
+The Go and TypeScript receipts confirm successful bootstrap, compiler builds,
+relative/absolute packages, independent installed consumers, platform startup,
+readiness, stock Go reference and BASIC real-KAS checks. TypeScript's BASIC
+browser check also passed. Both jobs then failed selecting the EC profile.
+
+A read-only replay of the profile helper reproduced `go: updates to go.mod
+needed`. Its test module still requested Goalchemy `v0.0.0`, while the parent SDK
+now requires `v0.2.1`; Go's module graph required synchronization. The related
+interop modules are being checked together to avoid the same stale graph later
+in EC or DPoP execution. Production SDK and compiler source remain unchanged;
+all hosted checks remain required before merge readiness.
+
+Seven nested modules now require Goalchemy `v0.2.1`. Go's tidy operation changed
+only that requirement plus existing direct/indirect classifications and
+formatting; no checksum files or other dependency versions changed. All seven
+modules passed tidy, read-only listing and read-only compilation, and the actual
+profile helper's read-only pin check passed against clean pinned references.
+Ignored evidence is retained under `.local/pr1-ci-repair/module-graph/`.
+The hosted profile log remains private, so final confirmation requires the
+next CI run; no EC/DPoP or other required check was bypassed.
