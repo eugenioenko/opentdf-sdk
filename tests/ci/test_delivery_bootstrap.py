@@ -28,9 +28,17 @@ class BootstrapVersionTests(unittest.TestCase):
         (self.compiler / 'toolchains.lock').write_text('')
         self.tools = self.root / 'tools'
         self.tools.mkdir()
+        self.goroot = self.root / 'pinned-go'
+        for relative in ('src/runtime/runtime2.go','src/unsafe/unsafe.go'):
+            path = self.goroot / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('// isolated standard library fixture\n')
+        (self.goroot / 'VERSION').write_text('go1.25.14\n')
         self.environment = os.environ.copy()
+        self.environment.pop('GOROOT', None)
         self.environment['PATH'] = str(self.tools) + os.pathsep + self.environment['PATH']
         self.tool('go', 'go version go1.25.14 linux/amd64\n')
+        self.tool('go', 'go version go1.25.14 linux/amd64\n', path=self.goroot / 'bin/go')
         self.tool('node', 'v24.15.0\n')
         self.tool('python3', 'Python 3.10.21\n')
         self.output = self.sdk / 'output'
@@ -39,7 +47,8 @@ class BootstrapVersionTests(unittest.TestCase):
         path = path or self.tools / name
         path.parent.mkdir(parents=True, exist_ok=True)
         source = ('#!' + sys.executable + '\nimport os,sys\n'
-                  + ('assert os.environ["GOTOOLCHAIN"] == "go1.25.14"\n' if name == 'go' else '')
+                  + ('assert os.environ["GOTOOLCHAIN"] in ("go1.25.14","local")\n' if name == 'go' else '')
+                  + ('if sys.argv[1:] == ["env","GOROOT"]:print(' + repr(str(self.goroot)) + ');sys.exit(0)\n' if name == 'go' else '')
                   + 'sys.stdout.write(' + repr(stdout) + ')\n'
                   + 'sys.stderr.write(' + repr(stderr) + ')\n'
                   + 'sys.exit(' + str(status) + ')\n')
@@ -61,6 +70,28 @@ class BootstrapVersionTests(unittest.TestCase):
         self.assertEqual(receipt['versions']['go'], 'go version go1.25.14 linux/amd64')
         self.assertNotIn('downloading', receipt['versions']['go'])
         self.assertEqual(receipt['environment']['GOTOOLCHAIN'], 'go1.25.14')
+        self.assertEqual(receipt['environment']['GOROOT'], str(self.goroot))
+
+    def test_goroot_metadata_must_match_pinned_toolchain(self):
+        (self.goroot / 'VERSION').write_text('go1.25.13\n')
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('GOROOT must match Go1.25.14', result.stderr)
+        self.assertFalse((self.output / 'environment.json').exists())
+
+    def test_goroot_must_contain_standard_library_sources(self):
+        (self.goroot / 'src/runtime/runtime2.go').unlink()
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('GOROOT must contain its toolchain and standard library', result.stderr)
+        self.assertFalse((self.output / 'environment.json').exists())
+
+    def test_goroot_executable_must_match_pinned_toolchain(self):
+        self.tool('go', 'go version go1.25.13 linux/amd64\n', path=self.goroot / 'bin/go')
+        result = self.run_bootstrap()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('GOROOT executable must match Go1.25.14', result.stderr)
+        self.assertFalse((self.output / 'environment.json').exists())
 
     def test_wrong_go_version_rejected(self):
         self.tool('go', 'go version go1.25.13 linux/amd64\n')

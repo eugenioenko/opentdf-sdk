@@ -29,6 +29,20 @@ def tool_version(command, environment, *, stderr_version=False):
     return (result.stderr if stderr_version else result.stdout).strip()
 
 
+def pinned_go_root(environment):
+    """Relocated trimpath compilers need an explicit, verified standard library."""
+    root = Path(tool_version(['go','env','GOROOT'],environment))
+    if not root.is_absolute() or not all((root/path).is_file() for path in
+            ('VERSION','src/runtime/runtime2.go','src/unsafe/unsafe.go','bin/go')):
+        raise RuntimeError('pinned Go GOROOT must contain its toolchain and standard library')
+    if (root/'VERSION').read_text().partition('\n')[0] != 'go1.25.14':
+        raise RuntimeError('GOROOT must match Go1.25.14')
+    local = {**environment,'GOROOT':str(root),'GOTOOLCHAIN':'local'}
+    if not tool_version([root/'bin/go','version'],local).startswith('go version go1.25.14 '):
+        raise RuntimeError('GOROOT executable must match Go1.25.14')
+    return str(root.resolve())
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('target', choices=('go','typescript','java','csharp','python','rust','c','all'))
@@ -62,6 +76,7 @@ def main():
             raise RuntimeError(requirement)
 
     required_version('go',['go','version'],'go version go1.25.14 ','Go1.25.14 required',prefix=True)
+    environment['GOROOT'] = pinned_go_root(environment)
     required_version('node',['node','--version'],'v24.15.0','Node24.15.0 required for stock Web and browser tooling')
     version('python',['python3','--version'])
 
@@ -144,7 +159,7 @@ def main():
             assert sha(Path('/')/name) == expected, 'OpenSSL runtime differs from tested lock: '+name
             artifacts[name] = expected
         environment['TDF3_CURL_PREFIX'] = str(prefix)
-    exported = {key:value for key,value in environment.items() if key in ('GOTOOLCHAIN','TSC_BIN','TDF_BROWSER_TOOLING','PLAYWRIGHT_BROWSERS_PATH','TDF_PYTHON','TDF_WHEELHOUSE','TDF3_CURL_PREFIX')}
+    exported = {key:value for key,value in environment.items() if key in ('GOTOOLCHAIN','GOROOT','TSC_BIN','TDF_BROWSER_TOOLING','PLAYWRIGHT_BROWSERS_PATH','TDF_PYTHON','TDF_WHEELHOUSE','TDF3_CURL_PREFIX')}
     (base/'environment.json').write_text(json.dumps(exported,indent=2)+'\n')
     (base/'bootstrap-receipt.json').write_text(json.dumps({'status':0,'targets':targets,'references':refs,'artifacts':artifacts,'versions':versions,'toolchains_lock_sha256':sha(SDK.parent/'goalchemy/toolchains.lock'),'commands':commands,'environment':exported},indent=2)+'\n')
     print('PASS pinned bootstrap',','.join(targets))

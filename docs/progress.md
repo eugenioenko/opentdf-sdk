@@ -1232,3 +1232,34 @@ repeated for hash/version metadata or CI-only edits. README distinguishes the
 v0.2.0 baseline table from the later buffer comparison. The SDK repair will be
 pushed to PR #1 and all hosted checks must pass before merge readiness is claimed.
 SDK main remains unchanged and PR #1 remains open.
+
+## Hosted package diagnosis — 2026-10-03
+
+The initial SDK repair was signed and pushed as `0c21246`. Hosted run
+[37165219812](https://github.com/eugenioenko/opentdf-sdk/actions/runs/37165219812)
+passed offline checks, bootstrap and compiler builds, but all seven native jobs
+failed at the first package helper. The parent traceback hid the actual child
+error. Diagnostic commit `a39d150` now publishes only allowlisted, pre-service
+compiler/package logs with receipt hashes; bootstrap and service logs remain
+private. Twelve subprocess regressions passed, including generic child errors
+and private-log exclusion.
+
+[Run 37166163896](https://github.com/eugenioenko/opentdf-sdk/actions/runs/37166163896)
+exposed the package failure: the relocated compiler built with `-trimpath` had
+no `GOROOT` on the hosted runner, so declaration validation could not import
+standard packages such as `context`, `hash/crc32` and `crypto`. The local shell
+environment masked this missing toolchain path. Bootstrap must carry the actual
+pinned Go toolchain's root into compiler and package subprocesses. These are
+build-environment repairs; benchmark values and production SDK source are
+unchanged. All hosted checks still need to pass before PR #1 is merge-ready.
+
+The repair discovers `go env GOROOT`, validates its version metadata, standard
+library sources and actual local Go executable, then exports that root to build
+subprocesses. Fifteen CLI regressions passed with inherited `GOROOT` removed.
+A native before/after replay reproduced the hosted failure without the root;
+patched bootstrap downloaded Go 1.25.14 into a newly empty module cache, then
+the same relocated compiler passed both relative and absolute Go package builds.
+No compiler, SDK runtime, protocol or benchmark code changed.
+
+Goalchemy's post-merge [main run 37164839517](https://github.com/eugenioenko/goalchemy/actions/runs/37164839517)
+also passed on the exact released `de26e4a` commit.

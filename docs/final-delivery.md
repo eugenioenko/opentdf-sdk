@@ -60,7 +60,11 @@ packages, consumer builds, caches, logs, keys, and profiles stay ignored.
 | C | Linux x86_64 archive containing headers, generated sources and `libtdf3.a`; separate archive-linked native consumers | GCC11.4.0/C17, OpenSSL3.0.2, curl7.81.0, Boehm8.2.8; [C API](generated-c-library.md) |
 
 [delivery-bootstrap.py](../scripts/delivery-bootstrap.py) verifies the reference
-pins and fetches target prerequisites from pinned locks.
+pins and fetches target prerequisites from pinned locks. The compiler and
+package subprocesses require the pinned Go toolchain's standard-library root;
+bootstrap records that environment explicitly for runners without an inherited
+`GOROOT`. Failed pre-service compiler/package logs are uploaded with receipt
+hashes; authentication and service logs remain private.
 [delivery-packages.py](../scripts/delivery-packages.py) checks two-path builds;
 [delivery-consumers.py](../scripts/delivery-consumers.py) installs and builds
 independent consumers. [The job entrypoint](../scripts/delivery-job.py) runs

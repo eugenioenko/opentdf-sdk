@@ -24,7 +24,10 @@ User instructions authorize the compiler merge/release and pushes needed for bot
 PR repairs; they do not request merging SDK PR #1. Goalchemy PR #10 passed all
 hosted checks and merged; signed v0.2.1 is published. The SDK bootstrap repair,
 release pin and eleven regression cases passed local acceptance, including actual
-cold-cache bootstrap. Hosted SDK checks remain the final acceptance gate.
+cold-cache bootstrap. Subsequent hosted runs passed bootstrap and compiler build
+but exposed a missing `GOROOT` during package generation. The build-environment
+repair exports and verifies the selected Go toolchain root; hosted SDK checks
+remain the final acceptance gate.
 
 ## Buffer optimization PR publication
 
