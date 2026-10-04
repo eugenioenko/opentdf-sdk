@@ -31,7 +31,7 @@ jobs:
       - run: bash sdk/scripts/delivery-offline.sh
 
   real-kas-native-packages:
-    name: Real KAS ${{ matrix.target }} (${{ inputs.coverage || 'focused' }})
+    name: ${{ matrix.target }} - Real KAS (${{ inputs.coverage || 'focused' }})
     runs-on: ubuntu-22.04
     timeout-minutes: 75
     strategy:
