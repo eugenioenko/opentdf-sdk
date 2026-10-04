@@ -59,6 +59,17 @@ def main():
         commands.append({'label':label,'command':[str(a) for a in command],'status':status,'log_sha256':sha(log),'elapsed_seconds':time.time()-begun})
         (job/'commands.json').write_text(json.dumps(commands,indent=2)+'\n')
         if status:
+            if label == 'bootstrap':
+                # Publish only the bounded version-probe summary; bootstrap and
+                # service logs stay private even if their contents contain secrets.
+                diagnostic = base/'bootstrap-version-failure.json'
+                if diagnostic.exists():
+                    try:
+                        detail = json.loads(diagnostic.read_text())
+                        if detail.get('tool') in ('go','node','python','java','dotnet','rustc') and detail.get('reason') in ('command failed','version mismatch'):
+                            print('Bootstrap version check failed:',detail['tool'],detail['reason'],flush=True)
+                    except (OSError,ValueError,AttributeError):
+                        pass
             public = base/'public'/identity
             public.mkdir(parents=True,exist_ok=True)
             (public/'failed-job-receipt.json').write_text(json.dumps({'status':status,'job_identity':identity,'mode':args.mode,'project':project,'scope':'terminal failing job step; raw logs/private fixtures retained separately','commands':commands,'runner_sha256':sha(Path(__file__))},indent=2)+'\n')

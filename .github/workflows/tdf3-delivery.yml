@@ -24,8 +24,10 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 4f5b428bf662a09991e05140484d4380e0401513
+          ref: de26e4aa18f38f75bdf7a43c7b19b33cfaec9673
           path: goalchemy
+      - name: Bootstrap version and diagnostic regressions
+        run: python3 -m unittest discover -s sdk/tests/ci -p 'test_*.py' -v
       - run: bash sdk/scripts/delivery-offline.sh
 
   real-kas-native-packages:
@@ -49,7 +51,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 4f5b428bf662a09991e05140484d4380e0401513
+          ref: de26e4aa18f38f75bdf7a43c7b19b33cfaec9673
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

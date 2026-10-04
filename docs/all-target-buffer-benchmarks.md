@@ -10,8 +10,9 @@ These are fresh measurements from 2026-10-03, separate from both the released
 README results and the [earlier Python-only campaign](python-buffer-optimization.md).
 Measurements were accepted locally on `perf/python-buffer-handling-local` before
 PR publication. No code changed while preparing or running this comparison. The
-README/public results and releases remain unchanged. The compiler dependency is
-[Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10). Browser
+README/public results and releases remain unchanged. The compiler dependency was merged in
+[Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10) and released in
+[v0.2.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.1). Browser
 measurements remain excluded.
 
 ## Fresh baseline medians

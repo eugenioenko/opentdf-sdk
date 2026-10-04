@@ -17,6 +17,18 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def tool_version(command, environment, *, stderr_version=False):
+    """Keep startup diagnostics out of version output (Java reports on stderr)."""
+    result = subprocess.run([str(value) for value in command], env=environment,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+    if result.returncode and result.stdout:
+        sys.stderr.write(result.stdout)
+    result.check_returncode()
+    return (result.stderr if stderr_version else result.stdout).strip()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('target', choices=('go','typescript','java','csharp','python','rust','c','all'))
@@ -29,12 +41,28 @@ def main():
     commands = []
     versions = {}
 
-    def version(name, command):
-        versions[name] = subprocess.check_output([str(value) for value in command],env=environment,stderr=subprocess.STDOUT,text=True).strip()
+    version_failure = base/'bootstrap-version-failure.json'
+    version_failure.unlink(missing_ok=True)
+
+    def record_version_failure(name, reason, status=None):
+        version_failure.write_text(json.dumps({'tool':name,'reason':reason,'exit_status':status})+'\n')
+
+    def version(name, command, *, stderr_version=False):
+        try:
+            versions[name] = tool_version(command, environment, stderr_version=stderr_version)
+        except subprocess.CalledProcessError as error:
+            record_version_failure(name, 'command failed', error.returncode)
+            raise
         return versions[name]
 
-    assert version('go',['go','version']).startswith('go version go1.25.14 '), 'Go1.25.14 required'
-    assert version('node',['node','--version']) == 'v24.15.0', 'Node24.15.0 required for stock Web and browser tooling'
+    def required_version(name, command, expected, requirement, *, prefix=False):
+        actual = version(name, command)
+        if not (actual.startswith(expected) if prefix else actual == expected):
+            record_version_failure(name, 'version mismatch')
+            raise RuntimeError(requirement)
+
+    required_version('go',['go','version'],'go version go1.25.14 ','Go1.25.14 required',prefix=True)
+    required_version('node',['node','--version'],'v24.15.0','Node24.15.0 required for stock Web and browser tooling')
     version('python',['python3','--version'])
 
     def run(command, cwd=SDK, timeout=1800):
@@ -67,9 +95,9 @@ def main():
             assert sha(archive) == toolchain_lock[prefix+'_SHA256']
             artifacts[name] = sha(archive)
             if tool == 'jdk':
-                version('java',[toolchains/'jdk-21.0.12.1+1/bin/java','-version'])
+                version('java',[toolchains/'jdk-21.0.12.1+1/bin/java','-version'],stderr_version=True)
             elif tool == 'dotnet':
-                assert version('dotnet',[toolchains/'dotnet/dotnet','--version']) == '8.0.425'
+                required_version('dotnet',[toolchains/'dotnet/dotnet','--version'],'8.0.425','.NET8.0.425 required')
             else:
                 artifacts['bdwgc/lib/libgc.a'] = sha(toolchains/'bdwgc/lib/libgc.a')
     if 'typescript' in targets:
@@ -90,8 +118,8 @@ def main():
             artifact = wheels/item['artifact']
             if not artifact.exists():
                 name = next(v[6:] for v in item['metadata'] if v.startswith('Name: '))
-                version = next(v[9:] for v in item['metadata'] if v.startswith('Version: '))
-                run(['python3','-m','pip','download','--no-deps','--only-binary=:all:','-d',wheels,name+'=='+version],timeout=300)
+                dependency_version = next(v[9:] for v in item['metadata'] if v.startswith('Version: '))
+                run(['python3','-m','pip','download','--no-deps','--only-binary=:all:','-d',wheels,name+'=='+dependency_version],timeout=300)
             assert artifact.is_file() and sha(artifact) == item['sha256'], 'wheel differs from lock: '+item['artifact']
             artifacts[item['artifact']] = sha(artifact)
         venv = base/'python-build-venv'
@@ -99,7 +127,7 @@ def main():
         run([venv/'bin/python','-m','pip','install','--no-index','--no-deps',*sorted(wheels.glob('*.whl'))])
         environment.update(TDF_PYTHON=str(venv/'bin/python'),TDF_WHEELHOUSE=str(wheels))
     if 'rust' in targets:
-        assert version('rustc',['rustc','--version']).startswith('rustc 1.98.0 '), 'Rust1.98.0 required'
+        required_version('rustc',['rustc','--version'],'rustc 1.98.0 ','Rust1.98.0 required',prefix=True)
     if 'c' in targets:
         lock = json.loads((SDK/'hosts/c/dependencies.lock.json').read_text())
         prefix = base/'curl-prefix'

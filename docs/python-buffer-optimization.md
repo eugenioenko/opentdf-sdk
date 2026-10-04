@@ -4,7 +4,8 @@ The local candidate reduces 50 MiB Python E2E time by 37.9% compared with a fres
 unchanged-package baseline. Both repositories use
 `perf/python-buffer-handling-local` review branches. Measurements were accepted
 locally before PR publication; the README benchmark table remains the released
-v0.2.0 campaign. The runtime dependency is [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10).
+v0.2.0 campaign. The runtime dependency was merged in [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10)
+and released in [v0.2.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.1).
 
 | Python E2E median | 1 MiB | 10 MiB | 50 MiB |
 | --- | ---: | ---: | ---: |
@@ -78,6 +79,7 @@ wheel SHA256 is `8aad9e095a596077d891782e4c4b28bd43aeb4ba0bebc3dbc1424072b296625
 Root verified the 16-file producing-source/test freeze, actual test events,
 installed files, matrix command statuses, raw medians and all benchmark archive
 hashes. Detailed receipts stay in ignored `.local/python-buffer-local/`.
-Reference/CI pins point to the unreleased compiler commit. Hosted CI was not
-triggered during local benchmark acceptance. Pin updates and these documentation changes occurred after timing
+These source identities describe the measured pre-release artifacts. Current
+reference/CI pins point to released v0.2.1; hosted CI was not triggered during
+the original local benchmark acceptance. Pin updates and these documentation changes occurred after timing
 and do not change the measured producing source.

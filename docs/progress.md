@@ -1158,3 +1158,77 @@ whitespace. No previously accepted benchmarks or tests are rerun for these
 metadata edits. Main branches, released packages and README/public benchmark
 results remain unchanged. Hosted CI may run normally upon opening the PRs;
 local benchmark acceptance does not claim those remote checks have passed.
+
+
+## Compiler-first CI repair and release started — 2026-10-03
+
+The user merged SDK PR #2 into PR #1, then requested Goalchemy PR #10 be fixed
+first, followed by a compiler release, SDK compiler bump and SDK PR #1 CI repair.
+SDK PR #1 is the single remaining SDK review branch. Root fetched and
+fast-forwarded that branch to `eb0b697`; no uncommitted changes were lost.
+
+One worker is investigating Goalchemy run `37162996216`. Its actual job log shows
+catalog freshness rejects five generated Python specs after runtime edits; vet
+passed and the subsequent tests did not run. The worker will regenerate those
+specs with the official generator and verify the minimal repair. The earlier SDK
+run `37152493845` passed offline checks but all seven native jobs failed in
+bootstrap; child diagnostics were hidden in a non-uploaded log, so that run's
+exact underlying error was not established. Current SDK checks will be diagnosed
+and repaired after the compiler release, without treating earlier local benchmarks
+as hosted CI success.
+
+
+Root accepted the seven-file Goalchemy metadata repair and signed/pushed
+`f08a4ac03f333dedc0366fdd4e37c2346c1c9ede`: five generated implementation hashes
+plus compiler/external-module version 0.2.1. Local catalog validation, freshness,
+vet, CLI/emitted-manifest version and three focused tests pass with no focused
+skips. Hosted run `37163614355` has passed the formerly failing freshness step;
+full hosted tests and runtime conformance remain required before release.
+
+Root reproduced the SDK failure using an isolated cold Go module cache. Go emits
+its automatic toolchain-download notice to stderr; bootstrap merged that with
+stdout and falsely rejected the correct Go 1.25.14 version. Reconstructing the
+assertion traceback produces SHA256
+`88a6d14b06493d3e479935d16497655ae9c3432fc3b12658734881b775b9ac76`, identical
+to the bootstrap log hash in all seven original failed job receipts. The isolated
+reproduction, actual job logs/receipts and hash proof are retained under ignored
+`.local/pr1-ci-investigation/`. The SDK helper repair is deferred until the compiler
+release, as requested.
+
+
+## Goalchemy v0.2.1 released; SDK CI repair accepted locally — 2026-10-03
+
+[Goalchemy hosted run 37163614355](https://github.com/eugenioenko/goalchemy/actions/runs/37163614355)
+passed on exact PR head `f08a4ac`, including vet, catalog freshness, the short
+repository suite and unshort all-seven runtime conformance. Root merged PR #10
+as `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`, verified the merged tree exactly
+matches that tested head, rebuilt the compiler from main with Go 1.25.14, and
+passed actual version/catalog/freshness checks. The signed annotated tag
+[v0.2.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.1) is published.
+The verified local build of released source has SHA256
+`9dc17a1c599bb3c9e535bcd3763b2d192474941f248634c3446a46a680880043`;
+this release publishes source, not a separately uploaded binary asset.
+
+SDK module, reference lock and both workflow checkouts now pin released v0.2.1.
+Version probes preserve stderr diagnostics separately from stdout, with explicit
+Java stderr-version handling; wrong versions and failed commands still fail.
+The Python dependency-version variable no longer shadows the later Rust probe
+when using target `all`. Bootstrap failures expose only an allowlisted tool/reason
+summary; raw bootstrap and service logs remain private.
+
+Eleven actual subprocess/CLI regressions pass without skips, covering cold notices,
+strict versions/channels, nonzero diagnostics, Java, all-target continuation and
+private-log canaries. They are wired into the offline hosted job. The actual Go
+bootstrap also passed using a newly empty module cache and the released reference:
+it downloaded Go 1.25.14, retained the notice on stderr, and recorded exactly
+`go version go1.25.14 linux/amd64`. All real reference hashes and tracked-tree
+cleanliness checks passed. Root reviewed the minimal helper/test diff and checked
+source identities, publication metadata, documentation links and whitespace.
+Ignored handoff/native receipts are under `.local/pr1-ci-repair/`; release proof
+is `.local/pr-buffer/released-compiler.json`.
+
+The benchmark values remain the original measured artifacts; no benchmark was
+repeated for hash/version metadata or CI-only edits. README distinguishes the
+v0.2.0 baseline table from the later buffer comparison. The SDK repair will be
+pushed to PR #1 and all hosted checks must pass before merge readiness is claimed.
+SDK main remains unchanged and PR #1 remains open.

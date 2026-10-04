@@ -31,6 +31,9 @@ the input, then decrypts the freshly produced archive through **real KAS** and
 materializes the complete plaintext. These are fresh measurements of the original
 Go SDK and all seven generated native SDKs. The generated packages were built with
 released Goalchemy **v0.2.0**.
+The current build pins **v0.2.1**; the subsequent
+[buffer optimization comparison](docs/all-target-buffer-benchmarks.md) records
+fresh before/after measurements for the changes it includes.
 The 1, 10 and 50 MiB inputs use one, five and 25 segments of up to 2 MiB.
 
 Original Go reuses a client initialized before the timing loop. Configuration,

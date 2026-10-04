@@ -15,7 +15,7 @@ GitHub Actions run or a newly replayed full interoperability matrix.
 
 ## Build and install
 
-The buffer optimization branch requires an unreleased Goalchemy commit.
+The buffer optimization uses released Goalchemy v0.2.1.
 Its initial verification covers Python BASIC interoperability and buffer
 ownership. A subsequent [all-target benchmark](all-target-buffer-benchmarks.md)
 built and installed the other six native packages, then passed fresh BASIC E2E
@@ -26,9 +26,10 @@ README performance table continues to describe the released v0.2.0 packages.
 
 Use adjacent `sdk`, `goalchemy`, `platform`, and `web-sdk` checkouts. Exact source
 revisions are in [references.lock.json](../references.lock.json); Goalchemy is
-pinned to commit `4f5b428bf662a09991e05140484d4380e0401513`, based on
-released [v0.2.0](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.0).
-This commit is available in [Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10).
+pinned to commit `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`, released as
+[v0.2.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.1) after
+[Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10) passed hosted CI
+and was merged.
 Platform remains pinned to
 `f2635158b681fa970aafce7eacf108a453521f63`, and Web SDK to
 `55a0521b1499b392c75373e11ec5930c6a43f0c7`.
@@ -78,12 +79,14 @@ concurrent Goalchemy formatting CLI branch advanced the host checkout to
 `765fcbc51241204d283ae68ff15e9957bc91c865` at that acceptance. Its seven
 CLI/diagnostic/doc files are recorded separately and change no embedded
 library, target or spec source.
-The current compiler pin and CI now include native CRC32. Fresh packages built
-from that pin are used for the [new end-to-end benchmark](benchmarks.md); the
-original package hashes above remain historical acceptance evidence.
-The released compiler binary SHA256 is
+The v0.2.0 compiler introduced native CRC32. Packages built from that release
+were used for the [released-baseline benchmark](benchmarks.md); the original
+package hashes above remain historical acceptance evidence. The subsequent
+[buffer comparison](all-target-buffer-benchmarks.md) measures the runtime changes
+now included in v0.2.1, using its separately recorded pre-release compiler.
+The verified v0.2.0 compiler binary SHA256 is
 `61dec71c6b3dde1634f598f4476608b703ce965cecc33912afd3fc930e22040b`.
-SDK package versions remain 0.1.0; the compiler's version is 0.2.0. Node package
+SDK package versions remain 0.1.0; the current compiler's version is 0.2.1. Node package
 imports select its native CRC entry; browser/default imports remain portable.
 C# deploys Microsoft's first-party hashing package, Rust directly uses
 `crc32fast`, and C keeps its slicing-by-8 fallback. Host APIs choose acceleration;

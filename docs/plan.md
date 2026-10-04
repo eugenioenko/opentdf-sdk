@@ -6,6 +6,26 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## CI repair and patch release
+
+Current objective: get the existing work ready to merge. First repair Goalchemy
+PR #10 and require successful hosted CI, then merge it and release Goalchemy
+0.2.1. Next update the compiler reference and CI pins on SDK PR #1 to that
+release, repair its actual CI failures and require every hosted check to pass.
+The user merged SDK PR #2 into PR #1; work continues on
+`perf/goalchemy-0.2.0-e2e-benchmarks`. Leave SDK PR #1 open and ready for review.
+
+One worker owns the current repository's implementation/tests; root owns review,
+phase commits, release publication, pins and documentation. Preserve failing logs
+in ignored storage and fix established causes without skipping required checks.
+Reuse accepted checks when producing source is unchanged. Prepare the independent SDK bootstrap repair while Goalchemy checks run, but
+publish the SDK release bump after the compiler release.
+User instructions authorize the compiler merge/release and pushes needed for both
+PR repairs; they do not request merging SDK PR #1. Goalchemy PR #10 passed all
+hosted checks and merged; signed v0.2.1 is published. The SDK bootstrap repair,
+release pin and eleven regression cases passed local acceptance, including actual
+cold-cache bootstrap. Hosted SDK checks remain the final acceptance gate.
+
 ## Buffer optimization PR publication
 
 After local acceptance, the user authorized PR creation. Publish the Goalchemy
