@@ -81,7 +81,7 @@ def install(target, base):
         run(['python3', '-m', 'venv', destination/'venv'])
         python = destination/'venv/bin/python'
         wheels = Path(env.get('TDF_WHEELHOUSE', str(SDK/'.local/python-tdf-library/wheels')))
-        lock = json.loads((SDK/'hosts/python/dependencies.lock.json').read_text())
+        lock = json.loads((SDK/'src/hosts/python/dependencies.lock.json').read_text())
         artifacts = []
         for item in lock:
             wheel = wheels/item['artifact']

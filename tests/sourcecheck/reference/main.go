@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src/tdf"
 	"os"
 )
 

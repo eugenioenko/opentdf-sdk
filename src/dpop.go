@@ -6,7 +6,7 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/lib/encoding"
 	"github.com/eugenioenko/goalchemy/lib/http"
-	j "opentdf-local/sdk/tdf/json"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 type nonceEntry struct {

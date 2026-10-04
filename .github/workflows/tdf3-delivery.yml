@@ -73,7 +73,7 @@ jobs:
             sdk/.local/npm-cache
             sdk/.local/go-mod-cache
             ~/.cargo/registry
-          key: tdf3-linux-x64-${{ matrix.target }}-go1.25.14-node24.15.0-rust1.98.0-${{ hashFiles('goalchemy/toolchains.lock', 'sdk/hosts/**/dependencies.lock.json', 'sdk/hosts/rust/Cargo.lock', 'sdk/hosts/delivery/package-lock.json', 'platform/**/go.sum', 'web-sdk/lib/package-lock.json', 'web-sdk/cli/package-lock.json') }}
+          key: tdf3-linux-x64-${{ matrix.target }}-go1.25.14-node24.15.0-rust1.98.0-${{ hashFiles('goalchemy/toolchains.lock', 'sdk/src/hosts/**/dependencies.lock.json', 'sdk/src/hosts/rust/Cargo.lock', 'sdk/src/hosts/delivery/package-lock.json', 'platform/**/go.sum', 'web-sdk/lib/package-lock.json', 'web-sdk/cli/package-lock.json') }}
       - name: Native build prerequisites
         run: |
           sudo apt-get update

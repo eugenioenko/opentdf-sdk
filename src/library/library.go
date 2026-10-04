@@ -8,9 +8,9 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/lib/errors"
-	"opentdf-local/sdk"
-	"opentdf-local/sdk/tdf"
-	j "opentdf-local/sdk/tdf/json"
+	"opentdf-local/sdk/src"
+	"opentdf-local/sdk/src/tdf"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 type KASRoute struct {

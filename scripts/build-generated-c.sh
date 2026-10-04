@@ -6,7 +6,7 @@ DEST=${1:-"$SDK/../goalchemy/out/c-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$SDK/../goalchemy" "$COMPILER" compile -gate cooperative -target c -out "$DEST" ./library)
+(cd "$SDK"; GOALCHEMY_ROOT="$SDK/../goalchemy" "$COMPILER" compile -gate cooperative -target c -out "$DEST" ./src/library)
 export GOALCHEMY_BDWGC=${GOALCHEMY_BDWGC:-"$SDK/../goalchemy/.toolchains/bdwgc"}
 CURL_PREFIX=${TDF3_CURL_PREFIX:-"$SDK/.local/root-c-development-prerequisites/prefix"}
 if [[ -d "$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig" ]]; then
@@ -18,7 +18,7 @@ CURL_CFLAGS=$(pkg-config --cflags libcurl)
 CURL_LIBS=$(pkg-config --libs libcurl)
 export CPPFLAGS="${CPPFLAGS:-} $CURL_CFLAGS"
 sh "$DEST/build.sh"
-cp "$SDK/hosts/c/tdf3.h" "$SDK/hosts/c/tdf3.c" "$DEST/"
+cp "$SDK/src/hosts/c/tdf3.h" "$SDK/src/hosts/c/tdf3.c" "$DEST/"
 ${CC:-cc} -std=c17 ${CFLAGS:--O2} -Wall -Wextra -Werror -I"$DEST" -c "$DEST/tdf3.c" -o "$DEST/obj/tdf3.o"
 cp "$DEST/libgoalchemy.a" "$DEST/libtdf3.a"
 ar rcs "$DEST/libtdf3.a" "$DEST/obj/tdf3.o"
@@ -29,8 +29,8 @@ cp "$DEST/libtdf3.a" "$DEST/package/lib/"
 cp "$DEST/main.c" "$DEST/build.sh" "$DEST/tdf3.c" "$DEST/package/src/"
 cp -r "$DEST/rt" "$DEST/package/src/"
 cp "$DEST/tdf3.h" "$DEST/library.h" "$DEST/goalchemy.h" "$DEST/package/src/"
-cp "$SDK/hosts/c/dependencies.lock.json" "$DEST/package/"
-cp -r "$SDK/hosts/c/licenses" "$DEST/package/"
+cp "$SDK/src/hosts/c/dependencies.lock.json" "$DEST/package/"
+cp -r "$SDK/src/hosts/c/licenses" "$DEST/package/"
 cp "$SDK/docs/generated-c-library.md" "$DEST/package/README.md"
 cat > "$DEST/native-link.env" <<LINK
 TDF3_INCLUDE=$DEST

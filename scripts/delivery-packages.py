@@ -98,7 +98,7 @@ def finish(target, base, compiler, outputs, compiler_revision=None):
                'deliverable_members': hashes[0], 'repeatable': repeatable,
                'second_deliverable_members': hashes[1], 'production_sources': current_sources,
                'historical_default_artifact_tree': str(old), 'historical_default_artifact_source_delta': delta,
-               'native_dependencies_lock_sha256': sha(SDK/('hosts/'+target+'/dependencies.lock.json')) if (SDK/('hosts/'+target+'/dependencies.lock.json')).exists() else None,
+               'native_dependencies_lock_sha256': sha(SDK/('src/hosts/'+target+'/dependencies.lock.json')) if (SDK/('src/hosts/'+target+'/dependencies.lock.json')).exists() else None,
                'status': 0 if repeatable else 1, 'time': time.time()}
     (destination/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
     if not repeatable:

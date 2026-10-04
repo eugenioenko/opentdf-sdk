@@ -1,6 +1,6 @@
 # Native C TDF3 library
 
-`hosts/c/tdf3.h` exposes independently linkable C17 encryption/decryption and asynchronous operations. The generated native library executes `sdk/library`; its shared protocol implementation is compiled into the archive. Production calls need no compiler, Go process, or source SDK process. This delivery targets Linux x86_64 with threaded Boehm GC8.2.8, OpenSSL3 EVP and libcurl's OpenSSL backend. Exact tested package/runtime/source/license identities are in `hosts/c/dependencies.lock.json`; external native dependencies are not bundled.
+`src/hosts/c/tdf3.h` exposes independently linkable C17 encryption/decryption and asynchronous operations. The generated native library executes `sdk/src/library`; its shared protocol implementation is compiled into the archive. Production calls need no compiler, Go process, or source SDK process. This delivery targets Linux x86_64 with threaded Boehm GC8.2.8, OpenSSL3 EVP and libcurl's OpenSSL backend. Exact tested package/runtime/source/license identities are in `src/hosts/c/dependencies.lock.json`; external native dependencies are not bundled.
 
 ## Build and isolated import
 
