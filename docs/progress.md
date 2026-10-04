@@ -1263,3 +1263,28 @@ No compiler, SDK runtime, protocol or benchmark code changed.
 
 Goalchemy's post-merge [main run 37164839517](https://github.com/eugenioenko/goalchemy/actions/runs/37164839517)
 also passed on the exact released `de26e4a` commit.
+
+## Hosted package and BASIC acceptance; profile module repair — 2026-10-03
+
+Signed repair `734fe4e` was tested in
+[run 37166625136](https://github.com/eugenioenko/opentdf-sdk/actions/runs/37166625136).
+The Go and TypeScript receipts confirm successful bootstrap, compiler builds,
+relative/absolute packages, independent installed consumers, platform startup,
+readiness, stock Go reference and BASIC real-KAS checks. TypeScript's BASIC
+browser check also passed. Both jobs then failed selecting the EC profile.
+
+A read-only replay of the profile helper reproduced `go: updates to go.mod
+needed`. Its test module still requested Goalchemy `v0.0.0`, while the parent SDK
+now requires `v0.2.1`; Go's module graph required synchronization. The related
+interop modules are being checked together to avoid the same stale graph later
+in EC or DPoP execution. Production SDK and compiler source remain unchanged;
+all hosted checks remain required before merge readiness.
+
+Seven nested modules now require Goalchemy `v0.2.1`. Go's tidy operation changed
+only that requirement plus existing direct/indirect classifications and
+formatting; no checksum files or other dependency versions changed. All seven
+modules passed tidy, read-only listing and read-only compilation, and the actual
+profile helper's read-only pin check passed against clean pinned references.
+Ignored evidence is retained under `.local/pr1-ci-repair/module-graph/`.
+The hosted profile log remains private, so final confirmation requires the
+next CI run; no EC/DPoP or other required check was bypassed.
