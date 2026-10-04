@@ -9,9 +9,12 @@ The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs ac
 ## Shared source layout follow-up
 
 The user authorized moving the six root implementation files, their four
-adjacent unit tests and `tdf/` into a new root `src/` directory. Keep top-level
-`tests/`, `library/`, `hosts/`, `scripts/`, `docs/` and `go.mod` in place.
-Update module-local imports, source entry points, build/test/CI paths and
+adjacent unit tests and `tdf/` into a new root `src/` directory. The user
+subsequently added `library/` and `hosts/` to the move: they become
+`src/library/` and `src/hosts/`. Keep top-level `tests/`, `scripts/`, `docs/`
+and `go.mod` in place.
+Update module-local imports, source entry points, host template lookups,
+build/test/CI paths and
 current documentation without changing behavior, dependencies or generated
 native SDK APIs. Historical benchmark evidence remains historical.
 

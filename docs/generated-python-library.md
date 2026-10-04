@@ -1,7 +1,7 @@
 # Generated Python TDF3 library
 
 The installable `opentdf-tdf3` wheel imports as `opentdf_tdf3` and executes the
-shared [value façade](../library/library.go). Production calls use generated
+shared [value façade](../src/library/library.go). Production calls use generated
 Python, native `cryptography` and the Python standard library. They require no
 compiler, Go process, stock SDK or external executable. The package provides
 per-call clients, with PEM key imports owned and released by each operation.
@@ -39,7 +39,7 @@ sdk/.local/python-tdf-library/consumer-venv/bin/python -I -c \
 ```
 
 Verify downloaded artifact and license hashes against the
-[dependency lock](../hosts/python/dependencies.lock.json) before use. The build
+[dependency lock](../src/hosts/python/dependencies.lock.json) before use. The build
 script verifies dependency wheel hashes and installed versions, removes its own
 generated package/build trees before compilation,
 packages distinct relative notice paths, and fixes wheel timestamps through

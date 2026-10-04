@@ -8,9 +8,9 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 rm -rf "$DEST/opentdf_tdf3" "$DEST/build" "$DEST/opentdf_tdf3.egg-info"
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target python -out "$DEST/opentdf_tdf3/_generated" ./library)
-cp "$SDK/hosts/python/__init__.py.in" "$DEST/opentdf_tdf3/__init__.py"
-cp "$SDK/hosts/python/dependencies.lock.json" "$DEST/dependencies.lock.json"
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target python -out "$DEST/opentdf_tdf3/_generated" ./src/library)
+cp "$SDK/src/hosts/python/__init__.py.in" "$DEST/opentdf_tdf3/__init__.py"
+cp "$SDK/src/hosts/python/dependencies.lock.json" "$DEST/dependencies.lock.json"
 cat > "$DEST/pyproject.toml" <<'TOML'
 [build-system]
 requires = ["setuptools==80.9.0", "wheel==0.45.1"]

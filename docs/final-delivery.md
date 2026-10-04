@@ -1,6 +1,6 @@
 # Seven-target TDF3 delivery
 
-The shared [Go façade](../library/library.go) is delivered as seven importable
+The shared [Go façade](../src/library/library.go) is delivered as seven importable
 native libraries. Each executes its bundled lowered implementation and native
 crypto/HTTP capabilities. Production encryption and decryption require neither
 the compiler nor an original SDK/reference process. TypeScript supports Node
@@ -202,7 +202,7 @@ integrity, token, transport and cleanup proofs come from accepted target evidenc
 and the focused final checks. Broader stream/file/range/assertion APIs and full
 OpenTDF feature parity remain outside this delivery.
 
-Dependency locks and notices live under [hosts](../hosts) and the distributed
+Dependency locks and notices live under [hosts](../src/hosts) and the distributed
 packages. Goalchemy's bundled runtime carries its Apache2 license; native
 providers retain their own notices. The SDK repository has no top-level license
 decision, and this delivery does not infer one from dependencies. Package names

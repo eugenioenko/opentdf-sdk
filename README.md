@@ -65,9 +65,12 @@ The shared Go implementation and its unit tests live in `src/`, including
 `src/tdf/` and `src/tdf/json/`. The module identity remains
 `opentdf-local/sdk`; shared-source imports are now `opentdf-local/sdk/src`,
 `opentdf-local/sdk/src/tdf` and `opentdf-local/sdk/src/tdf/json`. Direct Go
-consumers of the shared source must update these imports. The root `library/`
-facade, `hosts/`, build scripts and top-level `tests/` remain in place; generated
-native SDK public APIs retain their existing package names and signatures.
+consumers of the shared source must update these imports. The export façade
+and its unit test also live in `src/library/`, imported as
+`opentdf-local/sdk/src/library`; every build helper compiles `./src/library`.
+Native adapters, dependency locks and delivery tooling live in `src/hosts/`.
+Build scripts and top-level `tests/` remain at root. Generated native SDK public
+APIs retain their existing package names and signatures.
 
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts at the revisions
 in [references.lock.json](references.lock.json). Build the pinned Goalchemy binary

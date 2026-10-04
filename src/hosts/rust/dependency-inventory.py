@@ -23,4 +23,4 @@ for item in metadata['packages']:
 rows.sort(key=lambda r:(r['name'],r['version']))
 output={'schema_version':1,'toolchain':'rustc 1.98.0 (88d9e12ae 2026-08-18)','target':'x86_64-unknown-linux-gnu','declared_package_msrv':'1.88','tested_msrv':'1.98.0','dependencies':rows}
 (package/'dependencies.lock.json').write_text(json.dumps(output,indent=2)+'\n')
-shutil.copyfile(pathlib.Path(__file__).resolve().parents[3]/'goalchemy/LICENSE',package/'LICENSE')
+shutil.copyfile(pathlib.Path(__file__).resolve().parents[4]/'goalchemy/LICENSE',package/'LICENSE')

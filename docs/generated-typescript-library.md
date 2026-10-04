@@ -1,8 +1,8 @@
 # Generated TypeScript TDF3 library
 
-The [shared façade](../library/library.go) and reachable SDK implementation are
+The [shared façade](../src/library/library.go) and reachable SDK implementation are
 compiled into an importable ESM package for Node and browsers. The small
-[index adapter](../hosts/typescript/index.ts.in) supplies JS text/token types;
+[index adapter](../src/hosts/typescript/index.ts.in) supplies JS text/token types;
 it does not implement the TDF protocol or import an original/reference SDK.
 
 ## Build and import

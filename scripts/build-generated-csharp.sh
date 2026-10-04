@@ -7,9 +7,9 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 DOTNET=${DOTNET_BIN:-"$SDK/../goalchemy/.toolchains/dotnet/dotnet"}
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target csharp -out "$DEST" ./library)
-cp "$SDK/hosts/csharp/TDF3.cs.in" "$DEST/TDF3.cs"
-cp "$SDK/hosts/csharp/dependencies.lock.json" "$DEST/dependencies.lock.json"
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target csharp -out "$DEST" ./src/library)
+cp "$SDK/src/hosts/csharp/TDF3.cs.in" "$DEST/TDF3.cs"
+cp "$SDK/src/hosts/csharp/dependencies.lock.json" "$DEST/dependencies.lock.json"
 python3 - "$DEST/main.csproj" <<'PY'
 import sys,pathlib,html
 p=pathlib.Path(sys.argv[1]);p.write_text(p.read_text().replace('<TargetFramework>', '<AssemblyName>OpenTDF.TDF3</AssemblyName>\n    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>\n    <Deterministic>true</Deterministic>\n    <PathMap>'+html.escape(str(p.parent))+'=/_/opentdf</PathMap>\n    <TargetFramework>'))
@@ -23,7 +23,7 @@ NUGET_CACHE=$(DOTNET_CLI_UI_LANGUAGE=en "$DOTNET" nuget locals global-packages -
 python3 - "$SDK" "$DEST" "$NUGET_CACHE" <<'PY'
 import hashlib,json,pathlib,sys,zipfile
 sdk,dest,cache=map(pathlib.Path,sys.argv[1:])
-dependency=json.loads((sdk/'hosts/csharp/dependencies.lock.json').read_text())['dependencies'][0]
+dependency=json.loads((sdk/'src/hosts/csharp/dependencies.lock.json').read_text())['dependencies'][0]
 archive=cache/'system.io.hashing'/dependency['version']/dependency['artifact']
 if hashlib.sha256(archive.read_bytes()).hexdigest()!=dependency['sha256']:
  raise SystemExit('System.IO.Hashing package checksum mismatch')

@@ -6,11 +6,11 @@ DEST=${1:-"$SDK/../goalchemy/out/java-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target java -out "$DEST" ./library)
-cmp "$SDK/hosts/java/dependencies.lock.json" "$SDK/../goalchemy/targets/java/dependencies.lock.json"
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target java -out "$DEST" ./src/library)
+cmp "$SDK/src/hosts/java/dependencies.lock.json" "$SDK/../goalchemy/targets/java/dependencies.lock.json"
 mkdir -p "$DEST/src/io/opentdf/tdf3" "$DEST/lib" "$DEST/licenses"
-cp "$SDK/hosts/java/TDF3.java.in" "$DEST/src/io/opentdf/tdf3/TDF3.java"
-cp "$SDK/hosts/java/dependencies.lock.json" "$DEST/dependencies.lock.json"
+cp "$SDK/src/hosts/java/TDF3.java.in" "$DEST/src/io/opentdf/tdf3/TDF3.java"
+cp "$SDK/src/hosts/java/dependencies.lock.json" "$DEST/dependencies.lock.json"
 "$SDK/../goalchemy/targets/java/tests/crypto-dependencies.sh" "$DEST/lib" >/dev/null
 if [[ -n ${JAVA_HOME:-} ]]; then PATH="$JAVA_HOME/bin:$PATH"; fi
 javac -nowarn -encoding UTF-8 -d "$DEST/classes" "$DEST/Generated.java" "$DEST"/rt/types/*.java "$DEST"/rt/runtime/*.java "$DEST/src/io/opentdf/tdf3/TDF3.java"
