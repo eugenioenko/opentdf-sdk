@@ -1441,3 +1441,54 @@ although the benchmark supplies no application metadata. Its ZIP members are
 stored without compression. Ten benchmark policy regressions passed, including
 a subprocess running all three Node stream/timer/retention checks with an
 explicit TAP reporter. These focused checks are part of normal offline CI.
+
+## Shared source layout follow-up — 2026-10-04
+
+The user clarified that the source organization request concerns the SDK's
+six root implementation files and `tdf/`, not the Goalchemy compiler. The
+incorrect Goalchemy layout task was stopped and its worktree deleted without
+commits or publication. A new SDK worktree, `refactor/shared-source-layout`,
+starts from `d899d00`. Four adjacent unit tests move with the implementation;
+top-level `tests/` remains at the repository root as explicitly requested.
+The worker may edit this isolated tree while the benchmark runs from its frozen
+producing checkout. No heavy checks have run yet; acceptance remains pending.
+
+The initial source-layout patch was signed as `038b3b2` and published in draft
+PR #3 so hosted CI can run independently of the local benchmark. The user then
+expanded the same task to include the export facade and all native adapter
+templates: `library/` → `src/library/`, `hosts/` → `src/hosts/`. Their adjacent
+unit tests move too; top-level `tests/` remains at root. Follow-up work preserves
+implementation/template contents and updates build/packaging/documentation
+paths. The draft is still awaiting final-layout emission and consumer checks.
+
+Focused final-layout verification passed before publication: race-enabled Go
+tests passed in all four bounded source packages (259 named passes, zero
+skips), and the 15 Python CI regressions passed in an ignored canonical
+adjacent-checkout snapshot. Direct-worktree execution exposed the existing
+sibling-checkout requirement; that failure is retained in ignored logs rather
+than weakening checks or committing a machine-specific module replacement.
+The released v0.2.1 compiler passed cooperative checks for shared source,
+facade and source-check consumers; all eleven shell scripts and whitespace
+checks passed. Static receipts confirm both library files and 22 of 23 host
+files retain their exact contents; only the Rust inventory script's relative
+license lookup changes with the directory depth. Hosted final-head native
+package, consumer and KAS checks remain required before merging PR #3.
+
+The user authorized publishing and landing this refactor and the independent
+benchmark PR first. Committing generated distribution files is deferred to a
+separate follow-up after both PRs merge.
+
+## Benchmark publication reconciled with merged layout — 2026-10-04
+
+Source-layout PR #3 passed all eight hosted jobs at its final head and merged
+into main as `5513b6f`. Benchmark PR #4 now incorporates that merged layout,
+preserving both follow-up histories and the accepted nine-row README table.
+The producing benchmark checkout remains unchanged. The additional Web row
+passed the final provenance and archive audit; all 24 earlier cells retain
+their exact accepted numbers. Detailed receipts remain ignored, and the
+user-requested result JSON remains deleted. Final-head hosted CI must validate
+the combined publication branch before PR #4 is merged.
+
+The reconciled branch passed all ten benchmark-policy tests, including the
+three Node contract checks, and the staged whitespace check. No measurements
+were repeated during reconciliation.

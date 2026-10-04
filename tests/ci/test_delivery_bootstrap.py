@@ -167,13 +167,13 @@ class BootstrapVersionTests(unittest.TestCase):
         gc = self.compiler / '.toolchains/bdwgc/lib/libgc.a'
         gc.parent.mkdir(parents=True)
         gc.write_bytes(b'isolated collector')
-        delivery = self.sdk / 'hosts/delivery'
+        delivery = self.sdk / 'src/hosts/delivery'
         delivery.mkdir(parents=True)
         for name in ('package.json', 'package-lock.json'):
             (delivery / name).write_text('{}\n')
         self.tool('npm')
         self.tool('playwright', path=self.output / 'tooling/node_modules/.bin/playwright')
-        python_host = self.sdk / 'hosts/python'
+        python_host = self.sdk / 'src/hosts/python'
         python_host.mkdir(parents=True)
         wheel = 'sample-1.0-py3-none-any.whl'
         content = b'isolated downloaded wheel'
@@ -190,7 +190,7 @@ class BootstrapVersionTests(unittest.TestCase):
         python.chmod(0o755)
         self.tool('venv-python', path=self.output / 'python-build-venv/bin/python')
         self.tool('rustc', 'rustc 1.98.0 (isolated fixture)\n')
-        c_host = self.sdk / 'hosts/c'
+        c_host = self.sdk / 'src/hosts/c'
         c_host.mkdir(parents=True)
         (c_host / 'dependencies.lock.json').write_text(json.dumps({'dependencies':[
             {'name':'libcurl','artifacts':[]},{'name':'OpenSSL','runtime_sha256':{}}]}))

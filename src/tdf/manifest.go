@@ -3,7 +3,7 @@ package tdf
 import (
 	"github.com/eugenioenko/goalchemy/lib/encoding"
 	"github.com/eugenioenko/goalchemy/lib/errors"
-	j "opentdf-local/sdk/tdf/json"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 const SchemaVersion = "4.3.0"

@@ -1,6 +1,6 @@
 # Bounded native TDF3 encryption and integrity engine
 
-[engine.go](../tdf/engine.go) implements the modern single-share encryption and integrity milestone of Phase 3. It uses shared subset Go and declared Goalchemy crypto/encoding capabilities. [manifest and ZIP validation](format.md) remains the format boundary. The engine passes the compiler's cooperative gate and runs as ordinary Go and emitted Go. This milestone supplies native cryptographic interoperability; the shared SDK authentication, discovery and KAS rewrap client remain subsequent work.
+[engine.go](../src/tdf/engine.go) implements the modern single-share encryption and integrity milestone of Phase 3. It uses shared subset Go and declared Goalchemy crypto/encoding capabilities. [manifest and ZIP validation](format.md) remains the format boundary. The engine passes the compiler's cooperative gate and runs as ordinary Go and emitted Go. This milestone supplies native cryptographic interoperability; the shared SDK authentication, discovery and KAS rewrap client remain subsequent work.
 
 `Encrypt(data, EncryptConfig)` returns a complete in-memory TDF3 archive. Callers supply a trusted KAS key handle, URL and optional kid. Wrapping algorithms are `rsa:2048` (default) and `ec:secp256r1`. The URL is bounded, nonempty manifest configuration; the engine performs no HTTP request. The later SDK client must validate configured/discovered KAS destinations before sending credentials. Opaque `*crypto.Key` handles remain pointers and remain caller-owned. Nil, closed and wrong-type keys fail through the native capabilities.
 
@@ -24,14 +24,14 @@ The accepted schema is 4.3.0, one RSA/EC wrapped KAO, AES-256-GCM, HS256 root an
 
 ## Verification and reproducible commands
 
-[Native engine tests](../tdf/engine_test.go) independently unwrap RSA with standard-library OAEP SHA-1 and EC with standard-library ECDH/HKDF/AES, decrypt frames with native AES-GCM, and recompute policy, segment and root MACs with native HMAC. They include the published NIST AES-256-GCM empty-message vector, Go/Web empty forms, binary data, exact/multiple boundaries, independently omitted defaults/algorithm fallback, metadata, explicit/omitted/clamped sizes, UUIDv4, exact policy preservation, nil/closed/wrong-type keys and malformed sizes/archives. Tampering tests rewrite ZIP CRCs so cryptographic rejection, including last-segment/metadata failures with zero output, is exercised. The bounded fuzz target includes a deterministic valid archive/key seed.
+[Native engine tests](../src/tdf/engine_test.go) independently unwrap RSA with standard-library OAEP SHA-1 and EC with standard-library ECDH/HKDF/AES, decrypt frames with native AES-GCM, and recompute policy, segment and root MACs with native HMAC. They include the published NIST AES-256-GCM empty-message vector, Go/Web empty forms, binary data, exact/multiple boundaries, independently omitted defaults/algorithm fallback, metadata, explicit/omitted/clamped sizes, UUIDv4, exact policy preservation, nil/closed/wrong-type keys and malformed sizes/archives. Tampering tests rewrite ZIP CRCs so cryptographic rejection, including last-segment/metadata failures with zero output, is exercised. The bounded fuzz target includes a deterministic valid archive/key seed.
 
 From `sdk/`:
 
 ```sh
-GOTOOLCHAIN=go1.25.14 go test -race ./tdf/...
-GOTOOLCHAIN=go1.25.14 go test ./tdf -run '^$' -fuzz '^FuzzEngineDecrypt$' -fuzztime=5s -parallel=2
-GOTOOLCHAIN=go1.25.14 ../goalchemy/out/goalchemy check -gate cooperative ./tdf ./tdf/json ./tests/sourcecheck/engine ./tests/sourcecheck/macverify
+GOTOOLCHAIN=go1.25.14 go test -race ./src/tdf/...
+GOTOOLCHAIN=go1.25.14 go test ./src/tdf -run '^$' -fuzz '^FuzzEngineDecrypt$' -fuzztime=5s -parallel=2
+GOTOOLCHAIN=go1.25.14 ../goalchemy/out/goalchemy check -gate cooperative ./src/tdf ./src/tdf/json ./tests/sourcecheck/engine ./tests/sourcecheck/macverify
 GOTOOLCHAIN=go1.25.14 ../goalchemy/out/goalchemy compile -gate cooperative -target go -out .local/engine/go ./tests/sourcecheck/engine
 (cd .local/engine/go && GOTOOLCHAIN=go1.25.14 go run .)
 make platform-ready

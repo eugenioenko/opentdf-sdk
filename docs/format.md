@@ -48,8 +48,8 @@ Legacy/missing/alternate versions, legacy string bindings, raw-digest policy bin
 From `sdk/`:
 
 ```sh
-GOTOOLCHAIN=go1.25.14 GOCACHE=$PWD/.local/go-build-cache GOMODCACHE=$PWD/.local/go-mod-cache go test -race ./tdf/...
-GOTOOLCHAIN=go1.25.14 .local/bin/goalchemy check ./tdf/... ./tests/sourcecheck/format
+GOTOOLCHAIN=go1.25.14 GOCACHE=$PWD/.local/go-build-cache GOMODCACHE=$PWD/.local/go-mod-cache go test -race ./src/tdf/...
+GOTOOLCHAIN=go1.25.14 .local/bin/goalchemy check ./src/tdf/... ./tests/sourcecheck/format
 GOTOOLCHAIN=go1.25.14 .local/bin/goalchemy compile -target go -out .local/format-probe/go ./tests/sourcecheck/format
 GOTOOLCHAIN=go1.25.14 go run ./tests/sourcecheck/reference .local/interop
 ```

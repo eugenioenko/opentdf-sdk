@@ -18,8 +18,8 @@ import (
 	"time"
 
 	capcrypto "github.com/eugenioenko/goalchemy/lib/crypto"
-	"opentdf-local/sdk/tdf"
-	j "opentdf-local/sdk/tdf/json"
+	"opentdf-local/sdk/src/tdf"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 func testSPKI(t *testing.T, public any) string {

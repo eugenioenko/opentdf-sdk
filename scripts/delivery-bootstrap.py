@@ -119,7 +119,7 @@ def main():
         tooling = base/'tooling'
         tooling.mkdir(exist_ok=True)
         for name in ('package.json','package-lock.json'):
-            shutil.copyfile(SDK/'hosts/delivery'/name,tooling/name)
+            shutil.copyfile(SDK/'src/hosts/delivery'/name,tooling/name)
         run(['npm','ci','--no-audit','--no-fund'],tooling)
         environment.update(TSC_BIN=str(tooling/'node_modules/.bin/tsc'),TDF_BROWSER_TOOLING=str(tooling/'node_modules'),PLAYWRIGHT_BROWSERS_PATH=str(base/'browsers'))
         run([tooling/'node_modules/.bin/playwright','install','chromium'],tooling)
@@ -128,7 +128,7 @@ def main():
         assert sys.version_info[:2] == (3,10), 'locked CFFI wheel requires Python3.10'
         wheels = base/'wheels'
         wheels.mkdir(exist_ok=True)
-        lock = json.loads((SDK/'hosts/python/dependencies.lock.json').read_text())
+        lock = json.loads((SDK/'src/hosts/python/dependencies.lock.json').read_text())
         for item in lock:
             artifact = wheels/item['artifact']
             if not artifact.exists():
@@ -144,7 +144,7 @@ def main():
     if 'rust' in targets:
         required_version('rustc',['rustc','--version'],'rustc 1.98.0 ','Rust1.98.0 required',prefix=True)
     if 'c' in targets:
-        lock = json.loads((SDK/'hosts/c/dependencies.lock.json').read_text())
+        lock = json.loads((SDK/'src/hosts/c/dependencies.lock.json').read_text())
         prefix = base/'curl-prefix'
         downloads = base/'native-downloads'
         downloads.mkdir(exist_ok=True)

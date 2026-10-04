@@ -1,6 +1,6 @@
 # Generated Go TDF3 library
 
-The shared façade is [`library`](../library/library.go). Goalchemy lowers its
+The shared façade is [`library`](../src/library/library.go). Goalchemy lowers its
 Encrypt and Decrypt exports and all reachable SDK code into an importable Go
 package. The emitted package imports its bundled standard-library capabilities;
 it never imports the original SDK implementation. All seven native target

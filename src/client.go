@@ -6,8 +6,8 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/encoding"
 	"github.com/eugenioenko/goalchemy/lib/sync"
 	"github.com/eugenioenko/goalchemy/lib/time"
-	"opentdf-local/sdk/tdf"
-	j "opentdf-local/sdk/tdf/json"
+	"opentdf-local/sdk/src/tdf"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 // KASRoute binds a manifest destination to a caller-trusted Connect API base.

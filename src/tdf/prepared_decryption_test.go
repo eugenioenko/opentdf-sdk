@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	j "opentdf-local/sdk/tdf/json"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 func corruptPreparedSnapshot(m *Manifest) {

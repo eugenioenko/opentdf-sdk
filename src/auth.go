@@ -3,7 +3,7 @@ package sdk
 import (
 	"github.com/eugenioenko/goalchemy/lib/clock"
 	"github.com/eugenioenko/goalchemy/lib/context"
-	j "opentdf-local/sdk/tdf/json"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 // AccessToken retains token scheme, expiry and optional opaque binding attestation.

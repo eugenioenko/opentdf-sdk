@@ -67,6 +67,27 @@ on all native pairs and independently validate the 54 retained archives with
 stock Go through KAS and ZIP CRC checks. Detailed output stays ignored, as
 the user requested; only the README row and methodology are published.
 
+## Shared source layout follow-up
+
+The user authorized moving the six root implementation files, their four
+adjacent unit tests and `tdf/` into a new root `src/` directory. The user
+subsequently added `library/` and `hosts/` to the move: they become
+`src/library/` and `src/hosts/`. Keep top-level `tests/`, `scripts/`, `docs/`
+and `go.mod` in place.
+Update module-local imports, source entry points, host template lookups,
+build/test/CI paths and
+current documentation without changing behavior, dependencies or generated
+native SDK APIs. Historical benchmark evidence remains historical.
+
+Work takes place in the isolated `refactor/shared-source-layout` worktree from
+`d899d00`. The producing SDK and Goalchemy checkouts used by the active benchmark
+must remain unchanged. Read/edit review can proceed during measurement;
+compilation, generation and tests wait until the benchmark CPU gate opens.
+Root owns acceptance, progress notes, signed commits and the requested PR;
+the worker owns the mechanical source/path changes. Verify unit tests, package
+builds, generated APIs and appropriate real-KAS checks before claiming the
+layout accepted. Top-level tests are updated as needed, not moved.
+
 ## CI repair and patch release
 
 Current objective: get the existing work ready to merge. First repair Goalchemy

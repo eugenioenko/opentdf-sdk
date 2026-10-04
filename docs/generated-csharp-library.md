@@ -1,7 +1,7 @@
 # Generated C# TDF3 library
 
 The generated `OpenTDF.TDF3.dll` exposes `OpenTDF.TDF3` from the shared
-[library facade](../library/library.go). It performs TDF3 encryption/decryption
+[library facade](../src/library/library.go). It performs TDF3 encryption/decryption
 inside the imported assembly; the production path has no Go process, compiler
 internals or stock SDK dependency. Root acceptance and the seven-target delivery
 ledger remain in [the plan](plan.md) and [delivery checklist](delivery-checklist.md).
@@ -15,7 +15,7 @@ OpenSSL/libc prerequisites of .NET8. Crypto and HTTP use .NET built-ins.
 IEEE CRC32 uses the official Microsoft `System.IO.Hashing` 8.0.0 NuGet package,
 with an exact version/content-hash lock; it is separate from the shared runtime.
 Exact dependency versions/licenses are in
-[dependencies.lock.json](../hosts/csharp/dependencies.lock.json); output includes
+[dependencies.lock.json](../src/hosts/csharp/dependencies.lock.json); output includes
 Goalchemy Apache2, .NET MIT/third-party notices, and the hashing package's MIT
 license/notices. Native APIs and pinned runtime
 imports provide HKDF and omitted-public-point P256 support.

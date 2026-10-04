@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/lib/encoding"
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src/tdf"
 )
 
 func probe(ec bool) {

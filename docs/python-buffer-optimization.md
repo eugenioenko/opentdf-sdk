@@ -37,8 +37,8 @@ The samples and tables above remain specific to the Python-only acceptance.
 
 ## Changes and ownership
 
-[Client decryption](../client.go) prepares an opaque, owned archive once through
-[the engine](../tdf/engine.go). ZIP CRC checks, manifest parsing and supported
+[Client decryption](../src/client.go) prepares an opaque, owned archive once through
+[the engine](../src/tdf/engine.go). ZIP CRC checks, manifest parsing and supported
 profile validation still precede token acquisition and KAS routing. Recovered
 keys authenticate policy binding, root, every segment and metadata before any
 plaintext is returned. Failed preparation and zero-value prepared objects cannot

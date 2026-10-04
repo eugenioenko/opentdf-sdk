@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/eugenioenko/goalchemy/lib/clock"
 	"github.com/eugenioenko/goalchemy/lib/context"
-	"opentdf-local/sdk"
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src"
+	"opentdf-local/sdk/src/tdf"
 )
 
 func main() {

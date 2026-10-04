@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	j "opentdf-local/sdk/tdf/json"
+	j "opentdf-local/sdk/src/tdf/json"
 	"testing"
 )
 

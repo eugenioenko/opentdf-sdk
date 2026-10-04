@@ -200,6 +200,7 @@ The generated packages delegate IEEE CRC32 to Go `hash/crc32`, Java
 `java.util.zip.CRC32`, Python `zlib.crc32` and Node `node:zlib.crc32`. C# deploys
 Microsoft's **System.IO.Hashing 8.0.0** and uses `Crc32.HashToUInt32`; Rust depends
 on **crc32fast 1.5.2**. C and browser TypeScript retain slicing-by-8 fallback.
+The original Web SDK uses its bundled JavaScript CRC32 implementation.
 Acceleration is selected by the runtime or library; these timings do not prove
 that a particular hardware instruction executed.
 

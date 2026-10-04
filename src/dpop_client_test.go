@@ -22,7 +22,7 @@ import (
 	"time"
 
 	capcrypto "github.com/eugenioenko/goalchemy/lib/crypto"
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src/tdf"
 )
 
 // Independent RFC 7638 / JOSE verifier. The oracle uses no shared JWT/JWK helper.

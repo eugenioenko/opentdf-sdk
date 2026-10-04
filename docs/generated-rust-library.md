@@ -1,9 +1,9 @@
 # Generated Rust TDF3 library
 
 The `opentdf-tdf3` Cargo library imports as `opentdf_tdf3` and executes the shared
-[value facade](../library/library.go). Production calls run generated Rust and
+[value facade](../src/library/library.go). Production calls run generated Rust and
 maintained native dependencies without a compiler, Go process or stock SDK.
-The [packaged README](../hosts/rust/README.md.in) documents the public API;
+The [packaged README](../src/hosts/rust/README.md.in) documents the public API;
 [compiler ownership](../../goalchemy/docs/rust-library-boundary.md) describes
 source isolation and publication.
 
@@ -33,8 +33,8 @@ facade and native runtime, verifies dependency archives and notices, builds with
 The installer extracts that actual archive and builds a separately importing
 native Cargo consumer with `--locked --offline`. It does not import a compiler
 checkout. Cargo fetch populates the archive cache before offline builds. The
-[Cargo lock](../hosts/rust/Cargo.lock) pins 173 external packages;
-[dependency inventory](../hosts/rust/dependencies.lock.json) records every
+[Cargo lock](../src/hosts/rust/Cargo.lock) pins 173 external packages;
+[dependency inventory](../src/hosts/rust/dependencies.lock.json) records every
 archive checksum, license, declared MSRV and 316 retained notice files,
 including bundled native notices in separate package/version paths.
 

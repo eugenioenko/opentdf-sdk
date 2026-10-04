@@ -1,8 +1,8 @@
 package main
 
 import (
-	"opentdf-local/sdk/tdf"
-	j "opentdf-local/sdk/tdf/json"
+	"opentdf-local/sdk/src/tdf"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 func main() {

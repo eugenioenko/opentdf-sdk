@@ -19,8 +19,8 @@ import (
 
 	"github.com/opentdf/platform/lib/ocrypto"
 	reference "github.com/opentdf/platform/sdk"
-	client "opentdf-local/sdk"
-	"opentdf-local/sdk/tdf"
+	client "opentdf-local/sdk/src"
+	"opentdf-local/sdk/src/tdf"
 )
 
 const platform = "http://localhost:8080"

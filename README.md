@@ -43,8 +43,8 @@ Generated SDKs were built with Goalchemy **v0.2.1**.\*
 
 \* Each cell pools 15 measurements: five per process across three fresh
 processes, with normal runtime settings. Before timing, each process runs
-40 warmup pairs at 50 MiB and 20 at the measured size; Go 1 MiB, Java 1 MiB
-and C# 10 MiB use 100 size-specific warmups after checking their initial
+40 warmup pairs at 50 MiB and 20 at the measured size; generated Go 1 MiB,
+Java 1 MiB and C# 10 MiB use 100 size-specific warmups after checking their initial
 histories. Every pair checks the full plaintext; all 486 retained archives
 also passed independent OpenTDF Go/KAS decryption and ZIP CRC checks.
 
@@ -56,6 +56,17 @@ segments. Browser execution is excluded. See the
 [methodology](docs/benchmarks.md).
 
 ## Build and run
+
+The shared Go implementation and its unit tests live in `src/`, including
+`src/tdf/` and `src/tdf/json/`. The module identity remains
+`opentdf-local/sdk`; shared-source imports are now `opentdf-local/sdk/src`,
+`opentdf-local/sdk/src/tdf` and `opentdf-local/sdk/src/tdf/json`. Direct Go
+consumers of the shared source must update these imports. The export façade
+and its unit test also live in `src/library/`, imported as
+`opentdf-local/sdk/src/library`; every build helper compiles `./src/library`.
+Native adapters, dependency locks and delivery tooling live in `src/hosts/`.
+Build scripts and top-level `tests/` remain at root. Generated native SDK public
+APIs retain their existing package names and signatures.
 
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts at the revisions
 in [references.lock.json](references.lock.json). Build the pinned Goalchemy binary
