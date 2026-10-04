@@ -21,6 +21,29 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def build_failure_diagnostics(label, job, base, public, targets):
+    """Expose only failed pre-service compiler/package logs, never service logs."""
+    if label not in ('compiler','packages'):
+        return []
+    files = [(job/(label+'.log'), Path(label+'.log'))]
+    if label == 'packages':
+        for target in targets:
+            for kind in ('relative','absolute'):
+                for suffix in ('.log','.log.status'):
+                    relative = Path('packages')/target/(kind+suffix)
+                    files.append((base/relative,relative))
+    diagnostics = []
+    for source, relative in files:
+        if not source.is_file() or source.is_symlink():
+            continue
+        artifact = public/'build-failure-diagnostics'/relative
+        artifact.parent.mkdir(parents=True,exist_ok=True)
+        shutil.copyfile(source,artifact)
+        diagnostics.append({'artifact':str(artifact.relative_to(public)),
+                            'sha256':sha(artifact)})
+    return diagnostics
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('target', choices=(*TARGETS,'all'))
@@ -72,7 +95,10 @@ def main():
                         pass
             public = base/'public'/identity
             public.mkdir(parents=True,exist_ok=True)
-            (public/'failed-job-receipt.json').write_text(json.dumps({'status':status,'job_identity':identity,'mode':args.mode,'project':project,'scope':'terminal failing job step; raw logs/private fixtures retained separately','commands':commands,'runner_sha256':sha(Path(__file__))},indent=2)+'\n')
+            diagnostics = build_failure_diagnostics(label,job,base,public,targets)
+            (public/'failed-job-receipt.json').write_text(json.dumps({'status':status,'job_identity':identity,'mode':args.mode,'project':project,'scope':'terminal failing job step; allowlisted pre-service build diagnostics only; auth/service logs retained privately','commands':commands,'build_failure_diagnostics':diagnostics,'runner_sha256':sha(Path(__file__))},indent=2)+'\n')
+            if diagnostics:
+                print('Build failure diagnostics:',str(public/'build-failure-diagnostics'),flush=True)
             raise RuntimeError(label+' failed; see '+str(log))
         print('PASS job step',identity,label,flush=True)
 

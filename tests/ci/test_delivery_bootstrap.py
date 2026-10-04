@@ -195,6 +195,49 @@ class BootstrapVersionTests(unittest.TestCase):
         self.assertEqual(len(receipts), 1)
         self.assertEqual(json.loads(receipts[0].read_text())['status'], 7)
 
+    def test_package_failure_artifact_preserves_generic_child_error_and_excludes_private_logs(self):
+        failure = 'shell/import/typecheck failure: unexpected token at native build\n'
+        source = ('#!' + sys.executable + '\nimport pathlib,sys\n'
+                  'base=pathlib.Path(sys.argv[sys.argv.index("--base")+1])\n'
+                  'if "delivery-bootstrap.py" in sys.argv[1]:\n'
+                  ' (base/"environment.json").write_text("{}")\n'
+                  'else:\n'
+                  ' log=base/"packages/go/relative.log"\n'
+                  ' log.parent.mkdir(parents=True,exist_ok=True)\n'
+                  ' log.write_text(' + repr(failure) + ')\n'
+                  ' log.with_suffix(".log.status").write_text("7\\n")\n'
+                  ' job=next((base/"jobs").iterdir())\n'
+                  ' (job/"private-service-up.log").write_text("PRIVATE_AUTH_SECRET_CANARY")\n'
+                  ' (log.parent/"private-token.json").write_text("PRIVATE_AUTH_SECRET_CANARY")\n'
+                  ' print("RuntimeError: native package helper failed")\n'
+                  ' sys.exit(7)\n')
+        fake = self.tools / 'python3'
+        fake.write_text(source)
+        fake.chmod(0o755)
+        self.environment['TDF_COMPOSE_PROJECT'] = 'phase7-package-diagnostic-regression'
+        result = subprocess.run([sys.executable, SDK / 'scripts/delivery-job.py', 'go',
+                                 '--base', self.output], env=self.environment,
+                                capture_output=True, text=True, timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Build failure diagnostics:', result.stdout)
+        receipts = list((self.output / 'public').glob('*/failed-job-receipt.json'))
+        self.assertEqual(len(receipts), 1)
+        receipt = json.loads(receipts[0].read_text())
+        self.assertEqual([item['status'] for item in receipt['commands']], [0,0,7])
+        self.assertEqual({item['artifact'] for item in receipt['build_failure_diagnostics']}, {
+            'build-failure-diagnostics/packages.log',
+            'build-failure-diagnostics/packages/go/relative.log',
+            'build-failure-diagnostics/packages/go/relative.log.status'})
+        for item in receipt['build_failure_diagnostics']:
+            artifact = receipts[0].parent / item['artifact']
+            self.assertEqual(hashlib.sha256(artifact.read_bytes()).hexdigest(), item['sha256'])
+        child = receipts[0].parent / 'build-failure-diagnostics/packages/go/relative.log'
+        self.assertEqual(child.read_text(), failure)
+        self.assertEqual(child.with_suffix('.log.status').read_text(), '7\n')
+        for path in (self.output / 'public').rglob('*'):
+            if path.is_file():self.assertNotIn('PRIVATE_AUTH_SECRET_CANARY', path.read_text())
+        self.assertNotIn('PRIVATE_AUTH_SECRET_CANARY', result.stdout + result.stderr)
+
     def test_private_service_failure_never_reports_raw_logs_or_stale_version_summary(self):
         self.tool('bash', stderr='PRIVATE_SERVICE_SECRET_CANARY\n', status=9)
         self.output.mkdir()
@@ -209,6 +252,10 @@ class BootstrapVersionTests(unittest.TestCase):
         logs = list((self.output / 'jobs').glob('*/private-service-up.log'))
         self.assertEqual(len(logs), 1)
         self.assertIn('PRIVATE_SERVICE_SECRET_CANARY', logs[0].read_text())
+        receipts = list((self.output / 'public').glob('*/failed-job-receipt.json'))
+        self.assertEqual(len(receipts), 1)
+        self.assertEqual(json.loads(receipts[0].read_text())['build_failure_diagnostics'], [])
+        self.assertFalse(list((self.output / 'public').glob('*/build-failure-diagnostics')))
 
 
 if __name__ == '__main__':
