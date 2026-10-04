@@ -9,8 +9,10 @@ following investigation of their initial histories: generated Go at 1 MiB,
 Java at 1 MiB and C# at 10 MiB. All seven generated native packages are
 rebuilt with released Goalchemy **v0.2.1**, commit
 `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`. The pinned original OpenTDF Go SDK
-is the eighth implementation. Earlier timing cells and diagnostic profiles are
-excluded. SDK implementation and compiler/runtime source remain unchanged.
+and the original Web SDK in Node are the two reference implementations.
+Earlier timing cells and diagnostic profiles are excluded. SDK implementation
+and compiler/runtime source remained unchanged during measurement. PR #3 subsequently reorganized shared source under `src/`;
+that layout change does not alter the recorded implementation behavior.
 
 ## Reproduce
 
@@ -38,6 +40,28 @@ python3 scripts/benchmark-sdk.py \
   --sizes 1MiB,10MiB,50MiB --samples 5 --batches 3 \
   --warmups 20 --bulk-warmups 40 --fresh
 ```
+
+The original Web SDK Node row is measured separately, using the pinned
+source-built package installed by `scripts/platform.sh build` under
+`.local/web-cli/node_modules/@opentdf/sdk`. Reuse the full campaign's frozen
+original-Go validator without rebuilding or rerunning its cells:
+
+```sh
+python3 scripts/benchmark-sdk.py --targets web \
+  --web-package .local/web-cli/node_modules/@opentdf/sdk \
+  --web-source ../web-sdk \
+  --reference-environment .local/steady-state-reproduction/campaign/environment.json \
+  --packages .local/steady-state-reproduction/delivery \
+  --output .local/steady-state-reproduction/web-node \
+  --sizes 1MiB,10MiB,50MiB --samples 5 --batches 3 \
+  --warmups 20 --bulk-warmups 40 --fresh
+```
+
+This preparation checks the installed Web SDK against its source-built npm
+archive, npm lock integrity and pinned source revision, records dependency
+hashes, and checks the frozen Go validator's binary hash. The Node version
+matches the generated TypeScript benchmark. The Web SDK's larger per-pair
+cost makes the fixed 50 MiB bulk warmup take substantially longer.
 
 To reproduce the accepted longer-warmup cells, run the following commands
 against the same packages in separate output directories, then replace exactly
@@ -112,6 +136,16 @@ RSA2048 response-session key and ES256 signer are reused throughout that batch.
 uses the constructor's default session key; the wrapper does not request
 `WithSessionKeyType`. Client `Close` runs outside timing after the loop.
 
+The original Web SDK uses its public `TDF3Client` in Node. One client and
+P-256/ES256 request signer are prepared before warmup in each process, using
+the SDK's supported key-import and interceptor APIs. Its public Bearer-token
+interceptor returns the pre-acquired token; it sends no DPoP proof header.
+The stock SDK generates its RSA2048 response key within each decrypt call.
+That key generation remains timed. Both encryption and decryption streams
+are fully consumed inside the contiguous interval, including creation of the
+plaintext Blob stream and materialization of ciphertext and owned plaintext.
+The CLI and its process startup are not part of this benchmark.
+
 Every host prepares public configuration, token providers and encryption
 options outside the timer. Generated APIs expose stateless facades, so their
 internal per-operation client/signing-key setup and per-decrypt RSA2048 session
@@ -129,8 +163,9 @@ the pre-acquired Bearer token during public calls. OAuth acquisition and
 public-key discovery are untimed; SDK key import and internal authentication
 work remain timed. No private-key PEM is supplied.
 All cells use RSA2048 wrapping and response sessions, ES256 signing, GMAC segment
-integrity, 2 MiB segments, the same permitted attribute, and no metadata or
-compression.
+integrity, 2 MiB segments, the same permitted attribute, no application metadata
+and no compression. The stock Web SDK encrypts its default empty metadata
+string; that native behavior remains included in its timing.
 
 ## Timing and correctness
 
@@ -161,7 +196,7 @@ Inputs are deterministic binary bytes: byte `i` is
 The original reused session key does not cache plaintext keys: every pair
 still requires KAS rewrap.
 
-The measured packages delegate IEEE CRC32 to Go `hash/crc32`, Java
+The generated packages delegate IEEE CRC32 to Go `hash/crc32`, Java
 `java.util.zip.CRC32`, Python `zlib.crc32` and Node `node:zlib.crc32`. C# deploys
 Microsoft's **System.IO.Hashing 8.0.0** and uses `Crc32.HashToUInt32`; Rust depends
 on **crc32fast 1.5.2**. C and browser TypeScript retain slicing-by-8 fallback.
@@ -176,10 +211,10 @@ receipts are retained only in ignored local storage. The campaign directory
 environment metadata, retained archives, fixtures and compiled consumers.
 Private token files remain ignored with mode 0600 and are not exported.
 The separate `extended/` directory retains the three follow-up cells. The final
-table contains 360 measurements and 432 independently checked retained
-archives across 72 batches, from 5400 native pairs including warmup. Including
-the three superseded cells, the campaign executed 5985 native pairs and
-independently checked 486 retained archives. Superseded cells are diagnostics,
+table contains 405 measurements and 486 independently checked retained
+archives across 81 batches, from 5985 native pairs including warmup. Including
+the three superseded cells, the campaign executed 6570 native pairs and
+independently checked 540 retained archives. Superseded cells are diagnostics,
 not samples supporting the table.
 
 These are local steady-state E2E timings, including KAS service and RSA

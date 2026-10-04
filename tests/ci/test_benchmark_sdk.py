@@ -2,6 +2,7 @@
 import copy
 import importlib.util
 import json
+import shutil
 import statistics
 import subprocess
 import sys
@@ -95,6 +96,21 @@ class BenchmarkPolicyTests(unittest.TestCase):
             self.assertEqual(len(summary[0]['batches']), 3)
             self.assertEqual(len(summary[0]['samples_ms']), 15)
             self.assertIn('| Java | 8.00 ms |', (base / 'tables.md').read_text())
+
+    def test_stock_web_node_stream_timing_and_retention_regressions(self):
+        node = shutil.which('node')
+        self.assertIsNotNone(node, 'Node is required for the stock Web benchmark policy tests')
+        result = subprocess.run([node, '--test', '--test-reporter=tap', str(ROOT / 'tests/bench/web-node.test.mjs')], cwd=ROOT, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('# pass 3', result.stdout)
+        self.assertIn('# fail 0', result.stdout)
+
+    def test_stock_web_cli_requires_explicit_package_and_frozen_oracle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run([sys.executable, str(ROOT / 'scripts/benchmark-sdk.py'), '--output', directory, '--targets', 'web'], capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('requires --web-package and --reference-environment', result.stderr)
+            self.assertFalse((Path(directory) / 'environment.json').exists())
 
     def test_invalid_cli_policy_rejected_before_building_or_contacting_services(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1404,3 +1404,40 @@ links point to the README or methodology, and detailed samples remain only
 in ignored local storage. Earlier entries describe the file as it existed
 at their respective publication checkpoints. No benchmark numbers, SDK code
 or harness behavior changed; no benchmark or test matrix rerun is needed.
+
+## Original Web SDK Node benchmark authorized — 2026-10-04
+
+The user clarified that PR #4 needs one additional original Web SDK row
+running in Node. The existing generated TypeScript row remains, and browsers
+are excluded. Root assigned the single benchmark worker three new cells
+under the accepted warmup/lifecycle/correctness policy. Existing 24 cells are
+frozen and will not be rerun. SDK/compiler production sources remain untouched.
+
+## Original Web SDK Node row accepted — 2026-10-04
+
+The three added cells completed with 15 measurements each across three fresh
+processes: 216.69 ms / 932.65 ms / 4444.67 ms at 1 / 10 / 50 MiB. All nine
+batches passed without trend flags, failures or retries; all 585 native pairs
+checked full plaintext and all 54 retained archives passed stock-Go/KAS and
+ZIP CRC validation. Root independently recomputed medians, checked sample and
+warmup counts, hashed all 54 archives and inspected algorithms/segment counts.
+The earlier 24 cells and their published values are unchanged. The fixed
+warmup policy was retained through completion at the user's explicit request.
+
+The stock public Web SDK client and explicitly configured ES256 signer are
+initialized once per process. Its public encryption/decryption streams are
+fully consumed inside the contiguous interval, with fresh RSA2048 response
+key generation inside each decrypt. A separate smoke confirmed actual Bearer
+authentication, no DPoP header and ES256 request signing. It passed two native
+pairs and two independent archive checks; smoke timings are excluded.
+
+Detailed samples/provenance remain ignored. README now has nine rows and the
+methodology documents the optional original Web Node reproduction command.
+The accepted table contains 405 samples and 486 independently checked retained
+archives; the three superseded diagnostic cells remain outside the table.
+
+The stock Web SDK retains its native default encrypted empty metadata string,
+although the benchmark supplies no application metadata. Its ZIP members are
+stored without compression. Ten benchmark policy regressions passed, including
+a subprocess running all three Node stream/timer/retention checks with an
+explicit TAP reporter. These focused checks are part of normal offline CI.

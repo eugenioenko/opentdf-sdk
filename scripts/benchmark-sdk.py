@@ -4,12 +4,13 @@
 Uses existing accepted installed packages; never invokes the Goalchemy compiler.
 Raw outputs and private token inputs are placed under ignored .local/benchmarks.
 """
-import argparse, hashlib, json, os, platform, shutil, statistics, subprocess, time, urllib.request, urllib.parse, zipfile
+import argparse, base64, hashlib, json, os, platform, shutil, statistics, subprocess, tarfile, time, urllib.request, urllib.parse, zipfile
 from pathlib import Path
 SDK = Path(__file__).resolve().parents[1]
 SRC = SDK / 'tests/bench'
 RUNTIME_OPTIONS = ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS', 'NODE_OPTIONS', 'GOGC', 'GOMEMLIMIT', 'GOMAXPROCS', 'PYTHONMALLOC', 'PYTHONOPTIMIZE', 'MALLOC_ARENA_MAX')
-TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
+NATIVE_TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
+TARGETS = NATIVE_TARGETS + ['web']
 SIZES = {'1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024), '50MiB': ('50', 50 * 1024 * 1024)}
 
 def sha(p):
@@ -74,7 +75,7 @@ def setup(base, packages):
     build = base / 'build'
     build.mkdir(parents=True, exist_ok=True)
     consumers = packages / 'consumers'
-    receipts = {t: json.loads((consumers / t / 'receipt.json').read_text()) for t in TARGETS if t != 'reference'}
+    receipts = {t: json.loads((consumers / t / 'receipt.json').read_text()) for t in NATIVE_TARGETS if t != 'reference'}
     env = os.environ.copy()
     env.update(receipts['go']['environment'])
     env = normal_environment(env)
@@ -143,6 +144,55 @@ def setup(base, packages):
     (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
     return (commands, env)
 
+def setup_web(base, packages, web_package, web_source, reference_environment):
+    """Prepare only stock Web Node, retaining the original Go oracle's binary identity."""
+    pinned = json.loads((SDK / 'references.lock.json').read_text())['repositories']['web-sdk']['revision']
+    env = normal_environment(os.environ.copy())
+    env.update(json.loads((packages / 'consumers/go/receipt.json').read_text())['environment'])
+    env = normal_environment(env)
+    node = shutil.which('node', path=env['PATH'])
+    if invoke([node, '--version'], SDK, env).decode().strip() != 'v24.15.0':
+        raise ValueError('stock Web measurement requires matched Node v24.15.0')
+    actual_head = invoke(['git', 'rev-parse', 'HEAD'], web_source, env).decode().strip()
+    if actual_head != pinned:
+        raise ValueError('stock Web source differs from references.lock.json')
+    package = json.loads((web_package / 'package.json').read_text())
+    tarball = web_source / 'lib' / ('opentdf-sdk-' + package['version'] + '.tgz')
+    with tarfile.open(tarball) as archive:
+        for member in archive.getmembers():
+            if member.isfile():
+                path = Path(member.name)
+                if path.parts[0] != 'package' or '..' in path.parts:
+                    raise ValueError('unexpected stock Web package member')
+                expected = hashlib.sha256(archive.extractfile(member).read()).hexdigest()
+                if sha(web_package.joinpath(*path.parts[1:])) != expected:
+                    raise ValueError('installed stock Web package differs from the source-built artifact')
+    node_modules = web_package.parent.parent
+    lock = node_modules.parent / 'package-lock.json'
+    integrity = json.loads(lock.read_text())['packages']['node_modules/@opentdf/sdk']['integrity']
+    if integrity != 'sha512-' + base64.b64encode(hashlib.sha512(tarball.read_bytes()).digest()).decode():
+        raise ValueError('stock Web installed artifact differs from npm lock integrity')
+    original = json.loads(reference_environment.read_text())
+    reference = original['commands']['reference']
+    if sha(Path(reference[0])) != original['built_consumers']['reference']:
+        raise ValueError('frozen original-Go validator binary changed')
+    commands = {'reference': reference, 'web': [node, str(SRC / 'web-node.mjs')]}
+    snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(),
+                'references_lock_sha256': sha(SDK / 'references.lock.json'), 'commands': commands,
+                'built_consumers': {'reference': sha(Path(reference[0]))}, 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()},
+                'consumer_artifacts_sha256': {}, 'controller_sha256': sha(Path(__file__)),
+                'reference_environment_sha256': sha(reference_environment),
+                'toolchains': {'node': invoke([node, '--version'], SDK, env).decode().strip(), 'go': original['toolchains']['go']},
+                'normal_runtime_environment': {'inherited_option_names': sorted(key for key in os.environ if key not in normal_environment(os.environ)), 'known_options_absent': [key for key in RUNTIME_OPTIONS if key not in env]},
+                'web': {'package_path': str(web_package), 'source_head': actual_head, 'package_version': package['version'], 'tarball_sha256': sha(tarball), 'npm_lock_sha256': sha(lock),
+                        'node_dependency_members': {str(p.relative_to(node_modules)): sha(p) for p in sorted(node_modules.rglob('*')) if p.is_file()},
+                        'client_lifecycle': 'one public TDF3Client and ES256 signer per fresh process; stock fresh RSA2048 key generation inside every decrypt'},
+                'timing_scope': 'contiguous stock encrypt and full stream consumption, then same-archive decrypt and full owned plaintext consumption; OAuth/discovery untimed'}
+    (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
+    env['TDF_WEB_PACKAGE'] = str(web_package)
+    return commands, env
+
+
 def configure(base, warmups=20, bulk_warmups=40, batches=3):
     form = urllib.parse.urlencode({'grant_type': 'client_credentials', 'client_id': 'opentdf-sdk', 'client_secret': 'secret'}).encode()
     with urllib.request.urlopen(urllib.request.Request('http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token', data=form), timeout=15) as response:
@@ -189,7 +239,7 @@ def normalized_results(base):
 
 def tables(base):
     latest = normalized_results(base)
-    names = {'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
+    names = {'web': 'Original OpenTDF Web (Node)', 'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
     labels = [label.replace('KiB', ' KiB').replace('MiB', ' MiB') for label in SIZES]
     parts = ['| SDK | ' + ' | '.join(labels) + ' |', '| --- | ' + ' | '.join('---:' for _ in labels) + ' |']
     for target in TARGETS:
@@ -214,7 +264,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--packages', type=Path, default=SDK / '.local/steady-state-2026-10-04/delivery')
     parser.add_argument('--sizes', default='1MiB,10MiB,50MiB')
-    parser.add_argument('--targets', default=','.join(TARGETS))
+    parser.add_argument('--targets', default=','.join(NATIVE_TARGETS))
+    parser.add_argument('--web-package', type=Path, help='installed pinned @opentdf/sdk package directory for the optional Web Node row')
+    parser.add_argument('--web-source', type=Path, default=SDK.parent / 'web-sdk', help='pinned stock Web repository used to build the installed package')
+    parser.add_argument('--reference-environment', type=Path, help='frozen original-Go environment.json; Web-only preparation reuses its validated binary without native rebuilds')
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--batches', type=int, default=3)
     parser.add_argument('--warmups', type=int, default=20)
@@ -254,9 +307,17 @@ def main():
         env['TDF_TS_NODE_PACKAGE'] = str((packages / 'consumers/typescript/package/dist/node-index.js').resolve())
         if snapshot['controller_sha256'] != sha(Path(__file__)) or snapshot['sources'] != {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}:
             raise RuntimeError('benchmark source changed since the frozen native build')
+    elif args.targets == 'web':
+        if not args.web_package or not args.reference_environment:
+            parser.error('Web-only preparation requires --web-package and --reference-environment')
+        commands, env = setup_web(base, packages, args.web_package.resolve(), args.web_source.resolve(), args.reference_environment.resolve())
     else:
+        if 'web' in args.targets.split(','):
+            parser.error('measure the optional stock Web row separately with --targets web')
         commands, env = setup(base, packages)
-    if len(commands['java']) != 4 or commands['java'][1] != '-cp':
+    if 'web' in commands:
+        env['TDF_WEB_PACKAGE'] = json.loads((base / 'environment.json').read_text())['web']['package_path']
+    if 'java' in commands and (len(commands['java']) != 4 or commands['java'][1] != '-cp'):
         raise RuntimeError('normal benchmark JVM command must contain only the classpath and main class')
     policy = {'bulk_warmups': args.bulk_warmups, 'bulk_size_bytes': 50 * 1024 * 1024,
               'actual_size_warmups': args.warmups, 'fresh_process_batches': args.batches, 'samples_per_batch': args.samples,

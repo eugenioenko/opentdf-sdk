@@ -26,12 +26,13 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 
 ## End-to-end performance
 
-Median encrypt → decrypt time through **real KAS**, in milliseconds, using
-fresh Goalchemy **v0.2.1** packages.\*
+Median encrypt → decrypt time through **real KAS**, in milliseconds.
+Generated SDKs were built with Goalchemy **v0.2.1**.\*
 
 | SDK | 1 MiB | 10 MiB | 50 MiB |
 | --- | ---: | ---: | ---: |
 | Original OpenTDF Go | 36.28 ms | 88.27 ms | 217.77 ms |
+| Original OpenTDF Web (Node) | 216.69 ms | 932.65 ms | 4444.67 ms |
 | Generated Go | 72.83 ms | 83.18 ms | 266.32 ms |
 | TypeScript (Node) | 96.57 ms | 199.28 ms | 750.11 ms |
 | Java | 87.70 ms | 142.18 ms | 401.28 ms |
@@ -44,12 +45,13 @@ fresh Goalchemy **v0.2.1** packages.\*
 processes, with normal runtime settings. Before timing, each process runs
 40 warmup pairs at 50 MiB and 20 at the measured size; Go 1 MiB, Java 1 MiB
 and C# 10 MiB use 100 size-specific warmups after checking their initial
-histories. Every pair checks the full plaintext; all 432 retained archives
+histories. Every pair checks the full plaintext; all 486 retained archives
 also passed independent OpenTDF Go/KAS decryption and ZIP CRC checks.
 
 Original Go reuses a client initialized before timing; generated facades'
-internal setup and session-key generation remain timed. File I/O, OAuth,
-public-key discovery and correctness checks are untimed. Inputs use 2 MiB
+internal setup and session-key generation remain timed. Original Web reuses
+its client and ES256 signer; its per-decrypt RSA key generation remains timed.
+File I/O, OAuth, public-key discovery and correctness checks are untimed. Inputs use 2 MiB
 segments. Browser execution is excluded. See the
 [methodology](docs/benchmarks.md).
 

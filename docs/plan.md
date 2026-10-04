@@ -47,6 +47,26 @@ regardless of their speed, and preserve the earlier records as superseded.
 The independent source-layout PR is authorized concurrently in a worktree;
 commit generated distribution files only as a follow-up after both PRs merge.
 
+## Original Web SDK Node benchmark follow-up
+
+The user authorized one additional README row in PR #4: the original pinned
+OpenTDF Web SDK running in Node, at 1, 10 and 50 MiB. The generated
+TypeScript (Node) row already covers the Goalchemy Web SDK; no duplicate or
+browser row is requested. Preserve all 24 accepted measurements. A single
+worker owns the stock-Web harness and bounded runner/policy-test changes,
+while root owns documentation, acceptance, signed commits and PR updates.
+
+Use the same real-KAS E2E interval, normal settings, 2 MiB segments, GMAC,
+RSA-2048 wrapping/response session, ES256 signing and pre-acquired long-lived
+Bearer token. Untimed setup acquires public-key information and prepares
+fixtures/configuration. SDK-internal operation work remains timed; record
+any library-specific initialization and streaming/materialization boundary.
+Run only the three new cells: 40 bulk 50 MiB warmups, 20 actual-size warmups,
+three fresh processes with five measured pairs each. Verify full plaintext
+on all native pairs and independently validate the 54 retained archives with
+stock Go through KAS and ZIP CRC checks. Detailed output stays ignored, as
+the user requested; only the README row and methodology are published.
+
 ## CI repair and patch release
 
 Current objective: get the existing work ready to merge. First repair Goalchemy
