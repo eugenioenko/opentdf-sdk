@@ -1492,3 +1492,60 @@ the combined publication branch before PR #4 is merged.
 The reconciled branch passed all ten benchmark-policy tests, including the
 three Node contract checks, and the staged whitespace check. No measurements
 were repeated during reconciliation.
+
+## Committed distribution follow-up started — 2026-10-04
+
+Source-layout PR #3 and benchmark PR #4 are merged; current main is `ebc7685`.
+The user now authorized a PR committing generated SDK packages under root
+`dist/`. The isolated `feat/committed-distributions` worktree preserves the
+original dirty benchmark checkout. One packaging worker is implementing the
+seven formatted distributions and reproducible generation from issue #6.
+The user deferred extra distribution CI to
+[issue #7](https://github.com/eugenioenko/opentdf-sdk/issues/7), and a Make
+build/regeneration entrypoint to
+[issue #8](https://github.com/eugenioenko/opentdf-sdk/issues/8). Existing CI
+continues to build ephemeral packages; this PR adds no CI jobs.
+
+Goalchemy float-support PR #11 passed the full hosted suite and all-seven
+float differential/runtime checks, then merged as `6d5442b`. Goalchemy v0.3.0
+was published from signed release commit `de6405d`; its version, generated-spec
+freshness and external-module test passed. New distribution generation will
+pin that release. Existing README benchmark values and their historical
+v0.2.1 compiler provenance remain unchanged. Distribution packaging checks passed locally: all seven package builds and
+installed native consumer builds, independently emitted relative/absolute source
+assemblies, repeated native formatting, final C syntax checks and the 25 existing
+CI-harness unit tests. The final source-only tree contains 988 files. Root reviewed
+manifests, local documentation links, ignored artifacts and compiler pins; no
+machine-specific paths or private keys were found. Shared source, existing CI
+commands and the historical benchmark table remain unchanged. No new KAS matrix
+was run for this packaging change. CI and Make automation remain follow-ups #7/#8.
+
+
+## Readable distribution refresh — 2026-10-04
+
+The user requested updating existing distribution PR #9 to Goalchemy v0.4.0,
+whose default emission preserves Go-derived identifier stems. The signed release
+pins compiler revision `6b623760dd8819f8ad7e48ebe01041e5bff7f06f`; the SDK module,
+reference lock, regeneration helper and existing CI checkout pins now agree.
+All seven formatted source distributions were regenerated, including TypeScript
+Node and browser adapters. Public facade and adapter files retain their contents;
+shared SDK implementation and historical benchmark measurements are unchanged.
+
+Acceptance passed seven relative/absolute native package pairs, native builds
+and independent consumer builds from formatted distribution copies, repeated
+formatting, equality across all 984 formatted files, manifest/source checks and
+25 existing CI-harness unit tests. Local receipts and logs remain ignored under
+`.local/dist-work/v040-*`. No new CI jobs or real-KAS matrix were added; existing
+CI continues to build and exercise ephemeral packages. The C# usage command now
+uses supported `-p:RestoreLockedMode=true`, and regeneration drops four redundant
+C notice copies while preserving identical notices under `dist/c/licenses/`.
+PR #9 remains the review destination; merging it is not requested.
+
+The first hosted run of the refresh passed all seven native package/consumer
+builds and basic real-KAS checks, including the TypeScript browser check, then
+failed while selecting the EC profile. Seven nested test modules still required
+Goalchemy v0.3.0 while their SDK dependency required v0.4.0; the profile runner
+stopped with `go: updates to go.mod needed` before EC tests began. All seven test
+module pins now agree with v0.4.0. Their readonly builds and the profile runner's
+readonly `pins` command passed with CI's Go 1.25.14 toolchain. Full hosted CI is
+being rerun on the fix.

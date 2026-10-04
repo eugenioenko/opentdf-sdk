@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>OpenTDF.TDF3</AssemblyName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/_/opentdf</PathMap>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <NoWarn>CS0162;CS0164;CS0168;CS0219;CS1718;CS8981</NoWarn>
+    <RestoreLockedMode>true</RestoreLockedMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" Version="[8.0.0]" />
+  </ItemGroup>
+</Project>

@@ -1,7 +1,22 @@
 /out/
-/dist/
 /.local/
 /.env
 /.venv/
 /node_modules/
 __pycache__/
+
+# Generated distribution builds stay local.
+/dist/**/node_modules/
+/dist/**/dist/
+/dist/**/target/
+/dist/**/obj/
+/dist/**/bin/
+/dist/**/classes/
+/dist/**/lib/
+/dist/**/*.jar
+/dist/**/*.whl
+/dist/**/*.a
+/dist/**/*.o
+/dist/**/*.tgz
+/dist/**/build/
+/dist/**/*.egg-info/

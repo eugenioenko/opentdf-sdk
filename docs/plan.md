@@ -6,6 +6,38 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Committed generated SDK distributions
+
+The user authorized committing generated SDKs and opening a PR after source-layout
+PR #3 and benchmark PR #4 merged. Both prerequisites have now merged. Follow
+[issue #6](https://github.com/eugenioenko/opentdf-sdk/issues/6): add usable,
+formatted generated source packages under root `dist/<language>/` for Go,
+TypeScript (Node/browser), Java, C#, Python, Rust and C.
+
+Generate with released Goalchemy v0.4.0, pin compiler and formatter versions,
+and provide one command to regenerate and format every distribution. Commit
+the required source, host adapters, package/build manifests, dependency locks,
+licenses and usage instructions. Keep compiled artifacts, downloaded dependencies,
+build caches, local credentials and logs ignored. Existing benchmark numbers
+remain historical v0.2.1 measurements.
+
+The distribution PR now uses the compiler's default readable internal names,
+combining Go-derived identifier stems with deterministic prefixes and IDs.
+Keep public exports intact and regenerate all seven targets without compact names.
+
+Acceptance requires reproducible and idempotent generation/formatting and bounded
+local package/consumer build checks. The user explicitly deferred additional CI
+coverage to [issue #7](https://github.com/eugenioenko/opentdf-sdk/issues/7) and a
+Make build/regeneration entrypoint to
+[issue #8](https://github.com/eugenioenko/opentdf-sdk/issues/8). Existing CI keeps
+its ephemeral build workflow; this PR adds no CI jobs or new KAS matrix runs.
+Formatting must preserve behavior and
+public APIs. Shared implementation, protocol and crypto changes are outside this
+packaging task. Work runs in the isolated `feat/committed-distributions` branch;
+the original dirty benchmark checkout remains untouched. One worker owns
+packaging implementation and checks; root owns this plan, the progress log,
+acceptance, signed commits and the requested PR.
+
 ## Steady-state benchmark refresh
 
 Current objective: rerun original OpenTDF Go and all seven generated native SDKs
