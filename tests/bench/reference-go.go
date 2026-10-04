@@ -29,6 +29,18 @@ func main() {
 	}
 	n, err := strconv.Atoi(os.Args[4])
 	must(err)
+	warmups, bulkWarmups := 1, 0
+	if op == "e2e" && len(os.Args) > 5 {
+		warmups, err = strconv.Atoi(os.Args[5])
+		must(err)
+	}
+	if op == "e2e" && len(os.Args) > 6 {
+		bulkWarmups, err = strconv.Atoi(os.Args[6])
+		must(err)
+	}
+	if warmups < 1 || bulkWarmups < 0 {
+		panic("invalid warmup count")
+	}
 	var raw struct {
 		Config  struct{ KASPublicKeyPEM, KID string }
 		Token   string
@@ -40,9 +52,14 @@ func main() {
 		inputSize = os.Args[5]
 	}
 	input := read(filepath.Join(run, inputSize+".input"))
+	bulkInput := input
+	if bulkWarmups > 0 && size != "50" {
+		bulkInput = read(filepath.Join(run, "50.input"))
+	}
+	accessToken := &oauth2.Token{AccessToken: raw.Token, TokenType: "Bearer", Expiry: time.Unix(raw.Expires, 0)}
 	// RSA2048 response-session and ES256 signer creation happen once, before warmup.
 	client, err := r.New("http://localhost:8080",
-		r.WithOAuthAccessTokenSource(oauth2.StaticTokenSource(&oauth2.Token{AccessToken: raw.Token, TokenType: "Bearer", Expiry: time.Unix(raw.Expires, 0)})),
+		r.WithOAuthAccessTokenSource(oauth2.StaticTokenSource(accessToken)),
 		r.WithPlatformConfiguration(r.PlatformConfiguration{}),
 		r.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
 		r.WithInsecurePlaintextConn(), r.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil))))
@@ -53,8 +70,12 @@ func main() {
 		r.WithWrappingKeyAlg(ocrypto.RSA2048Key), r.WithSegmentSize(2 << 20), r.WithDataAttributes("https://example.com/attr/attr1/value/value1")}
 	// LoadTDF reuses New's default RSA2048 session. Do not generate a replacement.
 	readerOptions := []r.TDFReaderOption{r.WithKasAllowlist([]string{"http://localhost:8080/kas"})}
-	samples := []float64{}
-	for i := -1; i < n; i++ {
+	samples, warmupHistory, bulkHistory := []float64{}, []float64{}, []float64{}
+	for i := -bulkWarmups - warmups; i < n; i++ {
+		pairInput := input
+		if i < -warmups {
+			pairInput = bulkInput
+		}
 		var archive []byte
 		if op == "validate" {
 			archive = read(size)
@@ -62,7 +83,7 @@ func main() {
 		buffer := bytes.Buffer{}
 		start := time.Now()
 		if op == "e2e" {
-			_, err = client.CreateTDF(&buffer, bytes.NewReader(input), encryptOptions...)
+			_, err = client.CreateTDF(&buffer, bytes.NewReader(pairInput), encryptOptions...)
 			must(err)
 			archive = buffer.Bytes()
 		}
@@ -71,15 +92,19 @@ func main() {
 		output, err := io.ReadAll(reader)
 		must(err)
 		elapsed := float64(time.Since(start).Nanoseconds()) / 1e6
-		if !bytes.Equal(input, output) {
+		if !bytes.Equal(pairInput, output) {
 			panic("plaintext mismatch")
 		}
-		if op == "e2e" {
+		if op == "e2e" && (i == -1 || i >= 0) {
 			must(os.WriteFile(filepath.Join(run, fmt.Sprintf("reference-%s-%d.tdf", size, i)), archive, 0600))
 		}
 		if i >= 0 {
 			samples = append(samples, elapsed)
+		} else if i < -warmups {
+			bulkHistory = append(bulkHistory, elapsed)
+		} else {
+			warmupHistory = append(warmupHistory, elapsed)
 		}
 	}
-	must(json.NewEncoder(os.Stdout).Encode(map[string]any{"samples_ms": samples, "correct": true, "kas_calls_expected": n + 1, "client_initializations": 1}))
+	must(json.NewEncoder(os.Stdout).Encode(map[string]any{"samples_ms": samples, "warmup_ms": warmupHistory, "bulk_warmup_ms": bulkHistory, "warmup_count": warmups, "bulk_warmup_count": bulkWarmups, "correct": true, "kas_calls_expected": n + warmups + bulkWarmups, "client_initializations": 1}))
 }

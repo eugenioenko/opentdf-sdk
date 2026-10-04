@@ -26,6 +26,18 @@ func main() {
 	}
 	n, err := strconv.Atoi(os.Args[4])
 	must(err)
+	warmups, bulkWarmups := 1, 0
+	if op == "e2e" && len(os.Args) > 5 {
+		warmups, err = strconv.Atoi(os.Args[5])
+		must(err)
+	}
+	if op == "e2e" && len(os.Args) > 6 {
+		bulkWarmups, err = strconv.Atoi(os.Args[6])
+		must(err)
+	}
+	if warmups < 1 || bulkWarmups < 0 {
+		panic("invalid warmup count")
+	}
 	var raw struct {
 		Config  g.Config
 		Token   string
@@ -33,26 +45,40 @@ func main() {
 	}
 	must(json.Unmarshal(read(filepath.Join(run, "private.json")), &raw))
 	input := read(filepath.Join(run, size+".input"))
+	bulkInput := input
+	if bulkWarmups > 0 && size != "50" {
+		bulkInput = read(filepath.Join(run, "50.input"))
+	}
 	cfg := raw.Config
 	callbacks := g.TokenCallbacks(func(context.Context) (g.AccessToken, error) {
 		return g.AccessToken{Value: raw.Token, Scheme: "Bearer", ExpiresAt: raw.Expires}, nil
 	})
 	options := g.EncryptOptions{Attributes: []string{"https://example.com/attr/attr1/value/value1"}, SegmentSize: 2 << 20, HasSegmentSize: true, SegmentHashAlgorithm: "GMAC"}
-	samples := []float64{}
-	for i := -1; i < n; i++ {
+	samples, warmupHistory, bulkHistory := []float64{}, []float64{}, []float64{}
+	for i := -bulkWarmups - warmups; i < n; i++ {
+		pairInput := input
+		if i < -warmups {
+			pairInput = bulkInput
+		}
 		start := time.Now()
-		archive, err := g.Encrypt(context.Background(), cfg, input, options, callbacks)
+		archive, err := g.Encrypt(context.Background(), cfg, pairInput, options, callbacks)
 		must(err)
 		result, err := g.Decrypt(context.Background(), cfg, archive, callbacks)
 		must(err)
 		elapsed := float64(time.Since(start).Nanoseconds()) / 1e6
-		if !bytes.Equal(input, result.Payload) {
+		if !bytes.Equal(pairInput, result.Payload) {
 			panic("plaintext mismatch")
 		}
-		must(os.WriteFile(filepath.Join(run, fmt.Sprintf("go-%s-%d.tdf", size, i)), archive, 0600))
+		if i == -1 || i >= 0 {
+			must(os.WriteFile(filepath.Join(run, fmt.Sprintf("go-%s-%d.tdf", size, i)), archive, 0600))
+		}
 		if i >= 0 {
 			samples = append(samples, elapsed)
+		} else if i < -warmups {
+			bulkHistory = append(bulkHistory, elapsed)
+		} else {
+			warmupHistory = append(warmupHistory, elapsed)
 		}
 	}
-	must(json.NewEncoder(os.Stdout).Encode(map[string]any{"samples_ms": samples, "correct": true, "kas_calls_expected": n + 1}))
+	must(json.NewEncoder(os.Stdout).Encode(map[string]any{"samples_ms": samples, "warmup_ms": warmupHistory, "bulk_warmup_ms": bulkHistory, "warmup_count": warmups, "bulk_warmup_count": bulkWarmups, "correct": true, "kas_calls_expected": n + warmups + bulkWarmups}))
 }

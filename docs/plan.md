@@ -6,6 +6,47 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Steady-state benchmark refresh
+
+Current objective: rerun original OpenTDF Go and all seven generated native SDKs
+at 1, 10 and 50 MiB through real KAS with verified warmup and normal runtime
+settings, then replace the README table with validated steady-state timings.
+SDK implementation, host adapters and Goalchemy compiler/runtime source remain
+unchanged. Only benchmark harnesses, orchestration and reporting may change.
+Browser performance remains excluded.
+
+First establish Java warmup under normal JVM settings: the earlier diagnostic
+compiler-threshold flag is not a measurement configuration. A flat short timing
+window alone cannot prove that the crypto path has reached its optimized state.
+Freeze the warmup policy before the full campaign. Warmup and measurement must
+share a process; repeat measurements in fresh processes and retain each batch's
+warmup history. Preserve current public API/key lifecycle, contiguous E2E timers,
+2 MiB segments, input sizes and untimed setup. Validate every retained archive
+with independent stock-Go/KAS decryption, exact plaintext and ZIP CRC checks.
+
+The accepted fixed policy is 40 full 50 MiB bulk warmup pairs, followed by 20
+pairs at the measured size, then five measured pairs in that same process.
+Run three fresh processes per implementation/size cell and report the pooled
+15-sample median. Java's three-size normal-settings pilots and a separate
+normal-tiering JFR/intrinsic diagnostic support this policy; diagnostic timings
+are excluded. Build fresh released-v0.2.1 packages after this gate. Use a
+pre-acquired six-hour token from the local benchmark client; no refresh work
+belongs inside the timed interval. Retain every measured archive and only the
+last size-specific warmup archive per batch; native plaintext checks still
+cover every warmup. Record all samples and investigate sustained downward
+warmup trends rather than select a fastest window or process.
+
+Root owns documentation, acceptance and signed commits; one reused worker owns
+benchmark-only implementation and execution. No full interoperability/CI replay
+is required locally for benchmark-only changes. The user authorized publishing
+and landing the benchmark PR after acceptance and passing hosted checks. SDK
+and compiler implementation changes remain outside this benchmark task.
+Three flagged cells (Go 1 MiB, Java 1 MiB and C# 10 MiB) receive 100 actual-size
+warmups in a bounded extension; accept all three replacement cells if stable,
+regardless of their speed, and preserve the earlier records as superseded.
+The independent source-layout PR is authorized concurrently in a worktree;
+commit generated distribution files only as a follow-up after both PRs merge.
+
 ## CI repair and patch release
 
 Current objective: get the existing work ready to merge. First repair Goalchemy

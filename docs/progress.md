@@ -1288,3 +1288,83 @@ profile helper's read-only pin check passed against clean pinned references.
 Ignored evidence is retained under `.local/pr1-ci-repair/module-graph/`.
 The hosted profile log remains private, so final confirmation requires the
 next CI run; no EC/DPoP or other required check was bypassed.
+
+## Steady-state benchmark refresh started — 2026-10-04
+
+The prior Java investigation profiled the exact accepted benchmark artifact
+without production edits. About 94% of default warmed execution samples were
+GHASH/counter-mode fallback loops. Earlier-compilation JVM settings reduced
+profiled median E2E time from 1956.72 to 815.83 ms while allocations remained
+about 1.2 GB per pair and GC pauses were small. That control proves a material
+JIT/tiering effect but is not a normal-settings steady-state measurement.
+Ignored evidence remains under `.local/java-profile-2026-10-03/`.
+
+The user set a new goal covering original Go plus all seven generated SDKs and
+all three sizes. Root verified clean SDK main `d899d00` and clean Goalchemy
+`de26e4a`, then created `perf/steady-state-benchmarks`. The sole worker may change
+benchmark harness/orchestration only. Java normal-settings warmup must be
+verified before freezing the full campaign policy. Production SDK/compiler
+source and local BASIC service configuration remain fixed.
+
+The first normal-JVM Java 50 MiB pilot completed 240 warmup pairs followed by
+five measured pairs. Its measured median was 376.47 ms. Warmup pairs 1–7 took
+roughly 1549–2441 ms, then dropped through 561/528/434 ms to about 378 ms by
+pair 12. All 240 warmup plaintext checks and all six retained archives passed;
+the latter were independently decrypted by stock Go through KAS and checked
+with Python's ZIP CRC reader. This is policy-development evidence, not a
+README measurement: it uses the retained prior artifact and is excluded from
+the fresh released-v0.2.1 campaign. The full warmup history and actual normal
+JVM command are retained in
+`.local/steady-state-2026-10-04/pilot/normal/receipt.json`.
+
+Next verify a provisional fixed bulk warmup at all three Java sizes and inspect
+normal-tiering JFR evidence separately from final timing. Benchmark token
+refresh runs between timed pairs, preserving the original SDK client and
+configuration. Five subprocess regressions cover atomic replacement, changed
+configuration rejection, child failure, timeout and refresh failure cleanup.
+
+The user requested a long-lived local Keycloak token instead of benchmark
+refresh machinery. Root set only the `opentdf-sdk` client's
+`access.token.lifespan` attribute to 21600 seconds (six hours), preserving other
+clients and realm settings. The admin API readback and a newly issued token
+confirmed `expires_in = 21600` and JWT `exp - iat = 21600`. Safe evidence is
+`.local/steady-state-2026-10-04/keycloak-lifetime.json`. The worker is removing
+the provisional refresh implementation and its tests; final batches use one
+pre-acquired token throughout. Earlier refresh-test results remain historical
+policy-development evidence, not a final-code acceptance claim.
+
+Root accepted the fixed warmup policy after independently inspecting all three
+normal-JVM pilot receipts and the separate normal-tiering JFR/intrinsic output.
+Java pilot medians were 111.93/175.61/377.99 ms at 1/10/50 MiB. The 50 MiB
+size-specific warmup halves were 380.55/383.50 ms, matching the prior long
+pilot's plateau. Normal compilation reached non-OSR C2 `implGCMCrypt0` and
+`GCMDecrypt.doFinal`; diagnostic intrinsic output selected AES block, counter
+mode and GHASH implementations. Diagnostics are not final timing settings or
+README samples. The frozen campaign uses 40 bulk 50 MiB warmups, 20 actual-size
+warmups and five measured pairs in each of three fresh processes per cell.
+The worker may now build fresh released-v0.2.1 packages and run all 24 cells.
+
+## Full campaign and publication checkpoint — 2026-10-04
+
+All 24 cells completed successfully with three fresh processes and five
+measurements per process. All 432 retained archives passed independent stock
+Go SDK decryption through real KAS and ZIP CRC checks. Root verified the
+tracked producing SDK, Goalchemy and pinned reference source hashes remained
+unchanged. Eight benchmark-policy regression tests passed.
+
+The predefined warmup gate flagged three cells: generated Go at 1 MiB, Java
+at 1 MiB and C# at 10 MiB. A bounded verification is running for exactly these
+cells with 40 bulk and 100 actual-size warmups in each of three fresh
+processes, retaining five measurements per process. Original campaign records
+remain frozen. All three extended cells will replace their earlier cells if
+stable, regardless of whether their measured medians improve. Results will
+never pool the two warmup policies or omit individual samples.
+
+The user requested PR publication while these checks finish. A separate
+publication worktree preserves the active benchmark's producing checkout and
+HEAD. This checkpoint publishes the harness and methodology; the README
+table and safe result ledger remain pending extended verification and root
+acceptance. The benchmark PR remains draft until that reporting is complete.
+The independent source-layout PR moves shared source, facade and hosts into
+src/. Both PRs are authorized to land after their checks pass; committing
+generated distribution files is a separate follow-up after both merge.
