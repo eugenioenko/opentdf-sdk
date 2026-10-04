@@ -12,9 +12,17 @@ fn main() {
     assert_eq!(args[2], "e2e");
     let size = &args[3];
     let n: i32 = args[4].parse().unwrap();
+    let warmups: i32 = args.get(5).map(|s| s.parse().unwrap()).unwrap_or(1);
+    let bulk_warmups: i32 = args.get(6).map(|s| s.parse().unwrap()).unwrap_or(0);
+    assert!(n > 0 && warmups > 0 && bulk_warmups >= 0);
     let raw: Value = serde_json::from_slice(&fs::read(run.join("private.json")).unwrap()).unwrap();
     let r = &raw["Config"];
     let input = fs::read(run.join(format!("{size}.input"))).unwrap();
+    let bulk_input = if bulk_warmups > 0 && size != "50" {
+        fs::read(run.join("50.input")).unwrap()
+    } else {
+        vec![]
+    };
     let cfg = Config {
         platform_url: text(r, "PlatformURL"),
         kas_url: text(r, "KASURL"),
@@ -49,9 +57,16 @@ fn main() {
         })
     });
     let mut samples = vec![];
-    for i in -1..n {
+    let mut warmup_history = vec![];
+    let mut bulk_history = vec![];
+    for i in -bulk_warmups - warmups..n {
+        let pair_input = if i < -warmups && size != "50" {
+            &bulk_input
+        } else {
+            &input
+        };
         // Prepare consuming API arguments and harness configuration untimed.
-        let owned = input.clone();
+        let owned = pair_input.clone();
         let encrypt_cfg = cfg.clone();
         let decrypt_cfg = cfg.clone();
         let encrypt_options = options.clone();
@@ -74,14 +89,20 @@ fn main() {
             .unwrap()
             .Payload;
         let elapsed = start.elapsed().as_secs_f64() * 1000.;
-        assert_eq!(input, output);
-        fs::write(run.join(format!("rust-{size}-{i}.tdf")), archive).unwrap();
+        assert_eq!(*pair_input, output);
+        if i == -1 || i >= 0 {
+            fs::write(run.join(format!("rust-{size}-{i}.tdf")), archive).unwrap();
+        }
         if i >= 0 {
             samples.push(elapsed);
+        } else if i < -warmups {
+            bulk_history.push(elapsed);
+        } else {
+            warmup_history.push(elapsed);
         }
     }
     println!(
         "{}",
-        json!({"samples_ms": samples, "correct": true, "kas_calls_expected": n + 1, "archive_retention_clone_timed": true})
+        json!({"samples_ms": samples, "warmup_ms": warmup_history, "bulk_warmup_ms": bulk_history, "warmup_count": warmups, "bulk_warmup_count": bulk_warmups, "correct": true, "kas_calls_expected": n + warmups + bulk_warmups, "archive_retention_clone_timed": true})
     );
 }

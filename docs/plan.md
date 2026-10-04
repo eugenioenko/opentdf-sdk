@@ -6,6 +6,67 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Steady-state benchmark refresh
+
+Current objective: rerun original OpenTDF Go and all seven generated native SDKs
+at 1, 10 and 50 MiB through real KAS with verified warmup and normal runtime
+settings, then replace the README table with validated steady-state timings.
+SDK implementation, host adapters and Goalchemy compiler/runtime source remain
+unchanged. Only benchmark harnesses, orchestration and reporting may change.
+Browser performance remains excluded.
+
+First establish Java warmup under normal JVM settings: the earlier diagnostic
+compiler-threshold flag is not a measurement configuration. A flat short timing
+window alone cannot prove that the crypto path has reached its optimized state.
+Freeze the warmup policy before the full campaign. Warmup and measurement must
+share a process; repeat measurements in fresh processes and retain each batch's
+warmup history. Preserve current public API/key lifecycle, contiguous E2E timers,
+2 MiB segments, input sizes and untimed setup. Validate every retained archive
+with independent stock-Go/KAS decryption, exact plaintext and ZIP CRC checks.
+
+The accepted fixed policy is 40 full 50 MiB bulk warmup pairs, followed by 20
+pairs at the measured size, then five measured pairs in that same process.
+Run three fresh processes per implementation/size cell and report the pooled
+15-sample median. Java's three-size normal-settings pilots and a separate
+normal-tiering JFR/intrinsic diagnostic support this policy; diagnostic timings
+are excluded. Build fresh released-v0.2.1 packages after this gate. Use a
+pre-acquired six-hour token from the local benchmark client; no refresh work
+belongs inside the timed interval. Retain every measured archive and only the
+last size-specific warmup archive per batch; native plaintext checks still
+cover every warmup. Record all samples and investigate sustained downward
+warmup trends rather than select a fastest window or process.
+
+Root owns documentation, acceptance and signed commits; one reused worker owns
+benchmark-only implementation and execution. No full interoperability/CI replay
+is required locally for benchmark-only changes. The user authorized publishing
+and landing the benchmark PR after acceptance and passing hosted checks. SDK
+and compiler implementation changes remain outside this benchmark task.
+Three flagged cells (Go 1 MiB, Java 1 MiB and C# 10 MiB) receive 100 actual-size
+warmups in a bounded extension; accept all three replacement cells if stable,
+regardless of their speed, and preserve the earlier records as superseded.
+The independent source-layout PR is authorized concurrently in a worktree;
+commit generated distribution files only as a follow-up after both PRs merge.
+
+## Original Web SDK Node benchmark follow-up
+
+The user authorized one additional README row in PR #4: the original pinned
+OpenTDF Web SDK running in Node, at 1, 10 and 50 MiB. The generated
+TypeScript (Node) row already covers the Goalchemy Web SDK; no duplicate or
+browser row is requested. Preserve all 24 accepted measurements. A single
+worker owns the stock-Web harness and bounded runner/policy-test changes,
+while root owns documentation, acceptance, signed commits and PR updates.
+
+Use the same real-KAS E2E interval, normal settings, 2 MiB segments, GMAC,
+RSA-2048 wrapping/response session, ES256 signing and pre-acquired long-lived
+Bearer token. Untimed setup acquires public-key information and prepares
+fixtures/configuration. SDK-internal operation work remains timed; record
+any library-specific initialization and streaming/materialization boundary.
+Run only the three new cells: 40 bulk 50 MiB warmups, 20 actual-size warmups,
+three fresh processes with five measured pairs each. Verify full plaintext
+on all native pairs and independently validate the 54 retained archives with
+stock Go through KAS and ZIP CRC checks. Detailed output stays ignored, as
+the user requested; only the README row and methodology are published.
+
 ## Shared source layout follow-up
 
 The user authorized moving the six root implementation files, their four

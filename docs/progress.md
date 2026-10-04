@@ -1289,6 +1289,159 @@ Ignored evidence is retained under `.local/pr1-ci-repair/module-graph/`.
 The hosted profile log remains private, so final confirmation requires the
 next CI run; no EC/DPoP or other required check was bypassed.
 
+## Steady-state benchmark refresh started — 2026-10-04
+
+The prior Java investigation profiled the exact accepted benchmark artifact
+without production edits. About 94% of default warmed execution samples were
+GHASH/counter-mode fallback loops. Earlier-compilation JVM settings reduced
+profiled median E2E time from 1956.72 to 815.83 ms while allocations remained
+about 1.2 GB per pair and GC pauses were small. That control proves a material
+JIT/tiering effect but is not a normal-settings steady-state measurement.
+Ignored evidence remains under `.local/java-profile-2026-10-03/`.
+
+The user set a new goal covering original Go plus all seven generated SDKs and
+all three sizes. Root verified clean SDK main `d899d00` and clean Goalchemy
+`de26e4a`, then created `perf/steady-state-benchmarks`. The sole worker may change
+benchmark harness/orchestration only. Java normal-settings warmup must be
+verified before freezing the full campaign policy. Production SDK/compiler
+source and local BASIC service configuration remain fixed.
+
+The first normal-JVM Java 50 MiB pilot completed 240 warmup pairs followed by
+five measured pairs. Its measured median was 376.47 ms. Warmup pairs 1–7 took
+roughly 1549–2441 ms, then dropped through 561/528/434 ms to about 378 ms by
+pair 12. All 240 warmup plaintext checks and all six retained archives passed;
+the latter were independently decrypted by stock Go through KAS and checked
+with Python's ZIP CRC reader. This is policy-development evidence, not a
+README measurement: it uses the retained prior artifact and is excluded from
+the fresh released-v0.2.1 campaign. The full warmup history and actual normal
+JVM command are retained in
+`.local/steady-state-2026-10-04/pilot/normal/receipt.json`.
+
+Next verify a provisional fixed bulk warmup at all three Java sizes and inspect
+normal-tiering JFR evidence separately from final timing. Benchmark token
+refresh runs between timed pairs, preserving the original SDK client and
+configuration. Five subprocess regressions cover atomic replacement, changed
+configuration rejection, child failure, timeout and refresh failure cleanup.
+
+The user requested a long-lived local Keycloak token instead of benchmark
+refresh machinery. Root set only the `opentdf-sdk` client's
+`access.token.lifespan` attribute to 21600 seconds (six hours), preserving other
+clients and realm settings. The admin API readback and a newly issued token
+confirmed `expires_in = 21600` and JWT `exp - iat = 21600`. Safe evidence is
+`.local/steady-state-2026-10-04/keycloak-lifetime.json`. The worker is removing
+the provisional refresh implementation and its tests; final batches use one
+pre-acquired token throughout. Earlier refresh-test results remain historical
+policy-development evidence, not a final-code acceptance claim.
+
+Root accepted the fixed warmup policy after independently inspecting all three
+normal-JVM pilot receipts and the separate normal-tiering JFR/intrinsic output.
+Java pilot medians were 111.93/175.61/377.99 ms at 1/10/50 MiB. The 50 MiB
+size-specific warmup halves were 380.55/383.50 ms, matching the prior long
+pilot's plateau. Normal compilation reached non-OSR C2 `implGCMCrypt0` and
+`GCMDecrypt.doFinal`; diagnostic intrinsic output selected AES block, counter
+mode and GHASH implementations. Diagnostics are not final timing settings or
+README samples. The frozen campaign uses 40 bulk 50 MiB warmups, 20 actual-size
+warmups and five measured pairs in each of three fresh processes per cell.
+The worker may now build fresh released-v0.2.1 packages and run all 24 cells.
+
+## Full campaign and publication checkpoint — 2026-10-04
+
+All 24 cells completed successfully with three fresh processes and five
+measurements per process. All 432 retained archives passed independent stock
+Go SDK decryption through real KAS and ZIP CRC checks. Root verified the
+tracked producing SDK, Goalchemy and pinned reference source hashes remained
+unchanged. Eight benchmark-policy regression tests passed.
+
+The predefined warmup gate flagged three cells: generated Go at 1 MiB, Java
+at 1 MiB and C# at 10 MiB. A bounded verification is running for exactly these
+cells with 40 bulk and 100 actual-size warmups in each of three fresh
+processes, retaining five measurements per process. Original campaign records
+remain frozen. All three extended cells will replace their earlier cells if
+stable, regardless of whether their measured medians improve. Results will
+never pool the two warmup policies or omit individual samples.
+
+The user requested PR publication while these checks finish. A separate
+publication worktree preserves the active benchmark's producing checkout and
+HEAD. This checkpoint publishes the harness and methodology; the README
+table and safe result ledger remain pending extended verification and root
+acceptance. The benchmark PR remains draft until that reporting is complete.
+The independent source-layout PR moves shared source, facade and hosts into
+src/. Both PRs are authorized to land after their checks pass; committing
+generated distribution files is a separate follow-up after both merge.
+
+## Final benchmark reporting accepted — 2026-10-04
+
+The bounded extension completed successfully for all three flagged cells and
+all 54 additional retained archives. Its pooled medians are generated Go
+1 MiB 72.83 ms, Java 1 MiB 87.70 ms and C# 10 MiB 211.22 ms. Later warmup
+windows oscillate without a recurring sustained decline across batches;
+timing scatter remains. All three extended cells replace their earlier cells
+unconditionally, while the original three remain explicitly superseded
+diagnostics in the safe ledger. No samples are pooled across policies.
+
+Root independently recomputed all 24 accepted medians from all 360 samples,
+checked the 72 batches and native warmup histories, hashed all 486 retained
+archives, inspected their ZIP members and manifests, and rechecked every
+frozen producing source hash and HEAD. All checks passed. The accepted table
+uses 5400 native pairs including warmup and 432 independently validated
+archives; including superseded diagnostics, totals are 5985 native pairs and
+486 independently validated archives. No SDK/compiler production code, runtime
+tuning, sample exclusions or additional benchmark cells were introduced.
+
+README reporting replaces the prior table, includes the requested short
+warmup/method note, and links the schema-4 safe ledger. The worker export hash
+is 689d534bd72849e832dd380309a71d1f2817ca6abcc3d79041aa2ea3bdca8084;
+root proof is retained under ignored steady-state storage and copied into the
+ledger. PR #4 publishes the benchmark/report independently of source-layout
+PR #3. Both PRs require passing hosted checks before merge; generated
+distribution files remain deferred to their subsequent follow-up.
+
+## Benchmark result file removed at user request — 2026-10-04
+
+The user requested deleting `docs/benchmark-results.json` from PR #4 because
+the README table is sufficient. The file is removed, current documentation
+links point to the README or methodology, and detailed samples remain only
+in ignored local storage. Earlier entries describe the file as it existed
+at their respective publication checkpoints. No benchmark numbers, SDK code
+or harness behavior changed; no benchmark or test matrix rerun is needed.
+
+## Original Web SDK Node benchmark authorized — 2026-10-04
+
+The user clarified that PR #4 needs one additional original Web SDK row
+running in Node. The existing generated TypeScript row remains, and browsers
+are excluded. Root assigned the single benchmark worker three new cells
+under the accepted warmup/lifecycle/correctness policy. Existing 24 cells are
+frozen and will not be rerun. SDK/compiler production sources remain untouched.
+
+## Original Web SDK Node row accepted — 2026-10-04
+
+The three added cells completed with 15 measurements each across three fresh
+processes: 216.69 ms / 932.65 ms / 4444.67 ms at 1 / 10 / 50 MiB. All nine
+batches passed without trend flags, failures or retries; all 585 native pairs
+checked full plaintext and all 54 retained archives passed stock-Go/KAS and
+ZIP CRC validation. Root independently recomputed medians, checked sample and
+warmup counts, hashed all 54 archives and inspected algorithms/segment counts.
+The earlier 24 cells and their published values are unchanged. The fixed
+warmup policy was retained through completion at the user's explicit request.
+
+The stock public Web SDK client and explicitly configured ES256 signer are
+initialized once per process. Its public encryption/decryption streams are
+fully consumed inside the contiguous interval, with fresh RSA2048 response
+key generation inside each decrypt. A separate smoke confirmed actual Bearer
+authentication, no DPoP header and ES256 request signing. It passed two native
+pairs and two independent archive checks; smoke timings are excluded.
+
+Detailed samples/provenance remain ignored. README now has nine rows and the
+methodology documents the optional original Web Node reproduction command.
+The accepted table contains 405 samples and 486 independently checked retained
+archives; the three superseded diagnostic cells remain outside the table.
+
+The stock Web SDK retains its native default encrypted empty metadata string,
+although the benchmark supplies no application metadata. Its ZIP members are
+stored without compression. Ten benchmark policy regressions passed, including
+a subprocess running all three Node stream/timer/retention checks with an
+explicit TAP reporter. These focused checks are part of normal offline CI.
+
 ## Shared source layout follow-up — 2026-10-04
 
 The user clarified that the source organization request concerns the SDK's
@@ -1324,3 +1477,18 @@ package, consumer and KAS checks remain required before merging PR #3.
 The user authorized publishing and landing this refactor and the independent
 benchmark PR first. Committing generated distribution files is deferred to a
 separate follow-up after both PRs merge.
+
+## Benchmark publication reconciled with merged layout — 2026-10-04
+
+Source-layout PR #3 passed all eight hosted jobs at its final head and merged
+into main as `5513b6f`. Benchmark PR #4 now incorporates that merged layout,
+preserving both follow-up histories and the accepted nine-row README table.
+The producing benchmark checkout remains unchanged. The additional Web row
+passed the final provenance and archive audit; all 24 earlier cells retain
+their exact accepted numbers. Detailed receipts remain ignored, and the
+user-requested result JSON remains deleted. Final-head hosted CI must validate
+the combined publication branch before PR #4 is merged.
+
+The reconciled branch passed all ten benchmark-policy tests, including the
+three Node contract checks, and the staged whitespace check. No measurements
+were repeated during reconciliation.

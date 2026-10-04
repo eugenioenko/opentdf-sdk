@@ -49,14 +49,23 @@ static double clockms(void){
     return (double)t.tv_sec*1000.+(double)t.tv_nsec/1e6;
 }
 int main(int argc, char **argv) {
-    assert(argc == 5);
+    assert(argc >= 5 && argc <= 7);
     const char *run = argv[1], *op = argv[2], *size = argv[3];
     assert(!strcmp(op, "e2e"));
     int samples = atoi(argv[4]);
+    int warmups = argc > 5 ? atoi(argv[5]) : 1;
+    int bulk_warmups = argc > 6 ? atoi(argv[6]) : 0;
+    assert(samples > 0 && warmups > 0 && bulk_warmups >= 0);
+    double *warmup_history = calloc((size_t)warmups, sizeof(double));
+    double *bulk_history = calloc((size_t)(bulk_warmups ? bulk_warmups : 1), sizeof(double));
+    assert(warmup_history && bulk_history);
     char path[4096];
     size_t n, pn, kn, tn;
     snprintf(path, sizeof path, "%s/%s.input", run, size);
     uint8_t *input = readfile(path, &n);
+    size_t bulk_n = n;
+    uint8_t *bulk_input = input;
+    if (bulk_warmups && strcmp(size, "50")) { snprintf(path, sizeof path, "%s/50.input", run); bulk_input = readfile(path, &bulk_n); }
     snprintf(path, sizeof path, "%s/kas.pem", run);
     uint8_t *pem = readfile(path, &pn);
     snprintf(path, sizeof path, "%s/kid", run);
@@ -78,27 +87,37 @@ int main(int argc, char **argv) {
     };
     gxc_options call = {.provider = provider, .provider_state = token};
     printf("{\"samples_ms\":[");
-    for (int i = -1; i < samples; i++) {
+    for (int i = -bulk_warmups - warmups; i < samples; i++) {
+        uint8_t *pair_input = i < -warmups ? bulk_input : input;
+        size_t pair_n = i < -warmups ? bulk_n : n;
         tdf3_result archive = {0}, plaintext = {0};
         tdf3_error err = {0};
         double start = clockms();
-        int rc = tdf3_encrypt(&cfg, (tdf3_bytes){input, n}, &options, &call, &archive, &err);
+        int rc = tdf3_encrypt(&cfg, (tdf3_bytes){pair_input, pair_n}, &options, &call, &archive, &err);
         if (!rc) rc = tdf3_decrypt(&cfg, (tdf3_bytes){archive.Payload.data, archive.Payload.length}, &call, &plaintext, &err);
         double elapsed = clockms() - start;
         if (rc) {
             fprintf(stderr, "C failure kind %d code %.*s\n", rc, (int)err.Code.length, err.Code.data);
             return 1;
         }
-        assert(plaintext.Payload.length == n && !memcmp(plaintext.Payload.data, input, n));
+        assert(plaintext.Payload.length == pair_n && !memcmp(plaintext.Payload.data, pair_input, pair_n));
         snprintf(path, sizeof path, "%s/c-%s-%d.tdf", run, size, i);
-        writefile(path, archive.Payload.data, archive.Payload.length);
+        if (i == -1 || i >= 0) writefile(path, archive.Payload.data, archive.Payload.length);
         tdf3_result_free(&archive);
         tdf3_result_free(&plaintext);
         tdf3_error_free(&err);
         if (i >= 0) printf("%s%.9f", i ? "," : "", elapsed);
+        else if (i < -warmups) bulk_history[i + bulk_warmups + warmups] = elapsed;
+        else warmup_history[i + warmups] = elapsed;
         fflush(stdout);
     }
-    printf("],\"correct\":true,\"kas_calls_expected\":%d}\n", samples + 1);
+    printf("],\"warmup_ms\":[");
+    for (int i = 0; i < warmups; i++) printf("%s%.9f", i ? "," : "", warmup_history[i]);
+    printf("],\"bulk_warmup_ms\":[");
+    for (int i = 0; i < bulk_warmups; i++) printf("%s%.9f", i ? "," : "", bulk_history[i]);
+    printf("],\"warmup_count\":%d,\"bulk_warmup_count\":%d,\"correct\":true,\"kas_calls_expected\":%d}\n", warmups, bulk_warmups, samples + warmups + bulk_warmups);
+    free(warmup_history); free(bulk_history);
+    if (bulk_input != input) free(bulk_input);
     free(input);
     free(pem);
     free(kid);
