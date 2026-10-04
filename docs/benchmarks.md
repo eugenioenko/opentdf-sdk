@@ -4,7 +4,9 @@ The README table reports fresh **1 MiB, 10 MiB and 50 MiB** measurements
 from the 2026-10-04 steady-state campaign. Each cell is the median elapsed
 **milliseconds** across 15 complete encrypt/decrypt pairs: five samples in each
 of three fresh processes. Every process first performs 40 full pairs at 50 MiB
-and 20 pairs at its measured size. All seven generated native packages are
+and 20 pairs at its measured size. Three cells use 100 size-specific warmups
+following investigation of their initial histories: generated Go at 1 MiB,
+Java at 1 MiB and C# at 10 MiB. All seven generated native packages are
 rebuilt with released Goalchemy **v0.2.1**, commit
 `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`. The pinned original OpenTDF Go SDK
 is the eighth implementation. Earlier timing cells and diagnostic profiles are
@@ -37,6 +39,25 @@ python3 scripts/benchmark-sdk.py \
   --warmups 20 --bulk-warmups 40 --fresh
 ```
 
+To reproduce the accepted longer-warmup cells, run the following commands
+against the same packages in separate output directories, then replace exactly
+those three cells in the full summary (keep the initial histories as diagnostics):
+
+```sh
+python3 scripts/benchmark-sdk.py --targets go --sizes 1MiB \
+  --packages .local/steady-state-reproduction/delivery \
+  --output .local/steady-state-reproduction/extended/go-1MiB \
+  --samples 5 --batches 3 --warmups 100 --bulk-warmups 40 --fresh
+python3 scripts/benchmark-sdk.py --targets java --sizes 1MiB \
+  --packages .local/steady-state-reproduction/delivery \
+  --output .local/steady-state-reproduction/extended/java-1MiB \
+  --samples 5 --batches 3 --warmups 100 --bulk-warmups 40 --fresh
+python3 scripts/benchmark-sdk.py --targets csharp --sizes 10MiB \
+  --packages .local/steady-state-reproduction/delivery \
+  --output .local/steady-state-reproduction/extended/csharp-10MiB \
+  --samples 5 --batches 3 --warmups 100 --bulk-warmups 40 --fresh
+```
+
 Package receipts record the actual compiler binary and package/member hashes.
 SDK package versions remain 0.1.0. Both relative and absolute output-path builds
 must pass before installed consumers or measurements run. `--fresh` rejects an
@@ -61,7 +82,15 @@ A separate JFR run examined compilation; its timings are excluded from the
 README table. A flat short timing window alone was insufficient evidence of
 completed warmup in the earlier investigation.
 
-The same fixed bulk and size-specific warmup applies to all implementations.
+The initial fixed bulk and size-specific policy applies to all implementations.
+Its predefined trend gate flagged three cells. A bounded extension reran only
+generated Go at 1 MiB, Java at 1 MiB and C# at 10 MiB, using 100 actual-size
+warmups with the same 40 bulk warmups, three fresh processes, five samples and
+immutable native binaries. All three extended cells replace their initial
+cells regardless of whether their measured median improved. Their late timing
+windows varied rather than showing a repeated downward trend; these histories
+and superseded results remain in the safe ledger. No old and new samples are
+pooled, and none of the other 21 cells was rerun.
 Bulk warmup exercises the full segmentation, crypto and allocation paths before
 the smaller size is measured. This intentionally reports performance after
 substantial use, rather than startup or the first few calls. Three fresh
@@ -147,6 +176,12 @@ source identities and independent archive checks are in
 `.local/steady-state-2026-10-04/campaign` retains raw receipts, summaries,
 environment metadata, retained archives, fixtures and compiled consumers.
 Private token files remain ignored with mode 0600 and are not exported.
+The separate `extended/` directory retains the three follow-up cells. The final
+table contains 360 measurements and 432 independently checked retained
+archives across 72 batches, from 5400 native pairs including warmup. Including
+the three superseded cells, the campaign executed 5985 native pairs and
+independently checked 486 retained archives. Superseded cells are diagnostics,
+not samples supporting the table.
 
 These are local steady-state E2E timings, including KAS service and RSA
 variation. Fifteen samples per cell do not establish long-tail latency or a

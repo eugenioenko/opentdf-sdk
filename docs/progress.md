@@ -1368,3 +1368,30 @@ acceptance. The benchmark PR remains draft until that reporting is complete.
 The independent source-layout PR moves shared source, facade and hosts into
 src/. Both PRs are authorized to land after their checks pass; committing
 generated distribution files is a separate follow-up after both merge.
+
+## Final benchmark reporting accepted — 2026-10-04
+
+The bounded extension completed successfully for all three flagged cells and
+all 54 additional retained archives. Its pooled medians are generated Go
+1 MiB 72.83 ms, Java 1 MiB 87.70 ms and C# 10 MiB 211.22 ms. Later warmup
+windows oscillate without a recurring sustained decline across batches;
+timing scatter remains. All three extended cells replace their earlier cells
+unconditionally, while the original three remain explicitly superseded
+diagnostics in the safe ledger. No samples are pooled across policies.
+
+Root independently recomputed all 24 accepted medians from all 360 samples,
+checked the 72 batches and native warmup histories, hashed all 486 retained
+archives, inspected their ZIP members and manifests, and rechecked every
+frozen producing source hash and HEAD. All checks passed. The accepted table
+uses 5400 native pairs including warmup and 432 independently validated
+archives; including superseded diagnostics, totals are 5985 native pairs and
+486 independently validated archives. No SDK/compiler production code, runtime
+tuning, sample exclusions or additional benchmark cells were introduced.
+
+README reporting replaces the prior table, includes the requested short
+warmup/method note, and links the schema-4 safe ledger. The worker export hash
+is 689d534bd72849e832dd380309a71d1f2817ca6abcc3d79041aa2ea3bdca8084;
+root proof is retained under ignored steady-state storage and copied into the
+ledger. PR #4 publishes the benchmark/report independently of source-layout
+PR #3. Both PRs require passing hosted checks before merge; generated
+distribution files remain deferred to their subsequent follow-up.

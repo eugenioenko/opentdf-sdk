@@ -26,38 +26,33 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 
 ## End-to-end performance
 
-Median **milliseconds** from five timed runs after one warmup. Each run encrypts
-the input, then decrypts the freshly produced archive through **real KAS** and
-materializes the complete plaintext. These are fresh measurements of the original
-Go SDK and all seven generated native SDKs. The generated packages were built with
-released Goalchemy **v0.2.0**.
-The current build pins **v0.2.1**; the subsequent
-[buffer optimization comparison](docs/all-target-buffer-benchmarks.md) records
-fresh before/after measurements for the changes it includes.
-The 1, 10 and 50 MiB inputs use one, five and 25 segments of up to 2 MiB.
-
-Original Go reuses a client initialized before the timing loop. Configuration,
-token providers and encryption options are prepared outside timing for every
-SDK. Generated APIs are stateless facades, so their internal per-operation
-initialization and decryption session-key generation remain timed. File I/O,
-OAuth acquisition, public-key discovery and correctness checks are untimed.
+Median encrypt → decrypt time through **real KAS**, in milliseconds, using
+fresh Goalchemy **v0.2.1** packages.\*
 
 | SDK | 1 MiB | 10 MiB | 50 MiB |
 | --- | ---: | ---: | ---: |
-| Original OpenTDF Go | 54.60 ms | 103.71 ms | 224.47 ms |
-| Generated Go | 86.00 ms | 119.58 ms | 221.57 ms |
-| TypeScript (Node) | 123.43 ms | 228.59 ms | 820.11 ms |
-| Java | 178.42 ms | 436.74 ms | 1615.78 ms |
-| C# | 181.29 ms | 281.72 ms | 651.87 ms |
-| Python | 165.12 ms | 245.59 ms | 1166.82 ms |
-| Rust | 80.87 ms | 126.55 ms | 668.85 ms |
-| C | 166.93 ms | 300.19 ms | 572.36 ms |
+| Original OpenTDF Go | 36.28 ms | 88.27 ms | 217.77 ms |
+| Generated Go | 72.83 ms | 83.18 ms | 266.32 ms |
+| TypeScript (Node) | 96.57 ms | 199.28 ms | 750.11 ms |
+| Java | 87.70 ms | 142.18 ms | 401.28 ms |
+| C# | 190.50 ms | 211.22 ms | 537.33 ms |
+| Python | 141.06 ms | 186.54 ms | 691.28 ms |
+| Rust | 61.66 ms | 127.14 ms | 614.88 ms |
+| C | 148.24 ms | 254.38 ms | 555.77 ms |
 
-All 144 warmup/measured archives passed independent original-Go decryption
-through KAS and ZIP CRC verification, and every end-to-end plaintext matched its
-input exactly. No earlier timing cells are reused. Browser execution is excluded.
-See [methodology and lifecycle details](docs/benchmarks.md) and
-[individual samples and runtime versions](docs/benchmark-results.json).
+\* Each cell pools 15 measurements: five per process across three fresh
+processes, with normal runtime settings. Before timing, each process runs
+40 warmup pairs at 50 MiB and 20 at the measured size; Go 1 MiB, Java 1 MiB
+and C# 10 MiB use 100 size-specific warmups after checking their initial
+histories. Every pair checks the full plaintext; all 432 retained archives
+also passed independent OpenTDF Go/KAS decryption and ZIP CRC checks.
+
+Original Go reuses a client initialized before timing; generated facades'
+internal setup and session-key generation remain timed. File I/O, OAuth,
+public-key discovery and correctness checks are untimed. Inputs use 2 MiB
+segments. Browser execution is excluded. See the
+[methodology](docs/benchmarks.md) and
+[samples and runtime versions](docs/benchmark-results.json).
 
 ## Build and run
 
