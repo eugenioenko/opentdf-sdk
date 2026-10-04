@@ -1288,3 +1288,14 @@ profile helper's read-only pin check passed against clean pinned references.
 Ignored evidence is retained under `.local/pr1-ci-repair/module-graph/`.
 The hosted profile log remains private, so final confirmation requires the
 next CI run; no EC/DPoP or other required check was bypassed.
+
+## Shared source layout follow-up — 2026-10-04
+
+The user clarified that the source organization request concerns the SDK's
+six root implementation files and `tdf/`, not the Goalchemy compiler. The
+incorrect Goalchemy layout task was stopped and its worktree deleted without
+commits or publication. A new SDK worktree, `refactor/shared-source-layout`,
+starts from `d899d00`. Four adjacent unit tests move with the implementation;
+top-level `tests/` remains at the repository root as explicitly requested.
+The worker may edit this isolated tree while the benchmark runs from its frozen
+producing checkout. No heavy checks have run yet; acceptance remains pending.

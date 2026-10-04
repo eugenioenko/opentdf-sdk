@@ -3,7 +3,7 @@ package library
 import (
 	"errors"
 	"github.com/eugenioenko/goalchemy/lib/context"
-	"opentdf-local/sdk"
+	"opentdf-local/sdk/src"
 	"testing"
 )
 

@@ -25,7 +25,7 @@ From `sdk/`:
 
 ```sh
 GOTOOLCHAIN=go1.25.14 GOCACHE=$PWD/.local/go-build-cache GOMODCACHE=$PWD/.local/go-mod-cache go test -race ./...
-GOTOOLCHAIN=go1.25.14 GOCACHE=$PWD/.local/go-build-cache GOMODCACHE=$PWD/.local/go-mod-cache .local/bin/goalchemy check -gate cooperative . ./tdf/... ./tests/sourcecheck/client
+GOTOOLCHAIN=go1.25.14 GOCACHE=$PWD/.local/go-build-cache GOMODCACHE=$PWD/.local/go-mod-cache .local/bin/goalchemy check -gate cooperative ./src ./src/tdf/... ./tests/sourcecheck/client
 GOTOOLCHAIN=go1.25.14 GOCACHE=$PWD/.local/go-build-cache GOMODCACHE=$PWD/.local/go-mod-cache .local/bin/goalchemy compile -gate cooperative -target go -out .local/ecclient-probe/go ./tests/sourcecheck/client
 ```
 

@@ -18,7 +18,7 @@ import (
 
 	capcrypto "github.com/eugenioenko/goalchemy/lib/crypto"
 	reference "github.com/opentdf/platform/sdk"
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src/tdf"
 )
 
 const platform = "http://localhost:8080"

@@ -6,6 +6,24 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Shared source layout follow-up
+
+The user authorized moving the six root implementation files, their four
+adjacent unit tests and `tdf/` into a new root `src/` directory. Keep top-level
+`tests/`, `library/`, `hosts/`, `scripts/`, `docs/` and `go.mod` in place.
+Update module-local imports, source entry points, build/test/CI paths and
+current documentation without changing behavior, dependencies or generated
+native SDK APIs. Historical benchmark evidence remains historical.
+
+Work takes place in the isolated `refactor/shared-source-layout` worktree from
+`d899d00`. The producing SDK and Goalchemy checkouts used by the active benchmark
+must remain unchanged. Read/edit review can proceed during measurement;
+compilation, generation and tests wait until the benchmark CPU gate opens.
+Root owns acceptance, progress notes, signed commits and the requested PR;
+the worker owns the mechanical source/path changes. Verify unit tests, package
+builds, generated APIs and appropriate real-KAS checks before claiming the
+layout accepted. Top-level tests are updated as needed, not moved.
+
 ## CI repair and patch release
 
 Current objective: get the existing work ready to merge. First repair Goalchemy

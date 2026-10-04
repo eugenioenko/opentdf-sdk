@@ -30,7 +30,7 @@ import (
 	"time"
 
 	capcrypto "github.com/eugenioenko/goalchemy/lib/crypto"
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src/tdf"
 )
 
 type wireKAO struct {

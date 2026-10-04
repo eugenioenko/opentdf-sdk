@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"opentdf-local/sdk/tdf"
+	"opentdf-local/sdk/src/tdf"
 )
 
 func TestPreparedDecryptRejectsBeforeCredentials(t *testing.T) {

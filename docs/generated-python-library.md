@@ -171,7 +171,7 @@ actual release. Host policy/catastrophic interpreter or native-extension crashes
 cannot promise managed cleanup. Source ordinary calls are bounded to 128 nested
 calls and cooperative frames to 512, matching the accepted CPython host limits.
 Payload limits, segmentation, metadata limits and explicit mandatory-feature
-rejection remain those of the [shared engine](../tdf/engine.go).
+rejection remain those of the [shared engine](../src/tdf/engine.go).
 
 ## Verification receipts
 

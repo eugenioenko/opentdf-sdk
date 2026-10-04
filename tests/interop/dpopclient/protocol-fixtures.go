@@ -26,8 +26,8 @@ import (
 	"time"
 
 	capcrypto "github.com/eugenioenko/goalchemy/lib/crypto"
-	shared "opentdf-local/sdk"
-	"opentdf-local/sdk/tdf"
+	shared "opentdf-local/sdk/src"
+	"opentdf-local/sdk/src/tdf"
 )
 
 var wireClient = &http.Client{Timeout: 15 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}

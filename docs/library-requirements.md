@@ -6,14 +6,14 @@ The user narrowed delivery to interoperable TDF3 SDKs on 2026-10-02. Phases 5–
 
 ## Current source and compiler evidence
 
-The SDK is stateful. [Config](../client.go) includes route arrays, native key
+The SDK is stateful. [Config](../src/client.go) includes route arrays, native key
 pointers and a token-provider function. `New` returns a `*Client` and can call
 possibly suspending crypto even though it performs no network requests.
 `Create`, `Decrypt` and `PublicKey` take contexts and may suspend; `Close` is
 idempotent, cancels in-flight requests and preserves caller-owned keys.
-[AccessToken](../auth.go) includes scheme, expiry and binding attestation.
-[EncryptConfig and Decrypted](../tdf/engine.go) contain bytes, strings, arrays,
-key handles and structured manifest data. [Error](../errors.go) preserves
+[AccessToken](../src/auth.go) includes scheme, expiry and binding attestation.
+[EncryptConfig and Decrypted](../src/tdf/engine.go) contain bytes, strings, arrays,
+key handles and structured manifest data. [Error](../src/errors.go) preserves
 stable categories, operation, service fields, obligations and a cause.
 
 The [driver](../../goalchemy/internal/driver/emit.go) supports value-library emission

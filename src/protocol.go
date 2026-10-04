@@ -4,8 +4,8 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/clock"
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/lib/encoding"
-	"opentdf-local/sdk/tdf"
-	j "opentdf-local/sdk/tdf/json"
+	"opentdf-local/sdk/src/tdf"
+	j "opentdf-local/sdk/src/tdf/json"
 )
 
 func jsonLimits() j.Limits {
