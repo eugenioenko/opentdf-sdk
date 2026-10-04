@@ -68,6 +68,10 @@ Native adapters, dependency locks and delivery tooling live in `src/hosts/`.
 Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
+Current builds use Goalchemy **v0.4.0**, which emits readable source-derived
+identifiers by default. The benchmark measurements above remain historical
+v0.2.1 results.
+
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts at the revisions
 in [references.lock.json](references.lock.json). Build the pinned Goalchemy binary
 and run the corresponding `scripts/build-generated-<target>.sh` helper; both

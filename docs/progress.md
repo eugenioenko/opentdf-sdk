@@ -1492,3 +1492,21 @@ the combined publication branch before PR #4 is merged.
 The reconciled branch passed all ten benchmark-policy tests, including the
 three Node contract checks, and the staged whitespace check. No measurements
 were repeated during reconciliation.
+
+## Current build compiler update — 2026-10-04
+
+The user deferred committing generated distributions and requested a separate
+main-based PR upgrading the existing build to released Goalchemy v0.4.0 at
+`6b623760dd8819f8ad7e48ebe01041e5bff7f06f`. Root and seven nested test-module
+requirements, the reference lock and both existing CI compiler checkout pins
+now agree. Default generated identifiers retain source-derived names. The
+distribution PR #9 remains open for reference; generated packages stay ignored.
+Shared implementation, build helpers, native adapters, platform/Web pins and
+historical v0.2.1 benchmark results are unchanged.
+
+With CI's Go 1.25.14 toolchain, readonly shared-source unit tests, builds of all
+seven affected test modules and the original-Go reference runner, and the
+profile runner's readonly `pins` check passed. All 25 CI-harness tests and the
+whitespace check passed. Local evidence remains ignored under
+`.local/goalchemy-v040-checks/`. The existing hosted seven-language workflow
+will validate the separate PR's final head before acceptance.
