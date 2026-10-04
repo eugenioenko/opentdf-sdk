@@ -1540,3 +1540,12 @@ CI continues to build and exercise ephemeral packages. The C# usage command now
 uses supported `-p:RestoreLockedMode=true`, and regeneration drops four redundant
 C notice copies while preserving identical notices under `dist/c/licenses/`.
 PR #9 remains the review destination; merging it is not requested.
+
+The first hosted run of the refresh passed all seven native package/consumer
+builds and basic real-KAS checks, including the TypeScript browser check, then
+failed while selecting the EC profile. Seven nested test modules still required
+Goalchemy v0.3.0 while their SDK dependency required v0.4.0; the profile runner
+stopped with `go: updates to go.mod needed` before EC tests began. All seven test
+module pins now agree with v0.4.0. Their readonly builds and the profile runner's
+readonly `pins` command passed with CI's Go 1.25.14 toolchain. Full hosted CI is
+being rerun on the fix.
