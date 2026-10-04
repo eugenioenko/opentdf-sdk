@@ -6,6 +6,14 @@ The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK 
 
 The active objective is: **Ship interoperable TDF3 encryption/decryption SDKs across all seven targets, verified against OpenTDF and real KAS.** The user narrowed the goal on 2026-10-02. Phases 0–7 and the [delivery checklist](delivery-checklist.md) define completion. The pinned reference inventory remains useful for compatibility and explicit rejection of unsupported input; broader service APIs, streaming, advanced schemes and full Go SDK parity are outside this goal.
 
+## Build compiler refresh
+
+Update main's build and nested test-module pins to released Goalchemy v0.4.0
+at revision `6b623760dd8819f8ad7e48ebe01041e5bff7f06f`. Existing native build
+helpers use its default readable identifiers. Keep distribution PR #9 open
+for reference; generated packages remain ignored. Preserve the historical
+v0.2.1 benchmark table and validate the compiler bump with existing CI.
+
 ## Steady-state benchmark refresh
 
 Current objective: rerun original OpenTDF Go and all seven generated native SDKs
