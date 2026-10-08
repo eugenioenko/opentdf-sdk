@@ -93,8 +93,7 @@ def main():
     for name, pin in refs.items():
         path = SDK/pin['path']
         actual = subprocess.check_output(['git','-C',str(path),'rev-parse','HEAD'],text=True).strip()
-        expected = pin.get('swift_revision', pin['revision']) if name == 'goalchemy' and args.target in ('swift','all') else pin['revision']
-        assert actual == expected, name+' pin mismatch'
+        assert actual == pin['revision'], name+' pin mismatch'
         assert not subprocess.check_output(['git','-C',str(path),'status','--porcelain','--untracked-files=no']), name+' tracked source dirty'
     artifacts = {}
     toolchains = SDK.parent/'goalchemy/.toolchains'

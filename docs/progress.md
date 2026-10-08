@@ -1541,3 +1541,27 @@ libcurl and zlib; the Swift 6.4.0 toolchain archive is SHA-256 pinned. Apple SDK
 integration, Swift benchmarks, hosted SDK CI and registry publication remain
 outside this local acceptance. Ignored build/evidence roots:
 `.local/swift/final/` and `.local/swift/environment/sdk/.local/`.
+
+## Shared compiler pin and Swift performance follow-up, 2026-10-07
+
+All eight targets now pin merged Goalchemy source
+`26016d5b57ea23a82f65e2529d564bba6eee3ed5` (signed v0.5.1 release), including
+native bulk byte operations and in-place overlapping byte moves. This replaces
+the separate Swift-only compiler snapshot. All 11 Goalchemy matrix jobs and
+the aggregate check passed before publication; SDK hosted CI will validate the
+new shared pin.
+
+The README adds bounded Linux Swift real-KAS medians: 754.02 ms at 1 MiB,
+706.78 ms at 10 MiB and 1401.92 ms at 50 MiB. The first two cells used compiler
+`5de8b6b` with one warmup and two measured pairs; the last used `4d94248f` with
+one warmup and three measured pairs. All pairs checked full plaintext, retained
+archives passed ZIP CRC and independent stock-Go/KAS decryption, and Swift
+also decrypted stock-Go archives. Existing seven-target historical benchmark
+rows were retained and labeled with their actual v0.2.1 compiler and warmup
+policy. These diagnostic samples are not a repeat of that full campaign.
+
+Swift-only benchmark preparation now builds an independent SwiftPM importer
+and stock-Go validator, supports isolated service endpoints, and records
+source/package/binary hashes for reuse checks. Final checks at the new source
+pin passed 31 CI-tooling regressions and 140 named offline format/protocol
+checks. No generated distributions, local secrets or execution JSON are added.

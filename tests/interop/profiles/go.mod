@@ -3,7 +3,7 @@ module opentdf-local/profiles-interop
 go 1.25.0
 
 require (
-	github.com/eugenioenko/goalchemy v0.4.0
+	github.com/eugenioenko/goalchemy v0.5.1
 	github.com/lestrrat-go/jwx/v2 v2.1.7
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/sdk v0.0.0

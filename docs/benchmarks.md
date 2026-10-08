@@ -1,6 +1,6 @@
 # Native SDK end-to-end benchmark
 
-The README table reports fresh **1 MiB, 10 MiB and 50 MiB** measurements
+The historical README rows report **1 MiB, 10 MiB and 50 MiB** measurements
 from the 2026-10-04 steady-state campaign. Each cell is the median elapsed
 **milliseconds** across 15 complete encrypt/decrypt pairs: five samples in each
 of three fresh processes. Every process first performs 40 full pairs at 50 MiB
@@ -13,10 +13,49 @@ and the original Web SDK in Node are the two reference implementations.
 Earlier timing cells and diagnostic profiles are excluded. SDK implementation
 and compiler/runtime source remained unchanged during measurement. PR #3 subsequently reorganized shared source under `src/`;
 that layout change does not alter the recorded implementation behavior.
+The later Swift row uses the separate diagnostic methodology below.
+
+## Swift performance follow-up
+
+The Swift README row is a bounded Linux x86_64 diagnostic measured with
+Swift 6.4.0, Swift 5 language mode and `swift build -c release`. The generated
+runtime uses native OpenSSL crypto, libcurl HTTP and zlib CRC32. The 1 MiB and
+10 MiB cells use compiler commit `5de8b6ba360a506f4d79b34049ebcff2f71c4e85`,
+one size-specific warmup and two measured pairs each. The 50 MiB cell uses
+the follow-up commit `4d94248f3609511d15c9b3cfdbf35b4cf829471c`, one warmup and
+three measured pairs: 1401.919602, 1427.006942 and 1333.454066 milliseconds.
+Its median is 1401.919602 milliseconds and observed peak RSS is 372.29 MiB.
+Each size ran in one process, with no bulk warmup. These small samples do not
+repeat the historical three-process, 15-sample steady-state campaign and do
+not establish a universal language ranking or long-tail latency.
+
+The shared SDK source, public Swift facade and benchmark harness were frozen
+across the byte-copy compiler changes. A contiguous monotonic timer covers
+`encrypt(config, payload, options, provider: provider).wait()` followed by
+`decrypt(config, archive, provider: provider).wait()`. Public Foundation `Data`
+conversions and fully owned results, internal key setup, real KAS and integrity
+checks remain inside this interval. Input loading, configuration, OAuth and
+public-key discovery, exact plaintext comparison and archive I/O are outside.
+The profile uses RSA-2048 wrapping/session keys, ES256 signing, GMAC and 2 MiB
+segments. Every warmup and measured pair checks all plaintext; every retained
+archive passed independent stock-Go decryption through real KAS and ZIP CRC
+checks. Swift also decrypted independent stock-Go archives at all three sizes.
+The 50 MiB follow-up checked four Swift archives and the reverse
+stock-Go-to-Swift direction. Detailed receipts remain in ignored local storage.
+
+`scripts/benchmark-sdk.py --targets swift --swift-package PATH` prepares an
+independent SwiftPM importing benchmark and stock-Go validator. It records
+package, harness and binary hashes; `--skip-build` rejects package/binary drift.
+For a bounded diagnostic, select `--batches 1 --warmups 1 --bulk-warmups 0`
+and an explicit sample count. The runner's default 40 bulk warmups, 20 actual
+warmups and three batches belong to the historical full-campaign policy;
+they were not used for these Swift measurements.
 
 ## Reproduce
 
-Use adjacent checkouts at [references.lock.json](../references.lock.json), the
+The historical rows require Goalchemy commit
+`de26e4aa18f38f75bdf7a43c7b19b33cfaec9673` rather than the current compiler pin.
+Use the other adjacent checkouts at [references.lock.json](../references.lock.json), the
 [documented native prerequisites](final-delivery.md), and the BASIC platform
 profile with real KAS at `http://localhost:8080/kas` and local IdP at port 8888.
 The runner does not start or reconfigure services. Set the local Keycloak
@@ -26,14 +65,17 @@ installed consumers before timing, using a new package directory:
 
 ```sh
 mkdir -p .local/steady-state-reproduction/compiler
-(cd ../goalchemy && GOTOOLCHAIN=go1.25.14 go build -trimpath \
+(cd ../goalchemy && git checkout de26e4aa18f38f75bdf7a43c7b19b33cfaec9673 && \
+  GOTOOLCHAIN=go1.25.14 go build -trimpath \
   -o ../sdk/.local/steady-state-reproduction/compiler/goalchemy ./cmd/goalchemy)
-python3 scripts/delivery-packages.py all \
-  --base .local/steady-state-reproduction/delivery \
-  --compiler .local/steady-state-reproduction/compiler/goalchemy \
-  --compiler-revision de26e4aa18f38f75bdf7a43c7b19b33cfaec9673
-python3 scripts/delivery-consumers.py all \
-  --base .local/steady-state-reproduction/delivery
+for target in go typescript java csharp python rust c; do
+  python3 scripts/delivery-packages.py "$target" \
+    --base .local/steady-state-reproduction/delivery \
+    --compiler .local/steady-state-reproduction/compiler/goalchemy \
+    --compiler-revision de26e4aa18f38f75bdf7a43c7b19b33cfaec9673
+  python3 scripts/delivery-consumers.py "$target" \
+    --base .local/steady-state-reproduction/delivery
+done
 python3 scripts/benchmark-sdk.py \
   --packages .local/steady-state-reproduction/delivery \
   --output .local/steady-state-reproduction/campaign \

@@ -112,6 +112,25 @@ class BenchmarkPolicyTests(unittest.TestCase):
             self.assertIn('requires --web-package and --reference-environment', result.stderr)
             self.assertFalse((Path(directory) / 'environment.json').exists())
 
+    def test_swift_cli_requires_an_explicit_package(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run([sys.executable, str(ROOT / 'scripts/benchmark-sdk.py'),
+                                     '--output', directory, '--targets', 'swift'],
+                                    capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('Swift-only preparation requires --swift-package', result.stderr)
+            self.assertFalse((Path(directory) / 'environment.json').exists())
+
+    def test_swift_table_pools_all_fresh_process_samples(self):
+        rows = [batch(i, [10 + i, 20 + i, 30 + i, 40 + i, 50 + i]) for i in range(3)]
+        for row in rows:
+            row['target'] = 'swift'
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            (base / 'raw.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            BENCH.tables(base)
+            self.assertIn('| Swift | 31.00 ms |', (base / 'tables.md').read_text())
+
     def test_invalid_cli_policy_rejected_before_building_or_contacting_services(self):
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run([sys.executable, str(ROOT / 'scripts/benchmark-sdk.py'), '--output', directory, '--samples', '0'], capture_output=True, text=True, timeout=10)

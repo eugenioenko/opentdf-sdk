@@ -1,8 +1,8 @@
 # Seven-target TDF3 delivery
 
 The original seven-target acceptance below is historical. Swift is an additional
-experimental target with a separate compiler pin, SwiftPM package and live-KAS
-delivery job. See [Swift build/API/verification](generated-swift-library.md).
+experimental target with a SwiftPM package and live-KAS delivery job.
+All eight targets share the released Goalchemy v0.5.1 compiler pin. See [Swift build/API/verification](generated-swift-library.md).
 
 The shared [Go façade](../src/library/library.go) is delivered as seven importable
 native libraries. Each executes its bundled lowered implementation and native

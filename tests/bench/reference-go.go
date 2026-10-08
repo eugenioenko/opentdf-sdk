@@ -42,7 +42,7 @@ func main() {
 		panic("invalid warmup count")
 	}
 	var raw struct {
-		Config  struct{ KASPublicKeyPEM, KID string }
+		Config  struct{ KASPublicKeyPEM, KID, PlatformURL, KASURL, TokenURL string }
 		Token   string
 		Expires int64
 	}
@@ -57,19 +57,29 @@ func main() {
 		bulkInput = read(filepath.Join(run, "50.input"))
 	}
 	accessToken := &oauth2.Token{AccessToken: raw.Token, TokenType: "Bearer", Expiry: time.Unix(raw.Expires, 0)}
+	platformURL, kasURL, tokenURL := raw.Config.PlatformURL, raw.Config.KASURL, raw.Config.TokenURL
+	if platformURL == "" {
+		platformURL = "http://localhost:8080"
+	}
+	if kasURL == "" {
+		kasURL = platformURL + "/kas"
+	}
+	if tokenURL == "" {
+		tokenURL = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"
+	}
 	// RSA2048 response-session and ES256 signer creation happen once, before warmup.
-	client, err := r.New("http://localhost:8080",
+	client, err := r.New(platformURL,
 		r.WithOAuthAccessTokenSource(oauth2.StaticTokenSource(accessToken)),
 		r.WithPlatformConfiguration(r.PlatformConfiguration{}),
-		r.WithTokenEndpoint("http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token"),
+		r.WithTokenEndpoint(tokenURL),
 		r.WithInsecurePlaintextConn(), r.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil))))
 	must(err)
 	defer func() { must(client.Close()) }()
 	encryptOptions := []r.TDFOption{r.WithAutoconfigure(false),
-		r.WithKasInformation(r.KASInfo{URL: "http://localhost:8080/kas", Algorithm: "rsa:2048", PublicKey: raw.Config.KASPublicKeyPEM, KID: raw.Config.KID}),
+		r.WithKasInformation(r.KASInfo{URL: kasURL, Algorithm: "rsa:2048", PublicKey: raw.Config.KASPublicKeyPEM, KID: raw.Config.KID}),
 		r.WithWrappingKeyAlg(ocrypto.RSA2048Key), r.WithSegmentSize(2 << 20), r.WithDataAttributes("https://example.com/attr/attr1/value/value1")}
 	// LoadTDF reuses New's default RSA2048 session. Do not generate a replacement.
-	readerOptions := []r.TDFReaderOption{r.WithKasAllowlist([]string{"http://localhost:8080/kas"})}
+	readerOptions := []r.TDFReaderOption{r.WithKasAllowlist([]string{kasURL})}
 	samples, warmupHistory, bulkHistory := []float64{}, []float64{}, []float64{}
 	for i := -bulkWarmups - warmups; i < n; i++ {
 		pairInput := input

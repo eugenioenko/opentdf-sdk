@@ -6,10 +6,10 @@ experimental, like the rest of this POC, and its API may change.
 
 ## Build
 
-Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. Swift requires
-the `swift_revision` in [references.lock.json](../references.lock.json). The
-existing seven targets retain their released v0.4.0 pin. The Swift commit passed
-Goalchemy CI and has not yet been published as a new compiler release.
+Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. A shared
+[Goalchemy **v0.5.1**](https://github.com/eugenioenko/goalchemy/releases/tag/v0.5.1)
+is pinned for all eight targets in
+[references.lock.json](../references.lock.json).
 
 Ubuntu 22.04 prerequisites:
 
@@ -22,7 +22,7 @@ From the workspace containing the adjacent repositories:
 
 ```sh
 cd goalchemy
-git checkout e4ce9461f70306cfcf9b04e51fc522df10f179e5
+git checkout v0.5.1
 bash scripts/fetch-toolchains.sh swift
 export PATH="$PWD/.toolchains/swift-6.4.0/usr/bin:$PATH"
 GOTOOLCHAIN=go1.25.14 go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy
@@ -123,7 +123,7 @@ a short code/operation summary; server diagnostics remain separate fields.
 
 Delivery tooling accepts `swift` for pinned bootstrap, repeatable package builds,
 independent importing consumers and exact coverage checks. CI adds a Swift job
-using the separate compiler pin. Focused execution includes **BASIC, EC and
+using the shared compiler pin. Focused execution includes **BASIC, EC and
 nonce-enforced DPoP**, with both wrapping/session algorithms and both signing
 algorithms in secure profiles. Manual full execution includes all seven input
 cases, typed rejection tests, host token providers, negative transport fixtures
@@ -138,9 +138,12 @@ TDF_COMPOSE_PROJECT=phase7-swift-full \
 
 Use fresh ignored outputs for each run. KAS/Keycloak and the pinned Go/Web SDKs
 are required; a self-round-trip is insufficient. Generated output, secrets and
-execution receipts remain ignored. Swift performance has not been benchmarked.
+execution receipts remain ignored. The README now includes bounded Linux Swift
+performance measurements; see [benchmark methodology](benchmarks.md#swift-performance-follow-up)
+for sample counts, compiler commits and comparison limits.
 
-Local acceptance used the exact compiler pin above and fresh isolated services
+The initial full local acceptance used CI-green compiler commit
+`e4ce9461f70306cfcf9b04e51fc522df10f179e5` and fresh isolated services
 on ports 18080/18888/15432. Default loopback ports were substituted only in the
 ignored local test environment. The independently built Swift consumer passed
 35 BASIC, 280 EC and 226 enforced-DPoP comparisons (including self checks).
