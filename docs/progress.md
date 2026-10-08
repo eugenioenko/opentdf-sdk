@@ -1639,3 +1639,20 @@ consumer. Local build products do not affect source-distribution inventories.
 Six targets now have local compiler and SDK build/import acceptance. C and Swift
 implementation, committed final distributions and final eight-target real-KAS
 CI remain pending. No new benchmark campaign has been run.
+
+Goalchemy commit `15f32e5` adds C's real source-package translation units and
+declaration-only internal header. Independent compilation and native symbol
+inspection prove cross-package linkage. Public archive consumers passed both
+naming modes, fresh initialization, overlap, retained values/errors, GC, native
+crypto/CRC and cancellation with resource cleanup acknowledgment. Existing
+source-error/cancellation categories are preserved. Focused host, sanitized
+byte/host, language, native conformance and shared checks passed; native checks
+used the already prepared curl sysroot. No runtime changes were needed.
+
+The SDK builder now packages all generated C sources and headers from the
+manifest. The actual archive contains every source-package unit and the internal
+header. The formatted source assembly passes inventory/idempotence checks,
+rebuilds its native archive and passes an independently linked public-facade
+consumer that executes malformed-archive rejection without network access.
+Seven targets have local compiler and SDK build/import acceptance. Swift and
+final committed distributions/hosted interoperability remain pending.

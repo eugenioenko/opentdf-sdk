@@ -26,7 +26,18 @@ rm -rf "$DEST/package"
 mkdir -p "$DEST/package/include" "$DEST/package/lib" "$DEST/package/src"
 cp "$DEST/tdf3.h" "$DEST/goalchemy.h" "$DEST/library.h" "$DEST/package/include/"
 cp "$DEST/libtdf3.a" "$DEST/package/lib/"
-cp "$DEST/main.c" "$DEST/build.sh" "$DEST/tdf3.c" "$DEST/package/src/"
+cp "$DEST/build.sh" "$DEST/tdf3.c" "$DEST/package/src/"
+python3 - "$DEST" <<'PY'
+import json,pathlib,shutil,sys
+p=pathlib.Path(sys.argv[1]);manifest=json.loads((p/'goalchemy.manifest.json').read_text())
+sources=[name for name in manifest['generated_files'] if pathlib.Path(name).suffix in ('.c','.h')]
+if not sources:
+ raise RuntimeError('generated C source inventory is empty')
+for name in sources:
+ source=p/name;destination=p/'package/src'/name
+ destination.parent.mkdir(parents=True,exist_ok=True)
+ shutil.copyfile(source,destination)
+PY
 cp -r "$DEST/rt" "$DEST/package/src/"
 cp "$DEST/tdf3.h" "$DEST/library.h" "$DEST/goalchemy.h" "$DEST/package/src/"
 cp "$SDK/src/hosts/c/dependencies.lock.json" "$DEST/package/"
