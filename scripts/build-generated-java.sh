@@ -13,7 +13,15 @@ cp "$SDK/src/hosts/java/TDF3.java.in" "$DEST/src/io/opentdf/tdf3/TDF3.java"
 cp "$SDK/src/hosts/java/dependencies.lock.json" "$DEST/dependencies.lock.json"
 "$SDK/../goalchemy/targets/java/tests/crypto-dependencies.sh" "$DEST/lib" >/dev/null
 if [[ -n ${JAVA_HOME:-} ]]; then PATH="$JAVA_HOME/bin:$PATH"; fi
-javac -nowarn -encoding UTF-8 -d "$DEST/classes" "$DEST/Generated.java" "$DEST"/rt/types/*.java "$DEST"/rt/runtime/*.java "$DEST/src/io/opentdf/tdf3/TDF3.java"
+python3 - "$DEST" <<'PY'
+import json,pathlib,subprocess,sys
+p=pathlib.Path(sys.argv[1]);manifest=json.loads((p/'goalchemy.manifest.json').read_text())
+sources=sorted({p/name for name in manifest['generated_files']+manifest['runtime_files'] if name.endswith('.java')})
+if not sources or any(not source.is_file() for source in sources):
+ raise RuntimeError('generated Java source inventory is incomplete')
+subprocess.run(['javac','-nowarn','-encoding','UTF-8','-d',str(p/'classes'),
+                *map(str,sources),str(p/'src/io/opentdf/tdf3/TDF3.java')],check=True)
+PY
 jar --create --date=2026-01-01T00:00:00Z --file "$DEST/tdf3-java.jar" -C "$DEST/classes" .
 python3 - "$DEST" "$SDK" <<'PY'
 import sys,pathlib,zipfile,hashlib,json

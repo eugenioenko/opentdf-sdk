@@ -1565,3 +1565,61 @@ and stock-Go validator, supports isolated service endpoints, and records
 source/package/binary hashes for reuse checks. Final checks at the new source
 pin passed 31 CI-tooling regressions and 140 named offline format/protocol
 checks. No generated distributions, local secrets or execution JSON are added.
+
+## Package-based source distributions preparation, 2026-10-08
+
+Work is isolated on `feat/package-distributions`, alongside Goalchemy's
+`feat/package-output` worktree. Compiler commit `27d45a3` implements Go's
+package-owned files and retains shared initialization and the public facade.
+The actual generated Go SDK built from four source-package files plus its
+central/shared files. A formatted source-only assembly also passed its native
+Go build, complete source/runtime inventory checks and formatter idempotence.
+These local proofs are stored under ignored `.local/package-output/`.
+
+Distribution tooling now prepares all eight targets, including Swift, with
+pinned formatters and source-pin metadata. Missing native modules cause assembly
+to fail; only diagnostic sidecars are intentionally omitted after formatting.
+Java and C builders are being adapted to manifest-listed sources. The shared
+compiler pin remains v0.5.1 until all target changes have been accepted. Other
+target distributions, final compiler/SDK CI and both PRs remain pending; the
+existing reference distribution PR is unchanged.
+
+Goalchemy commit `178627a` adds TypeScript's actual ESM package modules, shared
+descriptor binding, and successful-emission cleanup of obsolete managed files.
+Readable/compact importing libraries passed in Node and Chromium, including
+fresh initialization, overlapping calls, ownership and cancellation. The SDK's
+TypeScript builder passed with the frozen compiler from that commit. Its
+formatted source-only assembly passed complete source/runtime inventories,
+formatter idempotence, `npm ci`, `npm run build`, and importing the public Node
+SDK facade. This is local build/import evidence, not a new real-KAS matrix;
+final eight-target hosted interoperability is still required.
+
+Goalchemy commit `f8e66e1` adds Python's native package modules and physical
+per-file line maps while retaining central initialization. Focused importing
+consumers passed in both naming modes, including shared runtime identity,
+simultaneous caller threads, snapshots, retained results/errors, cancellation and
+callback cleanup acknowledgment. The actual SDK wheel includes all four source
+package modules. Its formatted source passed inventory and idempotence checks,
+then installed and imported successfully in an isolated environment using the
+checked dependency wheels. Java/C#/Rust/C/Swift compiler migration and final
+eight-target interoperability remain pending.
+
+Goalchemy commit `dbfc0ad` adds Java's native package holder classes and shared
+canonical support. Both naming modes passed source-oracle execution, independent
+JAR consumers and existing native regressions. The SDK builder compiled its four
+package holders into the native JAR. The formatted source assembly passed strict
+inventory checks and formatter idempotence, rebuilt the JAR, and passed an
+independently compiled public-facade consumer. This remains local build evidence;
+final real-KAS acceptance and hosted CI are pending.
+
+Goalchemy commit `a52ecee` adds C# native partial class files with source-owned
+functions, frames, globals and representations. Focused importing consumers and
+existing native checks passed in both naming modes. The actual SDK builds with
+the existing root TDF3.cs facade. Formatted source acceptance and Rust/C/Swift
+migration are in progress.
+
+The formatted C# assembly now also passes complete four-package inventories,
+formatter idempotence, a locked native SDK build, and an independently compiled
+DLL consumer of the public facade. Build products remain ignored. The isolated
+compiler worktree is now migrating Rust's real native modules; C and Swift and
+final eight-target hosted interoperability remain pending.
