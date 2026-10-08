@@ -76,6 +76,13 @@ package subprocesses require the pinned Go toolchain's standard-library root;
 bootstrap records that environment explicitly for runners without an inherited
 `GOROOT`. Failed pre-service compiler/package logs are uploaded with receipt
 hashes; authentication and service logs remain private.
+
+The C CI job also configures dated Ubuntu snapshot indexes so its locked
+OpenSSL and curl versions remain available after the rolling repositories
+supersede them. Ubuntu's signed package metadata and the existing archive/runtime
+hash checks remain in force; the tested native dependency bytes are preserved.
+The snapshot dates are recorded in [the delivery workflow](../.github/workflows/tdf3-delivery.yml).
+
 [delivery-packages.py](../scripts/delivery-packages.py) checks two-path builds;
 [delivery-consumers.py](../scripts/delivery-consumers.py) installs and builds
 independent consumers. [The job entrypoint](../scripts/delivery-job.py) runs

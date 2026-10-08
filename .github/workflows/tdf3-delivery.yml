@@ -76,10 +76,18 @@ jobs:
           key: tdf3-linux-x64-${{ matrix.target }}-go1.25.14-node24.15.0-rust1.98.0-${{ hashFiles('goalchemy/toolchains.lock', 'sdk/src/hosts/**/dependencies.lock.json', 'sdk/src/hosts/rust/Cargo.lock', 'sdk/src/hosts/delivery/package-lock.json', 'platform/**/go.sum', 'web-sdk/lib/package-lock.json', 'web-sdk/cli/package-lock.json') }}
       - name: Native build prerequisites
         run: |
+          if [ '${{ matrix.target }}' = c ]; then
+            # Preserve the tested native versions after the rolling archive
+            # supersedes them; apt still verifies Ubuntu's signed indexes.
+            printf '%s\n' \
+              'deb [check-valid-until=no signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://snapshot.ubuntu.com/ubuntu/20260924T000000Z jammy-security main' \
+              'deb [check-valid-until=no signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] https://snapshot.ubuntu.com/ubuntu/20260930T000000Z jammy-security main' \
+              | sudo tee /etc/apt/sources.list.d/tdf3-native-pins.list > /dev/null
+          fi
           sudo apt-get update
           sudo apt-get install --no-install-recommends build-essential pkg-config cmake perl python3.10-venv python3-pip
           if [ '${{ matrix.target }}' = c ]; then
-            sudo apt-get install --no-install-recommends --allow-downgrades libssl-dev=3.0.2-0ubuntu1.29 libssl3=3.0.2-0ubuntu1.29 openssl=3.0.2-0ubuntu1.29
+            sudo apt-get install --yes --no-install-recommends --allow-downgrades libssl-dev=3.0.2-0ubuntu1.29 libssl3=3.0.2-0ubuntu1.29 openssl=3.0.2-0ubuntu1.29
           fi
           if [ '${{ matrix.target }}' = swift ]; then sudo apt-get install --no-install-recommends libssl-dev zlib1g-dev libcurl4-openssl-dev libxml2 libsqlite3-0 libncurses6 libpython3.10; fi
           if [ '${{ matrix.target }}' = rust ]; then rustup toolchain install 1.98.0 --profile minimal; fi

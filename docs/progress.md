@@ -1694,3 +1694,17 @@ Existing hosted compiler CI and SDK offline/eight-target real-KAS jobs remain
 required for acceptance at the PRs' final heads. No new distribution CI workflow
 or benchmark campaign is added, and the earlier reference distribution PR #9
 remains open.
+
+Compiler PR #20's final-head hosted run `37754457536` is green at `fe94cda`:
+all 11 matrix jobs and the aggregate check passed. Actual logs prove all eight
+package importers and new package-layout regressions executed; only the four
+pre-existing core `-short` skips remain.
+
+SDK PR #13's first run reached green offline and all seven non-C native jobs,
+but C failed before delivery because the rolling Ubuntu indexes no longer
+contain its locked OpenSSL version. The workflow now adds Ubuntu's signed
+20260924/20260930 snapshot indexes for C only. Isolated signed APT resolution,
+installation simulation, all five package archive identities, and the existing
+OpenSSL runtime/curl archive hashes confirm the same tested dependency bytes.
+All 31 CI-tooling tests still pass. Final-head SDK CI remains to be accepted;
+this fix changes no compiler, SDK or dist source.
