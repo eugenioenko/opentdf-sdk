@@ -15,7 +15,7 @@ SDK = Path(__file__).resolve().parents[3]
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('target',choices=('go','typescript','java','csharp','python','rust','c'))
+    parser.add_argument('target',choices=('go','typescript','java','csharp','python','rust','c','swift'))
     parser.add_argument('profile',choices=('ec','dpop'))
     parser.add_argument('--packages-base',type=Path,required=True)
     args = parser.parse_args()

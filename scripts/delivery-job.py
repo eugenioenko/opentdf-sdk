@@ -14,7 +14,7 @@ import subprocess
 import time
 
 SDK = Path(__file__).resolve().parents[1]
-TARGETS = ('go','typescript','java','csharp','python','rust','c')
+TARGETS = ('go','typescript','java','csharp','python','rust','c','swift')
 
 
 def sha(path):
@@ -89,7 +89,7 @@ def main():
                 if diagnostic.exists():
                     try:
                         detail = json.loads(diagnostic.read_text())
-                        if detail.get('tool') in ('go','node','python','java','dotnet','rustc') and detail.get('reason') in ('command failed','version mismatch'):
+                        if detail.get('tool') in ('go','node','python','java','dotnet','rustc','swift') and detail.get('reason') in ('command failed','version mismatch'):
                             print('Bootstrap version check failed:',detail['tool'],detail['reason'],flush=True)
                     except (OSError,ValueError,AttributeError):
                         pass
@@ -127,7 +127,7 @@ def main():
         if current != profile:
             execute('select-'+profile,['bash',SDK/'scripts/platform-profile.sh',profile],300)
         for target in targets:
-            if args.mode == 'focused' and profile != 'basic' and target not in ('go','typescript'):
+            if args.mode == 'focused' and profile != 'basic' and target not in ('go','typescript','swift'):
                 continue  # Historical unchanged profile matrices are separately attributed.
             if args.mode == 'focused':
                 result_path = output_base/target/profile/'results.json'
@@ -151,6 +151,7 @@ def main():
                 elif target == 'csharp': environment['TDF_CSHARP_PACKAGE'] = str(installed/'package')
                 elif target == 'python': environment['TDF_PYTHON_CONSUMER'] = str(installed/'venv/bin/python')
                 elif target == 'rust': environment['TDF_RUST_CONSUMER'] = str(installed/'consumer/target/release/tdf3-native-consumer')
+                elif target == 'swift': environment['TDF_SWIFT_CONSUMER'] = consumer['consumer_command'][0]
                 elif target == 'c': environment['TDF_C_CONSUMER_OUT'] = str(installed)
                 execute(target+'-'+profile,['python3',directory/('run-basic.py' if profile == 'basic' else 'run-profile.py'),*([profile] if profile != 'basic' else [])],1800)
                 completed.append(SDK/'.local'/(target+'-tdf-library')/profile/'results.json')

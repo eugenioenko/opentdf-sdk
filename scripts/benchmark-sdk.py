@@ -10,7 +10,7 @@ SDK = Path(__file__).resolve().parents[1]
 SRC = SDK / 'tests/bench'
 RUNTIME_OPTIONS = ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS', 'NODE_OPTIONS', 'GOGC', 'GOMEMLIMIT', 'GOMAXPROCS', 'PYTHONMALLOC', 'PYTHONOPTIMIZE', 'MALLOC_ARENA_MAX')
 NATIVE_TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
-TARGETS = NATIVE_TARGETS + ['web']
+TARGETS = NATIVE_TARGETS + ['web', 'swift']
 SIZES = {'1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024), '50MiB': ('50', 50 * 1024 * 1024)}
 
 def sha(p):
@@ -193,17 +193,63 @@ def setup_web(base, packages, web_package, web_source, reference_environment):
     return commands, env
 
 
-def configure(base, warmups=20, bulk_warmups=40, batches=3):
+def setup_swift(base, package):
+    """Build an independent SwiftPM importer and stock Go validator only."""
+    env = normal_environment(os.environ.copy())
+    env['GOTOOLCHAIN'] = 'go1.25.14'
+    env.pop('GOROOT', None)
+    env['GOROOT'] = invoke(['go', 'env', 'GOROOT'], SDK, env).decode().strip()
+    build = base / 'build'
+    swift = build / 'swift'
+    swift.mkdir(parents=True, exist_ok=True)
+    members = {str(p.relative_to(package)): sha(p) for p in package.rglob('*')
+               if p.is_file() and not any(part in ('.build', '.swiftpm') for part in p.relative_to(package).parts)}
+    installed = swift / 'package'
+    shutil.copytree(package, installed, ignore=shutil.ignore_patterns('.build', '.swiftpm'))
+    shutil.copyfile(SRC / 'Benchmark.swift', swift / 'Benchmark.swift')
+    (swift / 'Package.swift').write_text('// swift-tools-version: 6.0\nimport PackageDescription\n'
+        'let package = Package(name: "TDF3Benchmark", dependencies: [.package(path: "package")], '
+        'targets: [.executableTarget(name: "Benchmark", dependencies: [.product(name: "OpenTDFTDF3", package: "package")], '
+        'path: ".", exclude: ["package"], sources: ["Benchmark.swift"])], swiftLanguageModes: [.v5])\n')
+    invoke(['swift', 'build', '-c', 'release'], swift, env, 900)
+    reference = build / 'reference'
+    reference.mkdir()
+    shutil.copyfile(SRC / 'reference-go.go', reference / 'main.go')
+    module = (SDK / 'tests/interop/generatedreference/go.mod').read_text().replace('../../../../platform/', str(SDK.parent / 'platform') + '/')
+    (reference / 'go.mod').write_text(module)
+    shutil.copyfile(SDK / 'tests/interop/generatedreference/go.sum', reference / 'go.sum')
+    invoke(['go', 'build', '-trimpath', '-o', reference / 'benchmark', '.'], reference, env)
+    commands = {'swift': [str(swift / '.build/release/Benchmark')], 'reference': [str(reference / 'benchmark')]}
+    snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(),
+                'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(),
+                'references_lock_sha256': sha(SDK / 'references.lock.json'),
+                'compiler_manifest': json.loads((package / 'goalchemy.manifest.json').read_text()),
+                'package_members': members, 'commands': commands,
+                'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()},
+                'controller_sha256': sha(Path(__file__)),
+                'environment': {key: env[key] for key in ('PATH', 'LD_LIBRARY_PATH', 'PKG_CONFIG_PATH', 'GOTOOLCHAIN', 'GOROOT') if key in env},
+                'built_consumers': {name: sha(Path(command[0])) for name, command in commands.items()},
+                'system': platform.uname()._asdict(),
+                'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''),
+                'swift_version': invoke(['swift', '--version'], SDK, env).decode().strip(),
+                'timing_scope': 'public Data facade encrypt then same-archive decrypt.wait; full owned Data returned before timer stops; equality, I/O, OAuth and discovery untimed'}
+    (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
+    return commands, env
+
+
+def configure(base, warmups=20, bulk_warmups=40, batches=3, platform_url='http://localhost:8080', issuer_url='http://localhost:8888/auth/realms/opentdf'):
     form = urllib.parse.urlencode({'grant_type': 'client_credentials', 'client_id': 'opentdf-sdk', 'client_secret': 'secret'}).encode()
-    with urllib.request.urlopen(urllib.request.Request('http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token', data=form), timeout=15) as response:
+    token_url = issuer_url.rstrip('/') + '/protocol/openid-connect/token'
+    platform_url = platform_url.rstrip('/')
+    with urllib.request.urlopen(urllib.request.Request(token_url, data=form), timeout=15) as response:
         token = json.load(response)
     if int(token['expires_in']) < 3600:
         raise RuntimeError('benchmark requires a pre-acquired token valid for at least one hour')
     expires = int(time.time()) + int(token['expires_in'])
-    req = urllib.request.Request('http://localhost:8080/kas.AccessService/PublicKey', data=json.dumps({'algorithm': 'rsa:2048', 'fmt': 'pkcs8', 'v': '2'}).encode(), headers={'Authorization': 'Bearer ' + token['access_token'], 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1'})
+    req = urllib.request.Request(platform_url + '/kas.AccessService/PublicKey', data=json.dumps({'algorithm': 'rsa:2048', 'fmt': 'pkcs8', 'v': '2'}).encode(), headers={'Authorization': 'Bearer ' + token['access_token'], 'Content-Type': 'application/json', 'Connect-Protocol-Version': '1'})
     with urllib.request.urlopen(req, timeout=15) as response:
         key = json.load(response)
-    cfg = {'PlatformURL': 'http://localhost:8080', 'KASURL': 'http://localhost:8080/kas', 'AllowedKAS': [{'URL': 'http://localhost:8080/kas', 'APIBaseURL': 'http://localhost:8080'}], 'AllowHTTP': True, 'KASPublicKeyPEM': key['publicKey'], 'KID': key.get('kid', ''), 'KASAlgorithm': 'rsa:2048', 'SessionAlgorithm': 'rsa:2048', 'AuthAlgorithm': 'ES256', 'TokenProviderName': 'access-token'}
+    cfg = {'PlatformURL': platform_url, 'KASURL': platform_url + '/kas', 'TokenURL': token_url, 'AllowedKAS': [{'URL': platform_url + '/kas', 'APIBaseURL': platform_url}], 'AllowHTTP': True, 'KASPublicKeyPEM': key['publicKey'], 'KID': key.get('kid', ''), 'KASAlgorithm': 'rsa:2048', 'SessionAlgorithm': 'rsa:2048', 'AuthAlgorithm': 'ES256', 'TokenProviderName': 'access-token'}
     private = base / 'private.json'
     private.write_text(json.dumps({'Config': cfg, 'Token': token['access_token'], 'Expires': expires}))
     private.chmod(384)
@@ -239,7 +285,7 @@ def normalized_results(base):
 
 def tables(base):
     latest = normalized_results(base)
-    names = {'web': 'Original OpenTDF Web (Node)', 'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
+    names = {'swift': 'Swift', 'web': 'Original OpenTDF Web (Node)', 'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
     labels = [label.replace('KiB', ' KiB').replace('MiB', ' MiB') for label in SIZES]
     parts = ['| SDK | ' + ' | '.join(labels) + ' |', '| --- | ' + ' | '.join('---:' for _ in labels) + ' |']
     for target in TARGETS:
@@ -268,6 +314,9 @@ def main():
     parser.add_argument('--web-package', type=Path, help='installed pinned @opentdf/sdk package directory for the optional Web Node row')
     parser.add_argument('--web-source', type=Path, default=SDK.parent / 'web-sdk', help='pinned stock Web repository used to build the installed package')
     parser.add_argument('--reference-environment', type=Path, help='frozen original-Go environment.json; Web-only preparation reuses its validated binary without native rebuilds')
+    parser.add_argument('--swift-package', type=Path, help='built SwiftPM OpenTDFTDF3 source package for a Swift-only campaign')
+    parser.add_argument('--platform-url', default='http://localhost:8080')
+    parser.add_argument('--issuer-url', default='http://localhost:8888/auth/realms/opentdf')
     parser.add_argument('--samples', type=int, default=5)
     parser.add_argument('--batches', type=int, default=3)
     parser.add_argument('--warmups', type=int, default=20)
@@ -299,7 +348,7 @@ def main():
         snapshot = json.loads((base / 'environment.json').read_text())
         commands = snapshot['commands']
         env = os.environ.copy()
-        env.update(json.loads((packages / 'consumers/go/receipt.json').read_text())['environment'])
+        env.update(snapshot['environment'] if args.targets == 'swift' else json.loads((packages / 'consumers/go/receipt.json').read_text())['environment'])
         env = normal_environment(env)
         env['GOTOOLCHAIN'] = 'go1.25.14'
         env.pop('GOROOT', None)
@@ -307,13 +356,25 @@ def main():
         env['TDF_TS_NODE_PACKAGE'] = str((packages / 'consumers/typescript/package/dist/node-index.js').resolve())
         if snapshot['controller_sha256'] != sha(Path(__file__)) or snapshot['sources'] != {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}:
             raise RuntimeError('benchmark source changed since the frozen native build')
+        if args.targets == 'swift':
+            if any(sha(Path(commands[name][0])) != digest for name, digest in snapshot['built_consumers'].items()):
+                raise RuntimeError('frozen Swift campaign binary changed')
+            installed = base / 'build/swift/package'
+            actual = {str(p.relative_to(installed)): sha(p) for p in installed.rglob('*')
+                      if p.is_file() and not any(part in ('.build', '.swiftpm') for part in p.relative_to(installed).parts)}
+            if actual != snapshot['package_members']:
+                raise RuntimeError('frozen Swift campaign package changed')
+    elif args.targets == 'swift':
+        if not args.swift_package:
+            parser.error('Swift-only preparation requires --swift-package')
+        commands, env = setup_swift(base, args.swift_package.resolve())
     elif args.targets == 'web':
         if not args.web_package or not args.reference_environment:
             parser.error('Web-only preparation requires --web-package and --reference-environment')
         commands, env = setup_web(base, packages, args.web_package.resolve(), args.web_source.resolve(), args.reference_environment.resolve())
     else:
-        if 'web' in args.targets.split(','):
-            parser.error('measure the optional stock Web row separately with --targets web')
+        if any(target in args.targets.split(',') for target in ('web', 'swift')):
+            parser.error('measure optional Web and Swift rows separately with --targets web or --targets swift')
         commands, env = setup(base, packages)
     if 'web' in commands:
         env['TDF_WEB_PACKAGE'] = json.loads((base / 'environment.json').read_text())['web']['package_path']
@@ -351,7 +412,7 @@ def main():
                 directory.mkdir(parents=True, exist_ok=False)
                 for input_size in set([size] + (['50'] if args.bulk_warmups else [])):
                     os.link(base / (input_size + '.input'), directory / (input_size + '.input'))
-                configure(directory, args.warmups, args.bulk_warmups, args.batches)
+                configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url)
                 command = commands[target] + [str(directory), 'e2e', size, str(args.samples), str(args.warmups), str(args.bulk_warmups)]
                 started = time.time()
                 print('START', target, label, 'batch', batch + 1, flush=True)
@@ -379,7 +440,7 @@ def main():
                                 with zipped.open(member) as stream:
                                     while stream.read(1 << 20):
                                         pass
-                        configure(directory, args.warmups, args.bulk_warmups, args.batches)
+                        configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url)
                         check = json.loads(invoke(commands['reference'] + [str(directory), 'validate', str(archive), '0', size], SDK, env, 180))
                         if check.get('correct') is not True:
                             raise ValueError('independent stock Go plaintext mismatch')

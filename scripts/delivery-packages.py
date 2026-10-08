@@ -11,7 +11,7 @@ import tarfile
 import time
 
 SDK = Path(__file__).resolve().parents[1]
-TARGETS = ('go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c')
+TARGETS = ('go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c', 'swift')
 
 
 def sha(path):
@@ -30,6 +30,8 @@ def members(root, target):
         files = [p for p in (root/'lib').iterdir() if p.suffix in ('.dll', '.json')] + [root/'dependencies.lock.json', root/'packages.lock.json', *list((root/'licenses').rglob('*'))]
     elif target == 'python':
         files = [*list((root/'dist').glob('*.whl')), root/'dependencies.lock.json']
+    elif target == 'swift':
+        files = [p for p in root.rglob('*') if p.is_file() and '.build' not in p.relative_to(root).parts and '.swiftpm' not in p.relative_to(root).parts]
     elif target == 'rust':
         files = [root/'target/package/opentdf-tdf3-0.1.0.crate']
     else:
@@ -39,8 +41,8 @@ def members(root, target):
 
 def production_sources(root, target):
     root = Path(root)
-    exclusions = {'classes', 'lib', 'obj', 'target', 'dist', 'licenses', 'package', 'build', '__pycache__', 'opentdf_tdf3.egg-info'}
-    extensions = {'.go', '.ts', '.java', '.cs', '.py', '.rs', '.c', '.h'}
+    exclusions = {'classes', 'lib', 'obj', 'target', 'dist', 'licenses', 'package', 'build', '__pycache__', 'opentdf_tdf3.egg-info', '.build', '.swiftpm'}
+    extensions = {'.go', '.ts', '.java', '.cs', '.py', '.rs', '.c', '.h', '.swift'}
     return {str(p.relative_to(root)): sha(p) for p in sorted(root.rglob('*'))
             if p.is_file() and p.suffix in extensions and not exclusions.intersection(p.relative_to(root).parts)
             and p.name != 'build.sh'}

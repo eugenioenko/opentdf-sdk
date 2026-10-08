@@ -146,7 +146,7 @@ def run(target, profile, packages_base, output_base):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('target', choices=('go','typescript','java','csharp','python','rust','c'))
+    parser.add_argument('target', choices=('go','typescript','java','csharp','python','rust','c','swift'))
     parser.add_argument('profile', choices=('basic','ec','dpop'))
     parser.add_argument('--packages-base', type=Path, required=True)
     parser.add_argument('--output-base', type=Path, required=True)

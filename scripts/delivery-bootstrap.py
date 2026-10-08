@@ -45,7 +45,7 @@ def pinned_go_root(environment):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('target', choices=('go','typescript','java','csharp','python','rust','c','all'))
+    parser.add_argument('target', choices=('go','typescript','java','csharp','python','rust','c','swift','all'))
     parser.add_argument('--base', type=Path, default=SDK/'.local/phase7')
     args = parser.parse_args()
     base = args.base.resolve()
@@ -101,7 +101,7 @@ def main():
     native_archives = {'jdk':('JDK','OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz'),
                       'dotnet':('DOTNET','dotnet-sdk-8.0.425-linux-x64.tar.gz'),
                       'bdwgc':('BDWGC','gc-8.2.8.tar.gz')}
-    targets = ('go','typescript','java','csharp','python','rust','c') if args.target == 'all' else (args.target,)
+    targets = ('go','typescript','java','csharp','python','rust','c','swift') if args.target == 'all' else (args.target,)
     for target, tool in (('java','jdk'),('csharp','dotnet'),('c','bdwgc')):
         if target in targets:
             run([SDK.parent/'goalchemy/scripts/fetch-toolchains.sh',tool])
@@ -115,6 +115,20 @@ def main():
                 required_version('dotnet',[toolchains/'dotnet/dotnet','--version'],'8.0.425','.NET8.0.425 required')
             else:
                 artifacts['bdwgc/lib/libgc.a'] = sha(toolchains/'bdwgc/lib/libgc.a')
+    if 'swift' in targets:
+        run([SDK.parent/'goalchemy/scripts/fetch-toolchains.sh','swift'])
+        archive = toolchains/'downloads'/('swift-'+toolchain_lock['SWIFT_VERSION']+'-RELEASE-ubuntu22.04.tar.gz')
+        assert sha(archive) == toolchain_lock['SWIFT_SHA256']
+        artifacts[archive.name] = sha(archive)
+        swift_bin = toolchains/('swift-'+toolchain_lock['SWIFT_VERSION'])/'usr/bin'
+        environment['PATH'] = str(swift_bin)+os.pathsep+environment['PATH']
+        actual = version('swift',['swift','--version'])
+        match = re.search(r'^Swift version (\d+\.\d+(?:\.\d+)?)(?: |$)', actual, re.M)
+        normalized = (match[1]+'.0') if match and match[1].count('.') == 1 else (match[1] if match else '')
+        if normalized != toolchain_lock['SWIFT_VERSION']:
+            record_version_failure('swift','version mismatch')
+            raise RuntimeError('Swift pin required')
+        run(['pkg-config','--exists','openssl','zlib','libcurl'])
     if 'typescript' in targets:
         tooling = base/'tooling'
         tooling.mkdir(exist_ok=True)
@@ -159,7 +173,7 @@ def main():
             assert sha(Path('/')/name) == expected, 'OpenSSL runtime differs from tested lock: '+name
             artifacts[name] = expected
         environment['TDF3_CURL_PREFIX'] = str(prefix)
-    exported = {key:value for key,value in environment.items() if key in ('GOTOOLCHAIN','GOROOT','TSC_BIN','TDF_BROWSER_TOOLING','PLAYWRIGHT_BROWSERS_PATH','TDF_PYTHON','TDF_WHEELHOUSE','TDF3_CURL_PREFIX')}
+    exported = {key:value for key,value in environment.items() if key in ('GOTOOLCHAIN','GOROOT','TSC_BIN','TDF_BROWSER_TOOLING','PLAYWRIGHT_BROWSERS_PATH','TDF_PYTHON','TDF_WHEELHOUSE','TDF3_CURL_PREFIX','PATH')}
     (base/'environment.json').write_text(json.dumps(exported,indent=2)+'\n')
     (base/'bootstrap-receipt.json').write_text(json.dumps({'status':0,'targets':targets,'references':refs,'artifacts':artifacts,'versions':versions,'toolchains_lock_sha256':sha(SDK.parent/'goalchemy/toolchains.lock'),'commands':commands,'environment':exported},indent=2)+'\n')
     print('PASS pinned bootstrap',','.join(targets))

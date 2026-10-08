@@ -2,7 +2,7 @@
 
 ## Scope
 
-Implement interoperable TDF3 encryption/decryption SDKs here. Broader OpenTDF Go SDK feature/API parity is outside the current goal; follow docs/delivery-checklist.md. Shared source is Go accepted by the adjacent `../goalchemy/` compiler. All seven targets are required: Go, TypeScript, Python, Java, C#, Rust, and C. TypeScript must support both Node and browsers.
+Implement interoperable TDF3 encryption/decryption SDKs here. Broader OpenTDF Go SDK feature/API parity is outside the current goal; follow docs/delivery-checklist.md. Shared source is Go accepted by the adjacent `../goalchemy/` compiler. All eight targets are required: Go, TypeScript, Python, Java, C#, Rust, C, and Swift. Swift uses the shared compiler pin and Linux baseline in docs/generated-swift-library.md. TypeScript must support both Node and browsers.
 
 Use `../platform/sdk/` and `../web-sdk/lib/` as pinned references, with `../platform/otdfctl/` and `../web-sdk/cli/` for operational tests. The adjacent Goalchemy clone can be modified for reusable compiler, runtime, and capability work. Follow its own applicable instructions, and those of any other repository changed.
 
