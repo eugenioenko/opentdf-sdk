@@ -1,4 +1,4 @@
-name: Seven-target TDF3 delivery
+name: TDF3 delivery
 
 on:
   pull_request:
@@ -38,7 +38,7 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        target: [go, typescript, java, csharp, python, rust, c]
+        target: [go, typescript, java, csharp, python, rust, c, swift]
     env:
       GOTOOLCHAIN: go1.25.14
       RUSTUP_TOOLCHAIN: 1.98.0
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 6b623760dd8819f8ad7e48ebe01041e5bff7f06f
+          ref: ${{ matrix.target == 'swift' && 'e4ce9461f70306cfcf9b04e51fc522df10f179e5' || '6b623760dd8819f8ad7e48ebe01041e5bff7f06f' }}
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -81,6 +81,7 @@ jobs:
           if [ '${{ matrix.target }}' = c ]; then
             sudo apt-get install --no-install-recommends --allow-downgrades libssl-dev=3.0.2-0ubuntu1.29 libssl3=3.0.2-0ubuntu1.29 openssl=3.0.2-0ubuntu1.29
           fi
+          if [ '${{ matrix.target }}' = swift ]; then sudo apt-get install --no-install-recommends libssl-dev zlib1g-dev libcurl4-openssl-dev libxml2 libsqlite3-0 libncurses6 libpython3.10; fi
           if [ '${{ matrix.target }}' = rust ]; then rustup toolchain install 1.98.0 --profile minimal; fi
           if [ '${{ matrix.target }}' = typescript ]; then npx --yes playwright@1.58.2 install-deps chromium; fi
       - name: Pinned native packages and actual real-service jobs

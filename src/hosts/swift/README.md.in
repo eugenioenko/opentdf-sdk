@@ -1,0 +1,18 @@
+# OpenTDF TDF3 for Swift
+
+Experimental SwiftPM library product/module `OpenTDFTDF3`, built from shared Go
+source with Goalchemy. Requires Swift 6.4.0, a C compiler, pkg-config, OpenSSL 3,
+zlib and libcurl development packages. Linux x86_64 is the verified baseline;
+macOS and iOS integration have not been verified.
+
+Add this directory as a SwiftPM dependency and depend on its `OpenTDFTDF3`
+product. `encrypt(config, Data(...), options).wait()` returns encrypted `Data`;
+`decrypt(config, archive).wait()` returns owned payload, metadata and manifest
+bytes. Use `.value()` with `await` for asynchronous callers. Operations are lazy,
+serialized, and accept cancellation, deadlines and typed token providers.
+
+Configuration fields retain their Go names. Text uses `GoString`; literals are
+UTF-8, and `GoString(bytes: ...)` preserves arbitrary bytes. Slice fields are
+optional arrays so nil and empty remain distinct. Failures throw `TDFError`
+with code, operation, HTTP status, server fields and cancellation category.
+No Go runtime is invoked. Goalchemy's runtime license is included in `LICENSE`.

@@ -94,6 +94,16 @@ def install(target, base):
         shutil.copyfile(source/'consumer.py', destination/'consumer.py')
         run([python, '-I', '-c', 'import opentdf_tdf3; print(opentdf_tdf3.__file__)'])
         command = [str(python), '-I', str(destination/'consumer.py')]
+    elif target == 'swift':
+        for name in packages.members(build, target):
+            path = package/name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(build/name, path)
+        shutil.copyfile(source/'Consumer.swift', destination/'Consumer.swift')
+        (destination/'Package.swift').write_text('// swift-tools-version: 6.0\nimport PackageDescription\nlet package = Package(name: "TDF3Consumer", dependencies: [.package(path: "package")], targets: [.executableTarget(name: "Consumer", dependencies: [.product(name: "OpenTDFTDF3", package: "package")], path: ".", exclude: ["package"], sources: ["Consumer.swift"])], swiftLanguageModes: [.v5])\n')
+        run(['swift','build','-c','release'])
+        command = [str(destination/'.build/release/Consumer')]
+        env['TDF_SWIFT_CONSUMER'] = command[0]
     elif target == 'rust':
         env.update(TDF_RUST_CONSUMER_OUT=str(destination), TDF_RUST_PACKAGE=str(build/'target/package/opentdf-tdf3-0.1.0.crate'))
         run([source/'install-consumer.sh'])
@@ -111,10 +121,10 @@ def install(target, base):
              '-L'+prefix+'/usr/lib/x86_64-linux-gnu', '-lcurl', '-lssl', '-lcrypto',
              SDK.parent/'goalchemy/.toolchains/bdwgc/lib/libgc.a', '-lpthread', '-ldl',
              '-o', destination/'no-preinit-consumer'])
-    exported = {'TDF_TS_PACKAGE','TDF_TS_NODE_PACKAGE','TDF_RUST_CONSUMER_OUT','TDF_RUST_PACKAGE','TDF_C_CONSUMER_OUT','TDF_C_PACKAGE','TDF3_CURL_PREFIX','LD_LIBRARY_PATH','JAVA_HOME'}
+    exported = {'TDF_TS_PACKAGE','TDF_TS_NODE_PACKAGE','TDF_RUST_CONSUMER_OUT','TDF_RUST_PACKAGE','TDF_C_CONSUMER_OUT','TDF_C_PACKAGE','TDF3_CURL_PREFIX','LD_LIBRARY_PATH','JAVA_HOME','TDF_SWIFT_CONSUMER'}
     receipt = {'target': target, 'consumer_command': command, 'environment': {k: v for k, v in env.items() if k in exported},
-               'installed_package_members': {str(p.relative_to(destination)): packages.sha(p) for p in sorted(package.rglob('*')) if p.is_file()},
-               'source_consumer_members': {str(p.relative_to(SDK)): packages.sha(p) for p in sorted(source.glob('*')) if p.is_file() and p.suffix in ('.go', '.mjs', '.java', '.cs', '.py', '.rs', '.c', '.in')},
+               'installed_package_members': {str(p.relative_to(destination)): packages.sha(p) for p in sorted(package.rglob('*')) if p.is_file() and not {'.build', '.swiftpm'}.intersection(p.relative_to(package).parts)},
+               'source_consumer_members': {str(p.relative_to(SDK)): packages.sha(p) for p in sorted(source.glob('*')) if p.is_file() and p.suffix in ('.go', '.mjs', '.java', '.cs', '.py', '.rs', '.c', '.in', '.swift')},
                'commands': logs, 'status': 0, 'independent_build_output': True}
     (destination/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
     print('PASS installed native consumer', target, flush=True)

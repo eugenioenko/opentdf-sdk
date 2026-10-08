@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Python generated library real-KAS profile expansion; root owns profile switches."""
+"""Shared Python/Swift real-KAS profile expansion; caller owns profile switches."""
 from pathlib import Path
 import json,subprocess,hashlib,sys,io,zipfile,urllib.request,urllib.parse,shutil
+import os
+native_target=os.environ.get('TDF_INTEROP_TARGET','python')
+if native_target not in ('python','swift'):raise RuntimeError('unsupported shared native importer')
 sdk=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(sdk/'tests/interop/delivery'))
 from delivery_capture import capture,assert_metadata_presence
 stage=sys.argv[1]
 assert stage in ('ec','dpop')
-base=sdk/'.local/python-tdf-library'
+base=sdk/('.local/'+native_target+'-tdf-library')
 run=base/stage;run.mkdir(parents=True,exist_ok=True)
-consumer=sdk/'tests/interop/generatedpython/consumer.sh';reference=sdk/'.local/go-tdf-library/stock-go'
+consumer=sdk/('tests/interop/generated'+native_target+'/consumer.sh');reference=sdk/'.local/go-tdf-library/stock-go'
 rows=[];limitations=[];negative=[]
 cases={'empty':b'','binary':bytes(range(256))*3+b'\x00\xff','exact':bytes([0,255,128,7])*4096,'multiple':bytes([0,255,128,7])*8193,'metadata':b'metadata bytes','empty-metadata':b'empty metadata','hs256':bytes([0,255,128,7])*8193}
 def invoke(label,args,required=True):
@@ -77,12 +80,12 @@ for wrapping in ('rsa:2048','ec:secp256r1'):
                 # Retain session-specific native payload/metadata artifacts before helper overwrites.
                 for suffix in ('out','metadata'):
                     shutil.copyfile(run/(label+'.stock-go.'+suffix),run/(label+'.stock-go-'+session[:2]+'.'+suffix))
-                rows.append({'producer':'generated-python','consumer':'stock-go','case':name,'wrapping':wrapping,'session':session,'auth':auth,'profile':stage,'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
+                rows.append({'producer':('generated-'+native_target),'consumer':'stock-go','case':name,'wrapping':wrapping,'session':session,'auth':auth,'profile':stage,'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
                 if stage=='ec':
                     out=run/(label+'.stock-web-'+session[:2]+'.out')
                     invoke('stock-web-decrypt-'+label+'-'+session[:2],['node',sdk/'.local/web-cli/bin/opentdf.mjs','decrypt',run/(label+'.generated.tdf'),'--rewrapKeyType',session,'--allowList','http://localhost:8080','--output',out,'--platformUrl','http://localhost:8080','--kasEndpoint','http://localhost:8080/kas','--oidcEndpoint','http://localhost:8888/auth/realms/opentdf','--clientId','opentdf-sdk','--clientSecret','secret','--logLevel','error'])
                     assert out.read_bytes()==data
-                    rows.append({'producer':'generated-python','consumer':'stock-web','case':name,'wrapping':wrapping,'session':session,'auth':auth,'profile':stage,'metadata_check':'stock reader limitation'})
+                    rows.append({'producer':('generated-'+native_target),'consumer':'stock-web','case':name,'wrapping':wrapping,'session':session,'auth':auth,'profile':stage,'metadata_check':'stock reader limitation'})
                 # Independent producers + generated own artifact all decrypt
                 # through the real KAS with each requested response session.
                 for producer in ('go','web','generated'):
@@ -90,7 +93,7 @@ for wrapping in ('rsa:2048','ec:secp256r1'):
                     target=label+'-'+session[:2]+'.'+producer
                     shutil.copyfile(run/source,run/(target+'.tdf'));new('decrypt',target)
                     assert (run/(target+'.out')).read_bytes()==data and (run/(target+'.metadata')).read_bytes()==metadata
-                    rows.append({'producer':('stock-'+producer+'-format-under-bearer' if stage=='dpop' and producer!='generated' else producer),'consumer':'generated-python','case':name,'wrapping':wrapping,'session':session,'auth':auth,'profile':stage,'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
+                    rows.append({'producer':('stock-'+producer+'-format-under-bearer' if stage=='dpop' and producer!='generated' else producer),'consumer':('generated-'+native_target),'case':name,'wrapping':wrapping,'session':session,'auth':auth,'profile':stage,'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
             print('PASS real generated',stage,wrapping,auth,name,'both sessions',flush=True)
         # Per profile/auth/wrapping: real denied policy and integrity rejection.
         name=prefix+'-'+auth.lower()+'-denied';(run/(name+'.input')).write_bytes(b'denied');configure(wrapping,auth=auth);new('encrypt',name)
@@ -117,7 +120,7 @@ if stage=='dpop':
         source=run/('ec-'+auth.lower()+'-binary.generated.tdf')
         label='provider-'+auth.lower();shutil.copyfile(source,run/(label+'.tdf'));new('decrypt',label)
         assert (run/(label+'.out')).read_bytes()==cases['binary']
-        rows.append({'producer':'generated-python','consumer':'generated-python-native-DPoP-provider','auth':auth,'wrapping':'ec:secp256r1','session':'ec:secp256r1','source_credentials':False})
+        rows.append({'producer':('generated-'+native_target),'consumer':('generated-'+native_target+'-native-DPoP-provider'),'auth':auth,'wrapping':'ec:secp256r1','session':'ec:secp256r1','source_credentials':False})
         shutil.copyfile(source,run/'mismatched-provider.tdf');new('negative','mismatched-provider')
         error=json.loads((run/'mismatched-provider.error.json').read_text());assert error['code']=='token_binding'
         negative.append({'case':'mismatched-native-provider-auth-key','auth':auth})

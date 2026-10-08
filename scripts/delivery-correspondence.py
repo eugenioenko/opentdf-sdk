@@ -80,7 +80,7 @@ def main():
                            'package_receipt':identity(args.packages_base/'packages'/target/'receipt.json'),
                            'consumer_receipt':identity(args.packages_base/'consumers'/target/'receipt.json'),
                            'production_source_members':final_sources,'raw_deltas':raw,'material_deltas':material}
-    for target in (*packages.TARGETS,'typescript-browser'):
+    for target in (*TREES,'typescript-browser'):
         browser = target == 'typescript-browser'
         for profile in ('basic','ec','dpop'):
             historical = workspace/'sdk/.local'/('typescript-tdf-library' if browser else target+'-tdf-library')/(('browser-'+profile) if browser else profile)/'results.json'

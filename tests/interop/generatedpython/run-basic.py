@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Real basic KAS matrix for a separately built importing Python consumer."""
+"""Shared BASIC KAS matrix for separately built Python/Swift importing consumers."""
 from pathlib import Path
 import hashlib,json,subprocess,sys,zipfile,io,copy
+import os
+native_target=os.environ.get('TDF_INTEROP_TARGET','python')
+if native_target not in ('python','swift'):raise RuntimeError('unsupported shared native importer')
 sdk=Path(__file__).resolve().parents[3]
 sys.path.insert(0,str(sdk/'tests/interop/delivery'))
 from delivery_capture import capture,assert_metadata_presence
-run=sdk/(sys.argv[1] if len(sys.argv)>1 else '.local/python-tdf-library/basic')
+run=sdk/(sys.argv[1] if len(sys.argv)>1 else ('.local/'+native_target+'-tdf-library/basic'))
 run.mkdir(parents=True,exist_ok=True)
-consumer=sdk/'tests/interop/generatedpython/consumer.sh'
+consumer=sdk/('tests/interop/generated'+native_target+'/consumer.sh')
 reference=sdk/'.local/go-tdf-library/stock-go'
 config={'PlatformURL':'http://localhost:8080','KASURL':'http://localhost:8080/kas','IssuerURL':'http://localhost:8888/auth/realms/opentdf','ClientID':'opentdf-sdk','ClientSecret':'secret','AllowHTTP':True}
 (run/'config.json').write_text(json.dumps(config));(run/'config.json').chmod(0o600)
@@ -34,7 +37,7 @@ def compare(name,producer,expected,metadata):
     new('decrypt',name+'.'+producer)
     assert (run/(name+'.'+producer+'.out')).read_bytes()==expected
     assert (run/(name+'.'+producer+'.metadata')).read_bytes()==metadata
-    rows.append({'producer':producer,'consumer':'generated-python','case':name,'bytes':len(expected),'payload_sha256':hashlib.sha256(expected).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
+    rows.append({'producer':producer,'consumer':('generated-'+native_target),'case':name,'bytes':len(expected),'payload_sha256':hashlib.sha256(expected).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
 cases={'empty':b'','binary':bytes(range(256))*3+b'\x00\xff','exact':bytes([0,255,128,7])*4096,'multiple':bytes([0,255,128,7])*8193,'hs256':bytes([0,255,128,7])*8193,'metadata':b'metadata case','empty-metadata':b'empty metadata'}
 for name,data in cases.items():
     (run/(name+'.input')).write_bytes(data)
@@ -43,10 +46,10 @@ for name,data in cases.items():
     invoke('stock-go-decrypt-'+name,[reference,run,'decrypt',name,'rsa:2048'])
     assert (run/(name+'.stock-go.out')).read_bytes()==data
     assert (run/(name+'.stock-go.metadata')).read_bytes()==metadata
-    rows.append({'producer':'generated-python','consumer':'stock-go','case':name,'bytes':len(data),'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
+    rows.append({'producer':('generated-'+native_target),'consumer':'stock-go','case':name,'bytes':len(data),'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_sha256':hashlib.sha256(metadata).hexdigest()})
     invoke('stock-web-decrypt-'+name,['node',sdk/'.local/web-cli/bin/opentdf.mjs','decrypt',run/(name+'.generated.tdf'),'--rewrapKeyType','rsa:2048','--allowList','http://localhost:8080','--output',run/(name+'.stock-web.out'),'--platformUrl','http://localhost:8080','--kasEndpoint','http://localhost:8080/kas','--oidcEndpoint','http://localhost:8888/auth/realms/opentdf','--clientId','opentdf-sdk','--clientSecret','secret','--logLevel','error'])
     assert (run/(name+'.stock-web.out')).read_bytes()==data
-    rows.append({'producer':'generated-python','consumer':'stock-web','case':name,'bytes':len(data),'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_check':'stock Web reader does not expose decrypted metadata'})
+    rows.append({'producer':('generated-'+native_target),'consumer':'stock-web','case':name,'bytes':len(data),'payload_sha256':hashlib.sha256(data).hexdigest(),'metadata_check':'stock Web reader does not expose decrypted metadata'})
     compare(name,'generated',data,metadata)
     assert (run/(name+'.generated.presence')).read_text()==('true' if name in ('metadata','empty-metadata') else 'false')
     invoke('stock-go-encrypt-'+name,[reference,run,'encrypt',name,'rsa:2048'])
@@ -103,5 +106,5 @@ manifest=json.loads(entries[manifestName]);manifest['encryptionInformation']['ke
 with zipfile.ZipFile(run/'untrusted.tdf','w',compression=zipfile.ZIP_STORED) as z:
     for n,b in entries.items():z.writestr(n,b)
 new('negative','untrusted');assert json.loads((run/'untrusted.error.json').read_text())['code']=='kas_not_allowed'
-(run/'results.json').write_text(json.dumps({'profile':'basic','scope':'actual importable generated Python library; profile/negative expansions still required','pairs':rows,'native_provider':True,'typed_negatives':['grouped-denial','integrity','archive','unauthenticated401','expired-token','provider-rejection','untrusted-route','root-tampering','unsupported-root','unsupported-assertion','policy-binding-tamper']},indent=2)+'\n')
-print('PASS basic generated Python library matrix:',len(rows),'comparisons',flush=True)
+(run/'results.json').write_text(json.dumps({'profile':'basic','scope':'actual importable generated '+native_target+' library; profile/negative expansions still required','pairs':rows,'native_provider':True,'typed_negatives':['grouped-denial','integrity','archive','unauthenticated401','expired-token','provider-rejection','untrusted-route','root-tampering','unsupported-root','unsupported-assertion','policy-binding-tamper']},indent=2)+'\n')
+print('PASS basic generated',native_target,'library matrix:',len(rows),'comparisons',flush=True)

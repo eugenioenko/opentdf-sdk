@@ -8,7 +8,7 @@ import json
 import tarfile
 
 SDK = Path(__file__).resolve().parents[1]
-TARGETS = ('go','typescript','java','csharp','python','rust','c')
+TARGETS = ('go','typescript','java','csharp','python','rust','c','swift')
 CASES = ('empty','binary','exact','multiple','hs256','metadata','empty-metadata')
 
 
@@ -109,7 +109,8 @@ def check(target, profile, mode, output):
             assert {row['case'] for row in controls} == required_controls
             assert all(row.get('zeroOutput',row.get('zero_output',False)) for row in controls)
         else:
-            validate_events(output,[json.loads(line) for line in (output/'invocations/index.jsonl').read_text().splitlines()])
+            # Events were validated above, including the explicitly attributed
+            # stock Web nonce-auth failures in the full DPoP matrix.
             denied = {(row['wrapping'],row['session'],row['auth']) for row in result['negatives'] if row['case'] == 'policy-denied'}
             assert denied == set(combinations), 'missing profile policy denial'
             supplement = output.parent/(profile+'-delivery-integrity')
@@ -182,7 +183,7 @@ def main():
                 assert installed_members, 'empty installed package inventory'
                 assert all(sha(path.parent/name) == expected for name,expected in installed_members.items()), 'installed package member drift'
         for profile in args.profiles:
-            if args.mode == 'focused' and profile != 'basic' and target not in ('go','typescript'):
+            if args.mode == 'focused' and profile != 'basic' and target not in ('go','typescript','swift'):
                 continue
             output = args.output_base/target/profile if args.mode == 'focused' else SDK/'.local'/(target+'-tdf-library')/profile
             checks.append(check(target,profile,args.mode,output))

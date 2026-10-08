@@ -1,5 +1,9 @@
 # Seven-target TDF3 delivery
 
+The original seven-target acceptance below is historical. Swift is an additional
+experimental target with a separate compiler pin, SwiftPM package and live-KAS
+delivery job. See [Swift build/API/verification](generated-swift-library.md).
+
 The shared [Go façade](../src/library/library.go) is delivered as seven importable
 native libraries. Each executes its bundled lowered implementation and native
 crypto/HTTP capabilities. Production encryption and decryption require neither

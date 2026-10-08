@@ -1510,3 +1510,34 @@ profile runner's readonly `pins` check passed. All 25 CI-harness tests and the
 whitespace check passed. Local evidence remains ignored under
 `.local/goalchemy-v040-checks/`. The existing hosted seven-language workflow
 will validate the separate PR's final head before acceptance.
+
+## Swift SDK — local acceptance, 2026-10-07
+
+Added the eighth native target: a SwiftPM `OpenTDFTDF3` package, Foundation Data
+facade, typed errors/token providers, cancellation/deadlines, independent native
+consumer, build helper, documentation and the delivery CI matrix entry. Shared
+TDF3/OAuth/DPoP/JSON Go source was unchanged. Existing seven jobs retain Goalchemy
+v0.4.0; Swift is pinned to CI-green commit
+`e4ce9461f70306cfcf9b04e51fc522df10f179e5` pending its compiler release.
+
+Acceptance used a clean compiler snapshot and independently imported package.
+Relative/absolute builds matched all 93 distributed source members. Fresh real
+KAS on isolated ports 18080/18888/15432 passed 35 BASIC, 280 EC and 226 enforced
+DPoP comparisons, including self checks. Exact coverage passed all 28/224/168
+required cross-SDK directions. Both secure profiles passed 16 integrity
+mutations; BASIC passed 11 controlled transport cases and its typed rejection
+suite. Caller Bearer/DPoP providers and mismatched auth keys, input/result
+ownership, sync/async calls, cancellation cleanup/recovery, metadata presence
+and Unicode MIME type were exercised. Four stock Web enforced-nonce auth
+failures remained observed limitations, never counted as successful pairs.
+
+The existing full-DPoP coverage gate revalidated the invocation list without
+its already-applied oracle-failure allowance. Removed that duplicate validation;
+regressions prove known Web failures are accepted and native failures still
+reject. The live matrix was retained; only the coverage gate was rerun.
+All 29 CI-tooling regressions and 140 shared offline checks passed. No generated
+outputs or execution JSON were committed. Native dependencies are OpenSSL 3,
+libcurl and zlib; the Swift 6.4.0 toolchain archive is SHA-256 pinned. Apple SDK
+integration, Swift benchmarks, hosted SDK CI and registry publication remain
+outside this local acceptance. Ignored build/evidence roots:
+`.local/swift/final/` and `.local/swift/environment/sdk/.local/`.

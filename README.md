@@ -3,16 +3,22 @@
 **Proof of concept (POC). Work in progress. The implementation may change.**
 
 One shared Go implementation provides TDF3 encryption/decryption libraries for
-**Go, TypeScript, Java, C#, Python, Rust and C**. TypeScript supports Node and
-browsers. The shared source, native adapters and all seven build helpers live
+**Go, TypeScript, Java, C#, Python, Rust, C and Swift**. TypeScript supports Node and
+browsers. Swift is experimental, with a Linux baseline. The shared source,
+native adapters and build helpers live
 in this repository; generated packages are ignored build outputs.
 
-All seven libraries have passed interoperability checks against the pinned
+The original seven libraries have passed interoperability checks against the pinned
 OpenTDF Go and Web SDKs through real KAS. The supported byte API includes
 RSA-2048/P-256 wrapping and response sessions, RS256/ES256 signing, Bearer and
 enforced DPoP, encrypted metadata, owned results and cancellation. See
 [verified delivery and build instructions](docs/final-delivery.md) and
 [profile limits](docs/compatibility.md). Full OpenTDF API parity is outside scope.
+
+Swift also passed a fresh full local real-KAS matrix: 541 comparisons across
+BASIC, EC and enforced DPoP, plus integrity and transport rejection checks.
+Its SwiftPM source package built reproducibly and was imported independently.
+macOS/iOS integration and Swift performance remain unverified.
 
 | SDK | Package | API and prerequisites |
 | --- | --- | --- |
@@ -23,6 +29,7 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 | Python | Installable wheel | [Python](docs/generated-python-library.md) |
 | Rust | Locked Cargo crate | [Rust](docs/generated-rust-library.md) |
 | C | C17 headers, static library and source archive | [C](docs/generated-c-library.md) |
+| Swift | SwiftPM source package with Foundation Data API | [Swift](docs/generated-swift-library.md) |
 
 ## End-to-end performance
 
@@ -69,7 +76,9 @@ Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
 Current builds use Goalchemy **v0.4.0**, which emits readable source-derived
-identifiers by default. The benchmark measurements above remain historical
+identifiers by default. Swift uses a separate CI-tested compiler commit in
+`references.lock.json` while its compiler release is pending. The benchmark
+measurements above remain historical
 v0.2.1 results.
 
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts at the revisions

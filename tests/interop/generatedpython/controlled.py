@@ -2,15 +2,17 @@
 """Actual importing SDK negatives; every endpoint rejects, no positive mock KAS."""
 import http.server,threading,subprocess,json,ssl,os,hashlib,time
 from pathlib import Path
+native_target=os.environ.get('TDF_INTEROP_TARGET','python')
+if native_target not in ('python','swift'):raise RuntimeError('unsupported shared native importer')
 SDK=Path(__file__).resolve().parents[3]
-BASE=Path(os.environ.get('TDF_PYTHON_CONTROLLED_OUT',str(SDK/'.local/python-tdf-library/controlled')))
+BASE=Path(os.environ.get('TDF_'+native_target.upper()+'_CONTROLLED_OUT',str(SDK/('.local/'+native_target+'-tdf-library/controlled'))))
 BASE.mkdir(parents=True,exist_ok=True)
-archive=SDK/'.local/python-tdf-library/basic/binary.generated.tdf'
+archive=SDK/('.local/'+native_target+'-tdf-library/basic/binary.generated.tdf')
 key,cert=BASE/'server.key',BASE/'server.crt'
 subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(cert),'-days','1','-subj','/CN=localhost'],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 key.chmod(0o600)
 rows=[]
-for mode in os.environ.get('TDF_PYTHON_CONTROLLED_CASES','').split(',') if os.environ.get('TDF_PYTHON_CONTROLLED_CASES') else ['http401','http403','redirect','content-type','malformed','oversize','truncated','tls','deadline','active-cancel','bom']:
+for mode in os.environ.get('TDF_'+native_target.upper()+'_CONTROLLED_CASES','').split(',') if os.environ.get('TDF_'+native_target.upper()+'_CONTROLLED_CASES') else ['http401','http403','redirect','content-type','malformed','oversize','truncated','tls','deadline','active-cancel','bom']:
  run=BASE/mode;run.mkdir(exist_ok=False);(run/'archive.tdf').write_bytes(archive.read_bytes());contacts=[];sinks=[];handshakes=[];released=threading.Event()
  class Sink(http.server.BaseHTTPRequestHandler):
   def log_message(self,*args):pass
@@ -44,7 +46,7 @@ for mode in os.environ.get('TDF_PYTHON_CONTROLLED_CASES','').split(',') if os.en
  cfg={'PlatformURL':'http://localhost:8080','KASURL':'http://localhost:8080/kas','AllowHTTP':True,'TimeoutMillis':1000 if mode=='deadline' else 10000,'AllowedKAS':[{'URL':'http://localhost:8080/kas','APIBaseURL':('\ufeff' if mode=='bom' else '')+endpoint}]}
  (run/'config.json').write_text(json.dumps(cfg));start=time.monotonic()
  try:
-  with (run/'consumer.log').open('wb') as log:result=subprocess.run([str(SDK/'tests/interop/generatedpython/consumer.sh'),str(SDK),str(run),'controlled',mode],stdout=log,stderr=subprocess.STDOUT,timeout=30)
+  with (run/'consumer.log').open('wb') as log:result=subprocess.run([str(SDK/('tests/interop/generated'+native_target+'/consumer.sh')),str(SDK),str(run),'controlled',mode],stdout=log,stderr=subprocess.STDOUT,timeout=30)
   (run/'consumer.status').write_text(str(result.returncode)+'\n')
   if result.returncode:raise RuntimeError('controlled case failed '+mode+'; see '+str(run/'consumer.log'))
   assert not sinks
@@ -53,6 +55,6 @@ for mode in os.environ.get('TDF_PYTHON_CONTROLLED_CASES','').split(',') if os.en
   if mode=='tls':assert handshakes
   if mode in ['deadline','active-cancel']:assert released.wait(3),'connection still held'
   row={'case':mode,'error':json.loads((run/(mode+'.error.json')).read_text()),'contacts':contacts,'redirectContacts':sinks,'tlsHandshakes':len(handshakes),'nativeReleaseObserved':released.is_set(),'elapsedSeconds':time.monotonic()-start,'status':0,'zeroOutput':True}
-  rows.append(row);print('PASS generated Python controlled',mode,flush=True)
+  rows.append(row);print('PASS generated',native_target,'controlled',mode,flush=True)
  finally:server.shutdown();server.server_close();serverThread.join();sink.shutdown();sink.server_close();sinkThread.join()
 (BASE/'results.json').write_text(json.dumps({'scope':'actual SDK controlled negatives, no positive mock KAS','cases':rows},indent=2)+'\n')

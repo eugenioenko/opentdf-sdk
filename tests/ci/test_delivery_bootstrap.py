@@ -152,14 +152,15 @@ class BootstrapVersionTests(unittest.TestCase):
 
     def test_all_targets_keeps_version_probe_callable_after_wheel_download(self):
         archives = {'JDK':'OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz',
-                    'DOTNET':'dotnet-sdk-8.0.425-linux-x64.tar.gz','BDWGC':'gc-8.2.8.tar.gz'}
+                    'DOTNET':'dotnet-sdk-8.0.425-linux-x64.tar.gz','BDWGC':'gc-8.2.8.tar.gz',
+                    'SWIFT':'swift-6.4.0-RELEASE-ubuntu22.04.tar.gz'}
         lock = []
         for name, filename in archives.items():
             path = self.compiler / '.toolchains/downloads' / filename
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(name.encode())
             lock.append(name + "_SHA256='" + hashlib.sha256(path.read_bytes()).hexdigest() + "'")
-        (self.compiler / 'toolchains.lock').write_text('\n'.join(lock) + '\n')
+        (self.compiler / 'toolchains.lock').write_text("SWIFT_VERSION='6.4.0'\n"+'\n'.join(lock) + '\n')
         self.tool('fetch', path=self.compiler / 'scripts/fetch-toolchains.sh')
         self.tool('java', stderr='openjdk version "21.0.12.1"\n',
                   path=self.compiler / '.toolchains/jdk-21.0.12.1+1/bin/java')
@@ -190,6 +191,8 @@ class BootstrapVersionTests(unittest.TestCase):
         python.chmod(0o755)
         self.tool('venv-python', path=self.output / 'python-build-venv/bin/python')
         self.tool('rustc', 'rustc 1.98.0 (isolated fixture)\n')
+        self.tool('swift', 'Swift version 6.4.0 (isolated fixture)\n', path=self.compiler / '.toolchains/swift-6.4.0/usr/bin/swift')
+        self.tool('pkg-config')
         c_host = self.sdk / 'src/hosts/c'
         c_host.mkdir(parents=True)
         (c_host / 'dependencies.lock.json').write_text(json.dumps({'dependencies':[
@@ -197,10 +200,34 @@ class BootstrapVersionTests(unittest.TestCase):
         result = self.run_bootstrap('all')
         self.assertEqual(result.returncode, 0, result.stderr)
         receipt = json.loads((self.output / 'bootstrap-receipt.json').read_text())
-        self.assertEqual(receipt['targets'], ['go','typescript','java','csharp','python','rust','c'])
+        self.assertEqual(receipt['targets'], ['go','typescript','java','csharp','python','rust','c','swift'])
         self.assertEqual(receipt['versions']['rustc'], 'rustc 1.98.0 (isolated fixture)')
         self.assertEqual(receipt['artifacts'][wheel], hashlib.sha256(content).hexdigest())
         self.assertTrue(any('sample==1.0' in command['command'] for command in receipt['commands']))
+
+    def swift_toolchain(self, version):
+        archive = self.compiler / '.toolchains/downloads/swift-6.4.0-RELEASE-ubuntu22.04.tar.gz'
+        archive.parent.mkdir(parents=True)
+        archive.write_bytes(b'isolated Swift toolchain')
+        (self.compiler / 'toolchains.lock').write_text("SWIFT_VERSION='6.4.0'\nSWIFT_SHA256='" + hashlib.sha256(archive.read_bytes()).hexdigest() + "'\n")
+        self.tool('fetch', path=self.compiler / 'scripts/fetch-toolchains.sh')
+        self.tool('swift', version, path=self.compiler / '.toolchains/swift-6.4.0/usr/bin/swift')
+        self.tool('pkg-config')
+
+    def test_official_swift_version_without_patch_component_is_accepted(self):
+        self.swift_toolchain('Swift version 6.4 (swift-6.4-RELEASE)\nTarget: x86_64-unknown-linux-gnu\n')
+        result = self.run_bootstrap('swift')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        receipt = json.loads((self.output / 'bootstrap-receipt.json').read_text())
+        self.assertEqual(receipt['targets'], ['swift'])
+        self.assertTrue(receipt['environment']['PATH'].startswith(str(self.compiler / '.toolchains/swift-6.4.0/usr/bin')))
+
+    def test_wrong_swift_version_rejected(self):
+        self.swift_toolchain('Swift version 6.3.9 (wrong toolchain)\n')
+        result = self.run_bootstrap('swift')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Swift pin required', result.stderr)
+        self.assertEqual(json.loads((self.output / 'bootstrap-version-failure.json').read_text())['tool'], 'swift')
 
     def test_bootstrap_job_reports_safe_version_summary_without_raw_log(self):
         source = ('#!' + sys.executable + '\nimport json,pathlib,sys\n'

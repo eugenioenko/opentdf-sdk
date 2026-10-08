@@ -5,7 +5,8 @@
       "path": "../goalchemy",
       "revision": "6b623760dd8819f8ad7e48ebe01041e5bff7f06f",
       "baseline_revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907",
-      "release": "v0.4.0"
+      "release": "v0.4.0",
+      "swift_revision": "e4ce9461f70306cfcf9b04e51fc522df10f179e5"
     },
     "platform": {
       "path": "../platform",
