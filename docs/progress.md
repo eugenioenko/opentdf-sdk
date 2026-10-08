@@ -1656,3 +1656,17 @@ rebuilds its native archive and passes an independently linked public-facade
 consumer that executes malformed-archive rejection without network access.
 Seven targets have local compiler and SDK build/import acceptance. Swift and
 final committed distributions/hosted interoperability remain pending.
+
+Goalchemy commit `7863d12` adds Swift's native package-owned files within its
+existing module and shared canonical type registrations. Focused executable and
+independent SwiftPM consumers passed in readable/compact modes, including
+initialization, shared descriptors, retained values/errors, overlapping calls
+and cancellation with actual provider cleanup acknowledgment. Existing native
+host, CRC, byte/GC, source-language and library boundary checks passed.
+
+The actual Swift SDK compiles its four source-package files and shared runtime
+through the existing OpenTDFTDF3 facade. Its local build uses the already
+prepared curl development pkg-config directory. All eight targets now have
+focused compiler and actual SDK build acceptance. Final formatted distributions,
+independent consumers of those distributions and hosted real-KAS CI remain
+pending; no new benchmark campaign has been run.
