@@ -1,5 +1,30 @@
 # OpenTDF SDK implementation plan
 
+## Package-based output and committed distributions
+
+The current goal is to use Goalchemy's package-based, multi-file output across
+all eight targets and commit formatted source distributions under root `dist/`.
+Keep native package names and public SDK APIs stable. Preserve the existing
+central initializer and fresh per-operation source lifecycle; naming redesign
+and persistent clients are outside this work.
+
+Work occurs in isolated adjacent Goalchemy/SDK worktrees. Root coordinates one
+worker at a time, reviews results and makes signed commits. First implement and
+verify the compiler layout, then pin the SDK to the reviewed compiler commit,
+adapt package builders to include every new member, generate all eight source
+distributions and run their language formatters. Generated binaries, caches,
+dependencies, credentials and local receipts remain ignored.
+
+Open separate compiler and SDK PRs and require green CI at their final heads.
+Retain existing compiler suites and SDK offline/eight-target focused real-KAS
+coverage, including the Go/Web oracles. Locally verify independent native
+consumers against the formatted committed source, without adding another CI
+workflow for distributions. Keep the earlier distribution PR #9 open as a
+reference. PR creation and CI verification are authorized; new release
+publication and merging these PRs are outside this goal.
+
+The sections below record prior delivery and follow-up plans.
+
 Build an OpenTDF SDK from one Go source implementation using Goalchemy, with usable generated libraries on all seven targets. The first release must create and decrypt TDF3 files using real platform authentication, authorization, and KAS rewrap. TypeScript must work in both Node and browsers.
 
 The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK repositories. Extend the local Goalchemy clone as needed. Use the existing Go and TypeScript SDKs as independent compatibility references and their CLIs for operational smoke tests.
