@@ -1623,3 +1623,19 @@ formatter idempotence, a locked native SDK build, and an independently compiled
 DLL consumer of the public facade. Build products remain ignored. The isolated
 compiler worktree is now migrating Rust's real native modules; C and Swift and
 final eight-target hosted interoperability remain pending.
+
+Goalchemy commit `d0499a4` adds Rust's real native modules with source-owned
+functions, frames, wrappers, global slot/reset helpers and representations.
+Canonical descriptors and the traced globals/runtime graph remain shared.
+Readable/compact source-oracle and independent Cargo consumers passed, including
+the SDK's entry rename, forced GC, overlapping fresh calls, retained values and
+errors, cancellation and provider cleanup acknowledgment. Existing host, CRC,
+byte/GC/storage, native conformance and language checks passed.
+
+The actual Rust SDK facade crate builds and packages all four source modules.
+Its formatted source assembly passes strict native/source-owner inventories,
+formatter idempotence, a locked offline native build and an independent Cargo
+consumer. Local build products do not affect source-distribution inventories.
+Six targets now have local compiler and SDK build/import acceptance. C and Swift
+implementation, committed final distributions and final eight-target real-KAS
+CI remain pending. No new benchmark campaign has been run.
