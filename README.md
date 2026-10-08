@@ -5,8 +5,8 @@
 One shared Go implementation provides TDF3 encryption/decryption libraries for
 **Go, TypeScript, Java, C#, Python, Rust, C and Swift**. TypeScript supports Node and
 browsers. Swift is experimental, with a Linux baseline. The shared source,
-native adapters and build helpers live
-in this repository; generated packages are ignored build outputs.
+native adapters and build helpers live in this repository. Formatted generated
+source packages live in root `dist/`; native build products stay ignored.
 
 The original seven libraries have passed interoperability checks against the pinned
 OpenTDF Go and Web SDKs through real KAS. The supported byte API includes
@@ -87,8 +87,10 @@ Native adapters, dependency locks and delivery tooling live in `src/hosts/`.
 Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
-The build configuration pins [Goalchemy **v0.5.1**](https://github.com/eugenioenko/goalchemy/releases/tag/v0.5.1)
-across all eight targets, with readable source-derived identifiers by default.
+The build configuration pins unreleased Goalchemy commit
+[`7863d12`](https://github.com/eugenioenko/goalchemy/commit/7863d12abd27b2e2e1d655d5ca64295842485d82)
+for package-based output across all eight targets, based on v0.5.1.
+Readable source-derived identifiers remain the default.
 The performance table identifies the actual compiler commits used for its
 measurements.
 
@@ -105,17 +107,41 @@ From this directory, run `make platform-up`, `make platform-ready` and
 
 ## Verification
 
-Each package was built reproducibly and imported by an independent native
-consumer. Final local focused real-KAS checks cover all seven targets plus
-actual Chromium, with additional EC/DPoP metadata cases and a readable browser
-nonce challenge. Existing full interoperability and rejection matrices were
-preserved and matched to final production sources. The only generated Go source
-difference is diagnostic line comments. See [evidence and limitations](docs/final-delivery.md).
+[GitHub Actions](.github/workflows/tdf3-delivery.yml) builds all eight native SDKs
+and runs focused real-KAS interoperability against the pinned OpenTDF Go and Web
+SDKs. TypeScript includes Node and actual Chromium coverage; EC, DPoP, metadata
+and rejection cases are included. The complete matrices remain available as a
+manual option.
 
-[GitHub Actions](.github/workflows/tdf3-delivery.yml) defines focused checks for
-pull requests and manual runs, with full matrices as a manual option. Remote CI
-and a repeated full matrix are not claimed as executed final-delivery results.
-Generated packages, local credentials, keys and test outputs stay out of Git.
+Package-output checks also cover independent native imports, initialization,
+shared type identity, retained results, overlapping calls and cancellation.
+See [evidence and limitations](docs/final-delivery.md) and the
+[progress log](docs/progress.md) for the scope and revisions of completed runs.
+Native build products, local credentials, keys and test outputs stay out of Git.
+
+## Generated source distributions
+
+`dist/` contains buildable source for all eight targets, grouped by the original
+Go packages with shared runtime and initialization files. Public package names
+and APIs remain the same. Each target's `README.md` explains its native build;
+using a checked-in source distribution does not require the Goalchemy compiler.
+
+Prepare the pinned native toolchains and dependencies using
+[the delivery setup](docs/final-delivery.md). To regenerate from a clean
+Goalchemy checkout at the compiler revision in `references.lock.json`, use a
+fresh ignored work directory:
+
+```sh
+python3 scripts/dist-distributions.py regenerate --base .local/dist-work/refresh-1
+```
+
+The command reuses the delivery builders, formats the source with pinned tools,
+and checks formatter idempotence. Pass `--environment` with the delivery
+bootstrap's `environment.json` when using its prepared dependency paths.
+Dependency notices and native build metadata
+are included. Binaries, caches and diagnostic maps for pre-format line positions
+are excluded. Existing CI continues to build fresh packages and check real-KAS
+interoperability; it does not verify the checked-in distributions.
 
 The [delivery checklist](docs/delivery-checklist.md) and
 [progress log](docs/progress.md) record acceptance. The

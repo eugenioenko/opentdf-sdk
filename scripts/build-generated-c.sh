@@ -10,6 +10,7 @@ if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 export GOALCHEMY_BDWGC=${GOALCHEMY_BDWGC:-"$SDK/../goalchemy/.toolchains/bdwgc"}
 CURL_PREFIX=${TDF3_CURL_PREFIX:-"$SDK/.local/root-c-development-prerequisites/prefix"}
 if [[ -d "$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig" ]]; then
+ export PKG_CONFIG_PATH="$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig"
  export PKG_CONFIG_LIBDIR="$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig"
  export PKG_CONFIG_SYSROOT_DIR="$CURL_PREFIX" PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
  export LD_LIBRARY_PATH="$CURL_PREFIX/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"

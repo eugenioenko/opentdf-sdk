@@ -1,0 +1,488 @@
+{
+  "compiler": "0.5.1",
+  "target": "python",
+  "target_version": "0.1.0",
+  "source_profile": {
+    "cgo": "0",
+    "goarch": "amd64",
+    "goos": "linux",
+    "language": "go1.25",
+    "toolchain": "go1.27.1"
+  },
+  "contracts": [
+    {
+      "id": "core.chan.close",
+      "version": "1.0.0",
+      "hash": "d882107dedcf7a0945ff33520dbc9875638a1dd539d6d3bb0970e9f602732d70"
+    },
+    {
+      "id": "core.chan.make",
+      "version": "1.0.0",
+      "hash": "d973a51672009574414745f973a06f85e58015261690632cfc985d50ea8a1199"
+    },
+    {
+      "id": "core.chan.recv",
+      "version": "1.0.0",
+      "hash": "7884aaa6391af92a3e71d218978c60e702a3625e47011548ea1ec3fad575f8fd"
+    },
+    {
+      "id": "core.chan.send",
+      "version": "1.0.0",
+      "hash": "e9fb946048a2549d274a18d49be08e7b402f17988e4746ccc005643b607540a6"
+    },
+    {
+      "id": "core.integer.add",
+      "version": "1.0.0",
+      "hash": "46fd49cc00d893bad3ca8fa22f776aef7c7ac601f56e0cf96f1b342efa72c2b7"
+    },
+    {
+      "id": "core.integer.and",
+      "version": "1.0.0",
+      "hash": "870a8edf23cde6e334d9fda4875ae0503ed2043e5784c5cd355027bc9abbc2bd"
+    },
+    {
+      "id": "core.integer.convert",
+      "version": "1.0.0",
+      "hash": "322de3314f9237051acd48350273626785b6caf9073cfbea006fb81d05fc105e"
+    },
+    {
+      "id": "core.integer.div",
+      "version": "1.0.0",
+      "hash": "4d8884d7695ca4a8fc2f049701e579067c1b43eb1d257ec36145c74600c84e37"
+    },
+    {
+      "id": "core.integer.mul",
+      "version": "1.0.0",
+      "hash": "57d1c283e262cd0251568d8425c1244085e08b6296dea73d6e48cfadd13b722d"
+    },
+    {
+      "id": "core.integer.neg",
+      "version": "1.0.0",
+      "hash": "cfe72d0d2bcf50a6fd768841d27f2a3f69c2f5e98a5aefa1cb9cf8979e7e8599"
+    },
+    {
+      "id": "core.integer.or",
+      "version": "1.0.0",
+      "hash": "74261f5666f850f3c5ce0610fb858acf3ce965fa6232733ca6f1d5d46e38f8ae"
+    },
+    {
+      "id": "core.integer.rem",
+      "version": "1.0.0",
+      "hash": "53cee1bf888e84906305f258c4ecd03e3746810fc2874a4ed15f677bcefaecc5"
+    },
+    {
+      "id": "core.integer.shl",
+      "version": "1.0.0",
+      "hash": "61080440cbde421aeacebd0f7af08cf1c464961aafc6e0b76589d3c986d417fa"
+    },
+    {
+      "id": "core.integer.shr",
+      "version": "1.0.0",
+      "hash": "44645bbf4f4d2dba7c793deb4e9ce56dacbb399c09599939de72edeb296a4bfd"
+    },
+    {
+      "id": "core.integer.sub",
+      "version": "1.0.0",
+      "hash": "ce75f3a573a40ec30752c8a5cfee17f409ee7c852ae17c76a5efeefb0b6fefc0"
+    },
+    {
+      "id": "core.map.lookup",
+      "version": "1.0.0",
+      "hash": "7aae08a172bfb49095832fe6b65352bc10c6d803d413b4741d1c2be6fa5d2fd6"
+    },
+    {
+      "id": "core.map.make",
+      "version": "1.0.0",
+      "hash": "ea5ddd590828b82dcf2b81e49fa5d4ab8dc4430432a8e3503dcfb0dfb8810c8c"
+    },
+    {
+      "id": "core.map.store",
+      "version": "1.0.0",
+      "hash": "b6804c38fc61ecf08d02e975242d533df10887e11b211a2db63070bcf1d5204f"
+    },
+    {
+      "id": "core.select",
+      "version": "1.0.0",
+      "hash": "18188898e89dfd95e170f4a31ac59533249e6351204a53928c0f53baf2088fb8"
+    },
+    {
+      "id": "core.slice.append",
+      "version": "1.0.0",
+      "hash": "4a2407e5be0b907f09e658213e096c9dc90fd154c23f08a72e51d8fc45e10a6d"
+    },
+    {
+      "id": "core.slice.copy",
+      "version": "1.0.0",
+      "hash": "9a43302d85fb534cb962cb14e9a480e094abeb765ff9f52e2f1684c7fc5bcd58"
+    },
+    {
+      "id": "core.slice.index",
+      "version": "1.0.0",
+      "hash": "a8730c5c8f21a156d58347c4cbddfc5870f88067ab8ba7dd1bf6ceaca17a0ab1"
+    },
+    {
+      "id": "core.slice.make",
+      "version": "1.0.0",
+      "hash": "6cc431aed8a1b3368c15331b253bba0b197bd68aa7898a09709fbcdb80805a11"
+    },
+    {
+      "id": "core.slice.slice",
+      "version": "1.0.0",
+      "hash": "44cbfff1b3b55baa90bcc35424cf26b2d9882da92dad64572364f2199883ae8f"
+    },
+    {
+      "id": "core.slice.store",
+      "version": "1.0.0",
+      "hash": "e1506642bcf5c87bc57b335339f1617655a14eb59e3080f4a0c39b5edc703465"
+    },
+    {
+      "id": "core.string.concat",
+      "version": "1.0.0",
+      "hash": "3d5d1c2742f4b18e57e3c9f8a98584630a3ef063895ed0ca7df9b12335c2db4a"
+    },
+    {
+      "id": "core.string.from_bytes",
+      "version": "1.0.0",
+      "hash": "1feba55797d9256ac36657434dd5d3ce3451b913212f6573a65253b1493eefe1"
+    },
+    {
+      "id": "core.string.index",
+      "version": "1.0.0",
+      "hash": "83387f18a0362f219ba52872a01348fc56da471c86b842cbcca956b7b28c4c3c"
+    },
+    {
+      "id": "core.string.slice",
+      "version": "1.0.0",
+      "hash": "ecfb9aab8e009cb10830a25805a523946e2ab3e38f701a2f9974d12a3eabb8b7"
+    },
+    {
+      "id": "core.string.to_bytes",
+      "version": "1.0.0",
+      "hash": "8621f5ec3eaefcf843334d4bb7fa075d9ed15f0fee0cc9df18d05b3189ad1bfa"
+    },
+    {
+      "id": "core.task.spawn",
+      "version": "1.0.0",
+      "hash": "b95b2428b3ab5c697525d462a523f9e704a073ab22c84388681219cb3e0bbf79"
+    },
+    {
+      "id": "lib.callback.request",
+      "version": "1.0.0",
+      "hash": "996728bace6002f48ba36ee2e95191ee75b53ea76be0aaaab5d03acb08e06858"
+    },
+    {
+      "id": "lib.checksum.crc32_ieee",
+      "version": "1.0.0",
+      "hash": "6dc4986aa541cd7964f3b08397dbea78bdc936fd3413b6e669d5e4c079526811"
+    },
+    {
+      "id": "lib.clock.unix",
+      "version": "1.0.0",
+      "hash": "839a27c33b9e7abcdd5e85ec4a078ff668025ed54379c185517c8d6394dce859"
+    },
+    {
+      "id": "lib.crypto.aes256_gcm_decrypt",
+      "version": "1.0.0",
+      "hash": "b95e99b0358dde3495f44d2de82ebe3ccf42237a66068d22ee56eb5fe7fb2578"
+    },
+    {
+      "id": "lib.crypto.aes256_gcm_encrypt",
+      "version": "1.0.0",
+      "hash": "6411ca4792c243ece19e18504b63b9f67734b186dd123ab551baa23eddc6c8d7"
+    },
+    {
+      "id": "lib.crypto.close",
+      "version": "1.0.0",
+      "hash": "5245add9673fb3bc1e28db33f95cf162a2f0a1ad3f54eecb082b1bc5fb5ecaa4"
+    },
+    {
+      "id": "lib.crypto.ecdh",
+      "version": "1.0.0",
+      "hash": "bfd2eb5b6c2601378712699923850afab0cd9b6c1477547849373d47bff83371"
+    },
+    {
+      "id": "lib.crypto.es256_sign",
+      "version": "1.0.0",
+      "hash": "d27f8bcbdea6486cf4a4b866b8d8e69f8f5f5c61e1db0963ea10567eea7493fc"
+    },
+    {
+      "id": "lib.crypto.generate_p256",
+      "version": "1.0.0",
+      "hash": "3b0651ad5c93165df8d6b3f5ffbdd71aaac9d2f63b8c57c2caa0bed9bc54985d"
+    },
+    {
+      "id": "lib.crypto.generate_rsa2048",
+      "version": "1.0.0",
+      "hash": "8eee4bbf336bef0c6e853fd63519e973774223379e0b18beff9d9135a80ea665"
+    },
+    {
+      "id": "lib.crypto.hkdf_sha256",
+      "version": "1.0.0",
+      "hash": "95fe25b2c31ec44dbfa35d64e7a8e2146097f908290fe19c773d7c87cab175cf"
+    },
+    {
+      "id": "lib.crypto.hmac_sha256",
+      "version": "1.0.0",
+      "hash": "2afe3fbd548af44d584818eb70e04339e9710892568ddf3514d2e9906a36e2d7"
+    },
+    {
+      "id": "lib.crypto.hmac_sha256_verify",
+      "version": "1.0.0",
+      "hash": "669ec9f8c5b240e60f5f4bf0dbc3914896c76f667d8699be035dd0c0a055dc95"
+    },
+    {
+      "id": "lib.crypto.import_pem",
+      "version": "1.0.0",
+      "hash": "658c60477bbc74a0798246a0525a226865e2031fe011d99ebc7d5549a7afb2ee"
+    },
+    {
+      "id": "lib.crypto.public_jwk",
+      "version": "1.0.0",
+      "hash": "ab693a3189aff2a30d80c12184d190903956da3d570b43b828f60928adcdda34"
+    },
+    {
+      "id": "lib.crypto.public_pem",
+      "version": "1.0.0",
+      "hash": "863640978b575652f11a39db3486ae62472c1bfe39173ba593056d00c3c5e479"
+    },
+    {
+      "id": "lib.crypto.random",
+      "version": "1.0.0",
+      "hash": "9a09ad48c9ec06643ac586c314f285b0042ef13c12d43d5e42eff10c529809f0"
+    },
+    {
+      "id": "lib.crypto.rs256_sign",
+      "version": "1.0.0",
+      "hash": "5a5d7b3f04ff4928aeba692e8cd516925735fec49d65450882e8413263ad5d05"
+    },
+    {
+      "id": "lib.crypto.rsa_oaep_decrypt",
+      "version": "1.0.0",
+      "hash": "91538d14c7a276cd6c871681eec8099811807da26ddf424d1e0d0b4f86c9da95"
+    },
+    {
+      "id": "lib.crypto.rsa_oaep_encrypt",
+      "version": "1.0.0",
+      "hash": "9d2d5612abf0d1fcc98ea8e45890603b42158ca38718400d0a231d5869c78b0f"
+    },
+    {
+      "id": "lib.crypto.sha256",
+      "version": "1.0.0",
+      "hash": "652fd1f25bfd6e6226b297f8e47ca4e3f89f3fb1d556538bf918868842bde549"
+    },
+    {
+      "id": "lib.encoding.base64_decode",
+      "version": "1.0.0",
+      "hash": "04039fba3ae1fb33855078d9d48524710b8bea4224d1f90cc96e3fd9e2702aa6"
+    },
+    {
+      "id": "lib.encoding.base64_encode",
+      "version": "1.0.0",
+      "hash": "373cba03a06267841cf879f30b746d488075d75f133a7a5d584b65d4f46053ea"
+    },
+    {
+      "id": "lib.encoding.base64_url_decode",
+      "version": "1.0.0",
+      "hash": "84341fe6287ad8c892a5f2b2c1f15ee0d407fa42f86d06cc35579636c150abc0"
+    },
+    {
+      "id": "lib.encoding.base64_url_encode",
+      "version": "1.0.0",
+      "hash": "1ec0db8c4a9bedd02cf241c2c41b8b7c787682eff7d536ff655a2bce1f6b434b"
+    },
+    {
+      "id": "lib.http.do",
+      "version": "1.0.0",
+      "hash": "b1197e63d45cbc100a857c0d57e897fcf2f5e733267dcb41f815fccb43a231ea"
+    },
+    {
+      "id": "std.context.background",
+      "version": "1.0.0",
+      "hash": "ea070b0ec06bd902a475fc9e09047cd020bbe0a39e65a294784e7fc899f5ad1a"
+    },
+    {
+      "id": "std.context.canceled",
+      "version": "1.0.0",
+      "hash": "0c1a19e1ab75a63a170e55240b353ce9daaeed17f95e72ccae68645d55e7b150"
+    },
+    {
+      "id": "std.context.deadline_exceeded",
+      "version": "1.0.0",
+      "hash": "1f1f4479245e4047f3da7baf331fbdb9fe975961cd85e43cc8d6d4368a216dff"
+    },
+    {
+      "id": "std.context.done",
+      "version": "1.0.0",
+      "hash": "9194a01fb06c385b31dbbb1542b66c91e200d16dc5aba5d4aa6ef613e7c96ab6"
+    },
+    {
+      "id": "std.context.err",
+      "version": "1.0.0",
+      "hash": "f6243da268a75dc009c984203cfe0415110735ca79859e17ba6b1f8098c889be"
+    },
+    {
+      "id": "std.context.with_cancel",
+      "version": "1.0.0",
+      "hash": "208de37d85af203a26b0db5f3c7b990b4df05a97babf689de54e1c8a893da6d8"
+    },
+    {
+      "id": "std.context.with_timeout",
+      "version": "1.0.0",
+      "hash": "aaa04c09e587b641552fc24486af1532ed637698fb954a41a94af845e16a2146"
+    },
+    {
+      "id": "std.errors.is",
+      "version": "1.0.0",
+      "hash": "d5a4ff7fb1ecc4d0232969d48db2118c1fa5902cd96073a12cb7a09d563e3eb8"
+    },
+    {
+      "id": "std.errors.new",
+      "version": "1.0.0",
+      "hash": "8531874a68183c89a390bcac51dd6a5d39a51eb4399f2f0113f763329618702a"
+    },
+    {
+      "id": "std.sync.mutex.lock",
+      "version": "1.0.0",
+      "hash": "6f0a76d917ebb6db12f234b4d02ce65d3c31540da84d025a27a6dcd5b26b19ca"
+    },
+    {
+      "id": "std.sync.mutex.unlock",
+      "version": "1.0.0",
+      "hash": "d432bb323379bd873c39346fa27f78ca8a93a8bc55125efd0418fa32c82e5e93"
+    }
+  ],
+  "runtime_files": [
+    "rt/runtime/chan_close.py",
+    "rt/runtime/chan_make.py",
+    "rt/runtime/chan_recv.py",
+    "rt/runtime/chan_send.py",
+    "rt/runtime/integer_add.py",
+    "rt/runtime/integer_and.py",
+    "rt/runtime/integer_convert.py",
+    "rt/runtime/integer_div.py",
+    "rt/runtime/integer_mul.py",
+    "rt/runtime/integer_neg.py",
+    "rt/runtime/integer_or.py",
+    "rt/runtime/integer_rem.py",
+    "rt/runtime/integer_shl.py",
+    "rt/runtime/integer_shr.py",
+    "rt/runtime/integer_sub.py",
+    "rt/runtime/lib_callback_request.py",
+    "rt/runtime/lib_checksum_crc32_ieee.py",
+    "rt/runtime/lib_clock_unix.py",
+    "rt/runtime/lib_crypto_aes256gcm_decrypt.py",
+    "rt/runtime/lib_crypto_aes256gcm_encrypt.py",
+    "rt/runtime/lib_crypto_close.py",
+    "rt/runtime/lib_crypto_ecdh.py",
+    "rt/runtime/lib_crypto_es256_sign.py",
+    "rt/runtime/lib_crypto_generate_p256.py",
+    "rt/runtime/lib_crypto_generate_rsa2048.py",
+    "rt/runtime/lib_crypto_hkdf_sha256.py",
+    "rt/runtime/lib_crypto_hmac_sha256.py",
+    "rt/runtime/lib_crypto_hmac_sha256_verify.py",
+    "rt/runtime/lib_crypto_import_pem.py",
+    "rt/runtime/lib_crypto_public_jwk.py",
+    "rt/runtime/lib_crypto_public_pem.py",
+    "rt/runtime/lib_crypto_random.py",
+    "rt/runtime/lib_crypto_rs256_sign.py",
+    "rt/runtime/lib_crypto_rsaoaep_decrypt.py",
+    "rt/runtime/lib_crypto_rsaoaep_encrypt.py",
+    "rt/runtime/lib_crypto_sha256.py",
+    "rt/runtime/lib_encoding_base64_decode.py",
+    "rt/runtime/lib_encoding_base64_encode.py",
+    "rt/runtime/lib_encoding_base64_url_decode.py",
+    "rt/runtime/lib_encoding_base64_url_encode.py",
+    "rt/runtime/lib_http_do.py",
+    "rt/runtime/map_lookup.py",
+    "rt/runtime/map_make.py",
+    "rt/runtime/map_store.py",
+    "rt/runtime/select.py",
+    "rt/runtime/slice_append.py",
+    "rt/runtime/slice_copy.py",
+    "rt/runtime/slice_index.py",
+    "rt/runtime/slice_make.py",
+    "rt/runtime/slice_slice.py",
+    "rt/runtime/slice_store.py",
+    "rt/runtime/std_context_background.py",
+    "rt/runtime/std_context_canceled.py",
+    "rt/runtime/std_context_deadline_exceeded.py",
+    "rt/runtime/std_context_done.py",
+    "rt/runtime/std_context_err.py",
+    "rt/runtime/std_context_with_cancel.py",
+    "rt/runtime/std_context_with_timeout.py",
+    "rt/runtime/std_errors_is.py",
+    "rt/runtime/std_errors_new.py",
+    "rt/runtime/std_sync_mutex_lock.py",
+    "rt/runtime/std_sync_mutex_unlock.py",
+    "rt/runtime/string_concat.py",
+    "rt/runtime/string_from_bytes.py",
+    "rt/runtime/string_index.py",
+    "rt/runtime/string_slice.py",
+    "rt/runtime/string_to_bytes.py",
+    "rt/runtime/task_spawn.py",
+    "rt/types/bounds.py",
+    "rt/types/float.py",
+    "rt/types/iface.py",
+    "rt/types/integer.py",
+    "rt/types/library.py",
+    "rt/types/map.py",
+    "rt/types/panic.py",
+    "rt/types/print.py",
+    "rt/types/program.py",
+    "rt/types/ref.py",
+    "rt/types/slice.py",
+    "rt/types/utf8.py"
+  ],
+  "generated_files": [
+    "README.md",
+    "__init__.py",
+    "_shared.py",
+    "main.py",
+    "pkg_json_40c8871c00fc045f.py",
+    "pkg_library_de7cd4c7ad526690.py",
+    "pkg_src_ae63b81fa18b54da.py",
+    "pkg_tdf_7dcb6b0a0cf33145.py",
+    "rt/__init__.py",
+    "rt/runtime/__init__.py",
+    "rt/types/__init__.py"
+  ],
+  "source_packages": [
+    {
+      "path": "opentdf-local/sdk/src/tdf/json",
+      "name": "json",
+      "imports": [],
+      "root": false,
+      "files": ["pkg_json_40c8871c00fc045f.py"]
+    },
+    {
+      "path": "opentdf-local/sdk/src/tdf",
+      "name": "tdf",
+      "imports": ["opentdf-local/sdk/src/tdf/json"],
+      "root": false,
+      "files": ["pkg_tdf_7dcb6b0a0cf33145.py"]
+    },
+    {
+      "path": "opentdf-local/sdk/src",
+      "name": "sdk",
+      "imports": ["opentdf-local/sdk/src/tdf", "opentdf-local/sdk/src/tdf/json"],
+      "root": false,
+      "files": ["pkg_src_ae63b81fa18b54da.py"]
+    },
+    {
+      "path": "opentdf-local/sdk/src/library",
+      "name": "library",
+      "imports": [
+        "opentdf-local/sdk/src",
+        "opentdf-local/sdk/src/tdf",
+        "opentdf-local/sdk/src/tdf/json"
+      ],
+      "root": true,
+      "files": ["pkg_library_de7cd4c7ad526690.py"]
+    }
+  ],
+  "distribution": {
+    "compiler_revision": "7863d12abd27b2e2e1d655d5ca64295842485d82",
+    "formatted": true,
+    "diagnostic_line_maps": "omitted after formatting"
+  }
+}

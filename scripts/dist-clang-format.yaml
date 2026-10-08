@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 100
+SortIncludes: Never
+StatementMacros:
+  - GX_INT_OPS
+  - GX_INT_SHIFTS

@@ -18,4 +18,4 @@ The user requested a commit after each accepted phase. Use Conventional Commit m
 
 Run checks appropriate to the changes and all required checks in each modified repository. Documentation-only work requires source/link verification and a whitespace check. Format/protocol/crypto changes require meaningful tests and real KAS interoperability before their phase is accepted.
 
-Keep generated output, development secrets and keys, local profiles, logs, dependency installations, and test output under ignored storage such as `.local/` and `out/`. Local platform operations must target this project's services and preserve unrelated Docker projects.
+The user authorized committing formatted generated source distributions under root `dist/`. Keep native build products, development secrets and keys, local profiles, logs, dependency installations, and test output under ignored storage such as `.local/` and `out/`. Local platform operations must target this project's services and preserve unrelated Docker projects.

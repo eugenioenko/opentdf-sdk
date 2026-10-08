@@ -1,0 +1,115 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>OpenTDF.TDF3</AssemblyName>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/_/opentdf</PathMap>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0162;CS0164;CS0168;CS0219;CS1718;CS8981</NoWarn>
+    <RestoreLockedMode>true</RestoreLockedMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.IO.Hashing" Version="[8.0.0]" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="shared.cs" />
+    <Compile Include="pkg_json_40c8871c00fc045f.cs" />
+    <Compile Include="pkg_tdf_7dcb6b0a0cf33145.cs" />
+    <Compile Include="pkg_src_ae63b81fa18b54da.cs" />
+    <Compile Include="pkg_library_de7cd4c7ad526690.cs" />
+    <Compile Include="Main.cs" />
+    <Compile Include="rt/runtime/ChanClose.cs" />
+    <Compile Include="rt/runtime/ChanMake.cs" />
+    <Compile Include="rt/runtime/ChanRecv.cs" />
+    <Compile Include="rt/runtime/ChanSend.cs" />
+    <Compile Include="rt/runtime/IntegerAdd.cs" />
+    <Compile Include="rt/runtime/IntegerAnd.cs" />
+    <Compile Include="rt/runtime/IntegerConvert.cs" />
+    <Compile Include="rt/runtime/IntegerDiv.cs" />
+    <Compile Include="rt/runtime/IntegerMul.cs" />
+    <Compile Include="rt/runtime/IntegerNeg.cs" />
+    <Compile Include="rt/runtime/IntegerOr.cs" />
+    <Compile Include="rt/runtime/IntegerRem.cs" />
+    <Compile Include="rt/runtime/IntegerShl.cs" />
+    <Compile Include="rt/runtime/IntegerShr.cs" />
+    <Compile Include="rt/runtime/IntegerSub.cs" />
+    <Compile Include="rt/runtime/LibCallbackRequest.cs" />
+    <Compile Include="rt/runtime/LibChecksumCRC32IEEE.cs" />
+    <Compile Include="rt/runtime/LibClockUnix.cs" />
+    <Compile Include="rt/runtime/LibCryptoAes256GcmDecrypt.cs" />
+    <Compile Include="rt/runtime/LibCryptoAes256GcmEncrypt.cs" />
+    <Compile Include="rt/runtime/LibCryptoClose.cs" />
+    <Compile Include="rt/runtime/LibCryptoEcdh.cs" />
+    <Compile Include="rt/runtime/LibCryptoEs256Sign.cs" />
+    <Compile Include="rt/runtime/LibCryptoGenerateP256.cs" />
+    <Compile Include="rt/runtime/LibCryptoGenerateRsa2048.cs" />
+    <Compile Include="rt/runtime/LibCryptoHkdfSha256.cs" />
+    <Compile Include="rt/runtime/LibCryptoHmacSha256.cs" />
+    <Compile Include="rt/runtime/LibCryptoHmacSha256Verify.cs" />
+    <Compile Include="rt/runtime/LibCryptoImportPem.cs" />
+    <Compile Include="rt/runtime/LibCryptoPublicJwk.cs" />
+    <Compile Include="rt/runtime/LibCryptoPublicPem.cs" />
+    <Compile Include="rt/runtime/LibCryptoRandom.cs" />
+    <Compile Include="rt/runtime/LibCryptoRs256Sign.cs" />
+    <Compile Include="rt/runtime/LibCryptoRsaOaepDecrypt.cs" />
+    <Compile Include="rt/runtime/LibCryptoRsaOaepEncrypt.cs" />
+    <Compile Include="rt/runtime/LibCryptoSha256.cs" />
+    <Compile Include="rt/runtime/LibEncodingBase64Decode.cs" />
+    <Compile Include="rt/runtime/LibEncodingBase64Encode.cs" />
+    <Compile Include="rt/runtime/LibEncodingBase64UrlDecode.cs" />
+    <Compile Include="rt/runtime/LibEncodingBase64UrlEncode.cs" />
+    <Compile Include="rt/runtime/LibHttpDo.cs" />
+    <Compile Include="rt/runtime/Library.cs" />
+    <Compile Include="rt/runtime/MapLookup.cs" />
+    <Compile Include="rt/runtime/MapMake.cs" />
+    <Compile Include="rt/runtime/MapStore.cs" />
+    <Compile Include="rt/runtime/Select.cs" />
+    <Compile Include="rt/runtime/SliceAppend.cs" />
+    <Compile Include="rt/runtime/SliceCopy.cs" />
+    <Compile Include="rt/runtime/SliceIndex.cs" />
+    <Compile Include="rt/runtime/SliceMake.cs" />
+    <Compile Include="rt/runtime/SliceSlice.cs" />
+    <Compile Include="rt/runtime/SliceStore.cs" />
+    <Compile Include="rt/runtime/StdContextBackground.cs" />
+    <Compile Include="rt/runtime/StdContextCanceled.cs" />
+    <Compile Include="rt/runtime/StdContextDeadlineExceeded.cs" />
+    <Compile Include="rt/runtime/StdContextDone.cs" />
+    <Compile Include="rt/runtime/StdContextErr.cs" />
+    <Compile Include="rt/runtime/StdContextWithCancel.cs" />
+    <Compile Include="rt/runtime/StdContextWithTimeout.cs" />
+    <Compile Include="rt/runtime/StdErrorsIs.cs" />
+    <Compile Include="rt/runtime/StdErrorsNew.cs" />
+    <Compile Include="rt/runtime/StdSyncMutexLock.cs" />
+    <Compile Include="rt/runtime/StdSyncMutexUnlock.cs" />
+    <Compile Include="rt/runtime/StringConcat.cs" />
+    <Compile Include="rt/runtime/StringFromBytes.cs" />
+    <Compile Include="rt/runtime/StringIndex.cs" />
+    <Compile Include="rt/runtime/StringSlice.cs" />
+    <Compile Include="rt/runtime/StringToBytes.cs" />
+    <Compile Include="rt/runtime/TaskSpawn.cs" />
+    <Compile Include="rt/types/Bounds.cs" />
+    <Compile Include="rt/types/Box.cs" />
+    <Compile Include="rt/types/Callback.cs" />
+    <Compile Include="rt/types/Crypto.cs" />
+    <Compile Include="rt/types/Floats.cs" />
+    <Compile Include="rt/types/Fn.cs" />
+    <Compile Include="rt/types/GoMap.cs" />
+    <Compile Include="rt/types/GoPanic.cs" />
+    <Compile Include="rt/types/Ints.cs" />
+    <Compile Include="rt/types/KeyList.cs" />
+    <Compile Include="rt/types/Native.cs" />
+    <Compile Include="rt/types/Out.cs" />
+    <Compile Include="rt/types/Panics.cs" />
+    <Compile Include="rt/types/Program.cs" />
+    <Compile Include="rt/types/Ref.cs" />
+    <Compile Include="rt/types/Slice.cs" />
+    <Compile Include="rt/types/TypeDesc.cs" />
+    <Compile Include="rt/types/Usings.cs" />
+    <Compile Include="rt/types/Utf8.cs" />
+    <Compile Include="*.cs" Exclude="shared.cs;pkg_json_40c8871c00fc045f.cs;pkg_tdf_7dcb6b0a0cf33145.cs;pkg_src_ae63b81fa18b54da.cs;pkg_library_de7cd4c7ad526690.cs;Main.cs;rt/runtime/ChanClose.cs;rt/runtime/ChanMake.cs;rt/runtime/ChanRecv.cs;rt/runtime/ChanSend.cs;rt/runtime/IntegerAdd.cs;rt/runtime/IntegerAnd.cs;rt/runtime/IntegerConvert.cs;rt/runtime/IntegerDiv.cs;rt/runtime/IntegerMul.cs;rt/runtime/IntegerNeg.cs;rt/runtime/IntegerOr.cs;rt/runtime/IntegerRem.cs;rt/runtime/IntegerShl.cs;rt/runtime/IntegerShr.cs;rt/runtime/IntegerSub.cs;rt/runtime/LibCallbackRequest.cs;rt/runtime/LibChecksumCRC32IEEE.cs;rt/runtime/LibClockUnix.cs;rt/runtime/LibCryptoAes256GcmDecrypt.cs;rt/runtime/LibCryptoAes256GcmEncrypt.cs;rt/runtime/LibCryptoClose.cs;rt/runtime/LibCryptoEcdh.cs;rt/runtime/LibCryptoEs256Sign.cs;rt/runtime/LibCryptoGenerateP256.cs;rt/runtime/LibCryptoGenerateRsa2048.cs;rt/runtime/LibCryptoHkdfSha256.cs;rt/runtime/LibCryptoHmacSha256.cs;rt/runtime/LibCryptoHmacSha256Verify.cs;rt/runtime/LibCryptoImportPem.cs;rt/runtime/LibCryptoPublicJwk.cs;rt/runtime/LibCryptoPublicPem.cs;rt/runtime/LibCryptoRandom.cs;rt/runtime/LibCryptoRs256Sign.cs;rt/runtime/LibCryptoRsaOaepDecrypt.cs;rt/runtime/LibCryptoRsaOaepEncrypt.cs;rt/runtime/LibCryptoSha256.cs;rt/runtime/LibEncodingBase64Decode.cs;rt/runtime/LibEncodingBase64Encode.cs;rt/runtime/LibEncodingBase64UrlDecode.cs;rt/runtime/LibEncodingBase64UrlEncode.cs;rt/runtime/LibHttpDo.cs;rt/runtime/Library.cs;rt/runtime/MapLookup.cs;rt/runtime/MapMake.cs;rt/runtime/MapStore.cs;rt/runtime/Select.cs;rt/runtime/SliceAppend.cs;rt/runtime/SliceCopy.cs;rt/runtime/SliceIndex.cs;rt/runtime/SliceMake.cs;rt/runtime/SliceSlice.cs;rt/runtime/SliceStore.cs;rt/runtime/StdContextBackground.cs;rt/runtime/StdContextCanceled.cs;rt/runtime/StdContextDeadlineExceeded.cs;rt/runtime/StdContextDone.cs;rt/runtime/StdContextErr.cs;rt/runtime/StdContextWithCancel.cs;rt/runtime/StdContextWithTimeout.cs;rt/runtime/StdErrorsIs.cs;rt/runtime/StdErrorsNew.cs;rt/runtime/StdSyncMutexLock.cs;rt/runtime/StdSyncMutexUnlock.cs;rt/runtime/StringConcat.cs;rt/runtime/StringFromBytes.cs;rt/runtime/StringIndex.cs;rt/runtime/StringSlice.cs;rt/runtime/StringToBytes.cs;rt/runtime/TaskSpawn.cs;rt/types/Bounds.cs;rt/types/Box.cs;rt/types/Callback.cs;rt/types/Crypto.cs;rt/types/Floats.cs;rt/types/Fn.cs;rt/types/GoMap.cs;rt/types/GoPanic.cs;rt/types/Ints.cs;rt/types/KeyList.cs;rt/types/Native.cs;rt/types/Out.cs;rt/types/Panics.cs;rt/types/Program.cs;rt/types/Ref.cs;rt/types/Slice.cs;rt/types/TypeDesc.cs;rt/types/Usings.cs;rt/types/Utf8.cs" />
+  </ItemGroup>
+</Project>

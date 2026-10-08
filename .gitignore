@@ -1,5 +1,23 @@
 /out/
-/dist/
+# Formatted source distributions are tracked; native build products are not.
+/dist/**/node_modules/
+/dist/**/dist/
+/dist/**/obj/
+/dist/**/bin/
+/dist/**/lib/
+/dist/**/classes/
+/dist/**/target/
+/dist/**/.build/
+/dist/**/.swiftpm/
+/dist/**/build/
+/dist/**/*.egg-info/
+/dist/**/*.a
+/dist/**/*.so
+/dist/**/*.dll
+/dist/**/*.exe
+/dist/**/*.jar
+/dist/**/*.whl
+/dist/**/native-link.env
 /.local/
 /.env
 /.venv/

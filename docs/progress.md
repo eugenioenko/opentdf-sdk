@@ -1670,3 +1670,27 @@ prepared curl development pkg-config directory. All eight targets now have
 focused compiler and actual SDK build acceptance. Final formatted distributions,
 independent consumers of those distributions and hosted real-KAS CI remain
 pending; no new benchmark campaign has been run.
+
+The final source distribution uses implementation pin `7863d12` and one frozen
+compiler binary for all eight repeatable relative/absolute native package builds.
+Root `dist/` contains 1,117 formatted source, metadata and notice files with
+complete four-package ownership inventories. Every pinned formatter is
+idempotent. Upstream dependency notices retain their original bytes; whitespace
+checks pass for authored/formatted source outside those notices.
+
+Independent native importing consumers pass against all eight formatted SDKs.
+Go, Node, C and Swift additionally execute malformed-archive rejection through
+the public facade. Native builds preserve every shipped source hash, verified
+against a fresh formatted assembly of the frozen output. Build products,
+dependency installations, diagnostic sidecars and local evidence remain ignored.
+The existing offline gates pass 140 named checks and all 31 CI-tooling checks
+pass. Java/C builders include the new members; the C helper selects its explicit
+curl prefix consistently when another target has an ambient pkg-config path.
+
+Compiler PR #20 includes test-only commit `fe94cda`, correcting C importer
+collector discovery for system libgc-dev. Its production compiler/runtime sources
+are identical to the SDK pin; that pin's generated distributions remain valid.
+Existing hosted compiler CI and SDK offline/eight-target real-KAS jobs remain
+required for acceptance at the PRs' final heads. No new distribution CI workflow
+or benchmark campaign is added, and the earlier reference distribution PR #9
+remains open.
