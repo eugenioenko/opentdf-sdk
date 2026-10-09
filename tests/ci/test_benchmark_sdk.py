@@ -1,13 +1,18 @@
 """Protect pooled benchmark reporting, warmup evidence, and normal runtime settings."""
 import copy
+import base64
+import hashlib
 import importlib.util
+import io
 import json
 import shutil
 import statistics
 import subprocess
 import sys
 import tempfile
+import tarfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -137,6 +142,71 @@ class BenchmarkPolicyTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn('positive samples', result.stderr)
             self.assertFalse((Path(directory) / 'environment.json').exists())
+
+    def test_web_revision_override_rejects_ambiguous_or_wrong_target_pins(self):
+        for target, revision in [('web', 'main'), ('web', 'a' * 39), ('swift', 'a' * 40)]:
+            with self.subTest(target=target, revision=revision), tempfile.TemporaryDirectory() as directory:
+                result = subprocess.run([sys.executable, str(ROOT / 'scripts/benchmark-sdk.py'),
+                                         '--output', directory, '--targets', target, '--web-revision', revision],
+                                        capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 2)
+                self.assertIn('full lowercase Git revision', result.stderr)
+                self.assertFalse((Path(directory) / 'environment.json').exists())
+
+    def test_web_revision_override_preserves_lock_and_requires_exact_source(self):
+        locked = json.loads((ROOT / 'references.lock.json').read_text())['repositories']['web-sdk']['revision']
+        revision = 'a' * 40
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source = base / 'source'
+            (source / 'lib').mkdir(parents=True)
+            (source / 'lib/package-lock.json').write_text('{}')
+            package = base / 'install/node_modules/@opentdf/sdk'
+            package.mkdir(parents=True)
+            data = b'{"version":"1.0.0"}'
+            (package / 'package.json').write_bytes(data)
+            artifact = source / 'lib/opentdf-sdk-1.0.0.tgz'
+            with tarfile.open(artifact, 'w:gz') as archive:
+                member = tarfile.TarInfo('package/package.json')
+                member.size = len(data)
+                archive.addfile(member, io.BytesIO(data))
+            integrity = 'sha512-' + base64.b64encode(hashlib.sha512(artifact.read_bytes()).digest()).decode()
+            (base / 'install/package-lock.json').write_text(json.dumps({'packages': {'node_modules/@opentdf/sdk': {'integrity': integrity}}}))
+            receipt = base / 'packages/consumers/go/receipt.json'
+            receipt.parent.mkdir(parents=True)
+            receipt.write_text('{"environment":{}}')
+            oracle = base / 'oracle'
+            oracle.write_bytes(b'frozen validator')
+            reference = base / 'reference.json'
+            reference.write_text(json.dumps({'commands': {'reference': [str(oracle)]},
+                                            'built_consumers': {'reference': BENCH.sha(oracle)},
+                                            'toolchains': {'go': 'go1.25.14'}}))
+            def invoke(command, cwd, env, timeout=300):
+                if command[0] != 'git':
+                    return b'v24.15.0\n'
+                if command[1] == 'status':
+                    return b''
+                return (revision + '\n').encode()
+            before = BENCH.sha(ROOT / 'references.lock.json')
+            with patch.object(BENCH, 'invoke', invoke):
+                with self.assertRaisesRegex(ValueError, 'declared benchmark revision'):
+                    BENCH.setup_web(base, base / 'packages', package, source, reference)
+                BENCH.setup_web(base, base / 'packages', package, source, reference, revision)
+            web = json.loads((base / 'environment.json').read_text())['web']
+            self.assertEqual((web['expected_revision'], web['source_head'], web['locked_revision']), (revision, revision, locked))
+            self.assertTrue(web['revision_override'])
+            self.assertEqual(before, BENCH.sha(ROOT / 'references.lock.json'))
+
+    def test_retained_manifest_profile_rejects_wrong_algorithm_or_segmentation(self):
+        manifest = {'encryptionInformation': {'method': {'algorithm': 'AES-256-GCM'},
+                    'integrityInformation': {'segmentHashAlg': 'GMAC', 'segmentSizeDefault': 2 << 20,
+                                             'segments': [{}] * 5}}}
+        self.assertEqual(BENCH.validate_manifest(manifest, 10 << 20)['segment_count'], 5)
+        for key, value in [('segmentHashAlg', 'HS256'), ('segmentSizeDefault', 1 << 20), ('segments', [{}] * 4)]:
+            changed = copy.deepcopy(manifest)
+            changed['encryptionInformation']['integrityInformation'][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, 'declared encryption/segment profile'):
+                BENCH.validate_manifest(changed, 10 << 20)
 
 
 if __name__ == '__main__':
