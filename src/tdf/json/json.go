@@ -343,13 +343,29 @@ func (p *parser) str() (string, error) {
 				return "", errors.New("json: invalid escape")
 			}
 		} else {
+			// Copy the run of plain bytes up to the next quote, escape or
+			// control byte in one append, checking UTF-8 and the string bound
+			// per rune as before.
 			p.pos--
-			n := utf8Width(p.data, p.pos)
-			if n == 0 {
-				return "", errors.New("json: invalid UTF-8")
+			start := p.pos
+			for p.pos < len(p.data) {
+				d := p.data[p.pos]
+				if d == '"' || d == '\\' || d < 32 {
+					break
+				}
+				n := 1
+				if d >= 128 {
+					n = utf8Width(p.data, p.pos)
+					if n == 0 {
+						return "", errors.New("json: invalid UTF-8")
+					}
+				}
+				p.pos += n
+				if len(out)+p.pos-start > p.limits.StringBytes {
+					return "", errors.New("json: string limit")
+				}
 			}
-			out = append(out, p.data[p.pos:p.pos+n]...)
-			p.pos += n
+			out = append(out, p.data[start:p.pos]...)
 		}
 		if len(out) > p.limits.StringBytes {
 			return "", errors.New("json: string limit")
@@ -433,29 +449,41 @@ func (w *writer) str(s string) error {
 		return e
 	}
 	b := []byte(s)
+	// Plain bytes are copied as one run per emit, not one rune at a time; the
+	// per-rune output bound check keeps errors identical to rune-wise emits.
+	start := 0
 	for i := 0; i < len(b); {
 		c := b[i]
-		if c < 32 {
-			h := "0123456789abcdef"
-			if e := w.emit([]byte{'\\', 'u', '0', '0', h[c>>4], h[c&15]}); e != nil {
+		if c < 32 || c == '"' || c == '\\' {
+			if e := w.emit(b[start:i]); e != nil {
+				return e
+			}
+			if c < 32 {
+				h := "0123456789abcdef"
+				if e := w.emit([]byte{'\\', 'u', '0', '0', h[c>>4], h[c&15]}); e != nil {
+					return e
+				}
+			} else if e := w.emit([]byte{'\\', c}); e != nil {
 				return e
 			}
 			i++
-		} else if c == '"' || c == '\\' {
-			if e := w.emit([]byte{'\\', c}); e != nil {
-				return e
-			}
-			i++
-		} else {
-			n := utf8Width(b, i)
+			start = i
+			continue
+		}
+		n := 1
+		if c >= 128 {
+			n = utf8Width(b, i)
 			if n == 0 {
 				return errors.New("json: invalid UTF-8")
 			}
-			if e := w.emit(b[i : i+n]); e != nil {
-				return e
-			}
-			i += n
 		}
+		if i+n-start > w.limits.Bytes-len(w.out) {
+			return errors.New("json: output limit")
+		}
+		i += n
+	}
+	if e := w.emit(b[start:]); e != nil {
+		return e
 	}
 	return w.emit([]byte{'"'})
 }
