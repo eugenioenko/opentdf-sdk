@@ -5,8 +5,8 @@
 One shared Go implementation provides TDF3 encryption/decryption libraries for
 **Go, TypeScript, Java, C#, Python, Rust, C and Swift**. TypeScript supports Node and
 browsers. Swift is experimental, with a Linux baseline. The shared source,
-native adapters and build helpers live in this repository. Formatted generated
-source packages live in root `dist/`; native build products stay ignored.
+native adapters and build helpers live
+in this repository; generated packages are ignored build outputs.
 
 The original seven libraries have passed interoperability checks against the pinned
 OpenTDF Go and Web SDKs through real KAS. The supported byte API includes
@@ -118,30 +118,6 @@ shared type identity, retained results, overlapping calls and cancellation.
 See [evidence and limitations](docs/final-delivery.md) and the
 [progress log](docs/progress.md) for the scope and revisions of completed runs.
 Native build products, local credentials, keys and test outputs stay out of Git.
-
-## Generated source distributions
-
-`dist/` contains buildable source for all eight targets, grouped by the original
-Go packages with shared runtime and initialization files. Public package names
-and APIs remain the same. Each target's `README.md` explains its native build;
-using a checked-in source distribution does not require the Goalchemy compiler.
-
-Prepare the pinned native toolchains and dependencies using
-[the delivery setup](docs/final-delivery.md). To regenerate from a clean
-Goalchemy checkout at the compiler revision in `references.lock.json`, use a
-fresh ignored work directory:
-
-```sh
-python3 scripts/dist-distributions.py regenerate --base .local/dist-work/refresh-1
-```
-
-The command reuses the delivery builders, formats the source with pinned tools,
-and checks formatter idempotence. Pass `--environment` with the delivery
-bootstrap's `environment.json` when using its prepared dependency paths.
-Dependency notices and native build metadata
-are included. Binaries, caches and diagnostic maps for pre-format line positions
-are excluded. Existing CI continues to build fresh packages and check real-KAS
-interoperability; it does not verify the checked-in distributions.
 
 The [delivery checklist](docs/delivery-checklist.md) and
 [progress log](docs/progress.md) record acceptance. The

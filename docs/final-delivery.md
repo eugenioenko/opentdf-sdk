@@ -47,14 +47,6 @@ absolute. Clean delivery checks build twice from different caller directories
 and compare the distributed members. Tool installations, compiler output,
 packages, consumer builds, caches, logs, keys, and profiles stay ignored.
 
-The repository's formatted source distributions live in root `dist/`. Their
-native build instructions and notices are included per target. Regeneration uses
-[dist-distributions.py](../scripts/dist-distributions.py), the existing delivery
-builders, pinned language formatters and complete native file inventories.
-Diagnostic maps describe unformatted output and are omitted after formatting.
-Native builds and dependency installations remain ignored; existing CI builds
-fresh packages for interoperability and does not verify committed distributions.
-
 The buffer optimization's earlier v0.2.1 verification and benchmark campaign
 remain documented in [local optimization results](python-buffer-optimization.md)
 and [all-target benchmarks](all-target-buffer-benchmarks.md). Their EC/DPoP

@@ -1566,145 +1566,26 @@ source/package/binary hashes for reuse checks. Final checks at the new source
 pin passed 31 CI-tooling regressions and 140 named offline format/protocol
 checks. No generated distributions, local secrets or execution JSON are added.
 
-## Package-based source distributions preparation, 2026-10-08
 
-Work is isolated on `feat/package-distributions`, alongside Goalchemy's
-`feat/package-output` worktree. Compiler commit `27d45a3` implements Go's
-package-owned files and retains shared initialization and the public facade.
-The actual generated Go SDK built from four source-package files plus its
-central/shared files. A formatted source-only assembly also passed its native
-Go build, complete source/runtime inventory checks and formatter idempotence.
-These local proofs are stored under ignored `.local/package-output/`.
+## Package-based compiler update, 2026-10-08
 
-Distribution tooling now prepares all eight targets, including Swift, with
-pinned formatters and source-pin metadata. Missing native modules cause assembly
-to fail; only diagnostic sidecars are intentionally omitted after formatting.
-Java and C builders are being adapted to manifest-listed sources. The shared
-compiler pin remains v0.5.1 until all target changes have been accepted. Other
-target distributions, final compiler/SDK CI and both PRs remain pending; the
-existing reference distribution PR is unchanged.
+SDK PR #13 pins Goalchemy implementation commit `7863d12` across all eight
+native targets, nested Go modules and both workflow compiler checkouts. Java
+and C package builders include all manifest-listed source members. C selects
+its explicit curl pkg-config prefix and retrieves locked Ubuntu packages from
+signed snapshot indexes without changing dependency hashes.
 
-Goalchemy commit `178627a` adds TypeScript's actual ESM package modules, shared
-descriptor binding, and successful-emission cleanup of obsolete managed files.
-Readable/compact importing libraries passed in Node and Chromium, including
-fresh initialization, overlapping calls, ownership and cancellation. The SDK's
-TypeScript builder passed with the frozen compiler from that commit. Its
-formatted source-only assembly passed complete source/runtime inventories,
-formatter idempotence, `npm ci`, `npm run build`, and importing the public Node
-SDK facade. This is local build/import evidence, not a new real-KAS matrix;
-final eight-target hosted interoperability is still required.
+All eight native SDKs passed repeatable builds and independent importing
+consumers. Hosted compiler run `37754457536` passed all 12 jobs at `fe94cda`;
+that commit differs from the implementation pin only in a C importer test.
+Hosted SDK run `37758792940` passed offline and all eight focused real-KAS jobs
+at `2fa3833`, with 260 Go/Web comparisons (200 native and 60 browser), 363 native
+invocations and 17 profile/environment checks. Full historical matrices were
+not rerun. Both CI merge trees match their PR head trees.
 
-Goalchemy commit `f8e66e1` adds Python's native package modules and physical
-per-file line maps while retaining central initialization. Focused importing
-consumers passed in both naming modes, including shared runtime identity,
-simultaneous caller threads, snapshots, retained results/errors, cancellation and
-callback cleanup acknowledgment. The actual SDK wheel includes all four source
-package modules. Its formatted source passed inventory and idempotence checks,
-then installed and imported successfully in an isolated environment using the
-checked dependency wheels. Java/C#/Rust/C/Swift compiler migration and final
-eight-target interoperability remain pending.
-
-Goalchemy commit `dbfc0ad` adds Java's native package holder classes and shared
-canonical support. Both naming modes passed source-oracle execution, independent
-JAR consumers and existing native regressions. The SDK builder compiled its four
-package holders into the native JAR. The formatted source assembly passed strict
-inventory checks and formatter idempotence, rebuilt the JAR, and passed an
-independently compiled public-facade consumer. This remains local build evidence;
-final real-KAS acceptance and hosted CI are pending.
-
-Goalchemy commit `a52ecee` adds C# native partial class files with source-owned
-functions, frames, globals and representations. Focused importing consumers and
-existing native checks passed in both naming modes. The actual SDK builds with
-the existing root TDF3.cs facade. Formatted source acceptance and Rust/C/Swift
-migration are in progress.
-
-The formatted C# assembly now also passes complete four-package inventories,
-formatter idempotence, a locked native SDK build, and an independently compiled
-DLL consumer of the public facade. Build products remain ignored. The isolated
-compiler worktree is now migrating Rust's real native modules; C and Swift and
-final eight-target hosted interoperability remain pending.
-
-Goalchemy commit `d0499a4` adds Rust's real native modules with source-owned
-functions, frames, wrappers, global slot/reset helpers and representations.
-Canonical descriptors and the traced globals/runtime graph remain shared.
-Readable/compact source-oracle and independent Cargo consumers passed, including
-the SDK's entry rename, forced GC, overlapping fresh calls, retained values and
-errors, cancellation and provider cleanup acknowledgment. Existing host, CRC,
-byte/GC/storage, native conformance and language checks passed.
-
-The actual Rust SDK facade crate builds and packages all four source modules.
-Its formatted source assembly passes strict native/source-owner inventories,
-formatter idempotence, a locked offline native build and an independent Cargo
-consumer. Local build products do not affect source-distribution inventories.
-Six targets now have local compiler and SDK build/import acceptance. C and Swift
-implementation, committed final distributions and final eight-target real-KAS
-CI remain pending. No new benchmark campaign has been run.
-
-Goalchemy commit `15f32e5` adds C's real source-package translation units and
-declaration-only internal header. Independent compilation and native symbol
-inspection prove cross-package linkage. Public archive consumers passed both
-naming modes, fresh initialization, overlap, retained values/errors, GC, native
-crypto/CRC and cancellation with resource cleanup acknowledgment. Existing
-source-error/cancellation categories are preserved. Focused host, sanitized
-byte/host, language, native conformance and shared checks passed; native checks
-used the already prepared curl sysroot. No runtime changes were needed.
-
-The SDK builder now packages all generated C sources and headers from the
-manifest. The actual archive contains every source-package unit and the internal
-header. The formatted source assembly passes inventory/idempotence checks,
-rebuilds its native archive and passes an independently linked public-facade
-consumer that executes malformed-archive rejection without network access.
-Seven targets have local compiler and SDK build/import acceptance. Swift and
-final committed distributions/hosted interoperability remain pending.
-
-Goalchemy commit `7863d12` adds Swift's native package-owned files within its
-existing module and shared canonical type registrations. Focused executable and
-independent SwiftPM consumers passed in readable/compact modes, including
-initialization, shared descriptors, retained values/errors, overlapping calls
-and cancellation with actual provider cleanup acknowledgment. Existing native
-host, CRC, byte/GC, source-language and library boundary checks passed.
-
-The actual Swift SDK compiles its four source-package files and shared runtime
-through the existing OpenTDFTDF3 facade. Its local build uses the already
-prepared curl development pkg-config directory. All eight targets now have
-focused compiler and actual SDK build acceptance. Final formatted distributions,
-independent consumers of those distributions and hosted real-KAS CI remain
-pending; no new benchmark campaign has been run.
-
-The final source distribution uses implementation pin `7863d12` and one frozen
-compiler binary for all eight repeatable relative/absolute native package builds.
-Root `dist/` contains 1,117 formatted source, metadata and notice files with
-complete four-package ownership inventories. Every pinned formatter is
-idempotent. Upstream dependency notices retain their original bytes; whitespace
-checks pass for authored/formatted source outside those notices.
-
-Independent native importing consumers pass against all eight formatted SDKs.
-Go, Node, C and Swift additionally execute malformed-archive rejection through
-the public facade. Native builds preserve every shipped source hash, verified
-against a fresh formatted assembly of the frozen output. Build products,
-dependency installations, diagnostic sidecars and local evidence remain ignored.
-The existing offline gates pass 140 named checks and all 31 CI-tooling checks
-pass. Java/C builders include the new members; the C helper selects its explicit
-curl prefix consistently when another target has an ambient pkg-config path.
-
-Compiler PR #20 includes test-only commit `fe94cda`, correcting C importer
-collector discovery for system libgc-dev. Its production compiler/runtime sources
-are identical to the SDK pin; that pin's generated distributions remain valid.
-Existing hosted compiler CI and SDK offline/eight-target real-KAS jobs remain
-required for acceptance at the PRs' final heads. No new distribution CI workflow
-or benchmark campaign is added, and the earlier reference distribution PR #9
-remains open.
-
-Compiler PR #20's final-head hosted run `37754457536` is green at `fe94cda`:
-all 11 matrix jobs and the aggregate check passed. Actual logs prove all eight
-package importers and new package-layout regressions executed; only the four
-pre-existing core `-short` skips remain.
-
-SDK PR #13's first run reached green offline and all seven non-C native jobs,
-but C failed before delivery because the rolling Ubuntu indexes no longer
-contain its locked OpenSSL version. The workflow now adds Ubuntu's signed
-20260924/20260930 snapshot indexes for C only. Isolated signed APT resolution,
-installation simulation, all five package archive identities, and the existing
-OpenSSL runtime/curl archive hashes confirm the same tested dependency bytes.
-All 31 CI-tooling tests still pass. Final-head SDK CI remains to be accepted;
-this fix changes no compiler, SDK or dist source.
+The user corrected PR #13's scope after that accepted run: generated `dist/`
+files and their commit/format tooling are removed from the PR, and generated
+output remains ignored. The PR already targets and branches from `main`.
+Local generated reference files are retained; PR #9 stays open unchanged.
+The preceding CI results apply to `2fa3833`; the scope correction triggers a
+new final-head run without changes to production SDK or native build behavior.
