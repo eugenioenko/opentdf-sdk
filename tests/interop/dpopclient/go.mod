@@ -3,7 +3,7 @@ module opentdf-local/dpopclient-interop
 go 1.25.0
 
 require (
-	github.com/eugenioenko/goalchemy v0.5.1
+	github.com/eugenioenko/goalchemy v0.5.2-0.20261008085014-7863d12abd27
 	github.com/opentdf/platform/lib/ocrypto v0.14.0
 	github.com/opentdf/platform/sdk v0.0.0
 	opentdf-local/sdk v0.0.0

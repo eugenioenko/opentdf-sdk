@@ -1,5 +1,15 @@
 # OpenTDF SDK implementation plan
 
+## Package-based compiler update
+
+Use Goalchemy's package-based output across all eight targets while preserving
+public native imports/APIs and central initialization. Pin the reviewed compiler
+and adapt native package builders to include every generated source member.
+Keep generated SDKs and native build products ignored. The earlier distribution
+PR #9 remains open for reference; this update does not commit `dist/` files.
+Verify existing offline and eight-target focused real-KAS CI, including the
+Go/Web oracles. Naming redesign and a new distribution workflow are outside scope.
+
 Build an OpenTDF SDK from one Go source implementation using Goalchemy, with usable generated libraries on all seven targets. The first release must create and decrypt TDF3 files using real platform authentication, authorization, and KAS rewrap. TypeScript must work in both Node and browsers.
 
 The project lives in `sdk/`, beside the cloned Goalchemy, platform, and web SDK repositories. Extend the local Goalchemy clone as needed. Use the existing Go and TypeScript SDKs as independent compatibility references and their CLIs for operational smoke tests.

@@ -87,8 +87,10 @@ Native adapters, dependency locks and delivery tooling live in `src/hosts/`.
 Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
-The build configuration pins [Goalchemy **v0.5.1**](https://github.com/eugenioenko/goalchemy/releases/tag/v0.5.1)
-across all eight targets, with readable source-derived identifiers by default.
+The build configuration pins unreleased Goalchemy commit
+[`7863d12`](https://github.com/eugenioenko/goalchemy/commit/7863d12abd27b2e2e1d655d5ca64295842485d82)
+for package-based output across all eight targets, based on v0.5.1.
+Readable source-derived identifiers remain the default.
 The performance table identifies the actual compiler commits used for its
 measurements.
 
@@ -105,17 +107,17 @@ From this directory, run `make platform-up`, `make platform-ready` and
 
 ## Verification
 
-Each package was built reproducibly and imported by an independent native
-consumer. Final local focused real-KAS checks cover all seven targets plus
-actual Chromium, with additional EC/DPoP metadata cases and a readable browser
-nonce challenge. Existing full interoperability and rejection matrices were
-preserved and matched to final production sources. The only generated Go source
-difference is diagnostic line comments. See [evidence and limitations](docs/final-delivery.md).
+[GitHub Actions](.github/workflows/tdf3-delivery.yml) builds all eight native SDKs
+and runs focused real-KAS interoperability against the pinned OpenTDF Go and Web
+SDKs. TypeScript includes Node and actual Chromium coverage; EC, DPoP, metadata
+and rejection cases are included. The complete matrices remain available as a
+manual option.
 
-[GitHub Actions](.github/workflows/tdf3-delivery.yml) defines focused checks for
-pull requests and manual runs, with full matrices as a manual option. Remote CI
-and a repeated full matrix are not claimed as executed final-delivery results.
-Generated packages, local credentials, keys and test outputs stay out of Git.
+Package-output checks also cover independent native imports, initialization,
+shared type identity, retained results, overlapping calls and cancellation.
+See [evidence and limitations](docs/final-delivery.md) and the
+[progress log](docs/progress.md) for the scope and revisions of completed runs.
+Native build products, local credentials, keys and test outputs stay out of Git.
 
 The [delivery checklist](docs/delivery-checklist.md) and
 [progress log](docs/progress.md) record acceptance. The

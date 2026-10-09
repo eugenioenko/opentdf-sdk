@@ -1,8 +1,10 @@
-# Seven-target TDF3 delivery
+# TDF3 delivery
 
 The original seven-target acceptance below is historical. Swift is an additional
 experimental target with a SwiftPM package and live-KAS delivery job.
-All eight targets share the released Goalchemy v0.5.1 compiler pin. See [Swift build/API/verification](generated-swift-library.md).
+All eight targets share the compiler revision recorded in
+[references.lock.json](../references.lock.json). See
+[Swift build/API/verification](generated-swift-library.md).
 
 The shared [Go façade](../src/library/library.go) is delivered as seven importable
 native libraries. Each executes its bundled lowered implementation and native
@@ -19,21 +21,13 @@ GitHub Actions run or a newly replayed full interoperability matrix.
 
 ## Build and install
 
-The buffer optimization uses released Goalchemy v0.2.1.
-Its initial verification covers Python BASIC interoperability and buffer
-ownership. A subsequent [all-target benchmark](all-target-buffer-benchmarks.md)
-built and installed the other six native packages, then passed fresh BASIC E2E
-checks for all seven targets and independent stock-Go/KAS plus ZIP validation.
-EC/DPoP matrices remain historical evidence and were not replayed for these local
-changes. See [local optimization results](python-buffer-optimization.md). The
-README performance table continues to describe the released v0.2.0 packages.
-
 Use adjacent `sdk`, `goalchemy`, `platform`, and `web-sdk` checkouts. Exact source
-revisions are in [references.lock.json](../references.lock.json); Goalchemy is
-pinned to commit `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`, released as
-[v0.2.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.2.1) after
-[Goalchemy PR #10](https://github.com/eugenioenko/goalchemy/pull/10) passed hosted CI
-and was merged.
+revisions are in [references.lock.json](../references.lock.json). Check out its
+exact Goalchemy revision before building; a release tag or an arbitrary latest
+checkout can produce different source layouts. Compiler migration acceptance
+and final CI are recorded in [the progress log](progress.md). Benchmark compiler
+revisions and measurement methods are recorded separately alongside the
+[README performance table](../README.md).
 Platform remains pinned to
 `f2635158b681fa970aafce7eacf108a453521f63`, and Web SDK to
 `55a0521b1499b392c75373e11ec5930c6a43f0c7`.
@@ -44,7 +38,7 @@ Build one compiler from that Goalchemy revision and supply it to any helper:
 cd goalchemy
 GOTOOLCHAIN=go1.25.14 go build -trimpath -o out/final-delivery/goalchemy ./cmd/goalchemy
 cd ../sdk
-GOALCHEMY_BIN=../goalchemy/out/final-delivery/goalchemy bash scripts/build-generated-go.sh .local/generated/go
+GOROOT="$(GOTOOLCHAIN=go1.25.14 go env GOROOT)" GOALCHEMY_BIN=../goalchemy/out/final-delivery/goalchemy bash scripts/build-generated-go.sh .local/generated/go
 ```
 
 Every `scripts/build-generated-<target>.sh` accepts a destination and
@@ -52,6 +46,11 @@ Every `scripts/build-generated-<target>.sh` accepts a destination and
 absolute. Clean delivery checks build twice from different caller directories
 and compare the distributed members. Tool installations, compiler output,
 packages, consumer builds, caches, logs, keys, and profiles stay ignored.
+
+The buffer optimization's earlier v0.2.1 verification and benchmark campaign
+remain documented in [local optimization results](python-buffer-optimization.md)
+and [all-target benchmarks](all-target-buffer-benchmarks.md). Their EC/DPoP
+matrices are historical evidence, separately attributed from current checks.
 
 | Target | Distributed package and independent consumer | Tested prerequisites and API documentation |
 | --- | --- | --- |
@@ -69,6 +68,13 @@ package subprocesses require the pinned Go toolchain's standard-library root;
 bootstrap records that environment explicitly for runners without an inherited
 `GOROOT`. Failed pre-service compiler/package logs are uploaded with receipt
 hashes; authentication and service logs remain private.
+
+The C CI job also configures dated Ubuntu snapshot indexes so its locked
+OpenSSL and curl versions remain available after the rolling repositories
+supersede them. Ubuntu's signed package metadata and the existing archive/runtime
+hash checks remain in force; the tested native dependency bytes are preserved.
+The snapshot dates are recorded in [the delivery workflow](../.github/workflows/tdf3-delivery.yml).
+
 [delivery-packages.py](../scripts/delivery-packages.py) checks two-path builds;
 [delivery-consumers.py](../scripts/delivery-consumers.py) installs and builds
 independent consumers. [The job entrypoint](../scripts/delivery-job.py) runs

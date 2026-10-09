@@ -10,6 +10,7 @@ if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 export GOALCHEMY_BDWGC=${GOALCHEMY_BDWGC:-"$SDK/../goalchemy/.toolchains/bdwgc"}
 CURL_PREFIX=${TDF3_CURL_PREFIX:-"$SDK/.local/root-c-development-prerequisites/prefix"}
 if [[ -d "$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig" ]]; then
+ export PKG_CONFIG_PATH="$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig"
  export PKG_CONFIG_LIBDIR="$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig"
  export PKG_CONFIG_SYSROOT_DIR="$CURL_PREFIX" PKG_CONFIG_ALLOW_SYSTEM_LIBS=1
  export LD_LIBRARY_PATH="$CURL_PREFIX/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}"
@@ -26,7 +27,18 @@ rm -rf "$DEST/package"
 mkdir -p "$DEST/package/include" "$DEST/package/lib" "$DEST/package/src"
 cp "$DEST/tdf3.h" "$DEST/goalchemy.h" "$DEST/library.h" "$DEST/package/include/"
 cp "$DEST/libtdf3.a" "$DEST/package/lib/"
-cp "$DEST/main.c" "$DEST/build.sh" "$DEST/tdf3.c" "$DEST/package/src/"
+cp "$DEST/build.sh" "$DEST/tdf3.c" "$DEST/package/src/"
+python3 - "$DEST" <<'PY'
+import json,pathlib,shutil,sys
+p=pathlib.Path(sys.argv[1]);manifest=json.loads((p/'goalchemy.manifest.json').read_text())
+sources=[name for name in manifest['generated_files'] if pathlib.Path(name).suffix in ('.c','.h')]
+if not sources:
+ raise RuntimeError('generated C source inventory is empty')
+for name in sources:
+ source=p/name;destination=p/'package/src'/name
+ destination.parent.mkdir(parents=True,exist_ok=True)
+ shutil.copyfile(source,destination)
+PY
 cp -r "$DEST/rt" "$DEST/package/src/"
 cp "$DEST/tdf3.h" "$DEST/library.h" "$DEST/goalchemy.h" "$DEST/package/src/"
 cp "$SDK/src/hosts/c/dependencies.lock.json" "$DEST/package/"

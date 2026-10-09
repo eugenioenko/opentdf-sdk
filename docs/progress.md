@@ -1565,3 +1565,27 @@ and stock-Go validator, supports isolated service endpoints, and records
 source/package/binary hashes for reuse checks. Final checks at the new source
 pin passed 31 CI-tooling regressions and 140 named offline format/protocol
 checks. No generated distributions, local secrets or execution JSON are added.
+
+
+## Package-based compiler update, 2026-10-08
+
+SDK PR #13 pins Goalchemy implementation commit `7863d12` across all eight
+native targets, nested Go modules and both workflow compiler checkouts. Java
+and C package builders include all manifest-listed source members. C selects
+its explicit curl pkg-config prefix and retrieves locked Ubuntu packages from
+signed snapshot indexes without changing dependency hashes.
+
+All eight native SDKs passed repeatable builds and independent importing
+consumers. Hosted compiler run `37754457536` passed all 12 jobs at `fe94cda`;
+that commit differs from the implementation pin only in a C importer test.
+Hosted SDK run `37758792940` passed offline and all eight focused real-KAS jobs
+at `2fa3833`, with 260 Go/Web comparisons (200 native and 60 browser), 363 native
+invocations and 17 profile/environment checks. Full historical matrices were
+not rerun. Both CI merge trees match their PR head trees.
+
+The user corrected PR #13's scope after that accepted run: generated `dist/`
+files and their commit/format tooling are removed from the PR, and generated
+output remains ignored. The PR already targets and branches from `main`.
+Local generated reference files are retained; PR #9 stays open unchanged.
+The preceding CI results apply to `2fa3833`; the scope correction triggers a
+new final-head run without changes to production SDK or native build behavior.
