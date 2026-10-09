@@ -9,47 +9,76 @@ following investigation of their initial histories: generated Go at 1 MiB,
 Java at 1 MiB and C# at 10 MiB. All seven generated native packages are
 rebuilt with released Goalchemy **v0.2.1**, commit
 `de26e4aa18f38f75bdf7a43c7b19b33cfaec9673`. The pinned original OpenTDF Go SDK
-and the original Web SDK in Node are the two reference implementations.
+was also used alongside the original Web SDK in Node as a reference implementation.
 Earlier timing cells and diagnostic profiles are excluded. SDK implementation
 and compiler/runtime source remained unchanged during measurement. PR #3 subsequently reorganized shared source under `src/`;
 that layout change does not alter the recorded implementation behavior.
-The later Swift row uses the separate diagnostic methodology below.
+The Web and Swift rows now use the separate refreshed campaign below; the other
+eight rows retain these historical measurements.
 
-## Swift performance follow-up
+## Web and Swift refresh
 
-The Swift README row is a bounded Linux x86_64 diagnostic measured with
-Swift 6.4.0, Swift 5 language mode and `swift build -c release`. The generated
-runtime uses native OpenSSL crypto, libcurl HTTP and zlib CRC32. The 1 MiB and
-10 MiB cells use compiler commit `5de8b6ba360a506f4d79b34049ebcff2f71c4e85`,
-one size-specific warmup and two measured pairs each. The 50 MiB cell uses
-the follow-up commit `4d94248f3609511d15c9b3cfdbf35b4cf829471c`, one warmup and
-three measured pairs: 1401.919602, 1427.006942 and 1333.454066 milliseconds.
-Its median is 1401.919602 milliseconds and observed peak RSS is 372.29 MiB.
-Each size ran in one process, with no bulk warmup. These small samples do not
-repeat the historical three-process, 15-sample steady-state campaign and do
-not establish a universal language ranking or long-tail latency.
+The Web SDK (Node) and Swift README rows were remeasured on this Linux x86_64
+machine in a separate campaign. Web uses source-built upstream SDK **0.22.0**,
+commit `e52ac7bb2409bf0e9935e94f50cc6d6ad4a73e51`, with Node **24.15.0**.
+This benchmark-only revision does not change the Web SDK oracle pin used in CI.
+Swift uses a fresh release build of the current shared source at SDK commit
+`7f845a54bc24754a5a5b17ba7c0265f7c7f924ad`, including the JSON plain-run
+optimization, generated with compiler implementation commit
+`7863d12abd27b2e2e1d655d5ca64295842485d82` and Swift **6.4.0** in Swift 5 mode.
 
-The shared SDK source, public Swift facade and benchmark harness were frozen
-across the byte-copy compiler changes. A contiguous monotonic timer covers
-`encrypt(config, payload, options, provider: provider).wait()` followed by
-`decrypt(config, archive, provider: provider).wait()`. Public Foundation `Data`
-conversions and fully owned results, internal key setup, real KAS and integrity
-checks remain inside this interval. Input loading, configuration, OAuth and
-public-key discovery, exact plaintext comparison and archive I/O are outside.
-The profile uses RSA-2048 wrapping/session keys, ES256 signing, GMAC and 2 MiB
-segments. Every warmup and measured pair checks all plaintext; every retained
-archive passed independent stock-Go decryption through real KAS and ZIP CRC
-checks. Swift also decrypted independent stock-Go archives at all three sizes.
-The 50 MiB follow-up checked four Swift archives and the reverse
-stock-Go-to-Swift direction. Detailed receipts remain in ignored local storage.
+Both rows use the full three-process policy: 40 complete 50 MiB bulk warmups,
+20 size-specific warmups, then five timed pairs in each process. Each cell is
+the pooled median of all 15 measurements. The other eight README rows retain
+their historical measurements and source revisions; this is not a fresh
+all-target ranking.
 
-`scripts/benchmark-sdk.py --targets swift --swift-package PATH` prepares an
-independent SwiftPM importing benchmark and stock-Go validator. It records
-package, harness and binary hashes; `--skip-build` rejects package/binary drift.
-For a bounded diagnostic, select `--batches 1 --warmups 1 --bulk-warmups 0`
-and an explicit sample count. The runner's default 40 bulk warmups, 20 actual
-warmups and three batches belong to the historical full-campaign policy;
-they were not used for these Swift measurements.
+A contiguous monotonic timer covers public encryption and decryption of that
+same new archive, including stream/result materialization, SDK-internal setup,
+key generation, policy binding and integrity checks. Web reuses its client and
+ES256 signer per process; its per-decrypt RSA session generation remains timed.
+Swift's public Foundation Data conversions and stateless facade setup remain
+timed. File I/O, OAuth/public-key discovery and correctness checks are untimed.
+
+Both targets use the same existing local BASIC platform, a pre-acquired six-hour
+Bearer token, the same permitted attribute, RSA-2048 wrapping and response
+sessions, ES256 signing, GMAC and 2 MiB segments. Every pair compares the full
+plaintext. All 54 retained archives per target pass independent original Go/KAS
+decryption, exact plaintext, ZIP CRC and manifest/segment checks. Independent
+stock-Go archives also decrypt through Swift at all three sizes. Raw receipts,
+private tokens, packages and binaries remain ignored.
+
+The campaign ran sequentially on the same machine with normal runtime settings,
+using the existing BASIC platform at `http://localhost:18080` and Keycloak at
+`http://localhost:18888/auth/realms/opentdf`. These endpoints differ from the
+historical campaign's ports; the service uses the same pinned platform source.
+No service configuration changed. All 18 warmup histories passed the runner's
+trend checks; no samples or batches were excluded. The new measurements replace
+the earlier Web row and the small Swift diagnostic samples.
+
+For the refreshed Web row, build and install a package from the frozen upstream
+checkout and pass `--web-revision e52ac7bb2409bf0e9935e94f50cc6d6ad4a73e51` to
+the Web-only command below, with its matching `--web-source` and `--web-package`.
+For Swift, use a fresh package built from the recorded SDK/compiler revisions:
+
+```sh
+python3 scripts/benchmark-sdk.py --targets swift --swift-package PATH \
+  --output .local/refresh/swift --sizes 1MiB,10MiB,50MiB \
+  --samples 5 --batches 3 --warmups 20 --bulk-warmups 40 --fresh \
+  --platform-url http://localhost:18080 \
+  --issuer-url http://localhost:18888/auth/realms/opentdf
+```
+
+OAuth acquisition and public-key discovery happen before timing. Ensure the
+local benchmark client's token lifetime is at least one hour; this run observed
+21600 seconds. When using `--reference-environment`, verify that its stock-Go
+binary matches the recorded hash and supports the configured endpoints. The
+older historical oracle hardcodes port 8080 and cannot validate this isolated
+stack. This campaign reused a receipt-verified Go 1.25.14 binary built from the
+current endpoint-aware reference harness and platform `f2635158`. Its older
+Swift receipt omitted `toolchains.go`; a new ignored copy records the binary's
+build version while retaining the original receipt and source/binary hashes.
+Detailed measurement and validation receipts remain ignored.
 
 ## Reproduce
 
@@ -83,7 +112,7 @@ python3 scripts/benchmark-sdk.py \
   --warmups 20 --bulk-warmups 40 --fresh
 ```
 
-The original Web SDK Node row is measured separately, using the pinned
+The superseded historical Web SDK Node row was measured separately, using the pinned
 source-built package installed by `scripts/platform.sh build` under
 `.local/web-cli/node_modules/@opentdf/sdk`. Reuse the full campaign's frozen
 original-Go validator without rebuilding or rerunning its cells:
@@ -253,12 +282,18 @@ receipts are retained only in ignored local storage. The campaign directory
 `.local/steady-state-2026-10-04/campaign` retains raw receipts, summaries,
 environment metadata, retained archives, fixtures and compiled consumers.
 Private token files remain ignored with mode 0600 and are not exported.
-The separate `extended/` directory retains the three follow-up cells. The final
-table contains 405 measurements and 486 independently checked retained
+The separate `extended/` directory retains the three follow-up cells. That historical
+campaign contained 405 measurements and 486 independently checked retained
 archives across 81 batches, from 5985 native pairs including warmup. Including
 the three superseded cells, the campaign executed 6570 native pairs and
 independently checked 540 retained archives. Superseded cells are diagnostics,
-not samples supporting the table.
+not samples supporting the historical table.
+
+The refreshed Web/Swift campaign adds 90 timed samples across 18 fresh batches
+and 108 independently checked retained archives, from 1170 native pairs including
+warmup. Preflight pairs and the three reverse stock-Go-to-Swift checks are outside
+those timed samples. The current table combines eight historical rows (360 samples
+and 432 retained archives) with these two refreshed rows.
 
 These are local steady-state E2E timings, including KAS service and RSA
 variation. Fifteen samples per cell do not establish long-tail latency or a

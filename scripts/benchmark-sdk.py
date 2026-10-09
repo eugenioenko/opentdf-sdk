@@ -53,6 +53,19 @@ def warmup_statistics(result):
     return stats
 
 
+def validate_manifest(manifest, size_bytes):
+    encryption = manifest['encryptionInformation']
+    integrity = encryption['integrityInformation']
+    segment_bytes = 2 << 20
+    if (encryption['method']['algorithm'] != 'AES-256-GCM'
+            or integrity['segmentHashAlg'] != 'GMAC'
+            or integrity['segmentSizeDefault'] != segment_bytes
+            or len(integrity['segments']) != (size_bytes + segment_bytes - 1) // segment_bytes):
+        raise ValueError('retained archive differs from the declared encryption/segment profile')
+    return {'algorithm': 'AES-256-GCM', 'segment_hash_algorithm': 'GMAC',
+            'segment_size_bytes': segment_bytes, 'segment_count': len(integrity['segments'])}
+
+
 def aggregate_batches(rows):
     rows = sorted(rows, key=lambda row: row['batch_index'])
     first = rows[0]
@@ -144,9 +157,10 @@ def setup(base, packages):
     (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
     return (commands, env)
 
-def setup_web(base, packages, web_package, web_source, reference_environment):
+def setup_web(base, packages, web_package, web_source, reference_environment, web_revision=None):
     """Prepare only stock Web Node, retaining the original Go oracle's binary identity."""
-    pinned = json.loads((SDK / 'references.lock.json').read_text())['repositories']['web-sdk']['revision']
+    locked = json.loads((SDK / 'references.lock.json').read_text())['repositories']['web-sdk']['revision']
+    pinned = web_revision or locked
     env = normal_environment(os.environ.copy())
     env.update(json.loads((packages / 'consumers/go/receipt.json').read_text())['environment'])
     env = normal_environment(env)
@@ -155,9 +169,12 @@ def setup_web(base, packages, web_package, web_source, reference_environment):
         raise ValueError('stock Web measurement requires matched Node v24.15.0')
     actual_head = invoke(['git', 'rev-parse', 'HEAD'], web_source, env).decode().strip()
     if actual_head != pinned:
-        raise ValueError('stock Web source differs from references.lock.json')
+        raise ValueError('stock Web source differs from the declared benchmark revision')
+    if invoke(['git', 'status', '--porcelain', '--untracked-files=no'], web_source, env).strip():
+        raise ValueError('stock Web source has tracked changes')
     package = json.loads((web_package / 'package.json').read_text())
     tarball = web_source / 'lib' / ('opentdf-sdk-' + package['version'] + '.tgz')
+    package_members = {}
     with tarfile.open(tarball) as archive:
         for member in archive.getmembers():
             if member.isfile():
@@ -165,8 +182,11 @@ def setup_web(base, packages, web_package, web_source, reference_environment):
                 if path.parts[0] != 'package' or '..' in path.parts:
                     raise ValueError('unexpected stock Web package member')
                 expected = hashlib.sha256(archive.extractfile(member).read()).hexdigest()
+                package_members[str(path.relative_to('package'))] = expected
                 if sha(web_package.joinpath(*path.parts[1:])) != expected:
                     raise ValueError('installed stock Web package differs from the source-built artifact')
+    if package_members != {str(p.relative_to(web_package)): sha(p) for p in web_package.rglob('*') if p.is_file()}:
+        raise ValueError('installed stock Web package member inventory differs from the source-built artifact')
     node_modules = web_package.parent.parent
     lock = node_modules.parent / 'package-lock.json'
     integrity = json.loads(lock.read_text())['packages']['node_modules/@opentdf/sdk']['integrity']
@@ -184,7 +204,8 @@ def setup_web(base, packages, web_package, web_source, reference_environment):
                 'reference_environment_sha256': sha(reference_environment),
                 'toolchains': {'node': invoke([node, '--version'], SDK, env).decode().strip(), 'go': original['toolchains']['go']},
                 'normal_runtime_environment': {'inherited_option_names': sorted(key for key in os.environ if key not in normal_environment(os.environ)), 'known_options_absent': [key for key in RUNTIME_OPTIONS if key not in env]},
-                'web': {'package_path': str(web_package), 'source_head': actual_head, 'package_version': package['version'], 'tarball_sha256': sha(tarball), 'npm_lock_sha256': sha(lock),
+                'web': {'package_path': str(web_package), 'source_head': actual_head, 'expected_revision': pinned, 'locked_revision': locked, 'revision_override': web_revision is not None, 'package_version': package['version'], 'tarball_sha256': sha(tarball), 'npm_lock_sha256': sha(lock),
+                        'source_npm_lock_sha256': sha(web_source / 'lib/package-lock.json'), 'package_members': package_members,
                         'node_dependency_members': {str(p.relative_to(node_modules)): sha(p) for p in sorted(node_modules.rglob('*')) if p.is_file()},
                         'client_lifecycle': 'one public TDF3Client and ES256 signer per fresh process; stock fresh RSA2048 key generation inside every decrypt'},
                 'timing_scope': 'contiguous stock encrypt and full stream consumption, then same-archive decrypt and full owned plaintext consumption; OAuth/discovery untimed'}
@@ -193,7 +214,7 @@ def setup_web(base, packages, web_package, web_source, reference_environment):
     return commands, env
 
 
-def setup_swift(base, package):
+def setup_swift(base, package, reference_environment=None):
     """Build an independent SwiftPM importer and stock Go validator only."""
     env = normal_environment(os.environ.copy())
     env['GOTOOLCHAIN'] = 'go1.25.14'
@@ -212,14 +233,21 @@ def setup_swift(base, package):
         'targets: [.executableTarget(name: "Benchmark", dependencies: [.product(name: "OpenTDFTDF3", package: "package")], '
         'path: ".", exclude: ["package"], sources: ["Benchmark.swift"])], swiftLanguageModes: [.v5])\n')
     invoke(['swift', 'build', '-c', 'release'], swift, env, 900)
-    reference = build / 'reference'
-    reference.mkdir()
-    shutil.copyfile(SRC / 'reference-go.go', reference / 'main.go')
-    module = (SDK / 'tests/interop/generatedreference/go.mod').read_text().replace('../../../../platform/', str(SDK.parent / 'platform') + '/')
-    (reference / 'go.mod').write_text(module)
-    shutil.copyfile(SDK / 'tests/interop/generatedreference/go.sum', reference / 'go.sum')
-    invoke(['go', 'build', '-trimpath', '-o', reference / 'benchmark', '.'], reference, env)
-    commands = {'swift': [str(swift / '.build/release/Benchmark')], 'reference': [str(reference / 'benchmark')]}
+    if reference_environment:
+        original = json.loads(reference_environment.read_text())
+        reference_command = original['commands']['reference']
+        if sha(Path(reference_command[0])) != original['built_consumers']['reference']:
+            raise ValueError('frozen original-Go validator binary changed')
+    else:
+        reference = build / 'reference'
+        reference.mkdir()
+        shutil.copyfile(SRC / 'reference-go.go', reference / 'main.go')
+        module = (SDK / 'tests/interop/generatedreference/go.mod').read_text().replace('../../../../platform/', str(SDK.parent / 'platform') + '/')
+        (reference / 'go.mod').write_text(module)
+        shutil.copyfile(SDK / 'tests/interop/generatedreference/go.sum', reference / 'go.sum')
+        invoke(['go', 'build', '-trimpath', '-o', reference / 'benchmark', '.'], reference, env)
+        reference_command = [str(reference / 'benchmark')]
+    commands = {'swift': [str(swift / '.build/release/Benchmark')], 'reference': reference_command}
     snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(),
                 'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(),
                 'references_lock_sha256': sha(SDK / 'references.lock.json'),
@@ -227,6 +255,7 @@ def setup_swift(base, package):
                 'package_members': members, 'commands': commands,
                 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()},
                 'controller_sha256': sha(Path(__file__)),
+                'reference_environment_sha256': sha(reference_environment) if reference_environment else None,
                 'environment': {key: env[key] for key in ('PATH', 'LD_LIBRARY_PATH', 'PKG_CONFIG_PATH', 'GOTOOLCHAIN', 'GOROOT') if key in env},
                 'built_consumers': {name: sha(Path(command[0])) for name, command in commands.items()},
                 'system': platform.uname()._asdict(),
@@ -313,6 +342,7 @@ def main():
     parser.add_argument('--targets', default=','.join(NATIVE_TARGETS))
     parser.add_argument('--web-package', type=Path, help='installed pinned @opentdf/sdk package directory for the optional Web Node row')
     parser.add_argument('--web-source', type=Path, default=SDK.parent / 'web-sdk', help='pinned stock Web repository used to build the installed package')
+    parser.add_argument('--web-revision', help='explicit full benchmark-only Web source revision; defaults to references.lock.json without changing the oracle pin')
     parser.add_argument('--reference-environment', type=Path, help='frozen original-Go environment.json; Web-only preparation reuses its validated binary without native rebuilds')
     parser.add_argument('--swift-package', type=Path, help='built SwiftPM OpenTDFTDF3 source package for a Swift-only campaign')
     parser.add_argument('--platform-url', default='http://localhost:8080')
@@ -328,6 +358,8 @@ def main():
     parser.add_argument('--rerun', action='append', default=[], metavar='TARGET:OPERATION:SIZE')
     parser.add_argument('--correction-note', default='')
     args = parser.parse_args()
+    if args.web_revision and (args.targets != 'web' or len(args.web_revision) != 40 or any(c not in '0123456789abcdef' for c in args.web_revision)):
+        parser.error('--web-revision requires a Web-only campaign and a full lowercase Git revision')
     if any(label not in SIZES for label in args.sizes.split(',')):
         parser.error('--sizes must select 1MiB,10MiB,50MiB')
     if any(target not in TARGETS for target in args.targets.split(',')) or min(args.samples, args.batches, args.warmups) < 1 or args.bulk_warmups < 0:
@@ -364,14 +396,25 @@ def main():
                       if p.is_file() and not any(part in ('.build', '.swiftpm') for part in p.relative_to(installed).parts)}
             if actual != snapshot['package_members']:
                 raise RuntimeError('frozen Swift campaign package changed')
+        elif args.targets == 'web':
+            web = snapshot['web']
+            expected = args.web_revision or json.loads((SDK / 'references.lock.json').read_text())['repositories']['web-sdk']['revision']
+            if expected != web.get('expected_revision', web['source_head']) or invoke(['git', 'rev-parse', 'HEAD'], args.web_source.resolve(), env).decode().strip() != expected:
+                raise RuntimeError('frozen Web campaign revision changed')
+            node_modules = Path(web['package_path']).parent.parent
+            actual = {str(p.relative_to(node_modules)): sha(p) for p in sorted(node_modules.rglob('*')) if p.is_file()}
+            if actual != web['node_dependency_members'] or sha(node_modules.parent / 'package-lock.json') != web['npm_lock_sha256']:
+                raise RuntimeError('frozen Web campaign installed dependencies changed')
+            if sha(Path(commands['reference'][0])) != snapshot['built_consumers']['reference']:
+                raise RuntimeError('frozen original-Go validator binary changed')
     elif args.targets == 'swift':
         if not args.swift_package:
             parser.error('Swift-only preparation requires --swift-package')
-        commands, env = setup_swift(base, args.swift_package.resolve())
+        commands, env = setup_swift(base, args.swift_package.resolve(), args.reference_environment.resolve() if args.reference_environment else None)
     elif args.targets == 'web':
         if not args.web_package or not args.reference_environment:
             parser.error('Web-only preparation requires --web-package and --reference-environment')
-        commands, env = setup_web(base, packages, args.web_package.resolve(), args.web_source.resolve(), args.reference_environment.resolve())
+        commands, env = setup_web(base, packages, args.web_package.resolve(), args.web_source.resolve(), args.reference_environment.resolve(), args.web_revision)
     else:
         if any(target in args.targets.split(',') for target in ('web', 'swift')):
             parser.error('measure optional Web and Swift rows separately with --targets web or --targets swift')
@@ -440,13 +483,15 @@ def main():
                                 with zipped.open(member) as stream:
                                     while stream.read(1 << 20):
                                         pass
+                            manifest_profile = validate_manifest(json.loads(zipped.read('0.manifest.json')), size_bytes)
                         configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url)
                         check = json.loads(invoke(commands['reference'] + [str(directory), 'validate', str(archive), '0', size], SDK, env, 180))
                         if check.get('correct') is not True:
                             raise ValueError('independent stock Go plaintext mismatch')
                         validation.append({'batch_id': batch_id, 'sample': i, 'archive_path': str(archive.relative_to(base)),
                                            'archive_sha256': sha(archive), 'archive_bytes': archive.stat().st_size,
-                                           'stock_go_real_kas': True, 'independent_zip_crc': True})
+                                           'stock_go_real_kas': True, 'independent_zip_crc': True,
+                                           'manifest_profile': manifest_profile})
                     event.update(result, status='ok', warmup_statistics=warmup_statistics(result),
                                  encrypted_samples_validated=validation, wall_seconds=time.time() - started,
                                  reference_client_initializations=result.get('client_initializations'))
