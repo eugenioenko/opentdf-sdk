@@ -7,7 +7,7 @@ experimental, like the rest of this POC, and its API may change.
 ## Build
 
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. A shared
-[Goalchemy **v0.5.1**](https://github.com/eugenioenko/goalchemy/releases/tag/v0.5.1)
+[Goalchemy **v0.6.0**](https://github.com/eugenioenko/goalchemy/releases/tag/v0.6.0)
 is pinned for all eight targets in
 [references.lock.json](../references.lock.json).
 
@@ -22,7 +22,7 @@ From the workspace containing the adjacent repositories:
 
 ```sh
 cd goalchemy
-git checkout v0.5.1
+git checkout v0.6.0
 bash scripts/fetch-toolchains.sh swift
 export PATH="$PWD/.toolchains/swift-6.4.0/usr/bin:$PATH"
 GOTOOLCHAIN=go1.25.14 go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy

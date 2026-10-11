@@ -20,7 +20,7 @@ private final class HostProof {
   init(_ pem: GoString, mismatch: Bool) throws {
     let imported =
       mismatch
-      ? gcn_key_generate(2)
+      ? gcn_key_generate(256)
       : pem.bytes.withUnsafeBufferPointer { gcn_key_import($0.baseAddress, $0.count) }
     guard let imported = imported else { throw NSError(domain: "proof", code: 1) }
     key = imported
@@ -70,7 +70,7 @@ private final class HostProof {
     let status = data.withUnsafeBytes { source in
       signature.withUnsafeMutableBufferPointer {
         gcn_sign(
-          rsa ? 1 : 2, key, source.bindMemory(to: UInt8.self).baseAddress, data.count,
+          rsa ? 1 : 2, 256, key, source.bindMemory(to: UInt8.self).baseAddress, data.count,
           $0.baseAddress, &length)
       }
     }
