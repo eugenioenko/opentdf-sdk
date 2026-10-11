@@ -66,6 +66,12 @@ type Failure struct {
 }
 
 func (e *Failure) Error() string { return "sdk: " + e.Operation + ": " + e.Code }
+
+// Version is the SDK version; TDFSpecVersion is the spec version new files
+// target. SupportedFeatures lists the xtest feature names this build passes.
+func Version() string             { return sdk.Version }
+func TDFSpecVersion() string      { return sdk.TDFSpecVersion }
+func SupportedFeatures() []string { return sdk.SupportedFeatures() }
 func wrap(op string, err error) error {
 	if err == nil {
 		return nil
