@@ -223,6 +223,29 @@ the target to match. Every phase's exit criteria name the rows that must turn
 green. The scoreboard is committed with each phase and attached to the
 release notes.
 
+## Implementation rules
+
+- **Port the reference, don't reinvent it.** The reference Go SDK is the
+  primary source: each shared-source file mirrors a reference file
+  (`granter.go`, `key_splitter.go`, `assertion.go`, `kas_client.go`, ...)
+  with the same function and type names, the same control flow and the same
+  error wording, changed only where the Goalchemy subset or the API spec
+  requires. A reviewer must be able to diff the two files. The web SDK is
+  consulted only for browser behaviour and for cases where the two
+  references disagree. Reference unit tests are ported alongside the code.
+- **Compose, don't entangle.** Every collaborator the reference hides behind
+  a struct field becomes an interface in the shared source with one default
+  implementation: `TokenSource`, `KeyFetcher` (KAS public keys), `KeySplitter`,
+  `Granter` (attribute resolution), `Rewrapper` (KAS client), `Transport`
+  (HTTP exchange), `Clock`. `New` wires the defaults; tests and wrappers
+  supply replacements. No package-level state: everything hangs off the
+  `SDK` instance. The `Client` and `TDFReader` interfaces in the API spec are
+  the public composition points; a wrapper delegates to them and may replace
+  any of the internal interfaces above.
+- **Small, explicit types across the boundary.** Options and results are
+  plain structs; handles are the only stateful objects; no callbacks except
+  the host token source and host streams.
+
 ## Working rules
 
 - One worker at a time, one phase per worker task, one PR per phase part.
