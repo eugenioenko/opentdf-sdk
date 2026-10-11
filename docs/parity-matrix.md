@@ -20,8 +20,14 @@ No reference symbol is `done` at Phase 0: the current `library.Encrypt` and
 the reference names, so `SDK.CreateTDF`, `SDK.DecryptBytes` and their types
 stay at `phase 2`, where the handle API replaces the facade.
 
-Goalchemy issues opened for the gaps the phases depend on are listed in
-[goalchemy-gaps.md](goalchemy-gaps.md).
+Goalchemy issues opened for the gaps the phases depend on, detailed in
+[goalchemy-gaps.md](goalchemy-gaps.md):
+[#71](https://github.com/eugenioenko/goalchemy/issues/71) `std/net/url` (phase 2),
+[#72](https://github.com/eugenioenko/goalchemy/issues/72) RFC 8785 JSON canonicalisation (phase 5),
+[#73](https://github.com/eugenioenko/goalchemy/issues/73) `std/os` file handles, `CreateTemp` and `Rename` (phase 7),
+[#74](https://github.com/eugenioenko/goalchemy/issues/74) `lib/runtime` host OS, architecture and version (phase 5),
+[#75](https://github.com/eugenioenko/goalchemy/issues/75) bounded JSON Schema validator (phase 6),
+[#76](https://github.com/eugenioenko/goalchemy/issues/76) X.509 certificate public key for `x5c` (phase 5).
 
 ## Summary
 
