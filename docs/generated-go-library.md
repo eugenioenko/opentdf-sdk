@@ -52,6 +52,12 @@ protocol JSON enforces its existing string rules. HasMetadata distinguishes
 absent from explicitly encrypted empty metadata. ManifestJSON represents the
 validated supported manifest, with shared canonical serialization.
 
+`Version`, `TDFSpecVersion` and `SupportedFeatures` are exported alongside
+`Encrypt` and `Decrypt`; they read the shared `src/version.go`.
+`src/hosts/go/cmd/otdfgc` is the native CLI over this package (built by
+`scripts/build-go-cli.sh`) that the xtest harness drives as the `gcgo` SDK
+type; see [xtest.md](xtest.md).
+
 ## Native token providers
 
 Server hosts may use credentials. Hosts with an independent token provider set
