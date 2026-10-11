@@ -18,8 +18,7 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 Swift also passed a fresh full local real-KAS matrix: 541 comparisons across
 BASIC, EC and enforced DPoP, plus integrity and transport rejection checks.
 Its SwiftPM source package built reproducibly and was imported independently.
-macOS/iOS integration remains unverified. Bounded Linux Swift performance
-measurements are reported below.
+macOS/iOS integration remains unverified. Linux Swift performance measurements are reported below.
 
 | SDK | Package | API and prerequisites |
 | --- | --- | --- |
@@ -35,13 +34,13 @@ measurements are reported below.
 ## End-to-end performance
 
 Median encrypt → decrypt time through **real KAS**, in milliseconds.
-The original and first seven generated rows are historical Goalchemy
-**v0.2.1** results.\* Swift uses separate bounded diagnostic measurements.†
+Original Go and the first seven generated rows retain historical Goalchemy
+**v0.2.1** results.\* Web SDK (Node) and Swift were remeasured in a fresh campaign.†
 
 | SDK | 1 MiB | 10 MiB | 50 MiB |
 | --- | ---: | ---: | ---: |
 | Original OpenTDF Go | 36.28 ms | 88.27 ms | 217.77 ms |
-| Original OpenTDF Web (Node) | 216.69 ms | 932.65 ms | 4444.67 ms |
+| Original OpenTDF Web (Node)† | 58.44 ms | 138.43 ms | 901.18 ms |
 | Generated Go | 72.83 ms | 83.18 ms | 266.32 ms |
 | TypeScript (Node) | 96.57 ms | 199.28 ms | 750.11 ms |
 | Java | 87.70 ms | 142.18 ms | 401.28 ms |
@@ -49,23 +48,23 @@ The original and first seven generated rows are historical Goalchemy
 | Python | 141.06 ms | 186.54 ms | 691.28 ms |
 | Rust | 61.66 ms | 127.14 ms | 614.88 ms |
 | C | 148.24 ms | 254.38 ms | 555.77 ms |
-| Swift† | 754.02 ms | 706.78 ms | 1401.92 ms |
+| Swift† | 283.56 ms | 371.41 ms | 1012.40 ms |
 
 \* Each historical cell pools 15 measurements: five per process across three fresh
 processes, with normal runtime settings. Before timing, each process runs
 40 warmup pairs at 50 MiB and 20 at the measured size; generated Go 1 MiB,
 Java 1 MiB and C# 10 MiB use 100 size-specific warmups after checking their initial
-histories. Every pair checks the full plaintext; all 486 retained archives
-also passed independent OpenTDF Go/KAS decryption and ZIP CRC checks.
+histories. Every pair checks the full plaintext; retained archives also passed
+independent OpenTDF Go/KAS decryption and ZIP CRC checks.
 
-† Swift uses a release build on Linux x86_64 with one size-specific warmup and
-no bulk warmup. The 1/10 MiB cells each use two measured pairs from compiler
-commit `5de8b6b`; 50 MiB uses three from `4d94248f`. These are small diagnostic
-samples from one process per size, not a matched repeat of the historical
-15-sample campaign. Every pair checked full plaintext; all retained archives
-passed independent stock-Go/KAS decryption and ZIP CRC checks, and Swift also
-decrypted stock-Go archives at all three sizes. The public Foundation `Data`
-input/output conversions and SDK-internal setup remain timed.
+† Source-built Web SDK **0.22.0** (`e52ac7bb`, upstream `main`) and Swift use the same policy:
+15 measured pairs per cell across three fresh processes, each after 40 full
+50 MiB warmups and 20 size-specific warmups. Swift is a Linux release build of
+SDK `7f845a5`, including the JSON string-run optimization, generated with
+compiler `7863d12`. All 108 retained archives passed independent Go/KAS, ZIP CRC
+and segment-profile checks; Swift also decrypted stock-Go archives at all three
+sizes. Other rows were not remeasured. See the methodology for source revisions,
+timing boundaries and the local service setup.
 
 Original Go reuses a client initialized before timing; generated facades'
 internal setup and session-key generation remain timed. Original Web reuses

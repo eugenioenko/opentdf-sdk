@@ -1,5 +1,21 @@
 # OpenTDF SDK implementation plan
 
+## Web and Swift benchmark refresh
+
+Refresh only the original OpenTDF Web SDK (Node) and generated Swift README
+rows at 1, 10 and 50 MiB on this Linux machine. Freeze upstream Web SDK 0.22.0
+at `e52ac7bb2409bf0e9935e94f50cc6d6ad4a73e51` for this measurement; keep the
+existing CI reference pin unchanged. Build Swift from the current shared SDK
+source and the reviewed compiler pin before timing.
+
+Use the same three-process policy for both targets: 40 full 50 MiB warmups,
+20 size-specific warmups and five measured real-KAS encrypt/decrypt pairs per
+process. Report the pooled 15-sample median in milliseconds. Check every pair's
+full plaintext and independently validate retained archives with stock Go/KAS
+and ZIP CRC checks. Preserve the other historical rows and identify the new
+rows' source revisions and measurement method separately. Keep generated files,
+private configuration and raw receipts ignored; publish the results in a PR.
+
 ## Package-based compiler update
 
 Use Goalchemy's package-based output across all eight targets while preserving

@@ -5,10 +5,14 @@ import OpenTDFTDF3
 struct Benchmark {
   static func main() throws {
     let args = CommandLine.arguments
-    guard args.count == 7, args[2] == "e2e", let samples = Int(args[4]),
-      let warmups = Int(args[5]), let bulkWarmups = Int(args[6]),
-      samples > 0, warmups > 0, bulkWarmups >= 0
-    else { fatalError("usage: benchmark directory e2e size samples warmups bulk-warmups") }
+    guard args.count == 7, args[2] == "e2e" || args[2] == "validate"
+    else { fatalError("usage: benchmark directory e2e size samples warmups bulk-warmups; or directory validate size archive 0 0") }
+    let validating = args[2] == "validate"
+    let samples = validating ? 0 : Int(args[4]) ?? 0
+    let warmups = Int(args[5]) ?? -1
+    let bulkWarmups = Int(args[6]) ?? -1
+    guard validating || (samples > 0 && warmups > 0 && bulkWarmups >= 0)
+    else { fatalError("invalid benchmark policy") }
     let directory = URL(fileURLWithPath: args[1])
     func file(_ name: String) -> URL { directory.appendingPathComponent(name) }
     let raw =
@@ -36,6 +40,13 @@ struct Benchmark {
       return nil
     }
     let input = try Data(contentsOf: file(args[3] + ".input"))
+    if validating {
+      let archive = try Data(contentsOf: URL(fileURLWithPath: args[4]))
+      let decrypted = try decrypt(config, archive, provider: provider).wait()
+      guard decrypted.payload == input else { fatalError("independent stock Go plaintext mismatch") }
+      FileHandle.standardOutput.write(Data("{\"correct\":true}\n".utf8))
+      return
+    }
     let bulkInput =
       bulkWarmups > 0 && args[3] != "50" ? try Data(contentsOf: file("50.input")) : input
     var options = EncryptOptions()

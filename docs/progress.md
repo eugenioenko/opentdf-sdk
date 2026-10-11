@@ -1589,3 +1589,24 @@ output remains ignored. The PR already targets and branches from `main`.
 Local generated reference files are retained; PR #9 stays open unchanged.
 The preceding CI results apply to `2fa3833`; the scope correction triggers a
 new final-head run without changes to production SDK or native build behavior.
+
+
+## Web and Swift benchmark refresh
+
+Work is isolated in the `perf/web-swift-refresh` Git worktree. Original Web SDK
+0.22.0 was source-built from upstream `e52ac7bb`; its exact installed package
+and dependency inventory were frozen. Swift was generated from shared SDK
+`7f845a5` using implementation compiler `7863d12` and rebuilt in release mode.
+The existing local BASIC platform and six-hour token required no service changes.
+An endpoint-aware, receipt-verified stock-Go validator replaced an incompatible
+historical port-8080 oracle during preflight, before any timed measurement.
+
+Both targets passed the matched 40 bulk + 20 size-specific warmup policy, with
+five timed samples in each of three fresh processes per cell. Web medians are
+58.44 / 138.43 / 901.18 ms and Swift medians 283.56 / 371.41 / 1012.40 ms at
+1 / 10 / 50 MiB. All 18 histories passed the trend gate, with no exclusions.
+The final audit verified 90 timed samples, 1170 native pairs including warmup,
+108 independently stock-Go/KAS-decrypted and CRC/profile-checked archives,
+and stock-Go-to-Swift at all three sizes. Source, package and binary identities
+remained frozen. Detailed receipts stay ignored; the other eight README rows
+retain their historical results. No production or CI reference pins changed.
