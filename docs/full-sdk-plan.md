@@ -197,10 +197,12 @@ matrix can compare them:
 | `gcc` | C |
 | `gcswift` | Swift |
 
-The harness lives in a repository the user controls, `opentdf-tests`, created
-in Phase 1 as a fork of `opentdf/tests` so that upstream changes can be
-merged in and the harness changes can be offered upstream later. `../tests`
-is re-pointed at that repository. Changes there are kept small:
+The harness lives in a repository the user controls,
+`eugenioenko/opentdf-sdk-tests`: a single-commit snapshot of the `opentdf/tests`
+tree (no upstream history; GitHub refuses a fork under this account's SAML
+binding and push protection rejects the upstream history). `../tests` is that
+repository's clone. To take upstream changes, add `opentdf/tests` as a remote
+and rebase the harness patches onto it. Changes there are kept small:
 
 - `xtest/tdfs.py`: extend `sdk_type`; add `("autoconfigure" | "ns_grants" | "multikao" | "better-messages-2024", gc*)` cases only once those features pass; everything else is answered by `cli.sh supports`.
 - `xtest/sdk/<type>/{Makefile,cli.sh}`: `Makefile` builds `dist/<version>/otdfgc` from `src/<version>` (a checkout or symlink of this repository) using `scripts/build-generated-<target>.sh` and the target's CLI build; `cli.sh` is the shared shim that forwards to `otdfgc` and maps `XT_WITH_*` variables to flags. One shim file, copied by each Makefile.
@@ -648,7 +650,7 @@ Verification:
 ## Decisions taken with the user
 
 - Swift builds in every phase but is gated only in Phase 11.
-- The harness lives in the user's `opentdf-tests` fork; eight SDK types.
+- The harness lives in `eugenioenko/opentdf-sdk-tests`, a snapshot of `opentdf/tests`; eight SDK types.
 - `experimental/tdf` and the chunked writer stay in Phase 10.
 - One reference pin (`platform/sdk` 0.34.0) for the whole plan, bumped in Phase 11.
 - Package names and publication identities are chosen in Phase 11 with the user.
