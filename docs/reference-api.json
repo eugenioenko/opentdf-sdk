@@ -1,10 +1,10 @@
 {
   "schema_version": 3,
-  "reference_revision": "f2635158b681fa970aafce7eacf108a453521f63",
+  "reference_revision": "4d9e555bddf0c850190680807118fbac1851a9aa",
   "package": "github.com/opentdf/platform/sdk",
   "toolchain": "go1.25.14",
   "scope": "Root package public function/method, type/member, constant and variable declarations, SDK client fields, and sdkconnect service interface methods. Excludes other subpackages, unexported implementation details and behavioral coverage.",
-  "doc_sha256": "7a34c31913387443ccde141d4acf9a9c0484c8d19c82df70f57248603ffacb86",
+  "doc_sha256": "891331e8bef8a5d21860cacdbe532f3e980caec45d4df96a53e7f8dd7c4bf103",
   "functions": [
     {
       "symbol": "AllowList.Add",
@@ -1325,6 +1325,7 @@
     {
       "kind": "var",
       "symbols": [
+        "ErrAESGCMExhausted",
         "ErrTampered",
         "ErrRootSigValidation",
         "ErrSegSizeMismatch",
@@ -1340,7 +1341,7 @@
         "ErrKASRequestError",
         "ErrRewrapForbidden"
       ],
-      "declaration": "var (\nErrTampered                = errors.New(\"tamper detected\")\nErrRootSigValidation       = fmt.Errorf(\"[%w] tdf: failed integrity check on root signature\", ErrTampered)\nErrSegSizeMismatch         = fmt.Errorf(\"[%w] tdf: mismatch encrypted segment size in manifest\", ErrTampered)\nErrSegSizeUnresolved       = fmt.Errorf(\"[%w] tdf: segment size invalid or missing from manifest, with no default to fall back on\", ErrTampered)\nErrSegSigValidation        = fmt.Errorf(\"[%w] tdf: failed integrity check on segment hash\", ErrTampered)\nErrGMACSignatureFailed     = fmt.Errorf(\"[%w] tdf: ciphertext too short for a gmac signature\", ErrTampered)\nErrTDFPayloadReadFail      = fmt.Errorf(\"[%w] tdf: fail to read payload from tdf\", ErrTampered)\nErrTDFPayloadInvalidOffset = fmt.Errorf(\"[%w] sdk.Reader.ReadAt: negative offset\", ErrTampered)\nErrRootSignatureFailure    = fmt.Errorf(\"[%w] tdf: issue verifying root signature\", ErrTampered)\nErrRewrapBadRequest        = fmt.Errorf(\"[%w] tdf: rewrap request 400\", ErrTampered)\nErrUnsupportedRootIntegrityAlgorithm = errors.New(\"tdf: unsupported root integrity algorithm\")\nErrUnsupportedSegmentIntegrityAlgorithm = errors.New(\"tdf: unsupported segment integrity algorithm\")\nErrKASRequestError = errors.New(\"tdf: KAS request error\")\nErrRewrapForbidden = errors.New(\"tdf: rewrap request 403\")\n)"
+      "declaration": "var (\nErrAESGCMExhausted = errors.New(\"tdf: AES-GCM IV collision limit reached for this data encryption key\")\nErrTampered                = errors.New(\"tamper detected\")\nErrRootSigValidation       = fmt.Errorf(\"[%w] tdf: failed integrity check on root signature\", ErrTampered)\nErrSegSizeMismatch         = fmt.Errorf(\"[%w] tdf: mismatch encrypted segment size in manifest\", ErrTampered)\nErrSegSizeUnresolved       = fmt.Errorf(\"[%w] tdf: segment size invalid or missing from manifest, with no default to fall back on\", ErrTampered)\nErrSegSigValidation        = fmt.Errorf(\"[%w] tdf: failed integrity check on segment hash\", ErrTampered)\nErrGMACSignatureFailed     = fmt.Errorf(\"[%w] tdf: ciphertext too short for a gmac signature\", ErrTampered)\nErrTDFPayloadReadFail      = fmt.Errorf(\"[%w] tdf: fail to read payload from tdf\", ErrTampered)\nErrTDFPayloadInvalidOffset = fmt.Errorf(\"[%w] sdk.Reader.ReadAt: negative offset\", ErrTampered)\nErrRootSignatureFailure    = fmt.Errorf(\"[%w] tdf: issue verifying root signature\", ErrTampered)\nErrRewrapBadRequest        = fmt.Errorf(\"[%w] tdf: rewrap request 400\", ErrTampered)\nErrUnsupportedRootIntegrityAlgorithm = errors.New(\"tdf: unsupported root integrity algorithm\")\nErrUnsupportedSegmentIntegrityAlgorithm = errors.New(\"tdf: unsupported segment integrity algorithm\")\nErrKASRequestError = errors.New(\"tdf: KAS request error\")\nErrRewrapForbidden = errors.New(\"tdf: rewrap request 403\")\n)"
     },
     {
       "kind": "var",
