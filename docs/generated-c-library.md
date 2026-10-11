@@ -4,13 +4,17 @@
 
 ## Build and isolated import
 
+Install the zlib development package (`zlib1g-dev` on Ubuntu) alongside OpenSSL
+and libcurl headers. Goalchemy 0.6.0 uses zlib directly for HTTP gzip decoding,
+so consumers must include `-lz` when linking the static SDK archive.
+
 From the SDK checkout, run `bash scripts/build-generated-c.sh /absolute/output`. `GOALCHEMY_BIN` selects a freshly built Goalchemy compiler; `GOALCHEMY_BDWGC` selects the threaded collector installation. `TDF3_CURL_PREFIX` optionally selects locally extracted matching libcurl development/runtime packages. The default development prefix is ignored `.local/root-c-development-prerequisites/prefix`. `CC`, `CFLAGS`, `CPPFLAGS`, and `AR` select native build tools/flags. The build emits `libtdf3.a`, public headers, `native-link.env`, content hashes, and a reproducibly ordered archive `opentdf-tdf3-c-0.1.0-linux-x86_64.tar.gz`.
 
 Extract that archive in a separate directory. A consumer includes only `tdf3.h` from its `include/` directory and links the SDK archive plus native dependencies:
 
 ```sh
 cc -std=c17 -I package/include consumer.c package/lib/libtdf3.a \
-  -L "$CURL_PREFIX/usr/lib/x86_64-linux-gnu" -lcurl -lssl -lcrypto \
+  -L "$CURL_PREFIX/usr/lib/x86_64-linux-gnu" -lcurl -lssl -lcrypto -lz \
   "$GOALCHEMY_BDWGC/lib/libgc.a" -lpthread -ldl -o consumer
 LD_LIBRARY_PATH="$CURL_PREFIX/usr/lib/x86_64-linux-gnu" ./consumer
 ```

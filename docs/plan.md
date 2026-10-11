@@ -1,5 +1,15 @@
 # OpenTDF SDK implementation plan
 
+## Goalchemy 0.6.0 adoption
+
+The user authorized releasing Goalchemy 0.6.0 before its CI finished. Pin the
+SDK module, reference lock and both CI checkouts to that released commit.
+Regenerate and check all eight targets, adapting dependency locks and native
+consumers where the new runtime interfaces require it. Preserve the existing
+public encryption/decryption API and historical benchmark results. Generated
+output remains ignored. The SDK PR must pass the existing offline and all eight
+focused real-KAS CI jobs.
+
 ## Web and Swift benchmark refresh
 
 Refresh only the original OpenTDF Web SDK (Node) and generated Swift README

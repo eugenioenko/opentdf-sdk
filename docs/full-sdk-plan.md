@@ -58,7 +58,7 @@ stable error, when a caller or a file requires one of them.
 
 | Feature | Reason |
 | --- | --- |
-| Post-quantum KAOs: X-Wing, secp+ML-KEM hybrids, pure ML-KEM (`mechanism-xwing`, `mechanism-secpmlkem`, `mechanism-mlkem`) | Goalchemy will not add post-quantum primitives (goalchemy #21, closed). The reader rejects such KAOs with `unsupported key access type`; the xtest shim answers no to these features. |
+| Post-quantum KAOs: X-Wing, secp+ML-KEM hybrids, pure ML-KEM (`mechanism-xwing`, `mechanism-secpmlkem`, `mechanism-mlkem`) | Goalchemy will not add post-quantum primitives (goalchemy #21, closed). The reader rejects such KAOs with `unsupported key access type`; the xtest shim answers no to these features. `test_pqc.py` gates only the encrypt SDK, so Phase 1 adds a decrypt-side gate in `tdfs.py` (upstreamable) so that reference-writer, gc-reader PQ cells skip instead of fail. |
 | `WithIPC` in-process connection | Needs an in-process Go server; impossible from a generated library. `WithIPC` maps to the Unix-socket transport on targets that have it, and reports unsupported on Java and in browsers. |
 | Windows named pipes, plaintext HTTP/2 | Not available in the standard libraries of all targets. |
 | `WithExtraClientOptions` (Connect client options) | Go-specific type. Equivalent configuration is exposed through the SDK's own transport options. |
@@ -154,7 +154,10 @@ other manifest types keep the reference's JSON tags.
 
 Every target's `otdfgc` CLI accepts the same arguments, so one `cli.sh` serves
 all targets in xtest. The flags are the subset of `otdfctl` that xtest's
-`sdk/go/cli.sh` uses, plus `supports`.
+`sdk/go/cli.sh` uses, plus the DPoP flags that only the `js` shim maps
+(`XT_WITH_DPOP`, `XT_WITH_DPOP_KEY`; `test_dpop.py` also overrides `CLIENTID`),
+plus `supports`. The shim reads both `XT_WITH_KAS_ALLOWLIST` (what `tdfs.py`
+sets) and `XT_WITH_KAS_ALLOW_LIST` (what the upstream shims read).
 
 ```
 otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
@@ -194,10 +197,12 @@ matrix can compare them:
 | `gcc` | C |
 | `gcswift` | Swift |
 
-The harness lives in a repository the user controls, `opentdf-tests`, created
-in Phase 1 as a fork of `opentdf/tests` so that upstream changes can be
-merged in and the harness changes can be offered upstream later. `../tests`
-is re-pointed at that repository. Changes there are kept small:
+The harness lives in a repository the user controls,
+`eugenioenko/opentdf-sdk-tests`: a single-commit snapshot of the `opentdf/tests`
+tree (no upstream history; GitHub refuses a fork under this account's SAML
+binding and push protection rejects the upstream history). `../tests` is that
+repository's clone. To take upstream changes, add `opentdf/tests` as a remote
+and rebase the harness patches onto it. Changes there are kept small:
 
 - `xtest/tdfs.py`: extend `sdk_type`; add `("autoconfigure" | "ns_grants" | "multikao" | "better-messages-2024", gc*)` cases only once those features pass; everything else is answered by `cli.sh supports`.
 - `xtest/sdk/<type>/{Makefile,cli.sh}`: `Makefile` builds `dist/<version>/otdfgc` from `src/<version>` (a checkout or symlink of this repository) using `scripts/build-generated-<target>.sh` and the target's CLI build; `cli.sh` is the shared shim that forwards to `otdfgc` and maps `XT_WITH_*` variables to flags. One shim file, copied by each Makefile.
@@ -217,6 +222,29 @@ from pytest's JUnit XML: one row per test, one column per target, values
 the target to match. Every phase's exit criteria name the rows that must turn
 green. The scoreboard is committed with each phase and attached to the
 release notes.
+
+## Implementation rules
+
+- **Port the reference, don't reinvent it.** The reference Go SDK is the
+  primary source: each shared-source file mirrors a reference file
+  (`granter.go`, `key_splitter.go`, `assertion.go`, `kas_client.go`, ...)
+  with the same function and type names, the same control flow and the same
+  error wording, changed only where the Goalchemy subset or the API spec
+  requires. A reviewer must be able to diff the two files. The web SDK is
+  consulted only for browser behaviour and for cases where the two
+  references disagree. Reference unit tests are ported alongside the code.
+- **Compose, don't entangle.** Every collaborator the reference hides behind
+  a struct field becomes an interface in the shared source with one default
+  implementation: `TokenSource`, `KeyFetcher` (KAS public keys), `KeySplitter`,
+  `Granter` (attribute resolution), `Rewrapper` (KAS client), `Transport`
+  (HTTP exchange), `Clock`. `New` wires the defaults; tests and wrappers
+  supply replacements. No package-level state: everything hangs off the
+  `SDK` instance. The `Client` and `TDFReader` interfaces in the API spec are
+  the public composition points; a wrapper delegates to them and may replace
+  any of the internal interfaces above.
+- **Small, explicit types across the boundary.** Options and results are
+  plain structs; handles are the only stateful objects; no callbacks except
+  the host token source and host streams.
 
 ## Working rules
 
@@ -313,13 +341,16 @@ Verification:
 Goal: `New(endpoint, options)` with discovery, the `SDK` and `Reader` handles,
 and byte-level `CreateTDF`/`LoadTDF`/`DecryptBytes` on all targets.
 
-Reference symbols: `New`, `SDK.Close`, `SDK.CreateTDF`, `CreateTDFContext`
-(bytes form), `LoadTDF`, `Reader.Init`, `Reader.Manifest`, `Reader.Policy`,
+Reference symbols: `New`, `SDK.Close`, `SDK.CreateTDF` and `CreateTDFContext`
+(over bytes in this phase, via `EncryptBytes`; streams come in Phase 7),
+`LoadTDF`, the `Manifest`, `KeyAccess`, `PolicyObject` and related manifest
+types from `manifest.go` (needed by `Reader.Manifest`), `Reader.Init`, `Reader.Manifest`, `Reader.Policy`,
 `Reader.DataAttributes`, `Reader.UnencryptedMetadata`, `DecryptBytes`,
 `TDFObject.Manifest`, `TDFObject.Size`, `WithClientCredentials`,
 `WithTokenEndpoint`, `WithPlatformConfiguration`, `PlatformConfiguration`
 and its methods, `WithInsecurePlaintextConn`, `WithInsecureSkipVerifyConn`,
-`WithLogger`, `WithConnectionValidation`, `IsHealthy`, `WithKasInformation`,
+`WithLogger` (host `slog` sink wiring; options such as level come with the
+auth work in Phase 8), `WithConnectionValidation`, `IsHealthy`, `WithKasInformation`,
 `KASInfo`, `WithMimeType`, `WithMetaData`, `WithSegmentSize`,
 `WithWrappingKeyAlg` (RSA-2048, P-256), `WithSessionKeyType`,
 `WithKasAllowlist`, `WithIgnoreAllowlist`, `AllowList`, `WithMaxManifestSize`,
@@ -456,8 +487,8 @@ reference's schema validation.
 
 Reference symbols: `WithTargetMode`, `TDFSpecVersion`,
 `WithSchemaValidation`, `SchemaValidationIntensity`, `RootIntegrityAlg`,
-`SegmentIntegrityAlg`, `IntegrityAlgorithm`, `Manifest` and the manifest
-types, `TDFFormat`, `WithPolicyFrom`, `WithInputSize`.
+`SegmentIntegrityAlg`, `IntegrityAlgorithm`, `TDFFormat`, `WithPolicyFrom`,
+`WithInputSize`.
 
 Tasks:
 1. Writer target mode `4.2.2`: hex-before-base64 integrity values, omitted
@@ -559,6 +590,9 @@ Tasks:
 1. Send fulfillable FQNs in the signed request token; parse required
    obligations from rewrap metadata; expose `Reader.Obligations`; include
    required obligations in the decrypt error with the reference wording.
+   The `required obligations: [...]` suffix the tests grep is appended by
+   `otdfctl`, not the SDK (`otdfctl/cmd/handlers/tdf.go`), so `otdfgc` does
+   the same.
 2. Bulk: group TDFs by policy, one rewrap per group, per-TDF error
    collection, `BulkErrors` unwrapping; expose as a handle per target with a
    list of streams or byte buffers.
@@ -567,7 +601,7 @@ Tasks:
 Verification:
 - `test_abac.py::test_obligations_*` cells pass for every gc type.
 - A bulk consumer test per target decrypts 50 TDFs under three policies with two rewrap calls and reports per-item failures.
-- Audit-log assertions (`test_audit_logs.py`) pass with the gc types as encrypt and decrypt SDKs.
+- Audit-log assertions (`test_audit_logs_integration.py`; `test_audit_logs.py` is a harness self-test) pass with the gc types as encrypt and decrypt SDKs.
 
 ### Phase 10: Remaining API parity
 
@@ -639,7 +673,7 @@ Verification:
 ## Decisions taken with the user
 
 - Swift builds in every phase but is gated only in Phase 11.
-- The harness lives in the user's `opentdf-tests` fork; eight SDK types.
+- The harness lives in `eugenioenko/opentdf-sdk-tests`, a snapshot of `opentdf/tests`; eight SDK types.
 - `experimental/tdf` and the chunked writer stay in Phase 10.
 - One reference pin (`platform/sdk` 0.34.0) for the whole plan, bumped in Phase 11.
 - Package names and publication identities are chosen in Phase 11 with the user.

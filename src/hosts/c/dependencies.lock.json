@@ -41,6 +41,13 @@
       "license": "curl permissive; retained Ubuntu/upstream/transitive notices"
     },
     {
+      "name": "zlib",
+      "version": "1:1.2.11.dfsg-2ubuntu9.2",
+      "source": "Ubuntu system zlib1g/zlib1g-dev; external native prerequisite",
+      "api": "zlib inflate API for bounded HTTP gzip decoding",
+      "license": "zlib; retained Ubuntu/upstream notices"
+    },
+    {
       "name": "Boehm-Demers-Weiser GC",
       "version": "8.2.8",
       "source_url": "https://github.com/bdwgc/bdwgc/releases/download/v8.2.8/gc-8.2.8.tar.gz",
@@ -53,7 +60,8 @@
     "Boehm-8.2.8-README.md": "5399c617e3ac26d1991bc3ace3cea08b0a36fde7e0438914968496c2259283a1",
     "Goalchemy-Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "OpenSSL-copyright.txt": "6a7da622fe0637a334d2a8fc470852d2ffb77d9a2b2f930f854e32a41ad6ef35",
-    "libcurl-copyright.txt": "d8fef27baefaf797112424a88959cfc1122b884cdfe215e84e4c07df49a35189"
+    "libcurl-copyright.txt": "d8fef27baefaf797112424a88959cfc1122b884cdfe215e84e4c07df49a35189",
+    "zlib-copyright.txt": "d77204eee882807240f6351c4f5ae2a4bcdb5b773ff77d10647b9b66b826b2fb"
   },
   "packaging": "External native prerequisites are not bundled; package includes generated runtime/source + facade + static SDK archive and license notices. Use patched supported native dependencies in downstream builds; hashes identify this tested environment."
 }
