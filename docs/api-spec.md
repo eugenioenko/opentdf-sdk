@@ -85,7 +85,7 @@ type Options struct {
 	// Keys.
 	SessionEncryptionRSAPEM string           // WithSessionEncryptionRSA
 	SessionSignerRSAPEM     string           // WithSessionSignerRSA
-	DPoPAlgorithm           SigningAlgorithm // WithDPoPAlgorithm; "" = ES256? no: reference default RS256
+	DPoPAlgorithm           SigningAlgorithm // WithDPoPAlgorithm; "" = ES256 with an ephemeral P-256 key (reference dpop_key.go)
 	DPoPKeyPEM              string           // WithDPoPKeyPEM, WithDPoPJWK (JWK converted by the host adapter)
 	NoKIDInKAO              bool             // WithNoKIDInKAO
 
@@ -102,8 +102,9 @@ type TLSOptions struct { ClientCertPEM, ClientKeyPEM, RootCAsPEM string; Audienc
 type SigningAlgorithm string // ES256, ES384, ES512, RS256, RS384, RS512
 ```
 
-`DPoPAlgorithm` default follows the reference (`RS256` when a DPoP key is
-generated; the phase that implements it records the exact default).
+`DPoPAlgorithm` default follows the reference: with no key configured the
+SDK generates an ephemeral P-256 key and signs with ES256; with
+`DPoPKeyPEM` the algorithm follows the key type.
 
 ### SDK (reference: `SDK`)
 
@@ -195,7 +196,7 @@ type TDFOptions struct {
 }
 
 type KASInfo struct { URL, PublicKey, KID string; Algorithm KeyType; Default bool }
-type KeyType string // rsa:2048, rsa:3072, rsa:4096, ec:secp256r1, ec:secp384r1, ec:secp521r1
+type KeyType string // rsa:2048, rsa:4096, ec:secp256r1, ec:secp384r1, ec:secp521r1 (the reference ocrypto set)
 ```
 
 ### ReaderOptions (reference: `TDFReaderOption`, `TDFReaderConfig`)

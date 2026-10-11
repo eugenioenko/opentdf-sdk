@@ -58,7 +58,7 @@ stable error, when a caller or a file requires one of them.
 
 | Feature | Reason |
 | --- | --- |
-| Post-quantum KAOs: X-Wing, secp+ML-KEM hybrids, pure ML-KEM (`mechanism-xwing`, `mechanism-secpmlkem`, `mechanism-mlkem`) | Goalchemy will not add post-quantum primitives (goalchemy #21, closed). The reader rejects such KAOs with `unsupported key access type`; the xtest shim answers no to these features. |
+| Post-quantum KAOs: X-Wing, secp+ML-KEM hybrids, pure ML-KEM (`mechanism-xwing`, `mechanism-secpmlkem`, `mechanism-mlkem`) | Goalchemy will not add post-quantum primitives (goalchemy #21, closed). The reader rejects such KAOs with `unsupported key access type`; the xtest shim answers no to these features. `test_pqc.py` gates only the encrypt SDK, so Phase 1 adds a decrypt-side gate in `tdfs.py` (upstreamable) so that reference-writer, gc-reader PQ cells skip instead of fail. |
 | `WithIPC` in-process connection | Needs an in-process Go server; impossible from a generated library. `WithIPC` maps to the Unix-socket transport on targets that have it, and reports unsupported on Java and in browsers. |
 | Windows named pipes, plaintext HTTP/2 | Not available in the standard libraries of all targets. |
 | `WithExtraClientOptions` (Connect client options) | Go-specific type. Equivalent configuration is exposed through the SDK's own transport options. |
@@ -154,7 +154,10 @@ other manifest types keep the reference's JSON tags.
 
 Every target's `otdfgc` CLI accepts the same arguments, so one `cli.sh` serves
 all targets in xtest. The flags are the subset of `otdfctl` that xtest's
-`sdk/go/cli.sh` uses, plus `supports`.
+`sdk/go/cli.sh` uses, plus the DPoP flags that only the `js` shim maps
+(`XT_WITH_DPOP`, `XT_WITH_DPOP_KEY`; `test_dpop.py` also overrides `CLIENTID`),
+plus `supports`. The shim reads both `XT_WITH_KAS_ALLOWLIST` (what `tdfs.py`
+sets) and `XT_WITH_KAS_ALLOW_LIST` (what the upstream shims read).
 
 ```
 otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
@@ -313,13 +316,16 @@ Verification:
 Goal: `New(endpoint, options)` with discovery, the `SDK` and `Reader` handles,
 and byte-level `CreateTDF`/`LoadTDF`/`DecryptBytes` on all targets.
 
-Reference symbols: `New`, `SDK.Close`, `SDK.CreateTDF`, `CreateTDFContext`
-(bytes form), `LoadTDF`, `Reader.Init`, `Reader.Manifest`, `Reader.Policy`,
+Reference symbols: `New`, `SDK.Close`, `SDK.CreateTDF` and `CreateTDFContext`
+(over bytes in this phase, via `EncryptBytes`; streams come in Phase 7),
+`LoadTDF`, the `Manifest`, `KeyAccess`, `PolicyObject` and related manifest
+types from `manifest.go` (needed by `Reader.Manifest`), `Reader.Init`, `Reader.Manifest`, `Reader.Policy`,
 `Reader.DataAttributes`, `Reader.UnencryptedMetadata`, `DecryptBytes`,
 `TDFObject.Manifest`, `TDFObject.Size`, `WithClientCredentials`,
 `WithTokenEndpoint`, `WithPlatformConfiguration`, `PlatformConfiguration`
 and its methods, `WithInsecurePlaintextConn`, `WithInsecureSkipVerifyConn`,
-`WithLogger`, `WithConnectionValidation`, `IsHealthy`, `WithKasInformation`,
+`WithLogger` (host `slog` sink wiring; options such as level come with the
+auth work in Phase 8), `WithConnectionValidation`, `IsHealthy`, `WithKasInformation`,
 `KASInfo`, `WithMimeType`, `WithMetaData`, `WithSegmentSize`,
 `WithWrappingKeyAlg` (RSA-2048, P-256), `WithSessionKeyType`,
 `WithKasAllowlist`, `WithIgnoreAllowlist`, `AllowList`, `WithMaxManifestSize`,
@@ -456,8 +462,8 @@ reference's schema validation.
 
 Reference symbols: `WithTargetMode`, `TDFSpecVersion`,
 `WithSchemaValidation`, `SchemaValidationIntensity`, `RootIntegrityAlg`,
-`SegmentIntegrityAlg`, `IntegrityAlgorithm`, `Manifest` and the manifest
-types, `TDFFormat`, `WithPolicyFrom`, `WithInputSize`.
+`SegmentIntegrityAlg`, `IntegrityAlgorithm`, `TDFFormat`, `WithPolicyFrom`,
+`WithInputSize`.
 
 Tasks:
 1. Writer target mode `4.2.2`: hex-before-base64 integrity values, omitted
@@ -559,6 +565,9 @@ Tasks:
 1. Send fulfillable FQNs in the signed request token; parse required
    obligations from rewrap metadata; expose `Reader.Obligations`; include
    required obligations in the decrypt error with the reference wording.
+   The `required obligations: [...]` suffix the tests grep is appended by
+   `otdfctl`, not the SDK (`otdfctl/cmd/handlers/tdf.go`), so `otdfgc` does
+   the same.
 2. Bulk: group TDFs by policy, one rewrap per group, per-TDF error
    collection, `BulkErrors` unwrapping; expose as a handle per target with a
    list of streams or byte buffers.
@@ -567,7 +576,7 @@ Tasks:
 Verification:
 - `test_abac.py::test_obligations_*` cells pass for every gc type.
 - A bulk consumer test per target decrypts 50 TDFs under three policies with two rewrap calls and reports per-item failures.
-- Audit-log assertions (`test_audit_logs.py`) pass with the gc types as encrypt and decrypt SDKs.
+- Audit-log assertions (`test_audit_logs_integration.py`; `test_audit_logs.py` is a harness self-test) pass with the gc types as encrypt and decrypt SDKs.
 
 ### Phase 10: Remaining API parity
 
