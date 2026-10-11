@@ -1,5 +1,31 @@
 # OpenTDF SDK implementation progress
 
+## Goalchemy 0.6.0 compiler update
+
+Goalchemy v0.6.0 is released at
+`26aad364a724cfae0397d98900711c89cfaf97f6`. Its release preparation was merged
+before CI finished at the user's explicit request. The signed release tag and
+published release point to that merge commit, whose tree matches the preparation.
+
+The SDK module, seven nested test modules, reference lock and both CI compiler
+checkouts now use that release. All eight SDKs emit successfully. Local checks
+passed 31 CI harness regressions and 141 named shared format/protocol checks.
+All eight native package builds passed; independent consumers passed focused
+import/error/ownership checks. The existing eight-target real-KAS CI remains
+the merge gate.
+
+Rust's native test consumer recognizes the five new runtime error kinds, and
+its refreshed Cargo lock/inventory keeps retained crate versions unchanged.
+The C HTTP runtime now calls zlib directly: package link metadata, native
+consumers, documentation and CI prerequisites include zlib and `-lz`, with its
+license notice retained. The C loopback HTTP contract passed all 11 cases;
+independent C and Rust imports passed error/ownership smoke checks. A local
+C first-caller KAS attempt had no running service and is not claimed as a pass;
+hosted CI supplies the required real-service evidence.
+
+Public TDF3 APIs, the shared implementation and historical performance results
+are unchanged. No generated distributions are committed.
+
 ## Current status
 
 Phases 0–4 are accepted for the shared implementation and compiler foundation. SDK commits for Phases 0 and 1 are `0e45fba` and `cc2b087`; Phase 2 SDK commit is `2cd4d78`, and Phase 3 SDK commit is `0877c93ae09f3679a9516954dfe9a8a60a588cdf`. Phase 2 capabilities are committed in Goalchemy as `7df8103`; Phase 3's constant-time HMAC extension is `5ddb615a15256ec997f23ae172fa8d6c926feec9`, and the baseline audit revision remains in the lockfile. Git is initialized in `sdk/` on branch `main`. Shared formats, encryption/integrity, native Bearer/DPoP authentication and RSA/P256 wrapping/response sessions passed independent real-platform review. All seven native byte backends and generic host lifecycle assignments are accepted, including TypeScript's reviewed task-identity repair and C's collector/sanitizer/fatal-cleanup evidence. The importable generated Go TDF3 SDK and its full RSA/P256/Bearer/enforced-DPoP matrix are accepted. TypeScript Node/browser, Java, C#, Python, Rust and C library/adapters/interoperability remain pending. TypeScript delivery includes Node and browsers.

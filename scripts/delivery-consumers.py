@@ -118,7 +118,7 @@ def install(target, base):
         # This public importer calls the SDK before any collector fixture setup.
         run([env.get('CC', 'cc'), '-std=c17', '-O2', '-Wall', '-Wextra', '-Werror',
              '-I'+str(package/'include'), source/'forward-consumer.c', package/'lib/libtdf3.a',
-             '-L'+prefix+'/usr/lib/x86_64-linux-gnu', '-lcurl', '-lssl', '-lcrypto',
+             '-L'+prefix+'/usr/lib/x86_64-linux-gnu', '-lcurl', '-lssl', '-lcrypto', '-lz',
              SDK.parent/'goalchemy/.toolchains/bdwgc/lib/libgc.a', '-lpthread', '-ldl',
              '-o', destination/'no-preinit-consumer'])
     exported = {'TDF_TS_PACKAGE','TDF_TS_NODE_PACKAGE','TDF_RUST_CONSUMER_OUT','TDF_RUST_PACKAGE','TDF_C_CONSUMER_OUT','TDF_C_PACKAGE','TDF3_CURL_PREFIX','LD_LIBRARY_PATH','JAVA_HOME','TDF_SWIFT_CONSUMER'}

@@ -149,6 +149,11 @@ fn kind(e: &LibraryError) -> &'static str {
         ErrorKind::SourceFatal => "source_fatal",
         ErrorKind::HostFault => "host_fault",
         ErrorKind::InvalidArgument => "invalid_argument",
+        ErrorKind::Closed => "closed",
+        ErrorKind::Poisoned => "poisoned",
+        ErrorKind::InstanceMismatch => "instance_mismatch",
+        ErrorKind::Reentrant => "reentrant",
+        ErrorKind::Unsupported => "unsupported",
     }
 }
 fn write_error(run: &Path, name: &str, e: &LibraryError) {
