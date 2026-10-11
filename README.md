@@ -86,9 +86,10 @@ Native adapters, dependency locks and delivery tooling live in `src/hosts/`.
 Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
-The build configuration pins unreleased Goalchemy commit
-[`7863d12`](https://github.com/eugenioenko/goalchemy/commit/7863d12abd27b2e2e1d655d5ca64295842485d82)
-for package-based output across all eight targets, based on v0.5.1.
+The build configuration pins released
+[Goalchemy v0.6.0](https://github.com/eugenioenko/goalchemy/releases/tag/v0.6.0)
+for package-based output across all eight targets. The exact release commit is
+recorded in [references.lock.json](references.lock.json).
 Readable source-derived identifiers remain the default.
 The performance table identifies the actual compiler commits used for its
 measurements.

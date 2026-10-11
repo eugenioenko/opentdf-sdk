@@ -141,7 +141,7 @@ def setup(base, packages):
     cpackage = (consumers / 'c/package').resolve()
     curl = SDK / '.local/root-c-development-prerequisites/prefix/usr/lib/x86_64-linux-gnu'
     gc = SDK.parent / 'goalchemy/.toolchains/bdwgc/lib/libgc.a'
-    invoke(['cc', '-std=c17', '-O2', '-Wall', '-Wextra', '-Werror', '-I' + str(cpackage / 'include'), SRC / 'c.c', cpackage / 'lib/libtdf3.a', '-L' + str(curl), '-lcurl', '-lssl', '-lcrypto', gc, '-lpthread', '-ldl', '-o', cdir / 'benchmark'], SDK, env)
+    invoke(['cc', '-std=c17', '-O2', '-Wall', '-Wextra', '-Werror', '-I' + str(cpackage / 'include'), SRC / 'c.c', cpackage / 'lib/libtdf3.a', '-L' + str(curl), '-lcurl', '-lssl', '-lcrypto', '-lz', gc, '-lpthread', '-ldl', '-o', cdir / 'benchmark'], SDK, env)
     commands['c'] = [str(cdir / 'benchmark')]
     commands['python'] = receipts['python']['consumer_command'][:2] + [str(SRC / 'python.py')]
     commands['typescript'] = [shutil.which('node', path=env['PATH']), str(SRC / 'node.mjs')]

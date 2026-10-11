@@ -47,7 +47,7 @@ cp "$SDK/docs/generated-c-library.md" "$DEST/package/README.md"
 cat > "$DEST/native-link.env" <<LINK
 TDF3_INCLUDE=$DEST
 TDF3_LIBRARY=$DEST/libtdf3.a
-TDF3_NATIVE_LIBS=$CURL_LIBS -lssl -lcrypto $GOALCHEMY_BDWGC/lib/libgc.a -lpthread -ldl
+TDF3_NATIVE_LIBS=$CURL_LIBS -lssl -lcrypto -lz $GOALCHEMY_BDWGC/lib/libgc.a -lpthread -ldl
 TDF3_RUNTIME_PATH=$CURL_PREFIX/usr/lib/x86_64-linux-gnu
 LINK
 python3 - "$DEST" <<'PY'

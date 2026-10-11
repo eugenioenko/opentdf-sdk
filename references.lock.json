@@ -3,9 +3,9 @@
   "repositories": {
     "goalchemy": {
       "path": "../goalchemy",
-      "revision": "7863d12abd27b2e2e1d655d5ca64295842485d82",
+      "revision": "26aad364a724cfae0397d98900711c89cfaf97f6",
       "baseline_revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907",
-      "base_release": "v0.5.1"
+      "release": "v0.6.0"
     },
     "platform": {
       "path": "../platform",

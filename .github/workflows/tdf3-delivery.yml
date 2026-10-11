@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 7863d12abd27b2e2e1d655d5ca64295842485d82
+          ref: 26aad364a724cfae0397d98900711c89cfaf97f6
           path: goalchemy
       - name: Bootstrap version and diagnostic regressions
         run: python3 -m unittest discover -s sdk/tests/ci -p 'test_*.py' -v
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: 7863d12abd27b2e2e1d655d5ca64295842485d82
+          ref: 26aad364a724cfae0397d98900711c89cfaf97f6
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -102,7 +102,7 @@ jobs:
           fi
           sudo apt-get install --no-install-recommends build-essential pkg-config cmake perl python3.10-venv python3-pip
           if [ '${{ matrix.target }}' = c ]; then
-            sudo apt-get install --yes --no-install-recommends --allow-downgrades libssl-dev=3.0.2-0ubuntu1.29 libssl3=3.0.2-0ubuntu1.29 openssl=3.0.2-0ubuntu1.29
+            sudo apt-get install --yes --no-install-recommends --allow-downgrades libssl-dev=3.0.2-0ubuntu1.29 libssl3=3.0.2-0ubuntu1.29 openssl=3.0.2-0ubuntu1.29 zlib1g-dev
           fi
           if [ '${{ matrix.target }}' = swift ]; then sudo apt-get install --no-install-recommends libssl-dev zlib1g-dev libcurl4-openssl-dev libxml2 libsqlite3-0 libncurses6 libpython3.10; fi
           if [ '${{ matrix.target }}' = rust ]; then rustup toolchain install 1.98.0 --profile minimal; fi
