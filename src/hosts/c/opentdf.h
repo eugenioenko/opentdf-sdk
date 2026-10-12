@@ -105,9 +105,10 @@ void otdf_strings_free(char **strings, size_t count);
 
 /* The reference's New: discovers the platform configuration and the token endpoint. */
 int otdf_sdk_new(const char *platform_endpoint, const otdf_options *options, const otdf_call *call, otdf_sdk **sdk, otdf_error *error);
-/* Runs the source Close and frees the handle; later calls on it are invalid. */
+/* Runs the source Close and releases the instance; later calls on the handle
+ * fail with kind 7 ("closed"). The handle stays valid until otdf_sdk_free. */
 int otdf_sdk_close(otdf_sdk *sdk, otdf_error *error);
-/* Frees the handle without running Close. */
+/* Frees the handle, releasing it without Close when it is still open. */
 void otdf_sdk_free(otdf_sdk *sdk);
 
 /* The reference's CreateTDF over bytes: the TDF bytes with their TDFObject handle. */
@@ -116,6 +117,7 @@ int otdf_create_tdf(otdf_sdk *sdk, otdf_bytes plaintext, const otdf_tdf_options 
 int otdf_encrypt_bytes(otdf_sdk *sdk, otdf_bytes plaintext, const otdf_tdf_options *options, const otdf_call *call, otdf_owned_bytes *tdf, otdf_error *error);
 int otdf_tdf_object_manifest_json(otdf_tdf_object *object, const otdf_call *call, char **json, otdf_error *error);
 int otdf_tdf_object_size(otdf_tdf_object *object, const otdf_call *call, int64_t *size, otdf_error *error);
+/* Close and free as for otdf_sdk: close releases, free disposes of the handle. */
 int otdf_tdf_object_close(otdf_tdf_object *object, otdf_error *error);
 void otdf_tdf_object_free(otdf_tdf_object *object);
 
@@ -130,6 +132,7 @@ int otdf_reader_policy_json(otdf_reader *reader, const otdf_call *call, char **j
 int otdf_reader_data_attributes(otdf_reader *reader, const otdf_call *call, char ***attributes, size_t *count, otdf_error *error);
 /* The decrypted metadata; runs init lazily. */
 int otdf_reader_unencrypted_metadata(otdf_reader *reader, const otdf_call *call, otdf_owned_bytes *metadata, otdf_error *error);
+/* Close and free as for otdf_sdk: close releases, free disposes of the handle and its bytes. */
 int otdf_reader_close(otdf_reader *reader, otdf_error *error);
 void otdf_reader_free(otdf_reader *reader);
 int otdf_decrypt_bytes(otdf_sdk *sdk, otdf_bytes ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_owned_bytes *plaintext, otdf_error *error);

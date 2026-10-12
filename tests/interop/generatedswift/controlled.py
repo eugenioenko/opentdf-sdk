@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Run the shared negative transport fixtures with the Swift consumer."""
-import os
-import runpy
+"""Offline controlled checks of the swift consumer's handle API, driven by the
+shared fixture harness (tests/interop/delivery/controlled_platform.py)."""
+import sys
 from pathlib import Path
 
-os.environ['TDF_INTEROP_TARGET'] = 'swift'
-runpy.run_path(str(Path(__file__).resolve().parents[1]/'generatedpython/controlled.py'), run_name='__main__')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'delivery'))
+import controlled_platform
+
+controlled_platform.main('swift', [str(Path(__file__).resolve().with_name('consumer.sh'))])

@@ -266,7 +266,6 @@ int otdf_sdk_close(otdf_sdk *sdk, otdf_error *error) {
     gxc_error failure = {0};
     int rc = gxc_handle_close(sdk->h, &failure);
     if (rc) rc = take_error(error, &failure, rc);
-    otdf_sdk_free(sdk);
     return rc;
 }
 void otdf_sdk_free(otdf_sdk *sdk) { if (!sdk) return; gxc_handle_free(sdk->h); free(sdk); }
@@ -309,7 +308,6 @@ int otdf_tdf_object_close(otdf_tdf_object *o, otdf_error *error) {
     gxc_error failure = {0};
     int rc = gxc_handle_close(o->h, &failure);
     if (rc) rc = take_error(error, &failure, rc);
-    otdf_tdf_object_free(o);
     return rc;
 }
 void otdf_tdf_object_free(otdf_tdf_object *o) { if (!o) return; gxc_handle_free(o->h); free(o); }
@@ -368,7 +366,6 @@ int otdf_reader_close(otdf_reader *r, otdf_error *error) {
     gxc_error failure = {0};
     int rc = gxc_handle_close(r->h, &failure);
     if (rc) rc = take_error(error, &failure, rc);
-    otdf_reader_free(r);
     return rc;
 }
 void otdf_reader_free(otdf_reader *r) { if (!r) return; gxc_handle_free(r->h); free(r->data); free(r); }

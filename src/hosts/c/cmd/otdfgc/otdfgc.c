@@ -270,8 +270,8 @@ static int inspect(int argc, char **argv) {
     if (!rc) rc = otdf_load_tdf(sdk, (otdf_bytes){data, n}, &ro, NULL, &reader, &e);
     if (!rc) rc = otdf_reader_manifest_json(reader, NULL, &json, &e);
     free(data);
-    if (reader) otdf_reader_close(reader, NULL);
-    if (sdk) otdf_sdk_close(sdk, NULL);
+    if (reader) { otdf_reader_close(reader, NULL); otdf_reader_free(reader); }
+    if (sdk) { otdf_sdk_close(sdk, NULL); otdf_sdk_free(sdk); }
     if (rc) { fprintf(stderr, "not a valid TDF: %s\n", e.message ? e.message : ""); otdf_error_free(&e); return EXIT_FAILED; }
     pretty(json);
     free(json);
@@ -302,6 +302,7 @@ static int encrypt(int argc, char **argv) {
     otdf_owned_bytes tdf = {0}; otdf_error e = {0};
     rc = otdf_encrypt_bytes(sdk, (otdf_bytes){input, n}, &o, &call, &tdf, &e);
     otdf_sdk_close(sdk, NULL);
+    otdf_sdk_free(sdk);
     free(input); otdf_strings_free(attributes, attribute_count); credentials_free(&c);
     if (rc) { fputs("Failed to encrypt: ", stderr); describe(&e, stderr); otdf_error_free(&e); return EXIT_FAILED; }
     if (write_out(value_of(&p, "out"), tdf.data, tdf.length, 0644)) { fprintf(stderr, "Failed to write encrypted file %s: %s\n", value_of(&p, "out"), strerror(errno)); otdf_bytes_free(&tdf); return EXIT_FAILED; }
@@ -330,6 +331,7 @@ static int decrypt(int argc, char **argv) {
     otdf_owned_bytes plaintext = {0}; otdf_error e = {0};
     rc = otdf_decrypt_bytes(sdk, (otdf_bytes){input, n}, &o, &call, &plaintext, &e);
     otdf_sdk_close(sdk, NULL);
+    otdf_sdk_free(sdk);
     free(input); otdf_strings_free(allowlist, allowlist_count); credentials_free(&c);
     if (rc) { fputs("Failed to decrypt file: ", stderr); describe(&e, stderr); otdf_error_free(&e); return EXIT_FAILED; }
     if (write_out(value_of(&p, "out"), plaintext.data, plaintext.length, 0600)) { fprintf(stderr, "Failed to write decrypted data to file: %s\n", strerror(errno)); otdf_bytes_free(&plaintext); return EXIT_FAILED; }
