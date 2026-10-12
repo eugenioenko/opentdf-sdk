@@ -816,7 +816,7 @@ func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOpti
 	archive, err := readArchive(reader, config.maxManifestSize)
 	if err != nil {
 		config.closeSessionKey()
-		return nil, wrapError(KindInvalidInput, "LoadTDF", "zipstream.NewTDFReader failed", err)
+		return nil, wrapError(KindNotDecryptable, "LoadTDF", "zipstream.NewTDFReader failed", err)
 	}
 	useGlobalFulfillableObligations := len(config.fulfillableObligationFQNs) == 0 && len(s.cfg.fulfillableObligationFQNs) > 0
 	if useGlobalFulfillableObligations {
