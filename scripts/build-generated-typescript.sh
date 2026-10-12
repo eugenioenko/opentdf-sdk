@@ -6,7 +6,7 @@ DEST=${1:-"$SDK/../goalchemy/out/typescript-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target typescript -out "$DEST" ./src/library)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target typescript -out "$DEST" ./src/library ./src)
 cp "$SDK/src/hosts/typescript/index.ts.in" "$DEST/index.ts"
 cp "$SDK/src/hosts/typescript/node-index.ts.in" "$DEST/node-index.ts"
 python3 - "$DEST" <<'PY'

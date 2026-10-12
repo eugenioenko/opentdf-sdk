@@ -7,7 +7,7 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 DOTNET=${DOTNET_BIN:-"$SDK/../goalchemy/.toolchains/dotnet/dotnet"}
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target csharp -out "$DEST" ./src/library)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target csharp -out "$DEST" ./src/library ./src)
 cp "$SDK/src/hosts/csharp/TDF3.cs.in" "$DEST/TDF3.cs"
 cp "$SDK/src/hosts/csharp/dependencies.lock.json" "$DEST/dependencies.lock.json"
 python3 - "$DEST/main.csproj" <<'PY'

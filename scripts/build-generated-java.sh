@@ -6,7 +6,7 @@ DEST=${1:-"$SDK/../goalchemy/out/java-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target java -out "$DEST" ./src/library)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target java -out "$DEST" ./src/library ./src)
 cmp "$SDK/src/hosts/java/dependencies.lock.json" "$SDK/../goalchemy/targets/java/dependencies.lock.json"
 mkdir -p "$DEST/src/io/opentdf/tdf3" "$DEST/lib" "$DEST/licenses"
 cp "$SDK/src/hosts/java/TDF3.java.in" "$DEST/src/io/opentdf/tdf3/TDF3.java"

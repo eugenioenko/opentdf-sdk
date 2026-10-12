@@ -8,13 +8,8 @@ import (
  "strconv"
 )
 
-// AccessToken is supplied by a host provider. ExpiresAt is UTC Unix seconds.
-type AccessToken struct {
- Value string
- Scheme string
- ExpiresAt int64
- ConfirmationJKT string
-}
+// AccessToken is the shared-source sdk.AccessToken, supplied by a host
+// provider: Value, Scheme, ExpiresAt as UTC Unix seconds and ConfirmationJKT.
 // TokenProvider runs on the owned host worker and must observe cancellation.
 // A panic is an adapter fault. A returned error is a declared provider rejection.
 type TokenProvider func(context.Context) (AccessToken,error)

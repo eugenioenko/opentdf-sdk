@@ -1,0 +1,82 @@
+// The reference SDK's error sentinels, natively, so errors.Is works against
+// the generated *Error: its Is method matches a sentinel whose text appears
+// in the error chain, as the shared source records it.
+package generated
+
+import "errors"
+
+// ErrorKind values of the shared source, as native constants.
+const (
+	KindTampered                     ErrorKind = "tampered"
+	KindRootSignature                ErrorKind = "root_signature"
+	KindSegmentSize                  ErrorKind = "segment_size"
+	KindSegmentSignature             ErrorKind = "segment_signature"
+	KindPayloadRead                  ErrorKind = "payload_read"
+	KindInvalidOffset                ErrorKind = "invalid_offset"
+	KindRewrapBadRequest             ErrorKind = "rewrap_bad_request"
+	KindUnsupportedRootIntegrity     ErrorKind = "unsupported_root_integrity"
+	KindUnsupportedSegmentIntegrity  ErrorKind = "unsupported_segment_integrity"
+	KindNotDecryptable               ErrorKind = "not_decryptable"
+	KindDecryptFailed                ErrorKind = "decrypt_failed"
+	KindAESGCMExhausted              ErrorKind = "aes_gcm_exhausted"
+	KindKASRequest                   ErrorKind = "kas_request"
+	KindRewrapForbidden              ErrorKind = "rewrap_forbidden"
+	KindRewrapUnauthorized           ErrorKind = "rewrap_unauthorized"
+	KindAssertionFailure             ErrorKind = "assertion_failure"
+	KindObligationsRequired          ErrorKind = "obligations_required"
+	KindBaseKeyNotFound              ErrorKind = "base_key_not_found"
+	KindBaseKeyInvalid               ErrorKind = "base_key_invalid"
+	KindAllowlistRejected            ErrorKind = "allowlist_rejected"
+	KindUnsupportedKeyAccess         ErrorKind = "unsupported_key_access"
+	KindUnsupportedFeature           ErrorKind = "unsupported_feature"
+	KindInvalidInput                 ErrorKind = "invalid_input"
+	KindAuth                         ErrorKind = "auth"
+	KindTransport                    ErrorKind = "transport"
+	KindCanceled                     ErrorKind = "canceled"
+	KindDeadlineExceeded             ErrorKind = "deadline_exceeded"
+	KindBulk                         ErrorKind = "bulk"
+)
+
+var (
+	ErrGrpcDialFailed                = errors.New("failed to dial grpc endpoint")
+	ErrShutdownFailed                = errors.New("failed to shutdown sdk")
+	ErrPlatformUnreachable           = errors.New("platform unreachable or not responding")
+	ErrHealthCheckUnsupported        = errors.New("health check not supported in IPC mode")
+	ErrPlatformConfigFailed          = errors.New("failed to retrieve platform configuration")
+	ErrPlatformEndpointMalformed     = errors.New("platform endpoint is malformed")
+	ErrPlatformIssuerNotFound        = errors.New("issuer not found in well-known idp configuration")
+	ErrPlatformAuthzEndpointNotFound = errors.New("authorization_endpoint not found in well-known idp configuration")
+	ErrPlatformTokenEndpointNotFound = errors.New("token_endpoint not found in well-known idp configuration")
+	ErrPlatformEndpointNotFound      = errors.New("platform_endpoint not found in well-known configuration")
+	ErrAccessTokenInvalid            = errors.New("access token is invalid")
+	ErrNoAccessTokenSource           = errors.New("no access token source configured; SDK was created without credentials")
+	ErrWellKnowConfigEmpty           = errors.New("well-known configuration is empty")
+	ErrAttributeNotFound             = errors.New("attribute not found")
+	ErrInvalidPerSchema              = errors.New("manifest was not valid")
+
+	ErrAESGCMExhausted         = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
+	ErrTampered                = errors.New("tamper detected")
+	ErrRootSigValidation       = errors.New("[tamper detected] tdf: failed integrity check on root signature")
+	ErrSegSizeMismatch         = errors.New("[tamper detected] tdf: mismatch encrypted segment size in manifest")
+	ErrSegSizeUnresolved       = errors.New("[tamper detected] tdf: segment size invalid or missing from manifest, with no default to fall back on")
+	ErrSegSigValidation        = errors.New("[tamper detected] tdf: failed integrity check on segment hash")
+	ErrGMACSignatureFailed     = errors.New("[tamper detected] tdf: ciphertext too short for a gmac signature")
+	ErrTDFPayloadReadFail      = errors.New("[tamper detected] tdf: fail to read payload from tdf")
+	ErrTDFPayloadInvalidOffset = errors.New("[tamper detected] sdk.Reader.ReadAt: negative offset")
+	ErrRootSignatureFailure    = errors.New("[tamper detected] tdf: issue verifying root signature")
+	ErrRewrapBadRequest        = errors.New("[tamper detected] tdf: rewrap request 400")
+
+	ErrUnsupportedRootIntegrityAlgorithm    = errors.New("tdf: unsupported root integrity algorithm")
+	ErrUnsupportedSegmentIntegrityAlgorithm = errors.New("tdf: unsupported segment integrity algorithm")
+	ErrKASRequestError                      = errors.New("tdf: KAS request error")
+	ErrRewrapForbidden                      = errors.New("tdf: rewrap request 403")
+
+	ErrTDFNotDecryptable = errors.New("tdf: input is not decryptable")
+	ErrTDFDecryptFailed  = errors.New("tdf: decrypt failed")
+
+	ErrBaseKeyNotFound        = errors.New("base key not found in well-known configuration")
+	ErrBaseKeyInvalidFormat   = errors.New("base key has invalid format")
+	ErrBaseKeyEmpty           = errors.New("base key is empty or not provided")
+	ErrMarshalBaseKeyFailed   = errors.New("failed to marshal base key configuration")
+	ErrUnmarshalBaseKeyFailed = errors.New("failed to unmarshal base key configuration")
+)

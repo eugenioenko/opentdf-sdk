@@ -8,7 +8,7 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 rm -rf "$DEST/opentdf_tdf3" "$DEST/build" "$DEST/opentdf_tdf3.egg-info"
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target python -out "$DEST/opentdf_tdf3/_generated" ./src/library)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative -target python -out "$DEST/opentdf_tdf3/_generated" ./src/library ./src)
 cp "$SDK/src/hosts/python/__init__.py.in" "$DEST/opentdf_tdf3/__init__.py"
 cp "$SDK/src/hosts/python/dependencies.lock.json" "$DEST/dependencies.lock.json"
 cat > "$DEST/pyproject.toml" <<'TOML'

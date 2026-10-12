@@ -1,0 +1,347 @@
+// Functional options over the shared-source option structs, so Go consumers
+// can port from the reference SDK with minimal edits: the reference's With*
+// names, each setting one field of Options, TDFOptions or ReaderOptions.
+package generated
+
+import (
+	"context"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
+	"fmt"
+	"log/slog"
+
+	"goalchemyout/cap/log"
+)
+
+// Option sets one field of Options; see the reference's options.go.
+type Option func(*Options)
+
+// OptionsOf applies opts to a zero Options.
+func OptionsOf(opts ...Option) Options {
+	var o Options
+	for _, opt := range opts {
+		opt(&o)
+	}
+	return o
+}
+
+// NewWithOptions is the reference's New(platformEndpoint, opts...).
+func NewWithOptions(ctx context.Context, platformEndpoint string, opts ...Option) (*SDK, error) {
+	return New(ctx, platformEndpoint, OptionsOf(opts...))
+}
+
+// WithClientCredentials returns an Option that sets up authentication with client credentials.
+func WithClientCredentials(clientID, clientSecret string, scopes []string) Option {
+	return func(o *Options) {
+		o.ClientID, o.ClientSecret, o.Scopes = clientID, clientSecret, scopes
+	}
+}
+
+// Deprecated: SDK will discover the token endpoint from the platform configuration
+func WithTokenEndpoint(tokenEndpoint string) Option {
+	return func(o *Options) { o.TokenEndpoint = tokenEndpoint }
+}
+
+// WithTokenExchange specifies that the SDK should obtain its access token by
+// exchanging the given token for a new one.
+func WithTokenExchange(subjectToken string, audience []string) Option {
+	return func(o *Options) { o.TokenExchange = TokenExchange{SubjectToken: subjectToken, Audience: audience} }
+}
+
+// WithTokenProvider names the host token provider registered with
+// TokenCallbacks for every call on the SDK.
+func WithTokenProvider() Option {
+	return func(o *Options) { o.TokenProviderName = TokenProviderName }
+}
+
+// WithPlatformConfiguration allows you to override the remote platform configuration.
+// String members keep their value; other members carry their JSON text.
+func WithPlatformConfiguration(platformConfiguration map[string]any) Option {
+	return func(o *Options) { o.PlatformConfiguration = PlatformConfigurationOf(platformConfiguration) }
+}
+
+// PlatformConfigurationOf converts the reference's map form to the
+// shared-source entries.
+func PlatformConfigurationOf(platformConfiguration map[string]any) PlatformConfiguration {
+	var cfg PlatformConfiguration
+	for key, value := range platformConfiguration {
+		text, ok := value.(string)
+		if !ok {
+			data, err := json.Marshal(value)
+			if err != nil {
+				continue
+			}
+			text = string(data)
+		}
+		cfg.Entries = append(cfg.Entries, PlatformConfigurationEntry{Key: key, Value: text})
+	}
+	return cfg
+}
+
+// WithConnectionValidation will validate connection to a healthy, running platform at
+// SDK construction time.
+func WithConnectionValidation() Option {
+	return func(o *Options) { o.ValidateConnection = true }
+}
+
+// WithInsecurePlaintextConn returns an Option that sets up HTTP connection sent in the clear.
+func WithInsecurePlaintextConn() Option {
+	return func(o *Options) { o.InsecurePlaintext = true }
+}
+
+// WithInsecureSkipVerifyConn returns an Option that sets up HTTPS connection without verification.
+func WithInsecureSkipVerifyConn() Option {
+	return func(o *Options) { o.InsecureSkipVerify = true }
+}
+
+// WithTimeout bounds every request the SDK makes.
+func WithTimeout(millis int64) Option {
+	return func(o *Options) { o.TimeoutMillis = millis }
+}
+
+func rsaPrivatePEM(key *rsa.PrivateKey) string {
+	if key == nil {
+		return ""
+	}
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	if err != nil {
+		return ""
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+}
+
+// The session key pair is used to encrypt responses from KAS for a given session
+// and can be reused across an entire session.
+func WithSessionEncryptionRSA(key *rsa.PrivateKey) Option {
+	return func(o *Options) { o.SessionEncryptionRSAPEM = rsaPrivatePEM(key) }
+}
+
+// The DPoP key pair is used to implement sender constrained tokens from the identity provider.
+func WithSessionSignerRSA(key *rsa.PrivateKey) Option {
+	return func(o *Options) { o.SessionSignerRSAPEM = rsaPrivatePEM(key) }
+}
+
+// WithDPoPAlgorithm enables DPoP with an ephemeral key generated for the given algorithm.
+func WithDPoPAlgorithm(alg SigningAlgorithm) Option {
+	return func(o *Options) { o.DPoPAlgorithm = alg }
+}
+
+// WithDPoPKeyPEM enables DPoP using a PEM-encoded private key. Algorithm is inferred
+// from the key type unless also overridden via WithDPoPAlgorithm.
+func WithDPoPKeyPEM(pemBytes []byte) Option {
+	return func(o *Options) { o.DPoPKeyPEM = string(pemBytes) }
+}
+
+// WithNoKIDInKAO disables storing the KID in the KAO.
+func WithNoKIDInKAO() Option {
+	return func(o *Options) { o.NoKIDInKAO = true }
+}
+
+// WithFulfillableObligationFQNs sets the list of obligation FQNs that can be fulfilled.
+func WithFulfillableObligationFQNs(fqns []string) Option {
+	return func(o *Options) { o.FulfillableObligationFQNs = fqns }
+}
+
+// WithLogger routes the SDK's records to logger. The generated package has
+// one host log sink, so the logger is installed for every SDK in the process.
+func WithLogger(logger *slog.Logger) Option {
+	return func(o *Options) {
+		if logger == nil {
+			return
+		}
+		log.SetHandler(log.Slog(logger), int(slog.LevelDebug))
+	}
+}
+
+// TDFOption sets one field of TDFOptions; see the reference's tdf_config.go.
+type TDFOption func(*TDFOptions) error
+
+// TDFOptionsOf applies opts to a zero TDFOptions.
+func TDFOptionsOf(opts ...TDFOption) (TDFOptions, error) {
+	var o TDFOptions
+	for _, opt := range opts {
+		if err := opt(&o); err != nil {
+			return TDFOptions{}, err
+		}
+	}
+	return o, nil
+}
+
+// WithDataAttributes appends the given data attributes to the bound policy
+func WithDataAttributes(attributes ...string) TDFOption {
+	return func(o *TDFOptions) error {
+		o.Attributes = append(o.Attributes, attributes...)
+		return nil
+	}
+}
+
+// WithKasInformation adds all the kas urls and their corresponding public keys
+// that is required to create and read the tdf.
+func WithKasInformation(kasInfoList ...KASInfo) TDFOption {
+	return func(o *TDFOptions) error {
+		o.KasInformation = append([]KASInfo(nil), kasInfoList...)
+		return nil
+	}
+}
+
+// WithMetaData returns an Option that add metadata to TDF.
+func WithMetaData(metaData string) TDFOption {
+	return func(o *TDFOptions) error {
+		o.Metadata = metaData
+		return nil
+	}
+}
+
+func WithMimeType(mimeType string) TDFOption {
+	return func(o *TDFOptions) error {
+		o.MimeType = mimeType
+		return nil
+	}
+}
+
+// WithSegmentSize returns an Option that set the default segment size within the TDF.
+func WithSegmentSize(size int64) TDFOption {
+	return func(o *TDFOptions) error {
+		o.SegmentSize = size
+		return nil
+	}
+}
+
+// WithInputSize declares the payload length, in bytes.
+func WithInputSize(size int64) TDFOption {
+	return func(o *TDFOptions) error {
+		if size < 0 {
+			return fmt.Errorf("WithInputSize: size must not be negative, got %d", size)
+		}
+		o.InputSize = size
+		return nil
+	}
+}
+
+// WithAutoconfigure toggles inferring KAS info for encrypt from data attributes.
+func WithAutoconfigure(enable bool) TDFOption {
+	return func(o *TDFOptions) error {
+		o.DisableAutoconfigure = !enable
+		return nil
+	}
+}
+
+// Deprecated: WithWrappingKeyAlg sets the key type for the TDF wrapping key for both storage and transit.
+func WithWrappingKeyAlg(keyType KeyType) TDFOption {
+	return func(o *TDFOptions) error {
+		if keyType == "" {
+			return fmt.Errorf("key type missing")
+		}
+		o.WrappingKeyAlgorithm = keyType
+		return nil
+	}
+}
+
+// WithTargetMode sets the target schema mode for the TDF
+func WithTargetMode(mode string) TDFOption {
+	return func(o *TDFOptions) error {
+		o.TargetMode = mode
+		return nil
+	}
+}
+
+// WithSystemMetadataAssertion returns an Option that adds a default assertion to the TDF.
+func WithSystemMetadataAssertion() TDFOption {
+	return func(o *TDFOptions) error {
+		o.SystemMetadataAssertion = true
+		return nil
+	}
+}
+
+// WithAssertions returns an Option that add assertions to TDF.
+func WithAssertions(assertionList ...AssertionConfig) TDFOption {
+	return func(o *TDFOptions) error {
+		o.Assertions = append(o.Assertions, assertionList...)
+		return nil
+	}
+}
+
+// WithPolicyFrom binds the source TDF's policy (its attribute value FQNs) to
+// the new TDF being created.
+func WithPolicyFrom(ctx context.Context, r *Reader) TDFOption {
+	return func(o *TDFOptions) error {
+		if r == nil {
+			return fmt.Errorf("WithPolicyFrom: nil Reader")
+		}
+		attrs, err := r.DataAttributes(ctx)
+		if err != nil {
+			return fmt.Errorf("WithPolicyFrom: extracting source attributes: %w", err)
+		}
+		o.Attributes = append(o.Attributes, attrs...)
+		return nil
+	}
+}
+
+// TDFReaderOption sets one field of ReaderOptions.
+type TDFReaderOption func(*ReaderOptions) error
+
+// ReaderOptionsOf applies opts to a zero ReaderOptions.
+func ReaderOptionsOf(opts ...TDFReaderOption) (ReaderOptions, error) {
+	var o ReaderOptions
+	for _, opt := range opts {
+		if err := opt(&o); err != nil {
+			return ReaderOptions{}, err
+		}
+	}
+	return o, nil
+}
+
+// WithMaxManifestSize sets the maximum allowed manifest size for the TDF reader.
+func WithMaxManifestSize(size int64) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		if size <= 0 {
+			return fmt.Errorf("max manifest size must be greater than 0")
+		}
+		o.MaxManifestSize = size
+		return nil
+	}
+}
+
+func WithSchemaValidation(intensity SchemaValidationIntensity) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.SchemaValidation = intensity
+		return nil
+	}
+}
+
+func WithDisableAssertionVerification(disable bool) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.DisableAssertionVerification = disable
+		return nil
+	}
+}
+
+func WithSessionKeyType(keyType KeyType) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.SessionKeyType = keyType
+		return nil
+	}
+}
+
+func WithKasAllowlist(kasList []string) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.KasAllowlist = append([]string(nil), kasList...)
+		return nil
+	}
+}
+
+func WithIgnoreAllowlist(ignore bool) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.IgnoreAllowlist = ignore
+		return nil
+	}
+}
+
+func WithTDFFulfillableObligationFQNs(fqns []string) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.FulfillableObligationFQNs = fqns
+		return nil
+	}
+}
