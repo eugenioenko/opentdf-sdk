@@ -1,127 +1,126 @@
-# Generated TypeScript TDF3 library
+# Generated TypeScript library
 
-The [shared façade](../src/library/library.go) and reachable SDK implementation are
-compiled into an importable ESM package for Node and browsers. The small
-[index adapter](../src/hosts/typescript/index.ts.in) supplies JS text/token types;
-it does not implement the TDF protocol or import an original/reference SDK.
+The shared source compiles into an importable ESM package for Node and
+browsers, emitted from the two export roots `src/library` (the deprecated
+`encrypt`/`decrypt` façade) and `src` (the handle API of
+[api-spec.md](api-spec.md)). The hand-written
+[host adapter](../src/hosts/typescript/index.ts.in) presents that API in
+TypeScript idiom: it maps names, idioms and errors and implements no protocol.
 
 ## Build and import
 
-From `goalchemy/`, build `go build -o out/typescript-tdf-library/goalchemy
-./cmd/goalchemy`, then run `../sdk/scripts/build-generated-typescript.sh`.
-An optional destination argument selects a local package directory;
-GOALCHEMY_BIN selects a rebuilt compiler binary. The script compiles from the
-SDK module, adds the typed adapter, and emits JavaScript and declarations with
-tsc. Verified tooling is TypeScript6.0.3 and Go1.25.14. Node requires22.6 or later;
-accepted Node24.15.0 and Chromium147 evidence use native WebCrypto/fetch.
-The focused [final-package jobs](final-delivery.md) used pinned Playwright1.58.2
-Chromium145.0.7632.6 with the independently installed ESM package.
+From `goalchemy/`, build `GOTOOLCHAIN=go1.25.14 go build -o
+out/typescript-tdf-library/goalchemy ./cmd/goalchemy`, then run
+`scripts/build-generated-typescript.sh`. An optional destination argument
+selects the package directory; `GOALCHEMY_BIN` selects a compiler binary and
+`TSC_BIN` a TypeScript compiler (6.0.3 is the verified one). The script
+compiles both roots from the SDK module, adds `index.ts` and `node-index.ts`,
+and emits JavaScript and declarations with `tsc`. Node 22.6 or later; the
+accepted evidence is Node 24.15.0 and Playwright 1.58.2 Chromium.
 
-The output package is `@opentdf-local/tdf3`. A native consumer can run
-`npm install /absolute/path/to/generated/package` and import it normally.
-`npm pack` makes a reviewable local tarball; neither build nor packing publishes
-anything. Browser applications bundle the ESM package with their normal
-bundler. Production has no extra package dependencies. Conditional exports
-select `dist/node-index.js` in Node, installing the standard `node:zlib.crc32`
-adapter, and `dist/index.js` for browser/default consumers. The portable browser
-graph has no Node imports or polyfills. Direct `dist/index.js` imports choose the
-portable CRC fallback even in Node; use the package name or `dist/node-index.js`
-for Node native CRC. Executable stdout/exit adapters are not installed by the
-Node library entry.
+The package is `@opentdf-local/tdf3`. `npm install /path/to/package` or
+`npm pack` for a local tarball; nothing is published. Conditional exports
+select `dist/node-index.js` in Node (installing the `node:zlib.crc32`
+adapter) and `dist/index.js` for browsers and bundlers; the browser graph has
+no Node imports or polyfills. `tests/interop/generatedtypescript` is the
+independent consumer: `main.mjs` drives the real platform (encrypt, decrypt,
+100 round trips, a typed negative) and, in `controlled` mode, the offline
+checks (discovery failures, deadlines, untrusted TLS, token 401, allowlist,
+invalid input, unsupported options, 100 reader handles, closed handle).
+`tests/interop/delivery/run-browser-focused.mjs` runs the same encrypt and
+decrypt cells through the browser bundle in Chromium.
+
+## Handle API
 
 ```typescript
-import { encrypt, decrypt, TDFError, type Config } from '@opentdf-local/tdf3';
-const config: Config = {
-  PlatformURL: 'https://platform.example',
-  IssuerURL: 'https://issuer.example/realm',
-  ClientID: clientID, ClientSecret: clientSecret,
-};
-const archive = await encrypt(config, new Uint8Array([0, 255]), {
-  Metadata: new Uint8Array(), IncludeMetadata: true,
-  SegmentSize: 16384n, HasSegmentSize: true,
+import { SDK, OpenTDFError } from '@opentdf-local/tdf3';
+
+await using sdk = await SDK.create('http://localhost:8080', {
+  clientId: 'opentdf-sdk', clientSecret: 'secret', insecurePlaintext: true,
 });
-const result = await decrypt(config, archive);
-// Uint8Array Payload/Metadata, boolean HasMetadata, UTF-8 string ManifestJSON.
+const object = await sdk.createTdf(plaintext, {
+  attributes: ['https://example.com/attr/attr1/value/value1'],
+  kasInformation: [{ url: 'http://localhost:8080/kas' }],
+  mimeType: 'text/plain',
+});
+const manifest = await object.manifest();   // keyed by the reference's JSON tags
+await object.close();
+const ciphertext = object.bytes;             // or: await sdk.encryptBytes(plaintext, options)
+
+const reader = await sdk.loadTdf(ciphertext, { kasAllowlist: ['http://localhost:8080'] });
+const attributes = await reader.dataAttributes();
+await reader.init();                         // fetch and unwrap keys now, under this call's signal
+const metadata = await reader.unencryptedMetadata();
+await reader.close();
+
+try {
+  const plain = await sdk.decryptBytes(ciphertext, { kasAllowlist: ['http://localhost:8080'] });
+} catch (e) {
+  if (e instanceof OpenTDFError) console.log(e.kind, e.httpStatus, e.message);
+}
 ```
 
-Config and EncryptOptions retain exported PascalCase source field names.
-Configuration preserves trusted routes, KAS URL/kid, explicit/discovered KAS
-keys, RSA/P256 wrapping and response sessions, RS256/ES256 authentication,
-DPoP and imported per-operation auth PEM. Options preserve policy/attributes,
-dissemination, MIME type, GMAC/HS256 segmentation and metadata presence. int/int64
-fields such as TimeoutMillis and SegmentSize are bigint; rounded JS numbers are
-rejected. The source's existing segment-size clamping remains in effect.
+| Adapter symbol | Reference | Notes |
+| --- | --- | --- |
+| `SDK.create(endpoint, options?, call?)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection` runs the health check first. |
+| `sdk.createTdf(plaintext, options?, call?)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
+| `sdk.loadTdf(ciphertext, options?, call?)` → `Reader` (`init`, `manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close`, `Symbol.asyncDispose`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set, as in the reference. |
+| `sdk.isHealthy`, `platformConfiguration`, `getBaseKey`, `storeKasKeys`, `close`, `Symbol.asyncDispose` | same | `platformConfiguration()` returns the members as `Record<string, string>` (non-string members as compact JSON). |
+| `isValidTdf`, `getTdfType`, `isPlatformEndpointMalformed`, `keyTypeToPolicyAlgorithm`, `policyAlgorithmToKeyType`, `version`, `tdfSpecVersion`, `supportedFeatures` | same | Free functions; every one returns a Promise. |
 
-Payload, archive and metadata remain byte-exact owned Uint8Arrays. Inputs copy
-synchronously at invocation, including Buffer and subclasses with view-returning
-slice. Config/options arrays copy indexed elements, bypassing caller map/iterator
-hooks and retaining the invocation-time policy/routes. Payload/Metadata outputs are nonnullable Uint8Arrays; HasMetadata retains
-absent versus explicitly empty metadata. Config/options text is UTF-8 encoded
-at the adapter boundary, and ManifestJSON and typed error text are decoded to
-native JS strings. The raw generated `dist/main.js` API retains nullable slices,
-binary Go strings and byte ManifestJSON; the two APIs have explicit distinct
-types. Calls fresh-initialize shared source and serialize safely, with durable
-results/errors copied before owner retirement and global reset.
+Options are plain objects with the shared-source field names in camelCase
+(`Options`, `TDFOptions`, `ReaderOptions`); every absent field is the
+reference default. Sizes and counts are `number`; `platformConfiguration` is
+a `Record<string, unknown>` whose non-string members are carried as JSON
+text; `tokenProvider` is `(signal: AbortSignal) => Promise<AccessToken>` and
+replaces client credentials (the SDK then signs rewrap requests with the
+reference's ephemeral ES256 key unless `dpopKeyPem` is set). Every method
+takes an optional trailing `{ signal }`; aborting cancels the active call
+(`kind: 'canceled'`). Options this build does not implement yet
+(`tokenExchange`, `certExchange`, `tls`, `unixSocket`, service endpoint
+overrides, assertions, target mode `4.2.2`, schema validation, RSA-4096 and
+P-384/P-521 keys) fail with `kind: 'unsupported_feature'` and the message
+`unsupported in this build: <option>`.
 
-## Token providers and cancellation
+Manifests and policies are returned keyed by the reference's JSON tags
+(`manifest.encryptionInformation.keyAccess[0].url`, `payload.mimeType`,
+`policy.body.dataAttributes`), so they read like `manifest.json`; the
+`Manifest`, `KeyAccess`, `PolicyObject` and related interfaces are exported.
+Strings are UTF-8 `string`s and payloads `Uint8Array`s; the raw generated
+`dist/main.js` keeps binary Go strings and bigint sizes.
 
-Browser hosts use an independent token provider; credentials stay on their
-server. Pass `{tokenProvider, signal}` as encrypt's fourth or decrypt's third
-argument. TokenProvider is `(signal: AbortSignal) => Promise<AccessToken>`.
-AccessToken is `{value:string, scheme:string, expiresAt:bigint,
-confirmationJKT?:string}`. Expiry remains signed-int64 exact through decimal
-wire JSON. The shared SDK checks expiry, scheme and DPoP binding. A DPoP provider
-must obtain tokens matching Config.AuthPrivateKeyPEM; session keys are distinct.
-No token cache or native key escapes an operation.
+## Errors
 
-```typescript
-const call = {
-  signal: controller.signal,
-  tokenProvider: async (signal: AbortSignal) => {
-    const response = await fetch('/session/token', { signal });
-    const token = await response.json();
-    return { ...token, expiresAt: BigInt(token.expiresAt) };
-  },
-};
-const result = await decrypt(browserConfig, archive, call);
-```
+Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the
+reference's wording, see [error-wording.md](error-wording.md)),
+`httpStatus`, `connectCode`, `serviceMessage`, `kasUrl`,
+`requiredObligations` and `assertionId`. Boundary failures keep the
+runtime's kind: `canceled` (an aborted signal), `deadline_exceeded`,
+`closed` (a call after `close()`), `invalid_argument` (a wrong value type),
+`poisoned`, `host_fault`. Switch on `kind`; the kinds are the `ErrorKind`
+union of [api-spec.md](api-spec.md).
 
-Server credential flow is available in Node. A browser must not ship client
-secrets; its broker/provider is application-owned. Real browser evidence uses a
-host-side OAuth broker and actual KAS requests. CORS must allow the application's
-origin and Authorization/DPoP/Content-Type/Connect-Protocol-Version, and expose
-DPoP-Nonce so native source nonce retries can work.
+## Deprecated façade
 
-Queued AbortSignal cancellation removes that call without disturbing the active
-owner. Active cancellation requests native stop and waits for actual resource
-settlement. WebCrypto itself is not abortable; its result is discarded and owned
-keys released before cleanup ACK. Providers must eventually settle even after
-abort. TDFError carries kind, code, operation, bigint httpStatus, serverCode,
-serverMessage, requiredObligations and causeCategory. Source panic/host fault
-return safe categories, preserving process survival; cancellation cause retains
-the caller's signal reason.
+`encrypt(config, payload, options?, call?)`, `decrypt(config, archive, call?)`
+and `TDFError` remain with their previous shapes for one release, implemented
+in the shared source as thin wrappers that construct an SDK per call
+(`Config.IssuerURL` becomes the provided platform configuration,
+`Config.KASURL` the KAS information and the allowlist, `Config.DPoP` the DPoP
+algorithm). `TDFError.code` is now the `Error.kind` string;
+`PolicyBase64`, `Dissem` and `SegmentHashAlgorithm` other than `GMAC` are no
+longer supported, and an empty `Metadata` writes no `encryptedMetadata`
+entry, as the reference does.
 
-The generic raw generated Callback API also accepts explicit settle and an
-optional nonblocking stop hook. Explicit replies copy at publication, with first
-settlement winning. Promise replies copy when fulfillment is observed. Stop-hook
-faults still wait for resource settlement; late/duplicate publications cannot
-resume retired owners.
+## CLI
 
-## Native limits and interoperability
-
-See the [compiler boundary and transport observations](../../goalchemy/docs/typescript-library-boundary.md)
-for exact limits, URL/header restrictions, manual redirect/CORS behavior,
-exposed merged headers, native compression and true reader cleanup. TLS
-verification stays enabled and credentials are never forwarded by redirect.
-Production uses native WebCrypto, fetch, secure random and bounded PEM/DER
-framing, with no third-party cryptographic dependency. Build/test dependencies
-are TypeScript6.0.3 Apache2, esbuild0.25.12 MIT and Playwright1.58.2 Apache2.
-
-Independent [Node/browser interoperability tools](../tests/interop/generatedtypescript)
-compare exact payload/metadata against separately labeled stock Go/Web tools
-through real BASIC, EC and enforced-DPoP KAS profiles. Stock Web's enforced-DPoP
-401 limitation is retained separately and is never counted as successful stock
-Web authentication. Browser credentials remain host-side, and the bundle graph
-is audited for Node imports/globals. Root owns profile transitions and final
-acceptance across all seven targets; TypeScript acceptance alone does not imply
-completion of other target SDKs.
+`src/hosts/typescript/cmd/otdfgc/otdfgc.mjs` is the native Node CLI over
+this package, built by `scripts/build-typescript-cli.sh <package> <launcher>`
+and driven by the xtest harness as the `gcts` SDK type (see
+[xtest.md](xtest.md)). It implements the same contract as the Go `otdfgc`:
+`encrypt`, `decrypt`, `inspect` (the manifest read natively from the ZIP),
+`supports <feature>` and `--version --json` with the same flags, exit codes
+(0, 1 operation failed, 2 usage or `unsupported in this build: <flag>`) and
+otdfctl's `Failed to encrypt:` / `Failed to decrypt file:` / `Failed to
+connect to the platform.` / `Failed to authenticate with flag-provided client
+credentials.` wording.
