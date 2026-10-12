@@ -81,7 +81,7 @@ func KeyTypeToPolicyAlgorithm(kt KeyType) (string, error) {
 	case EC521Key:
 		return AlgorithmECP521, nil
 	default:
-		return AlgorithmUnspecified, fmt.Errorf("unknown key type: %s", string(kt))
+		return AlgorithmUnspecified, newError(KindInvalidInput, "KeyTypeToPolicyAlgorithm", "unknown key type: "+string(kt))
 	}
 }
 
@@ -98,7 +98,7 @@ func PolicyAlgorithmToKeyType(alg string) (KeyType, error) {
 	case AlgorithmECP521:
 		return EC521Key, nil
 	default:
-		return "", fmt.Errorf("unsupported algorithm: %s", alg)
+		return "", newError(KindInvalidInput, "PolicyAlgorithmToKeyType", "unsupported algorithm: "+alg)
 	}
 }
 
@@ -112,7 +112,7 @@ func formatAlg(alg string) (string, error) {
 func (s *SDK) GetBaseKey(ctx context.Context) (SimpleKasKey, error) {
 	key, err := getBaseKey(ctx, s)
 	if err != nil {
-		return SimpleKasKey{}, err
+		return SimpleKasKey{}, boundaryError(KindBaseKeyInvalid, "GetBaseKey", err)
 	}
 	return *key, nil
 }
@@ -123,12 +123,12 @@ func getBaseKey(ctx context.Context, s *SDK) (*SimpleKasKey, error) {
 		return nil, wrapError(KindTransport, "GetBaseKey", "unable to retrieve config information, and none was provided", err)
 	}
 	if configuration.Kind() != jsonvalue.KindObject || configuration.Len() == 0 {
-		return nil, ErrWellKnowConfigEmpty
+		return nil, sentinelError(KindBaseKeyNotFound, ErrWellKnowConfigEmpty)
 	}
 
 	baseKeyStructure, ok := configuration.Lookup(baseKeyWellKnown)
 	if !ok {
-		return nil, ErrBaseKeyNotFound
+		return nil, sentinelError(KindBaseKeyNotFound, ErrBaseKeyNotFound)
 	}
 
 	if baseKeyStructure.Kind() != jsonvalue.KindObject {

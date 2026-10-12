@@ -101,7 +101,7 @@ func (s *SDK) init(ctx context.Context) error {
 	if cfg.kasSessionKey == nil {
 		key, err := crypto.GenerateRSA2048()
 		if err != nil {
-			return err
+			return wrapError(KindInvalidInput, "New", "failed to generate session key", err)
 		}
 		cfg.kasSessionKey = key
 	}
@@ -257,7 +257,7 @@ func (s *SDK) PlatformConfiguration() PlatformConfiguration {
 //   - (false, error) wrapping ErrPlatformUnreachable on transport failure or ctx errors.
 func (s *SDK) IsHealthy(ctx context.Context) (bool, error) {
 	if s.client == nil {
-		return false, ErrHealthCheckUnsupported
+		return false, sentinelError(KindUnsupportedFeature, ErrHealthCheckUnsupported)
 	}
 	healthy, err := checkPlatformHealth(ctx, s.platformEndpoint, s.client)
 	if err != nil {
@@ -339,9 +339,10 @@ func readArchive(reader io.ReadSeeker, maxManifestSize int64) (tdf.Archive, erro
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	archive, err := readArchive(reader, 0)
 	if err != nil {
-		return false, fmt.Errorf("zipstream.NewTDFReader failed: %w", err)
+		return false, wrapError(KindNotDecryptable, "IsValidTdf", "zipstream.NewTDFReader failed", err)
 	}
-	return isValidManifest(string(archive.Manifest), Lax)
+	valid, err := isValidManifest(string(archive.Manifest), Lax)
+	return valid, boundaryError(KindInvalidInput, "IsValidTdf", err)
 }
 
 // isValidManifest checks the manifest's required members. Until the schema
@@ -469,7 +470,7 @@ func (s *SDK) StoreKASKeys(url string, keys KasPublicKeySet) error {
 	for _, key := range keys.Keys {
 		alg, err := formatAlg(key.Alg)
 		if err != nil {
-			return err
+			return boundaryError(KindInvalidInput, "StoreKASKeys", err)
 		}
 		s.kasKeyCache.store(KASInfo{
 			URL:       url,

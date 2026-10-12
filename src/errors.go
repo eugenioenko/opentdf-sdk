@@ -166,6 +166,23 @@ func contextKind(err error, fallback ErrorKind) ErrorKind {
 	return fallback
 }
 
+// boundaryError makes err an *Error for an exported method's return: an
+// *Error in the chain is kept (its fields win), anything else becomes an
+// Error of kind with the chain's text, so every failure crosses the
+// Goalchemy boundary as the one error type of api-spec.md.
+func boundaryError(kind ErrorKind, op string, err error) error {
+	if err == nil {
+		return nil
+	}
+	if e, ok := err.(*Error); ok {
+		return e
+	}
+	if _, ok := asError(err); ok {
+		return wrapError(kind, op, "", err)
+	}
+	return &Error{Kind: contextKind(err, kind), Op: op, Message: err.Error()}
+}
+
 // unsupported is the error for an option or input this build does not
 // implement yet; the feature name is the api-spec option or feature name.
 func unsupported(op, feature string) *Error {

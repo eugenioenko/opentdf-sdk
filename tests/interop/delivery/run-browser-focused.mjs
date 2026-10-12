@@ -65,7 +65,7 @@ try{
    const source=producer==='generated'?archive:new Uint8Array(await readFile(resolve(producerRun,wrap.slice(0,2)+'-'+caseName+'.'+producer+'.tdf')));
    const output=await page.evaluate(async({config,source})=>{const result=await window.sdk.decrypt(config,new Uint8Array(source),window.options(config));return{payload:Array.from(result.Payload),metadata:Array.from(result.Metadata??[]),presence:result.HasMetadata,manifest:result.ManifestJSON};},{config,source:Array.from(source)});
    const manifest=JSON.parse(output.manifest),presence=manifest.encryptionInformation.keyAccess.some(key=>Boolean(key.encryptedMetadata));
-   if(hash(Uint8Array.from(output.payload))!==hash(payload)||output.metadata.length!==0||output.presence!==presence||(producer==='generated'&&presence!==(caseName==='empty-metadata')))throw new Error('browser bytes/metadata presence '+producer);
+   if(hash(Uint8Array.from(output.payload))!==hash(payload)||output.metadata.length!==0||output.presence!==presence||(producer==='generated'&&presence))throw new Error('browser bytes/metadata presence '+producer);
    await writeFile(resolve(run,name+'.'+producer+'.out'),Uint8Array.from(output.payload));
    await writeFile(resolve(run,name+'.'+producer+'.metadata'),Uint8Array.from(output.metadata));
    await writeFile(resolve(run,name+'.'+producer+'.presence'),String(output.presence));

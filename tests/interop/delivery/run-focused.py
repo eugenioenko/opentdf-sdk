@@ -105,7 +105,8 @@ def run(target, profile, packages_base, output_base):
                 (output/'config.json').chmod(0o600)
                 (output/(name+'.input')).write_bytes(payload)
                 native('encrypt', name)
-                assert metadata_presence(output/(name+'.generated.tdf')) == (case == 'empty-metadata')
+                # As the reference SDK, the handle API writes no encryptedMetadata for empty metadata.
+                assert metadata_presence(output/(name+'.generated.tdf')) is False
                 event = invoke('stock-go-decrypt-'+name, [reference, output, 'decrypt', name, session])
                 assert (output/(name+'.stock-go.out')).read_bytes() == payload
                 assert (output/(name+'.stock-go.metadata')).read_bytes() == b''
@@ -130,7 +131,8 @@ def run(target, profile, packages_base, output_base):
         native('repeat', 'ownership')
         (output/'malformed.tdf').write_bytes(b'bad archive')
         native('negative', 'malformed')
-        assert json.loads((output/'malformed.error.json').read_text())['code'] == 'archive'
+        malformed = json.loads((output/'malformed.error.json').read_text())
+        assert malformed.get('kind', malformed.get('code')) == 'not_decryptable', malformed
         if target == 'c':
             no_preinit = packages_base/'consumers/c/no-preinit-consumer'
             invoke('public-no-preinit-real-kas', [no_preinit, output/'rs-binary.go.tdf', 'http://localhost:8080', output/'no-preinit.out', output/'no-preinit.metadata', output/'no-preinit.presence'])

@@ -85,7 +85,7 @@ func (t *TDFObject) Manifest() Manifest {
 func (s *SDK) CreateTDF(ctx context.Context, writer io.Writer, reader io.Reader, opts TDFOptions) (*TDFObject, error) {
 	plaintext, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, fmt.Errorf("io.Reader.Read failed: %w", err)
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "io.Reader.Read failed", err)
 	}
 	data, obj, err := s.EncryptBytes(ctx, plaintext, opts)
 	if err != nil {
@@ -93,10 +93,10 @@ func (s *SDK) CreateTDF(ctx context.Context, writer io.Writer, reader io.Reader,
 	}
 	n, err := writer.Write(data)
 	if err != nil {
-		return nil, fmt.Errorf("io.writer.Write failed: %w", err)
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "io.writer.Write failed", err)
 	}
 	if n != len(data) {
-		return nil, errWriteFailed
+		return nil, sentinelError(KindInvalidInput, errWriteFailed)
 	}
 	return obj, nil
 }
@@ -875,7 +875,7 @@ func (r *Reader) Init(ctx context.Context) error {
 	if r.payloadKey != nil {
 		return nil
 	}
-	return r.doPayloadKeyUnwrap(ctx)
+	return boundaryError(KindDecryptFailed, "Init", r.doPayloadKeyUnwrap(ctx))
 }
 
 // Close releases the reader's session key and payload key.
@@ -893,11 +893,22 @@ func (r *Reader) Close() error {
 	return nil
 }
 
+// callContext is the context for a lazily run Init: the LoadTDF context
+// while it lives, as in the reference. A generated host's call context ends
+// with its call, so a later lazy operation falls back to the background
+// context; hosts that need cancellation call Init first.
+func (r *Reader) callContext() context.Context {
+	if r.ctx != nil && r.ctx.Err() == nil {
+		return r.ctx
+	}
+	return context.Background()
+}
+
 // readAll decrypts the whole payload, verifying every segment: the
 // reference's WriteTo from cursor 0, over the in-memory payload.
 func (r *Reader) readAll() ([]byte, error) {
 	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap(r.ctx)
+		err := r.doPayloadKeyUnwrap(r.callContext())
 		if err != nil {
 			return nil, fmt.Errorf("reader.WriteTo failed: %w", err)
 		}
@@ -948,9 +959,9 @@ func (r *Reader) readAll() ([]byte, error) {
 // UnencryptedMetadata return decrypted metadata in manifest.
 func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap(r.ctx)
+		err := r.doPayloadKeyUnwrap(r.callContext())
 		if err != nil {
-			return nil, fmt.Errorf("reader.UnencryptedMetadata failed: %w", err)
+			return nil, wrapError(KindDecryptFailed, "UnencryptedMetadata", "reader.UnencryptedMetadata failed", err)
 		}
 	}
 
@@ -963,12 +974,12 @@ func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
 	policy, err := encoding.Base64Decode(r.manifest.EncryptionInformation.Policy)
 	if err != nil {
-		return policyObj, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+		return policyObj, wrapError(KindInvalidInput, "Policy", "ocrypto.Base64Decode failed", err)
 	}
 
 	err = json.Unmarshal(policy, &policyObj)
 	if err != nil {
-		return policyObj, fmt.Errorf("json.Unmarshal failed: %w", err)
+		return policyObj, wrapError(KindInvalidInput, "Policy", "json.Unmarshal failed", err)
 	}
 
 	return policyObj, nil
@@ -978,13 +989,13 @@ func (r *Reader) Policy() (PolicyObject, error) {
 func (r *Reader) DataAttributes() ([]string, error) {
 	policy, err := encoding.Base64Decode(r.manifest.EncryptionInformation.Policy)
 	if err != nil {
-		return nil, fmt.Errorf("ocrypto.Base64Decode failed:%w", err)
+		return nil, wrapError(KindInvalidInput, "DataAttributes", "ocrypto.Base64Decode failed", err)
 	}
 
 	policyObj := PolicyObject{}
 	err = json.Unmarshal(policy, &policyObj)
 	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
+		return nil, wrapError(KindInvalidInput, "DataAttributes", "json.Unmarshal failed", err)
 	}
 
 	attributes := make([]string, 0)

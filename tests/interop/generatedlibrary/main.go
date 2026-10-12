@@ -190,6 +190,7 @@ func main() {
 		hasMetadata := len(manifest.EncryptionInformation.KeyAccessObjs) > 0 && manifest.EncryptionInformation.KeyAccessObjs[0].EncryptedMetadata != ""
 		var metadata []byte
 		if hasMetadata {
+			fail("init", reader.Init(ctx, callbacks))
 			metadata, e = reader.UnencryptedMetadata(ctx, callbacks)
 			fail("metadata", e)
 		}
