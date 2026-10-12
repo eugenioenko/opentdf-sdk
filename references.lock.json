@@ -3,9 +3,10 @@
   "repositories": {
     "goalchemy": {
       "path": "../goalchemy",
-      "revision": "26aad364a724cfae0397d98900711c89cfaf97f6",
+      "revision": "5ddab882c776de92cd0affa27711539cf39026fe",
       "baseline_revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907",
-      "release": "v0.6.0"
+      "release": "v0.6.0",
+      "release_note": "revision is the fix commit of goalchemy#77 (Python frame results, map range on an empty map) ahead of its release; re-pin to the tag when v0.6.1 is released"
     },
     "platform": {
       "path": "../platform",
