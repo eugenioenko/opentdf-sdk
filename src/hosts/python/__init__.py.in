@@ -1,14 +1,342 @@
-"""Importable TDF3 byte API. Calls own their source/client/key state."""
+"""OpenTDF SDK: the handle API of api-spec.md in Python idiom (snake_case
+keyword options, str/bytes, int sizes, one OpenTDFError, sync methods with
+async twins) plus the deprecated per-call encrypt/decrypt façade. The adapter
+maps names and errors only; the TDF protocol executes in the generated code."""
 from dataclasses import dataclass, fields
 import asyncio
 import json
-from concurrent.futures import Future
-from typing import Generic, TypeVar, Callable, Awaitable
+from concurrent.futures import Future, TimeoutError as _FutureTimeout
+from typing import Any, Generic, TypeVar, Callable, Awaitable
 T = TypeVar('T')
 from . import _generated
 from ._generated import rt
 from ._generated.rt.runtime.lib_callback_request import ProviderRejected, ProviderRequest
 
+TOKEN_PROVIDER_NAME = 'access-token'
+
+# Value shapes: (host name, generated name, kind); kinds are 's' str, 'n' int,
+# 'b' bool, 'ss' list[str], a shape (nested object) or [shape] (a list).
+# Manifest rows use the reference's JSON tags as host names.
+_TOKEN_EXCHANGE = (('subject_token', 'SubjectToken', 's'), ('audience', 'Audience', 'ss'))
+_CERT_EXCHANGE = (('client_cert_pem', 'ClientCertPEM', 's'), ('client_key_pem', 'ClientKeyPEM', 's'), ('audience', 'Audience', 'ss'))
+_TLS = (('client_cert_pem', 'ClientCertPEM', 's'), ('client_key_pem', 'ClientKeyPEM', 's'), ('root_cas_pem', 'RootCAsPEM', 's'), ('audience', 'Audience', 'ss'))
+_ENTRY = (('key', 'Key', 's'), ('value', 'Value', 's'))
+_PLATFORM_CONFIGURATION = (('entries', 'Entries', [_ENTRY]),)
+_OPTIONS = (
+    ('client_id', 'ClientID', 's'), ('client_secret', 'ClientSecret', 's'), ('scopes', 'Scopes', 'ss'), ('token_endpoint', 'TokenEndpoint', 's'),
+    ('token_exchange', 'TokenExchange', _TOKEN_EXCHANGE), ('cert_exchange', 'CertExchange', _CERT_EXCHANGE), ('token_provider_name', 'TokenProviderName', 's'),
+    ('platform_configuration', 'PlatformConfiguration', _PLATFORM_CONFIGURATION), ('validate_connection', 'ValidateConnection', 'b'),
+    ('insecure_plaintext', 'InsecurePlaintext', 'b'), ('insecure_skip_verify', 'InsecureSkipVerify', 'b'), ('tls', 'TLS', _TLS), ('unix_socket', 'UnixSocket', 's'),
+    ('timeout_millis', 'TimeoutMillis', 'n'), ('core_endpoint', 'CoreEndpoint', 's'), ('policy_endpoint', 'PolicyEndpoint', 's'),
+    ('authorization_endpoint', 'AuthorizationEndpoint', 's'), ('entity_resolution_endpoint', 'EntityResolutionEndpoint', 's'), ('wellknown_endpoint', 'WellknownEndpoint', 's'),
+    ('session_encryption_rsa_pem', 'SessionEncryptionRSAPEM', 's'), ('session_signer_rsa_pem', 'SessionSignerRSAPEM', 's'), ('dpop_algorithm', 'DPoPAlgorithm', 's'),
+    ('dpop_key_pem', 'DPoPKeyPEM', 's'), ('no_kid_in_kao', 'NoKIDInKAO', 'b'), ('fulfillable_obligation_fqns', 'FulfillableObligationFQNs', 'ss'), ('log_level', 'LogLevel', 'n'),
+)
+_KAS_INFO = (('url', 'URL', 's'), ('public_key', 'PublicKey', 's'), ('kid', 'KID', 's'), ('algorithm', 'Algorithm', 's'), ('default', 'Default', 'b'))
+_STATEMENT = (('format', 'Format', 's'), ('schema', 'Schema', 's'), ('value', 'Value', 's'))
+_ASSERTION_CONFIG = (('id', 'ID', 's'), ('type', 'Type', 's'), ('scope', 'Scope', 's'), ('applies_to_state', 'AppliesToState', 's'), ('statement', 'Statement', _STATEMENT))
+_TDF_OPTIONS = (
+    ('attributes', 'Attributes', 'ss'), ('disable_autoconfigure', 'DisableAutoconfigure', 'b'), ('kas_information', 'KasInformation', [_KAS_INFO]),
+    ('wrapping_key_algorithm', 'WrappingKeyAlgorithm', 's'), ('segment_size', 'SegmentSize', 'n'), ('input_size', 'InputSize', 'n'), ('mime_type', 'MimeType', 's'),
+    ('metadata', 'Metadata', 's'), ('assertions', 'Assertions', [_ASSERTION_CONFIG]), ('system_metadata_assertion', 'SystemMetadataAssertion', 'b'), ('target_mode', 'TargetMode', 's'),
+)
+_READER_OPTIONS = (
+    ('disable_assertion_verification', 'DisableAssertionVerification', 'b'), ('kas_allowlist', 'KasAllowlist', 'ss'), ('ignore_allowlist', 'IgnoreAllowlist', 'b'),
+    ('max_manifest_size', 'MaxManifestSize', 'n'), ('schema_validation', 'SchemaValidation', 'n'), ('session_key_type', 'SessionKeyType', 's'),
+    ('fulfillable_obligation_fqns', 'FulfillableObligationFQNs', 'ss'),
+)
+_KAS_PUBLIC_KEY_SET = (('keys', 'Keys', [(('pem', 'Pem', 's'), ('kid', 'Kid', 's'), ('alg', 'Alg', 's'))]),)
+_SIMPLE_KAS_KEY = (('kas_uri', 'KasURI', 's'), ('public_key', 'PublicKey', (('algorithm', 'Algorithm', 's'), ('kid', 'Kid', 's'), ('pem', 'Pem', 's'))), ('kas_id', 'KasID', 's'))
+_ERROR = (
+    ('kind', 'Kind', 's'), ('op', 'Op', 's'), ('message', 'Message', 's'), ('http_status', 'HTTPStatus', 'n'), ('connect_code', 'ConnectCode', 's'),
+    ('service_message', 'ServiceMessage', 's'), ('kas_url', 'KASURL', 's'), ('required_obligations', 'RequiredObligations', 'ss'), ('assertion_id', 'AssertionID', 's'),
+)
+_SEGMENT = (('hash', 'Hash', 's'), ('segmentSize', 'Size', 'n'), ('encryptedSegmentSize', 'EncryptedSize', 'n'))
+_INTEGRITY = (
+    ('rootSignature', 'RootSignature', (('alg', 'Algorithm', 's'), ('sig', 'Signature', 's'))), ('segmentHashAlg', 'SegmentHashAlgorithm', 's'),
+    ('segmentSizeDefault', 'DefaultSegmentSize', 'n'), ('encryptedSegmentSizeDefault', 'DefaultEncryptedSegSize', 'n'), ('segments', 'Segments', [_SEGMENT]),
+)
+_KEY_ACCESS = (
+    ('type', 'KeyType', 's'), ('url', 'KasURL', 's'), ('protocol', 'Protocol', 's'), ('wrappedKey', 'WrappedKey', 's'),
+    ('policyBinding', 'PolicyBinding', (('alg', 'Alg', 's'), ('hash', 'Hash', 's'))), ('encryptedMetadata', 'EncryptedMetadata', 's'), ('kid', 'KID', 's'),
+    ('sid', 'SplitID', 's'), ('schemaVersion', 'SchemaVersion', 's'), ('ephemeralPublicKey', 'EphemeralPublicKey', 's'),
+)
+_ASSERTION = (
+    ('id', 'ID', 's'), ('type', 'Type', 's'), ('scope', 'Scope', 's'), ('appliesToState', 'AppliesToState', 's'), ('statement', 'Statement', _STATEMENT),
+    ('binding', 'Binding', (('method', 'Method', 's'), ('signature', 'Signature', 's'))),
+)
+_MANIFEST = (
+    ('encryptionInformation', 'EncryptionInformation', (
+        ('type', 'KeyAccessType', 's'), ('policy', 'Policy', 's'), ('keyAccess', 'KeyAccessObjs', [_KEY_ACCESS]),
+        ('method', 'Method', (('algorithm', 'Algorithm', 's'), ('iv', 'IV', 's'), ('isStreamable', 'IsStreamable', 'b'))), ('integrityInformation', 'IntegrityInformation', _INTEGRITY),
+    )),
+    ('payload', 'Payload', (('type', 'Type', 's'), ('url', 'URL', 's'), ('protocol', 'Protocol', 's'), ('mimeType', 'MimeType', 's'), ('isEncrypted', 'IsEncrypted', 'b'))),
+    ('assertions', 'Assertions', [_ASSERTION]), ('schemaVersion', 'TDFVersion', 's'),
+)
+_ATTRIBUTE_OBJECT = (('attribute', 'Attribute', 's'), ('displayName', 'DisplayName', 's'), ('isDefault', 'IsDefault', 'b'), ('pubKey', 'PubKey', 's'), ('kasURL', 'KasURL', 's'))
+_POLICY = (('uuid', 'UUID', 's'), ('body', 'Body', (('dataAttributes', 'DataAttributes', [_ATTRIBUTE_OBJECT]), ('dissem', 'Dissem', 'ss'))))
+
+
+def _invalid():
+    raise rt.LibraryFailure('invalid_argument')
+
+
+def _text(value):
+    if type(value) is not str: _invalid()
+    try: return value.encode('utf-8', 'strict')
+    except UnicodeError: _invalid()
+
+
+def _in_value(kind, v):
+    if kind == 's': return _text(v)
+    if kind == 'n':
+        if type(v) is not int: _invalid()
+        return v
+    if kind == 'b':
+        if type(v) is not bool: _invalid()
+        return v
+    if kind == 'ss':
+        if type(v) not in (list, tuple): _invalid()
+        return [_text(x) for x in v]
+    if type(kind) is list:
+        if type(v) not in (list, tuple): _invalid()
+        return [_to_generated(kind[0], x) for x in v]
+    return _to_generated(kind, v)
+
+
+def _to_generated(shape, value):
+    if value is None: return {}
+    if type(value) is not dict: _invalid()
+    names = {host for host, _, _ in shape}
+    unknown = set(value) - names
+    if unknown: raise TypeError('unknown option(s): ' + ', '.join(sorted(unknown)))
+    out = {}
+    for host, gen, kind in shape:
+        v = value.get(host)
+        if v is None: continue
+        out[gen] = _in_value(kind, v)
+    return out
+
+
+def _decode(v):
+    return v.decode('utf-8', 'strict') if type(v) is bytes else ''
+
+
+def _out_value(kind, v):
+    if kind == 's': return _decode(v)
+    if kind == 'n': return v if type(v) is int else 0
+    if kind == 'b': return v is True
+    if kind == 'ss': return [_decode(x) for x in (v or ())]
+    if type(kind) is list: return [_from_generated(kind[0], x) for x in (v or ())]
+    return _from_generated(kind, v)
+
+
+def _from_generated(shape, value):
+    value = value or {}
+    return {host: _out_value(kind, value.get(gen)) for host, gen, kind in shape}
+
+
+class OpenTDFError(Exception):
+    """The shared-source Error record (api-spec.md): kind, op, the reference's
+    message and the service fields. A boundary failure (canceled, closed,
+    invalid_argument, ...) keeps the runtime's kind."""
+    def __init__(self, failure):
+        f = failure.fields
+        if failure.kind == 'source' and type(f.get('Kind')) is bytes:
+            record = _from_generated(_ERROR, f)
+        else:
+            record = {'kind': failure.kind, 'op': '', 'message': 'goalchemy library: ' + failure.kind, 'http_status': 0, 'connect_code': '', 'service_message': '', 'kas_url': '', 'required_obligations': [], 'assertion_id': ''}
+        self.kind = record['kind']; self.op = record['op']; self.message = record['message']
+        self.http_status = record['http_status']; self.connect_code = record['connect_code']; self.service_message = record['service_message']
+        self.kas_url = record['kas_url']; self.required_obligations = tuple(record['required_obligations']); self.assertion_id = record['assertion_id']
+        super().__init__(self.message)
+
+
+@dataclass(frozen=True)
+class AccessToken:
+    value: str
+    scheme: str
+    expires_at: int
+    confirmation_jkt: str = ''
+
+
+def _token(token):
+    if type(token) is not AccessToken or type(token.expires_at) is not int or not 0 <= token.expires_at < 1 << 63: raise ProviderRejected('provider: invalid token')
+    if any(type(v) is not str or len(v) > limit for v, limit in ((token.value, 65536), (token.scheme, 128), (token.confirmation_jkt, 256))): raise ProviderRejected('provider: invalid token')
+    try:
+        for v in (token.value, token.scheme, token.confirmation_jkt): v.encode('utf-8', 'strict')
+    except UnicodeError: raise ProviderRejected('provider: invalid token')
+    return json.dumps({'value': token.value, 'scheme': token.scheme, 'expiresAt': str(token.expires_at), 'confirmationJKT': token.confirmation_jkt}, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
+
+
+def _provider(provider):
+    def call(request):
+        value = provider(request)
+        if asyncio.iscoroutine(value):
+            async def mapped(): return _token(await value)
+            return mapped()
+        if type(value) is Future: value = value.result()
+        return _token(value)
+    return call
+
+
+def _callbacks(provider):
+    if provider is None: return None
+    if not callable(provider): _invalid()
+    return {'callbacks': {TOKEN_PROVIDER_NAME: _provider(provider)}}
+
+
+def _wait(operation, timeout, convert=lambda v: v):
+    try: return convert(operation.result(timeout))
+    except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    except _FutureTimeout:
+        operation.cancel()
+        try: operation.result()
+        except BaseException: pass
+        raise OpenTDFError(rt.LibraryFailure('deadline_exceeded')) from None
+
+
+async def _await(operation, convert=lambda v: v):
+    try: return convert(await operation)
+    except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+
+
+def _manifest(v): return _from_generated(_MANIFEST, v)
+
+
+class TDFObject:
+    """The reference's TDFObject: the TDF bytes and a handle to its manifest."""
+    def __init__(self, data, handle, calls):
+        self.bytes = data; self._handle = handle; self._calls = calls
+    def manifest(self, timeout=None): return _wait(self._handle.Manifest(self._calls), timeout, _manifest)
+    async def manifest_async(self): return await _await(self._handle.Manifest(self._calls), _manifest)
+    def size(self, timeout=None): return _wait(self._handle.Size(self._calls), timeout)
+    async def size_async(self): return await _await(self._handle.Size(self._calls))
+    def close(self, timeout=None): return _wait(self._handle.close(), timeout)
+    async def close_async(self): return await _await(self._handle.close())
+    def __enter__(self): return self
+    def __exit__(self, *exc): self.close(); return False
+    async def __aenter__(self): return self
+    async def __aexit__(self, *exc): await self.close_async(); return False
+
+
+class Reader:
+    """The reference's Reader over a loaded TDF; stream methods arrive in Phase 7."""
+    def __init__(self, handle, calls):
+        self._handle = handle; self._calls = calls
+    def init(self, timeout=None): return _wait(self._handle.Init(self._calls), timeout)
+    async def init_async(self): return await _await(self._handle.Init(self._calls))
+    def manifest(self, timeout=None): return _wait(self._handle.Manifest(self._calls), timeout, _manifest)
+    async def manifest_async(self): return await _await(self._handle.Manifest(self._calls), _manifest)
+    def policy(self, timeout=None): return _wait(self._handle.Policy(self._calls), timeout, lambda v: _from_generated(_POLICY, v))
+    async def policy_async(self): return await _await(self._handle.Policy(self._calls), lambda v: _from_generated(_POLICY, v))
+    def data_attributes(self, timeout=None): return _wait(self._handle.DataAttributes(self._calls), timeout, lambda v: _out_value('ss', v))
+    async def data_attributes_async(self): return await _await(self._handle.DataAttributes(self._calls), lambda v: _out_value('ss', v))
+    def unencrypted_metadata(self, timeout=None): return _wait(self._handle.UnencryptedMetadata(self._calls), timeout, lambda v: v or b'')
+    async def unencrypted_metadata_async(self): return await _await(self._handle.UnencryptedMetadata(self._calls), lambda v: v or b'')
+    def close(self, timeout=None): return _wait(self._handle.close(), timeout)
+    async def close_async(self): return await _await(self._handle.close())
+    def __enter__(self): return self
+    def __exit__(self, *exc): self.close(); return False
+    async def __aenter__(self): return self
+    async def __aexit__(self, *exc): await self.close_async(); return False
+
+
+def _sdk_options(options):
+    options = dict(options)
+    provider = options.pop('token_provider', None)
+    calls = _callbacks(provider)
+    if calls is not None: options['token_provider_name'] = TOKEN_PROVIDER_NAME
+    configuration = options.pop('platform_configuration', None)
+    if configuration is not None:
+        if type(configuration) is not dict: _invalid()
+        options['platform_configuration'] = {'entries': [{'key': k, 'value': v if type(v) is str else json.dumps(v, separators=(',', ':'))} for k, v in configuration.items()]}
+    return _to_generated(_OPTIONS, options), calls
+
+
+def _new(platform_endpoint, options):
+    generated, calls = _sdk_options(options)
+    return _generated.New(_text(platform_endpoint), generated, calls), calls
+
+
+class SDK:
+    """The reference's SDK handle: SDK(endpoint, **options) discovers the
+    platform configuration and the token endpoint; create_async is the
+    coroutine twin."""
+    def __init__(self, platform_endpoint, *, timeout=None, _handle=None, _calls=None, **options):
+        if _handle is not None:
+            self._handle = _handle; self._calls = _calls; return
+        try: operation, calls = _new(platform_endpoint, options)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+        self._handle = _wait(operation, timeout); self._calls = calls
+    @classmethod
+    async def create_async(cls, platform_endpoint, **options):
+        try: operation, calls = _new(platform_endpoint, options)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+        return cls(platform_endpoint, _handle=await _await(operation), _calls=calls)
+
+    def _encrypt(self, plaintext, options):
+        try: return self._handle.EncryptBytes(rt.library_snapshot_bytes(plaintext), _to_generated(_TDF_OPTIONS, options), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def _object(self, result): return TDFObject(result[0] or b'', result[1], self._calls)
+    def create_tdf(self, plaintext, *, timeout=None, **options):
+        """The reference's CreateTDF over bytes: a TDFObject with the TDF bytes."""
+        return _wait(self._encrypt(plaintext, options), timeout, self._object)
+    async def create_tdf_async(self, plaintext, **options): return await _await(self._encrypt(plaintext, options), self._object)
+    def encrypt_bytes(self, plaintext, *, timeout=None, **options):
+        """create_tdf without keeping the handle: the TDF bytes only."""
+        with self.create_tdf(plaintext, timeout=timeout, **options) as obj: return obj.bytes
+    async def encrypt_bytes_async(self, plaintext, **options):
+        async with await self.create_tdf_async(plaintext, **options) as obj: return obj.bytes
+
+    def _load(self, ciphertext, options):
+        try: return self._handle.LoadTDF(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, options), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def load_tdf(self, ciphertext, *, timeout=None, **options): return _wait(self._load(ciphertext, options), timeout, lambda h: Reader(h, self._calls))
+    async def load_tdf_async(self, ciphertext, **options): return await _await(self._load(ciphertext, options), lambda h: Reader(h, self._calls))
+
+    def _decrypt(self, ciphertext, options):
+        try: return self._handle.DecryptBytes(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, options), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def decrypt_bytes(self, ciphertext, *, timeout=None, **options): return _wait(self._decrypt(ciphertext, options), timeout, lambda v: v or b'')
+    async def decrypt_bytes_async(self, ciphertext, **options): return await _await(self._decrypt(ciphertext, options), lambda v: v or b'')
+
+    def is_healthy(self, timeout=None): return _wait(self._handle.IsHealthy(self._calls), timeout)
+    async def is_healthy_async(self): return await _await(self._handle.IsHealthy(self._calls))
+    def _configuration(self, v): return {e['key']: e['value'] for e in _from_generated(_PLATFORM_CONFIGURATION, v)['entries']}
+    def platform_configuration(self, timeout=None): return _wait(self._handle.PlatformConfiguration(self._calls), timeout, self._configuration)
+    async def platform_configuration_async(self): return await _await(self._handle.PlatformConfiguration(self._calls), self._configuration)
+    def get_base_key(self, timeout=None): return _wait(self._handle.GetBaseKey(self._calls), timeout, lambda v: _from_generated(_SIMPLE_KAS_KEY, v))
+    async def get_base_key_async(self): return await _await(self._handle.GetBaseKey(self._calls), lambda v: _from_generated(_SIMPLE_KAS_KEY, v))
+    def _store(self, url, keys):
+        try: return self._handle.StoreKASKeys(_text(url), _to_generated(_KAS_PUBLIC_KEY_SET, keys), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def store_kas_keys(self, url, keys, timeout=None): return _wait(self._store(url, keys), timeout)
+    async def store_kas_keys_async(self, url, keys): return await _await(self._store(url, keys))
+    def close(self, timeout=None): return _wait(self._handle.close(), timeout)
+    async def close_async(self): return await _await(self._handle.close())
+    def __enter__(self): return self
+    def __exit__(self, *exc): self.close(); return False
+    async def __aenter__(self): return self
+    async def __aexit__(self, *exc): await self.close_async(); return False
+
+
+def _free(call, convert=lambda v: v, timeout=None):
+    try: return _wait(call(), timeout, convert)
+    except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+
+
+def is_valid_tdf(data, timeout=None): return _free(lambda: _generated.IsValidTdf(rt.library_snapshot_bytes(data)), timeout=timeout)
+def get_tdf_type(data, timeout=None): return _free(lambda: _generated.GetTdfType(rt.library_snapshot_bytes(data)), _decode, timeout)
+def is_platform_endpoint_malformed(endpoint): return _free(lambda: _generated.IsPlatformEndpointMalformed(_text(endpoint)))
+def key_type_to_policy_algorithm(key_type): return _free(lambda: _generated.KeyTypeToPolicyAlgorithm(_text(key_type)), _decode)
+def policy_algorithm_to_key_type(alg): return _free(lambda: _generated.PolicyAlgorithmToKeyType(_text(alg)), _decode)
+def version(): return _free(_generated.Version, _decode)
+def tdf_spec_version(): return _free(_generated.TDFSpecVersion, _decode)
+def supported_features(): return _free(_generated.SupportedFeatures, lambda v: _out_value('ss', v))
+
+
+# Deprecated façade: one SDK per call over Config and EncryptOptions.
 @dataclass
 class KASRoute:
     url: str = ''
@@ -44,12 +372,6 @@ class EncryptOptions:
     metadata: bytes | None = None
     include_metadata: bool = False
 @dataclass(frozen=True)
-class AccessToken:
-    value: str
-    scheme: str
-    expires_at: int
-    confirmation_jkt: str = ''
-@dataclass(frozen=True)
 class Decrypted:
     payload: bytes
     metadata: bytes
@@ -57,6 +379,7 @@ class Decrypted:
     manifest_json: str
 
 class TDFError(Exception):
+    """Deprecated: the façade's error over the Failure record; the handle API raises OpenTDFError."""
     def __init__(self, failure):
         def text(name):
             value=failure.fields.get(name,b'')
@@ -73,11 +396,6 @@ class TDFError(Exception):
 
 _CONFIG_NAMES=('PlatformURL','KASURL','AllowedKAS','IssuerURL','TokenURL','ClientID','ClientSecret','TokenProviderName','AllowHTTP','TimeoutMillis','KASPublicKeyPEM','KID','KASAlgorithm','SessionAlgorithm','AuthPrivateKeyPEM','AuthAlgorithm','DPoP')
 _OPTION_NAMES=('PolicyBase64','Attributes','Dissem','SegmentSize','HasSegmentSize','SegmentHashAlgorithm','MimeType','Metadata','IncludeMetadata')
-
-def _text(value):
-    if type(value) is not str:raise rt.LibraryFailure('invalid_argument')
-    try:return value.encode('utf-8','strict')
-    except UnicodeError:raise rt.LibraryFailure('invalid_argument')
 
 def _config(config):
     if config is None:config=Config()
@@ -109,24 +427,6 @@ def _options(options):
         else:result[name]=_text(value) if field.type is str else value
     return result
 
-def _token(token):
-    if type(token) is not AccessToken or type(token.expires_at) is not int or not 0<=token.expires_at<1<<63:raise ProviderRejected('provider: invalid token')
-    if any(type(v) is not str or len(v)>limit for v,limit in ((token.value,65536),(token.scheme,128),(token.confirmation_jkt,256))):raise ProviderRejected('provider: invalid token')
-    try:
-        for v in (token.value,token.scheme,token.confirmation_jkt):v.encode('utf-8','strict')
-    except UnicodeError:raise ProviderRejected('provider: invalid token')
-    return json.dumps({'value':token.value,'scheme':token.scheme,'expiresAt':str(token.expires_at),'confirmationJKT':token.confirmation_jkt},ensure_ascii=False,separators=(',',':')).encode('utf-8')
-
-def _provider(provider):
-    def call(request):
-        value=provider(request)
-        if asyncio.iscoroutine(value):
-            async def mapped():return _token(await value)
-            return mapped()
-        if type(value) is Future:value=value.result()
-        return _token(value)
-    return call
-
 class Operation(Generic[T]):
     def __init__(self,native,convert=lambda value:value):self._native=native;self._convert=convert
     def cancel(self) -> bool:return self._native.cancel()
@@ -149,13 +449,14 @@ def _call(config,provider):
     return {'callbacks':{'access-token':_provider(provider)}}
 
 def encrypt(config: Config, payload: bytes | bytearray | memoryview | None, options: EncryptOptions | None = None, *, provider: Callable | None = None) -> Operation[bytes]:
-    """Submit an owned, serialized call. Operation.cancel requests cleanup ACK."""
+    """Deprecated: use SDK.encrypt_bytes."""
     try:
         native=_config(config);call=_call(native,provider)
         return Operation(_generated.Encrypt(native,rt.library_snapshot_bytes(payload),_options(options),call))
     except rt.LibraryFailure as failure:return _failed(failure)
 
 def decrypt(config: Config, archive: bytes | bytearray | memoryview | None, *, provider: Callable | None = None) -> Operation[Decrypted]:
+    """Deprecated: use SDK.decrypt_bytes."""
     try:
         native=_config(config);call=_call(native,provider)
         def result(v):return Decrypted(v['Payload'] or b'',v['Metadata'] or b'',v['HasMetadata'],v['ManifestJSON'].decode('utf-8','strict'))

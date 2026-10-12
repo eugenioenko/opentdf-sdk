@@ -1,37 +1,473 @@
-// Minimal host value adapter. TDF protocol executes only in compiler output.
+// Host adapter over the generated package: the handle API of api-spec.md in
+// TypeScript idiom (camelCase options, UTF-8 strings, number sizes, one
+// OpenTDFError) plus the deprecated encrypt/decrypt façade. It maps names and
+// errors only; the TDF protocol executes in the compiler output.
 import * as generated from './main.js';
 export type { Config, KASRoute, EncryptOptions, Failure } from './main.js';
-export interface Decrypted { Payload:Uint8Array; Metadata:Uint8Array; HasMetadata:boolean; ManifestJSON:string; }
-const utf8=new TextDecoder('utf-8',{fatal:true});
-function decode(s:unknown):string{if(typeof s!=='string')return '';return utf8.decode(Uint8Array.from(s,c=>c.charCodeAt(0)));}
-export interface AccessToken { value:string; scheme:string; expiresAt:bigint; confirmationJKT?:string; }
-export type TokenProvider=(signal:AbortSignal)=>Promise<AccessToken>;
-export interface CallOptions { signal?:AbortSignal; tokenProvider?:TokenProvider; }
-export const TokenProviderName='access-token';
+
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+function decode(s: unknown): string {
+  if (typeof s !== 'string') return '';
+  return utf8.decode(Uint8Array.from(s, c => c.charCodeAt(0)));
+}
+function encode(s: string): string {
+  const b = new TextEncoder().encode(s);
+  let out = '';
+  for (let i = 0; i < b.length; i += 8192) out += String.fromCharCode(...b.subarray(i, i + 8192));
+  return out;
+}
+function copyArray<T, R>(a: readonly T[], convert: (value: T) => R): R[] {
+  if (!Array.isArray(a) || a.length > 64 << 20) throw new generated.LibraryError('invalid_argument');
+  const result: R[] = [];
+  for (let i = 0; i < a.length; i++) result.push(convert(a[i]));
+  return result;
+}
+
+// Value shapes: one row per field, [host name, generated name, kind]. The
+// same table converts host values in (camelCase, number) and generated values
+// out (the Go field names, bigint); manifest rows use the reference's JSON
+// tags as host names.
+type Kind = 's' | 'n' | 'b' | 'ss' | Shape | [Shape];
+type Row = [string, string, Kind];
+type Shape = Row[];
+
+function toGenerated(shape: Shape, value: unknown): Record<string, unknown> {
+  if (value === undefined || value === null) return {};
+  if (typeof value !== 'object' || Array.isArray(value)) throw new generated.LibraryError('invalid_argument');
+  const source = value as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [host, gen, kind] of shape) {
+    const v = source[host];
+    if (v === undefined || v === null) continue;
+    out[gen] = inValue(kind, v);
+  }
+  return out;
+}
+function inValue(kind: Kind, v: unknown): unknown {
+  switch (kind) {
+    case 's':
+      if (typeof v !== 'string') throw new generated.LibraryError('invalid_argument');
+      return encode(v);
+    case 'n':
+      if (typeof v === 'bigint') return v;
+      if (typeof v !== 'number' || !Number.isSafeInteger(v)) throw new generated.LibraryError('invalid_argument');
+      return BigInt(v);
+    case 'b':
+      if (typeof v !== 'boolean') throw new generated.LibraryError('invalid_argument');
+      return v;
+    case 'ss':
+      return copyArray(v as string[], x => inValue('s', x) as string);
+    default:
+      if (isArrayShape(kind)) return copyArray(v as unknown[], x => toGenerated(kind[0], x));
+      return toGenerated(kind, v);
+  }
+}
+function isArrayShape(kind: Shape | [Shape]): kind is [Shape] {
+  return kind.length === 1 && Array.isArray(kind[0]) && kind[0].length > 0 && Array.isArray(kind[0][0]);
+}
+function fromGenerated(shape: Shape, value: unknown): Record<string, unknown> {
+  const source = (value ?? {}) as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [host, gen, kind] of shape) out[host] = outValue(kind, source[gen]);
+  return out;
+}
+function outValue(kind: Kind, v: unknown): unknown {
+  switch (kind) {
+    case 's': return decode(v);
+    case 'n': return typeof v === 'bigint' ? Number(v) : 0;
+    case 'b': return v === true;
+    case 'ss': return Array.isArray(v) ? copyArray(v, decode) : [];
+    default:
+      if (isArrayShape(kind)) return Array.isArray(v) ? copyArray(v, x => fromGenerated(kind[0], x)) : [];
+      return fromGenerated(kind, v);
+  }
+}
+
+const tokenExchangeShape: Shape = [['subjectToken', 'SubjectToken', 's'], ['audience', 'Audience', 'ss']];
+const certExchangeShape: Shape = [['clientCertPem', 'ClientCertPEM', 's'], ['clientKeyPem', 'ClientKeyPEM', 's'], ['audience', 'Audience', 'ss']];
+const tlsShape: Shape = [['clientCertPem', 'ClientCertPEM', 's'], ['clientKeyPem', 'ClientKeyPEM', 's'], ['rootCasPem', 'RootCAsPEM', 's'], ['audience', 'Audience', 'ss']];
+const entryShape: Shape = [['key', 'Key', 's'], ['value', 'Value', 's']];
+const platformConfigurationShape: Shape = [['entries', 'Entries', [entryShape]]];
+const optionsShape: Shape = [
+  ['clientId', 'ClientID', 's'], ['clientSecret', 'ClientSecret', 's'], ['scopes', 'Scopes', 'ss'], ['tokenEndpoint', 'TokenEndpoint', 's'],
+  ['tokenExchange', 'TokenExchange', tokenExchangeShape], ['certExchange', 'CertExchange', certExchangeShape], ['tokenProviderName', 'TokenProviderName', 's'],
+  ['platformConfiguration', 'PlatformConfiguration', platformConfigurationShape], ['validateConnection', 'ValidateConnection', 'b'],
+  ['insecurePlaintext', 'InsecurePlaintext', 'b'], ['insecureSkipVerify', 'InsecureSkipVerify', 'b'], ['tls', 'TLS', tlsShape], ['unixSocket', 'UnixSocket', 's'],
+  ['timeoutMillis', 'TimeoutMillis', 'n'], ['coreEndpoint', 'CoreEndpoint', 's'], ['policyEndpoint', 'PolicyEndpoint', 's'], ['authorizationEndpoint', 'AuthorizationEndpoint', 's'],
+  ['entityResolutionEndpoint', 'EntityResolutionEndpoint', 's'], ['wellknownEndpoint', 'WellknownEndpoint', 's'],
+  ['sessionEncryptionRsaPem', 'SessionEncryptionRSAPEM', 's'], ['sessionSignerRsaPem', 'SessionSignerRSAPEM', 's'], ['dpopAlgorithm', 'DPoPAlgorithm', 's'], ['dpopKeyPem', 'DPoPKeyPEM', 's'],
+  ['noKidInKao', 'NoKIDInKAO', 'b'], ['fulfillableObligationFqns', 'FulfillableObligationFQNs', 'ss'], ['logLevel', 'LogLevel', 'n'],
+];
+const kasInfoShape: Shape = [['url', 'URL', 's'], ['publicKey', 'PublicKey', 's'], ['kid', 'KID', 's'], ['algorithm', 'Algorithm', 's'], ['default', 'Default', 'b']];
+const statementShape: Shape = [['format', 'Format', 's'], ['schema', 'Schema', 's'], ['value', 'Value', 's']];
+const assertionConfigShape: Shape = [['id', 'ID', 's'], ['type', 'Type', 's'], ['scope', 'Scope', 's'], ['appliesToState', 'AppliesToState', 's'], ['statement', 'Statement', statementShape]];
+const tdfOptionsShape: Shape = [
+  ['attributes', 'Attributes', 'ss'], ['disableAutoconfigure', 'DisableAutoconfigure', 'b'], ['kasInformation', 'KasInformation', [kasInfoShape]],
+  ['wrappingKeyAlgorithm', 'WrappingKeyAlgorithm', 's'], ['segmentSize', 'SegmentSize', 'n'], ['inputSize', 'InputSize', 'n'], ['mimeType', 'MimeType', 's'],
+  ['metadata', 'Metadata', 's'], ['assertions', 'Assertions', [assertionConfigShape]], ['systemMetadataAssertion', 'SystemMetadataAssertion', 'b'], ['targetMode', 'TargetMode', 's'],
+];
+const readerOptionsShape: Shape = [
+  ['disableAssertionVerification', 'DisableAssertionVerification', 'b'], ['kasAllowlist', 'KasAllowlist', 'ss'], ['ignoreAllowlist', 'IgnoreAllowlist', 'b'],
+  ['maxManifestSize', 'MaxManifestSize', 'n'], ['schemaValidation', 'SchemaValidation', 'n'], ['sessionKeyType', 'SessionKeyType', 's'],
+  ['fulfillableObligationFqns', 'FulfillableObligationFQNs', 'ss'],
+];
+const kasPublicKeyShape: Shape = [['pem', 'Pem', 's'], ['kid', 'Kid', 's'], ['alg', 'Alg', 's']];
+const kasPublicKeySetShape: Shape = [['keys', 'Keys', [kasPublicKeyShape]]];
+const simpleKasKeyShape: Shape = [['kasUri', 'KasURI', 's'], ['publicKey', 'PublicKey', [['algorithm', 'Algorithm', 's'], ['kid', 'Kid', 's'], ['pem', 'Pem', 's']]], ['kasId', 'KasID', 's']];
+const errorShape: Shape = [
+  ['kind', 'Kind', 's'], ['op', 'Op', 's'], ['message', 'Message', 's'], ['httpStatus', 'HTTPStatus', 'n'], ['connectCode', 'ConnectCode', 's'],
+  ['serviceMessage', 'ServiceMessage', 's'], ['kasUrl', 'KASURL', 's'], ['requiredObligations', 'RequiredObligations', 'ss'], ['assertionId', 'AssertionID', 's'],
+];
+
+// Manifest rows carry the reference's JSON tags, so a manifest reads like the
+// manifest.json document.
+const segmentShape: Shape = [['hash', 'Hash', 's'], ['segmentSize', 'Size', 'n'], ['encryptedSegmentSize', 'EncryptedSize', 'n']];
+const integrityShape: Shape = [
+  ['rootSignature', 'RootSignature', [['alg', 'Algorithm', 's'], ['sig', 'Signature', 's']]], ['segmentHashAlg', 'SegmentHashAlgorithm', 's'],
+  ['segmentSizeDefault', 'DefaultSegmentSize', 'n'], ['encryptedSegmentSizeDefault', 'DefaultEncryptedSegSize', 'n'], ['segments', 'Segments', [segmentShape]],
+];
+const keyAccessShape: Shape = [
+  ['type', 'KeyType', 's'], ['url', 'KasURL', 's'], ['protocol', 'Protocol', 's'], ['wrappedKey', 'WrappedKey', 's'],
+  ['policyBinding', 'PolicyBinding', [['alg', 'Alg', 's'], ['hash', 'Hash', 's']]], ['encryptedMetadata', 'EncryptedMetadata', 's'], ['kid', 'KID', 's'],
+  ['sid', 'SplitID', 's'], ['schemaVersion', 'SchemaVersion', 's'], ['ephemeralPublicKey', 'EphemeralPublicKey', 's'],
+];
+const assertionShape: Shape = [
+  ['id', 'ID', 's'], ['type', 'Type', 's'], ['scope', 'Scope', 's'], ['appliesToState', 'AppliesToState', 's'], ['statement', 'Statement', statementShape],
+  ['binding', 'Binding', [['method', 'Method', 's'], ['signature', 'Signature', 's']]],
+];
+const manifestShape: Shape = [
+  ['encryptionInformation', 'EncryptionInformation', [
+    ['type', 'KeyAccessType', 's'], ['policy', 'Policy', 's'], ['keyAccess', 'KeyAccessObjs', [keyAccessShape]],
+    ['method', 'Method', [['algorithm', 'Algorithm', 's'], ['iv', 'IV', 's'], ['isStreamable', 'IsStreamable', 'b']]], ['integrityInformation', 'IntegrityInformation', integrityShape],
+  ]],
+  ['payload', 'Payload', [['type', 'Type', 's'], ['url', 'URL', 's'], ['protocol', 'Protocol', 's'], ['mimeType', 'MimeType', 's'], ['isEncrypted', 'IsEncrypted', 'b']]],
+  ['assertions', 'Assertions', [assertionShape]], ['schemaVersion', 'TDFVersion', 's'],
+];
+const attributeObjectShape: Shape = [['attribute', 'Attribute', 's'], ['displayName', 'DisplayName', 's'], ['isDefault', 'IsDefault', 'b'], ['pubKey', 'PubKey', 's'], ['kasURL', 'KasURL', 's']];
+const policyShape: Shape = [['uuid', 'UUID', 's'], ['body', 'Body', [['dataAttributes', 'DataAttributes', [attributeObjectShape]], ['dissem', 'Dissem', 'ss']]]];
+
+export type SigningAlgorithm = 'ES256' | 'ES384' | 'ES512' | 'RS256' | 'RS384' | 'RS512';
+export type KeyType = 'rsa:2048' | 'rsa:4096' | 'ec:secp256r1' | 'ec:secp384r1' | 'ec:secp521r1';
+export type ErrorKind =
+  | 'tampered' | 'root_signature' | 'segment_size' | 'segment_signature' | 'payload_read' | 'invalid_offset' | 'rewrap_bad_request'
+  | 'unsupported_root_integrity' | 'unsupported_segment_integrity' | 'not_decryptable' | 'decrypt_failed' | 'aes_gcm_exhausted'
+  | 'kas_request' | 'rewrap_forbidden' | 'rewrap_unauthorized' | 'assertion_failure' | 'obligations_required'
+  | 'base_key_not_found' | 'base_key_invalid' | 'allowlist_rejected' | 'unsupported_key_access' | 'unsupported_feature'
+  | 'invalid_input' | 'auth' | 'transport' | 'canceled' | 'deadline_exceeded' | 'bulk'
+  | 'closed' | 'poisoned' | 'instance_mismatch' | 'invalid_argument' | 'source' | 'source_panic' | 'source_fatal' | 'host_fault' | (string & {});
+
+export interface AccessToken { value: string; scheme: string; expiresAt: bigint; confirmationJKT?: string; }
+export type TokenProvider = (signal: AbortSignal) => Promise<AccessToken>;
+export const TokenProviderName = 'access-token';
+
+export interface TokenExchange { subjectToken: string; audience?: string[]; }
+export interface CertExchange { clientCertPem: string; clientKeyPem: string; audience?: string[]; }
+export interface TLSOptions { clientCertPem?: string; clientKeyPem?: string; rootCasPem?: string; audience?: string[]; }
+export interface Options {
+  clientId?: string; clientSecret?: string; scopes?: string[]; tokenEndpoint?: string;
+  tokenExchange?: TokenExchange; certExchange?: CertExchange; tokenProvider?: TokenProvider;
+  platformConfiguration?: Record<string, unknown>; validateConnection?: boolean;
+  insecurePlaintext?: boolean; insecureSkipVerify?: boolean; tls?: TLSOptions; unixSocket?: string; timeoutMillis?: number;
+  coreEndpoint?: string; policyEndpoint?: string; authorizationEndpoint?: string; entityResolutionEndpoint?: string; wellknownEndpoint?: string;
+  sessionEncryptionRsaPem?: string; sessionSignerRsaPem?: string; dpopAlgorithm?: SigningAlgorithm; dpopKeyPem?: string; noKidInKao?: boolean;
+  fulfillableObligationFqns?: string[]; logLevel?: number;
+}
+export interface KASInfo { url: string; publicKey?: string; kid?: string; algorithm?: KeyType | string; default?: boolean; }
+export interface Statement { format?: string; schema?: string; value?: string; }
+export interface AssertionConfig { id: string; type: string; scope: string; appliesToState?: string; statement: Statement; }
+export interface TDFOptions {
+  attributes?: string[]; disableAutoconfigure?: boolean; kasInformation?: KASInfo[]; wrappingKeyAlgorithm?: KeyType | string;
+  segmentSize?: number; inputSize?: number; mimeType?: string; metadata?: string; assertions?: AssertionConfig[];
+  systemMetadataAssertion?: boolean; targetMode?: string;
+}
+export interface ReaderOptions {
+  disableAssertionVerification?: boolean; kasAllowlist?: string[]; ignoreAllowlist?: boolean; maxManifestSize?: number;
+  schemaValidation?: number; sessionKeyType?: KeyType | string; fulfillableObligationFqns?: string[];
+}
+export interface CallOptions { signal?: AbortSignal; }
+
+export interface Segment { hash: string; segmentSize: number; encryptedSegmentSize: number; }
+export interface RootSignature { alg: string; sig: string; }
+export interface IntegrityInformation { rootSignature: RootSignature; segmentHashAlg: string; segmentSizeDefault: number; encryptedSegmentSizeDefault: number; segments: Segment[]; }
+export interface PolicyBinding { alg: string; hash: string; }
+export interface KeyAccess { type: string; url: string; protocol: string; wrappedKey: string; policyBinding: PolicyBinding; encryptedMetadata: string; kid: string; sid: string; schemaVersion: string; ephemeralPublicKey: string; }
+export interface Method { algorithm: string; iv: string; isStreamable: boolean; }
+export interface EncryptionInformation { type: string; policy: string; keyAccess: KeyAccess[]; method: Method; integrityInformation: IntegrityInformation; }
+export interface Payload { type: string; url: string; protocol: string; mimeType: string; isEncrypted: boolean; }
+export interface Binding { method: string; signature: string; }
+export interface Assertion { id: string; type: string; scope: string; appliesToState: string; statement: Statement; binding: Binding; }
+export interface Manifest { encryptionInformation: EncryptionInformation; payload: Payload; assertions: Assertion[]; schemaVersion: string; }
+export interface AttributeObject { attribute: string; displayName: string; isDefault: boolean; pubKey: string; kasURL: string; }
+export interface PolicyObject { uuid: string; body: { dataAttributes: AttributeObject[]; dissem: string[] }; }
+export interface SimpleKasKey { kasUri: string; publicKey: { algorithm: string; kid: string; pem: string }; kasId: string; }
+export interface KasPublicKey { pem: string; kid: string; alg: string; }
+export interface KasPublicKeySet { keys: KasPublicKey[]; }
+
+// OpenTDFError carries the shared-source Error record (api-spec.md): kind,
+// op, the reference's message and the service fields. A boundary failure
+// (canceled, closed, invalid_argument, ...) keeps the runtime's kind.
+export class OpenTDFError extends Error {
+  readonly kind: ErrorKind;
+  readonly op: string;
+  readonly httpStatus: number;
+  readonly connectCode: string;
+  readonly serviceMessage: string;
+  readonly kasUrl: string;
+  readonly requiredObligations: string[];
+  readonly assertionId: string;
+  constructor(error: generated.LibraryError) {
+    const f = error.fields;
+    const record = error.kind === 'source' && typeof f.Kind === 'string'
+      ? fromGenerated(errorShape, f)
+      : { kind: error.kind, op: '', message: 'goalchemy library: ' + error.kind, httpStatus: 0, connectCode: '', serviceMessage: '', kasUrl: '', requiredObligations: [], assertionId: '' };
+    super(record.message as string, error.cause === undefined ? undefined : { cause: error.cause });
+    this.name = 'OpenTDFError';
+    this.kind = record.kind as string;
+    this.op = record.op as string;
+    this.httpStatus = record.httpStatus as number;
+    this.connectCode = record.connectCode as string;
+    this.serviceMessage = record.serviceMessage as string;
+    this.kasUrl = record.kasUrl as string;
+    this.requiredObligations = record.requiredObligations as string[];
+    this.assertionId = record.assertionId as string;
+  }
+}
+async function guard<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (e) {
+    if (e instanceof generated.LibraryError) throw new OpenTDFError(e);
+    throw e;
+  }
+}
+function bytes(value: unknown): Uint8Array {
+  if (!(value instanceof Uint8Array)) throw new generated.LibraryError('invalid_argument');
+  return value;
+}
+type Callbacks = NonNullable<generated.CallOptions['callbacks']>;
+
+function providerCallbacks(provider: TokenProvider): Callbacks {
+  return {
+    [TokenProviderName]: async signal => {
+      const token = await provider(signal);
+      if (typeof token.expiresAt !== 'bigint' || token.expiresAt < 0n || token.expiresAt > 9223372036854775807n || typeof token.value !== 'string' || typeof token.scheme !== 'string' || (token.confirmationJKT !== undefined && typeof token.confirmationJKT !== 'string')) throw new Error('invalid token provider result');
+      return new TextEncoder().encode(JSON.stringify({ value: token.value, scheme: token.scheme, expiresAt: token.expiresAt.toString(), confirmationJKT: token.confirmationJKT ?? '' }));
+    },
+  };
+}
+function platformConfigurationEntries(configuration: Record<string, unknown>): { entries: { key: string; value: string }[] } {
+  const entries: { key: string; value: string }[] = [];
+  for (const [key, value] of Object.entries(configuration)) entries.push({ key, value: typeof value === 'string' ? value : JSON.stringify(value) });
+  return { entries };
+}
+function generatedOptions(options: Options): generated.Options {
+  if (options === null || typeof options !== 'object') throw new generated.LibraryError('invalid_argument');
+  const { tokenProvider, platformConfiguration, ...rest } = options;
+  const value: Record<string, unknown> = { ...rest };
+  if (tokenProvider !== undefined) {
+    if (typeof tokenProvider !== 'function') throw new generated.LibraryError('invalid_argument');
+    value.tokenProviderName = TokenProviderName;
+  }
+  if (platformConfiguration !== undefined) value.platformConfiguration = platformConfigurationEntries(platformConfiguration);
+  return toGenerated(optionsShape, value) as generated.Options;
+}
+
+/** The reference's TDFObject: the TDF bytes and a handle to its manifest. */
+export class TDFObject {
+  readonly bytes: Uint8Array;
+  readonly #handle: generated.TDFObject;
+  readonly #calls: Callbacks | undefined;
+  /** @internal */
+  constructor(bytes: Uint8Array, handle: generated.TDFObject, calls: Callbacks | undefined) {
+    this.bytes = bytes;
+    this.#handle = handle;
+    this.#calls = calls;
+  }
+  manifest(call: CallOptions = {}): Promise<Manifest> {
+    return guard(async () => fromGenerated(manifestShape, await this.#handle.Manifest({ signal: call.signal, callbacks: this.#calls })) as unknown as Manifest);
+  }
+  size(call: CallOptions = {}): Promise<number> {
+    return guard(async () => Number(await this.#handle.Size({ signal: call.signal, callbacks: this.#calls })));
+  }
+  close(): Promise<void> { return guard(() => this.#handle.close()); }
+  [Symbol.asyncDispose](): Promise<void> { return this.close(); }
+}
+
+/** The reference's Reader over a loaded TDF; stream methods arrive in Phase 7. */
+export class Reader {
+  readonly #handle: generated.Reader;
+  readonly #calls: Callbacks | undefined;
+  /** @internal */
+  constructor(handle: generated.Reader, calls: Callbacks | undefined) {
+    this.#handle = handle;
+    this.#calls = calls;
+  }
+  #options(call: CallOptions): generated.CallOptions { return { signal: call.signal, callbacks: this.#calls }; }
+  /** Fetches and unwraps the payload key now, under this call's signal. */
+  init(call: CallOptions = {}): Promise<void> { return guard(() => this.#handle.Init(this.#options(call))); }
+  manifest(call: CallOptions = {}): Promise<Manifest> {
+    return guard(async () => fromGenerated(manifestShape, await this.#handle.Manifest(this.#options(call))) as unknown as Manifest);
+  }
+  policy(call: CallOptions = {}): Promise<PolicyObject> {
+    return guard(async () => fromGenerated(policyShape, await this.#handle.Policy(this.#options(call))) as unknown as PolicyObject);
+  }
+  dataAttributes(call: CallOptions = {}): Promise<string[]> {
+    return guard(async () => outValue('ss', await this.#handle.DataAttributes(this.#options(call))) as string[]);
+  }
+  unencryptedMetadata(call: CallOptions = {}): Promise<Uint8Array> {
+    return guard(async () => (await this.#handle.UnencryptedMetadata(this.#options(call))) ?? new Uint8Array());
+  }
+  close(): Promise<void> { return guard(() => this.#handle.close()); }
+  [Symbol.asyncDispose](): Promise<void> { return this.close(); }
+}
+
+/** The reference's SDK handle; create it with SDK.create. */
+export class SDK {
+  readonly #handle: generated.SDK;
+  readonly #calls: Callbacks | undefined;
+  /** @internal */
+  constructor(handle: generated.SDK, calls: Callbacks | undefined) {
+    this.#handle = handle;
+    this.#calls = calls;
+  }
+  /** The reference's New: discovers the platform configuration and the token endpoint. */
+  static create(platformEndpoint: string, options: Options = {}, call: CallOptions = {}): Promise<SDK> {
+    return guard(async () => {
+      if (typeof platformEndpoint !== 'string') throw new generated.LibraryError('invalid_argument');
+      const calls = options.tokenProvider ? providerCallbacks(options.tokenProvider) : undefined;
+      const handle = await generated.New(encode(platformEndpoint), generatedOptions(options), { signal: call.signal, callbacks: calls });
+      if (handle === null) throw new Error('invalid generated result');
+      return new SDK(handle, calls);
+    });
+  }
+  #options(call: CallOptions): generated.CallOptions { return { signal: call.signal, callbacks: this.#calls }; }
+  /** The reference's CreateTDF over bytes: the TDF bytes with their TDFObject handle. */
+  createTdf(plaintext: Uint8Array, options: TDFOptions = {}, call: CallOptions = {}): Promise<TDFObject> {
+    return guard(async () => {
+      const [data, object] = await this.#handle.EncryptBytes(bytes(plaintext), toGenerated(tdfOptionsShape, options) as generated.TDFOptions, this.#options(call));
+      if (data === null || object === null) throw new Error('invalid generated result');
+      return new TDFObject(data, object, this.#calls);
+    });
+  }
+  /** createTdf without keeping the handle: the TDF bytes only. */
+  async encryptBytes(plaintext: Uint8Array, options: TDFOptions = {}, call: CallOptions = {}): Promise<Uint8Array> {
+    const object = await this.createTdf(plaintext, options, call);
+    await object.close();
+    return object.bytes;
+  }
+  loadTdf(ciphertext: Uint8Array, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Reader> {
+    return guard(async () => {
+      const handle = await this.#handle.LoadTDF(bytes(ciphertext), toGenerated(readerOptionsShape, options) as generated.ReaderOptions, this.#options(call));
+      if (handle === null) throw new Error('invalid generated result');
+      return new Reader(handle, this.#calls);
+    });
+  }
+  decryptBytes(ciphertext: Uint8Array, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Uint8Array> {
+    return guard(async () => (await this.#handle.DecryptBytes(bytes(ciphertext), toGenerated(readerOptionsShape, options) as generated.ReaderOptions, this.#options(call))) ?? new Uint8Array());
+  }
+  isHealthy(call: CallOptions = {}): Promise<boolean> { return guard(() => this.#handle.IsHealthy(this.#options(call))); }
+  platformConfiguration(call: CallOptions = {}): Promise<Record<string, string>> {
+    return guard(async () => {
+      const configuration = fromGenerated(platformConfigurationShape, await this.#handle.PlatformConfiguration(this.#options(call))) as { entries: { key: string; value: string }[] };
+      const out: Record<string, string> = {};
+      for (const entry of configuration.entries) out[entry.key] = entry.value;
+      return out;
+    });
+  }
+  getBaseKey(call: CallOptions = {}): Promise<SimpleKasKey> {
+    return guard(async () => fromGenerated(simpleKasKeyShape, await this.#handle.GetBaseKey(this.#options(call))) as unknown as SimpleKasKey);
+  }
+  storeKasKeys(url: string, keys: KasPublicKeySet, call: CallOptions = {}): Promise<void> {
+    return guard(() => this.#handle.StoreKASKeys(inValue('s', url) as string, toGenerated(kasPublicKeySetShape, keys) as generated.KasPublicKeySet, this.#options(call)));
+  }
+  close(): Promise<void> { return guard(() => this.#handle.close()); }
+  [Symbol.asyncDispose](): Promise<void> { return this.close(); }
+}
+
+export function isValidTdf(data: Uint8Array, call: CallOptions = {}): Promise<boolean> {
+  return guard(() => generated.IsValidTdf(bytes(data), { signal: call.signal }));
+}
+export function getTdfType(data: Uint8Array, call: CallOptions = {}): Promise<string> {
+  return guard(async () => decode(await generated.GetTdfType(bytes(data), { signal: call.signal })));
+}
+export function isPlatformEndpointMalformed(endpoint: string): Promise<boolean> {
+  return guard(() => generated.IsPlatformEndpointMalformed(inValue('s', endpoint) as string));
+}
+export function keyTypeToPolicyAlgorithm(keyType: string): Promise<string> {
+  return guard(async () => decode(await generated.KeyTypeToPolicyAlgorithm(inValue('s', keyType) as string)));
+}
+export function policyAlgorithmToKeyType(alg: string): Promise<string> {
+  return guard(async () => decode(await generated.PolicyAlgorithmToKeyType(inValue('s', alg) as string)));
+}
+export function version(): Promise<string> { return guard(async () => decode(await generated.Version())); }
+export function tdfSpecVersion(): Promise<string> { return guard(async () => decode(await generated.TDFSpecVersion())); }
+export function supportedFeatures(): Promise<string[]> {
+  return guard(async () => outValue('ss', await generated.SupportedFeatures()) as string[]);
+}
+
+// Deprecated façade: one SDK per call over Config and EncryptOptions.
+export interface Decrypted { Payload: Uint8Array; Metadata: Uint8Array; HasMetadata: boolean; ManifestJSON: string; }
+export interface FacadeCallOptions { signal?: AbortSignal; tokenProvider?: TokenProvider; }
+/** @deprecated the façade's error; the handle API throws OpenTDFError. */
 export class TDFError extends Error {
- readonly kind:string;readonly code:string;readonly operation:string;readonly httpStatus:bigint;
- readonly serverCode:string;readonly serverMessage:string;readonly requiredObligations:string[];readonly causeCategory:string;
- constructor(error:generated.LibraryError){const f=error.fields;super('tdf: '+decode(f.Operation)+': '+(f.Code===undefined?error.kind:decode(f.Code)),{cause:error.cause});this.name='TDFError';this.kind=error.kind;this.code=f.Code===undefined?error.kind:decode(f.Code);this.operation=decode(f.Operation);this.httpStatus=typeof f.HTTPStatus==='bigint'?f.HTTPStatus:0n;this.serverCode=decode(f.ServerCode);this.serverMessage=decode(f.ServerMessage);this.requiredObligations=Array.isArray(f.RequiredObligations)?copyArray(f.RequiredObligations,decode):[];this.causeCategory=decode(f.CauseCategory);}
+  readonly kind: string; readonly code: string; readonly operation: string; readonly httpStatus: bigint;
+  readonly serverCode: string; readonly serverMessage: string; readonly requiredObligations: string[]; readonly causeCategory: string;
+  constructor(error: generated.LibraryError) {
+    const f = error.fields;
+    super('tdf: ' + decode(f.Operation) + ': ' + (f.Code === undefined ? error.kind : decode(f.Code)), error.cause === undefined ? undefined : { cause: error.cause });
+    this.name = 'TDFError';
+    this.kind = error.kind;
+    this.code = f.Code === undefined ? error.kind : decode(f.Code);
+    this.operation = decode(f.Operation);
+    this.httpStatus = typeof f.HTTPStatus === 'bigint' ? f.HTTPStatus : 0n;
+    this.serverCode = decode(f.ServerCode);
+    this.serverMessage = decode(f.ServerMessage);
+    this.requiredObligations = Array.isArray(f.RequiredObligations) ? copyArray(f.RequiredObligations, decode) : [];
+    this.causeCategory = decode(f.CauseCategory);
+  }
 }
-function encode(s:string):string{const b=new TextEncoder().encode(s);let out='';for(let i=0;i<b.length;i+=8192)out+=String.fromCharCode(...b.subarray(i,i+8192));return out;}
-function copyArray<T,R>(a:readonly T[],convert:(value:T)=>R):R[]{if(!Array.isArray(a)||a.length>64<<20)throw new generated.LibraryError('invalid_argument');const result:R[]=[];for(let i=0;i<a.length;i++)result.push(convert(a[i]));return result;}
-function configValue(input:generated.Config):generated.Config{
- const c={...input};for(const key of Object.keys(c) as (keyof generated.Config)[]){if(typeof c[key]==='string')(c as Record<string,unknown>)[key]=encode(c[key] as string);}
- if(c.AllowedKAS)c.AllowedKAS=copyArray(c.AllowedKAS,r=>({URL:r.URL===undefined?undefined:encode(r.URL),APIBaseURL:r.APIBaseURL===undefined?undefined:encode(r.APIBaseURL)}));return c;
+function configValue(input: generated.Config): generated.Config {
+  const c = { ...input };
+  for (const key of Object.keys(c) as (keyof generated.Config)[]) {
+    if (typeof c[key] === 'string') (c as Record<string, unknown>)[key] = encode(c[key] as string);
+  }
+  if (c.AllowedKAS) c.AllowedKAS = copyArray(c.AllowedKAS, r => ({ URL: r.URL === undefined ? undefined : encode(r.URL), APIBaseURL: r.APIBaseURL === undefined ? undefined : encode(r.APIBaseURL) }));
+  return c;
 }
-function optionValue(input:generated.EncryptOptions):generated.EncryptOptions{const o={...input};for(const key of ['PolicyBase64','SegmentHashAlgorithm','MimeType'] as const)if(o[key]!==undefined)o[key]=encode(o[key]!);if(o.Attributes)o.Attributes=copyArray(o.Attributes,encode);if(o.Dissem)o.Dissem=copyArray(o.Dissem,encode);return o;}
-function callOptions(c:generated.Config,options:CallOptions):generated.CallOptions{
- if(!options.tokenProvider)return {signal:options.signal};const provider=options.tokenProvider;c.TokenProviderName=TokenProviderName;
- return {signal:options.signal,callbacks:{[TokenProviderName]:async signal=>{
-  const token=await provider(signal);if(typeof token.expiresAt!=='bigint'||token.expiresAt<0n||token.expiresAt>9223372036854775807n||typeof token.value!=='string'||typeof token.scheme!=='string'||(token.confirmationJKT!==undefined&&typeof token.confirmationJKT!=='string'))throw new Error('invalid token provider result');
-  return new TextEncoder().encode(JSON.stringify({value:token.value,scheme:token.scheme,expiresAt:token.expiresAt.toString(),confirmationJKT:token.confirmationJKT??''}));
- }}};
+function optionValue(input: generated.EncryptOptions): generated.EncryptOptions {
+  const o = { ...input };
+  for (const key of ['PolicyBase64', 'SegmentHashAlgorithm', 'MimeType'] as const) if (o[key] !== undefined) o[key] = encode(o[key]!);
+  if (o.Attributes) o.Attributes = copyArray(o.Attributes, encode);
+  if (o.Dissem) o.Dissem = copyArray(o.Dissem, encode);
+  return o;
 }
-export async function encrypt(config:generated.Config,payload:Uint8Array,options:generated.EncryptOptions={},call:CallOptions={}):Promise<Uint8Array>{
- try{const c=configValue(config);const opts=callOptions(c,call);const result=await generated.Encrypt(c,payload,optionValue(options),opts);if(result===null)throw new Error('invalid generated result');return result;}
- catch(e){if(e instanceof generated.LibraryError)throw new TDFError(e);throw e;}
+function facadeCallOptions(c: generated.Config, options: FacadeCallOptions): generated.CallOptions {
+  if (!options.tokenProvider) return { signal: options.signal };
+  c.TokenProviderName = TokenProviderName;
+  return { signal: options.signal, callbacks: providerCallbacks(options.tokenProvider) };
 }
-export async function decrypt(config:generated.Config,archive:Uint8Array,call:CallOptions={}):Promise<Decrypted>{
- try{const c=configValue(config);const opts=callOptions(c,call);const result=await generated.Decrypt(c,archive,opts);return {Payload:result.Payload??new Uint8Array(),Metadata:result.Metadata??new Uint8Array(),HasMetadata:result.HasMetadata!,ManifestJSON:utf8.decode(result.ManifestJSON!)};}
- catch(e){if(e instanceof generated.LibraryError)throw new TDFError(e);throw e;}
+/** @deprecated use SDK.create and SDK.encryptBytes. */
+export async function encrypt(config: generated.Config, payload: Uint8Array, options: generated.EncryptOptions = {}, call: FacadeCallOptions = {}): Promise<Uint8Array> {
+  try {
+    const c = configValue(config);
+    const opts = facadeCallOptions(c, call);
+    const result = await generated.Encrypt(c, payload, optionValue(options), opts);
+    if (result === null) throw new Error('invalid generated result');
+    return result;
+  } catch (e) {
+    if (e instanceof generated.LibraryError) throw new TDFError(e);
+    throw e;
+  }
+}
+/** @deprecated use SDK.create and SDK.decryptBytes. */
+export async function decrypt(config: generated.Config, archive: Uint8Array, call: FacadeCallOptions = {}): Promise<Decrypted> {
+  try {
+    const c = configValue(config);
+    const opts = facadeCallOptions(c, call);
+    const result = await generated.Decrypt(c, archive, opts);
+    return { Payload: result.Payload ?? new Uint8Array(), Metadata: result.Metadata ?? new Uint8Array(), HasMetadata: result.HasMetadata!, ManifestJSON: utf8.decode(result.ManifestJSON!) };
+  } catch (e) {
+    if (e instanceof generated.LibraryError) throw new TDFError(e);
+    throw e;
+  }
 }

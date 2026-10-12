@@ -390,7 +390,9 @@ func checkPlatformHealth(ctx context.Context, endpoint string, client *httpClien
 	if err != nil {
 		return false, err
 	}
-	return res.Get("status").String() == "SERVING", nil
+	// The reference compares the proto enum; Connect JSON names it either way.
+	status := res.Get("status").String()
+	return status == "SERVING" || status == "SERVING_STATUS_SERVING", nil
 }
 
 // validateHealthyPlatformConnection is the construction-time reachability gate used by New when
