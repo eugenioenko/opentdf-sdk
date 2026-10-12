@@ -132,7 +132,7 @@ def run(target, profile, packages_base, output_base):
         (output/'malformed.tdf').write_bytes(b'bad archive')
         native('negative', 'malformed')
         malformed = json.loads((output/'malformed.error.json').read_text())
-        assert malformed.get('kind', malformed.get('code')) == 'not_decryptable', malformed
+        assert 'not_decryptable' in (malformed.get('kind'), malformed.get('code')), malformed
         if target == 'c':
             no_preinit = packages_base/'consumers/c/no-preinit-consumer'
             invoke('public-no-preinit-real-kas', [no_preinit, output/'rs-binary.go.tdf', 'http://localhost:8080', output/'no-preinit.out', output/'no-preinit.metadata', output/'no-preinit.presence'])

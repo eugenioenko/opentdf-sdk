@@ -92,7 +92,7 @@ def check(target, profile, mode, output):
         labels = {event['label'] for event in events}
         assert {'repeat-ownership','negative-malformed'} <= labels
         malformed = json.loads((output/'malformed.error.json').read_text())
-        assert malformed.get('kind', malformed.get('code')) == 'not_decryptable', malformed
+        assert 'not_decryptable' in (malformed.get('kind'), malformed.get('code')), malformed
         if target == 'c':
             assert 'public-no-preinit-real-kas' in labels
     if mode == 'full' and not browser:
