@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 /**
  * otdfgc is the native Java CLI over the generated package. It implements the
@@ -190,15 +190,15 @@ public final class Main {
  }
 
  static byte[] readManifest(String path) throws IOException {
-  try (ZipInputStream zip = new ZipInputStream(Files.newInputStream(Path.of(path)))) {
-   for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
-    if (!entry.getName().equals("0.manifest.json")) continue;
+  try (ZipFile zip = new ZipFile(path)) {
+   ZipEntry entry = zip.getEntry("0.manifest.json");
+   if (entry == null) throw new IOException("manifest entry not found");
+   try (var in = zip.getInputStream(entry)) {
     ByteArrayOutputStream out = new ByteArrayOutputStream();
-    zip.transferTo(out);
+    in.transferTo(out);
     return out.toByteArray();
    }
   }
-  throw new IOException("manifest entry not found");
  }
 
  static int inspect(List<String> args, PrintStream stdout, PrintStream stderr) {

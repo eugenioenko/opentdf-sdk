@@ -11,8 +11,8 @@ GENERATED=$(cd "$GENERATED" && pwd)
 if [[ "$OUT" != /* ]]; then OUT="$(pwd)/$OUT"; fi
 BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-c-build"}
 [[ -f "$GENERATED/native-link.env" ]] || { echo "generated package has no native-link.env: $GENERATED" >&2; exit 1; }
-# shellcheck disable=SC1090
-source "$GENERATED/native-link.env"
+link() { sed -n "s/^$1=//p" "$GENERATED/native-link.env"; }
+TDF3_INCLUDE=$(link TDF3_INCLUDE); TDF3_LIBRARY=$(link TDF3_LIBRARY); TDF3_NATIVE_LIBS=$(link TDF3_NATIVE_LIBS); TDF3_RUNTIME_PATH=$(link TDF3_RUNTIME_PATH)
 rm -rf "$BUILD"
 mkdir -p "$BUILD" "$(dirname "$OUT")"
 # shellcheck disable=SC2086
