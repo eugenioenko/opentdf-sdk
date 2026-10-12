@@ -4,6 +4,16 @@ SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 COMPILER=${GOALCHEMY_BIN:-"$SDK/../goalchemy/out/python-tdf-library/goalchemy"}
 DEST=${1:-"$SDK/../goalchemy/out/python-tdf-library/sdk"}
 PYTHON=${TDF_PYTHON:-"$SDK/.local/python-tdf-library/venv/bin/python"}
+WHEELHOUSE=${TDF_WHEELHOUSE:-"$SDK/.local/python-tdf-library/wheels"}
+# Without a prepared build environment (TDF_PYTHON), make the default one:
+# a Python 3.10 venv with the locked wheels, downloaded into the wheelhouse.
+if [[ -z "${TDF_PYTHON:-}" && ! -x "$PYTHON" ]]; then
+  BASE=${TDF_PYTHON_BASE:-python3.10}
+  command -v "$BASE" >/dev/null || BASE=python3
+  "$BASE" -m venv "$(dirname "$(dirname "$PYTHON")")"
+  "$SDK/scripts/python-wheelhouse.sh" "$WHEELHOUSE" "$PYTHON"
+  "$PYTHON" -m pip -q install --no-index --no-deps "$WHEELHOUSE"/*.whl
+fi
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
@@ -27,7 +37,7 @@ include = ["opentdf_tdf3*"]
 TOML
 mkdir -p "$DEST/opentdf_tdf3/licenses"
 cp "$SDK/../goalchemy/LICENSE" "$DEST/opentdf_tdf3/licenses/Goalchemy-LICENSE"
-"$PYTHON" - "$DEST" "${TDF_WHEELHOUSE:-$SDK/.local/python-tdf-library/wheels}" <<'PY'
+"$PYTHON" - "$DEST" "$WHEELHOUSE" <<'PY'
 import sys,pathlib,zipfile,hashlib,json,importlib.metadata
 p=pathlib.Path(sys.argv[1]);wheelhouse=pathlib.Path(sys.argv[2])
 lock=json.loads((p/'dependencies.lock.json').read_text())

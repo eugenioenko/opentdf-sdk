@@ -9,7 +9,7 @@ GENERATED=${1:-"$SDK/../goalchemy/out/typescript-tdf-library/sdk"}
 OUT=${2:-"$SDK/.local/typescript-tdf-library/otdfgc"}
 GENERATED=$(cd "$GENERATED" && pwd)
 if [[ "$OUT" != /* ]]; then OUT="$(pwd)/$OUT"; fi
-BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-build"}
+BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-typescript-build"}
 rm -rf "$BUILD"
 mkdir -p "$BUILD" "$(dirname "$OUT")"
 cp "$SDK/src/hosts/typescript/cmd/otdfgc/otdfgc.mjs" "$BUILD/otdfgc.mjs"
