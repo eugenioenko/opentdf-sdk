@@ -164,10 +164,16 @@ func IsPlatformEndpointMalformed(e string) bool {
 func (s *SDK) buildIDPTokenSource(c *config) (TokenSource, *dpopSigner, error) {
 	if c.tokenProviderName != "" {
 		// A custom token source manages its own credentials, but a configured DPoP
-		// key still drives the resource-request transport.
+		// key still drives the resource-request transport; without one the
+		// reference's ephemeral key signs the rewrap requests.
 		dpop, err := resolveDPoPKey(c)
 		if err != nil {
 			return nil, nil, wrapError(KindInvalidInput, "New", "failed to resolve DPoP key", err)
+		}
+		if dpop == nil {
+			if dpop, err = defaultDPoPSigner(); err != nil {
+				return nil, nil, err
+			}
 		}
 		return newCallbackTokenSource(c.tokenProviderName, s.clock, dpop), dpop, nil
 	}
@@ -191,19 +197,27 @@ func (s *SDK) buildIDPTokenSource(c *config) (TokenSource, *dpopSigner, error) {
 
 	// No DPoP key configured: auto-generate a default ephemeral ES256/P-256 key.
 	if dpop == nil {
-		key, err := generateDPoPKeyForAlg(ES256)
-		if err != nil {
-			return nil, nil, wrapError(KindInvalidInput, "New", "failed to generate default DPoP key", err)
-		}
-		dpop, err = newDPoPSigner(key, ES256)
-		if err != nil {
-			key.Close()
-			return nil, nil, wrapError(KindInvalidInput, "New", "failed to generate default DPoP key", err)
+		if dpop, err = defaultDPoPSigner(); err != nil {
+			return nil, nil, err
 		}
 	}
 
 	tokenClient := &httpClient{transport: s.transport, clock: s.clock, timeoutMillis: c.timeoutMillis, dpop: dpop, tokenEndpoint: c.tokenEndpoint}
 	return newIDPAccessTokenSource(tokenClient, *c.clientCredentials, c.tokenEndpoint, c.scopes), dpop, nil
+}
+
+// defaultDPoPSigner is the reference's ephemeral DPoP key: ES256 over P-256.
+func defaultDPoPSigner() (*dpopSigner, error) {
+	key, err := generateDPoPKeyForAlg(ES256)
+	if err != nil {
+		return nil, wrapError(KindInvalidInput, "New", "failed to generate default DPoP key", err)
+	}
+	dpop, err := newDPoPSigner(key, ES256)
+	if err != nil {
+		key.Close()
+		return nil, wrapError(KindInvalidInput, "New", "failed to generate default DPoP key", err)
+	}
+	return dpop, nil
 }
 
 // Close releases the session and DPoP keys. It is idempotent.
