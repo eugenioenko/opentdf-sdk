@@ -10,6 +10,7 @@ if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target swift -out "$DEST" ./src/library ./src)
 mkdir -p "$DEST/Sources/OpenTDFTDF3"
 cp "$SDK/src/hosts/swift/TDF3.swift.in" "$DEST/Sources/OpenTDFTDF3/TDF3.swift"
+cp "$SDK/src/hosts/swift/OpenTDF.swift.in" "$DEST/Sources/OpenTDFTDF3/OpenTDF.swift"
 python3 - "$DEST" <<'PY'
 from pathlib import Path
 import sys

@@ -1,0 +1,448 @@
+import Foundation
+import GoalchemyGenerated
+
+// The handle API of api-spec.md in Swift idiom: option structs with defaults,
+// async throwing methods that honour Task cancellation, SDK, Reader and
+// TDFObject classes and one OpenTDFError. The adapter maps names, idioms and
+// errors only; the TDF protocol executes in the generated module.
+
+private let tokenProviderName = "access-token"
+
+private func text(_ g: GoString) -> String { String(decoding: g.bytes, as: UTF8.self) }
+private func texts(_ g: [GoString]?) -> [String] { (g ?? []).map(text) }
+private func go(_ s: String) -> GoString { GoString(s) }
+private func gos(_ s: [String]) -> [GoString]? { s.isEmpty ? nil : s.map(go) }
+
+/// The stable classification of an OpenTDFError; `message` carries the reference's wording.
+public enum ErrorKind: Equatable {
+  case tampered, rootSignature, segmentSize, segmentSignature, payloadRead, invalidOffset, rewrapBadRequest
+  case unsupportedRootIntegrity, unsupportedSegmentIntegrity, notDecryptable, decryptFailed, aesGcmExhausted
+  case kasRequest, rewrapForbidden, rewrapUnauthorized, assertionFailure, obligationsRequired
+  case baseKeyNotFound, baseKeyInvalid, allowlistRejected, unsupportedKeyAccess, unsupportedFeature
+  case invalidInput, auth, transport, canceled, deadlineExceeded, bulk
+  /// A boundary failure: closed, poisoned, instance_mismatch, invalid_argument, source_panic, host, ...
+  case boundary(String)
+
+  static let names: [(ErrorKind, String)] = [
+    (.tampered, "tampered"), (.rootSignature, "root_signature"), (.segmentSize, "segment_size"),
+    (.segmentSignature, "segment_signature"), (.payloadRead, "payload_read"), (.invalidOffset, "invalid_offset"),
+    (.rewrapBadRequest, "rewrap_bad_request"), (.unsupportedRootIntegrity, "unsupported_root_integrity"),
+    (.unsupportedSegmentIntegrity, "unsupported_segment_integrity"), (.notDecryptable, "not_decryptable"),
+    (.decryptFailed, "decrypt_failed"), (.aesGcmExhausted, "aes_gcm_exhausted"), (.kasRequest, "kas_request"),
+    (.rewrapForbidden, "rewrap_forbidden"), (.rewrapUnauthorized, "rewrap_unauthorized"),
+    (.assertionFailure, "assertion_failure"), (.obligationsRequired, "obligations_required"),
+    (.baseKeyNotFound, "base_key_not_found"), (.baseKeyInvalid, "base_key_invalid"),
+    (.allowlistRejected, "allowlist_rejected"), (.unsupportedKeyAccess, "unsupported_key_access"),
+    (.unsupportedFeature, "unsupported_feature"), (.invalidInput, "invalid_input"), (.auth, "auth"),
+    (.transport, "transport"), (.canceled, "canceled"), (.deadlineExceeded, "deadline_exceeded"), (.bulk, "bulk"),
+  ]
+  public init(_ name: String) { self = ErrorKind.names.first { $0.1 == name }?.0 ?? .boundary(name) }
+  /// The ErrorKind string of api-spec.md.
+  public var name: String {
+    if case .boundary(let s) = self { return s }
+    return ErrorKind.names.first { $0.0 == self }!.1
+  }
+}
+
+/// The shared-source Error record: kind, op, the reference's message and the
+/// service fields. A boundary failure (canceled, closed, invalid_argument, ...)
+/// keeps the runtime's kind.
+public struct OpenTDFError: Error, CustomStringConvertible {
+  public let kind: ErrorKind
+  public let op: String
+  public let message: String
+  public let httpStatus: Int64
+  public let connectCode: String
+  public let serviceMessage: String
+  public let kasUrl: String
+  public let requiredObligations: [String]
+  public let assertionId: String
+  public var description: String { message }
+
+  init(_ failure: GoalchemyFailure) {
+    func field(_ name: String) -> String { (failure.fields[name] as? GoString).map(text) ?? "" }
+    let record = failure.kind == "source" && failure.fields["Kind"] is GoString
+    kind = ErrorKind(record ? field("Kind") : failure.kind)
+    op = record ? field("Op") : ""
+    message = record ? field("Message") : "goalchemy library: \(failure.kind)"
+    httpStatus = record ? failure.fields["HTTPStatus"] as? Int64 ?? 0 : 0
+    connectCode = record ? field("ConnectCode") : ""
+    serviceMessage = record ? field("ServiceMessage") : ""
+    kasUrl = record ? field("KASURL") : ""
+    requiredObligations = record ? texts(failure.fields["RequiredObligations"] as? [GoString]) : []
+    assertionId = record ? field("AssertionID") : ""
+  }
+}
+
+public struct TokenExchange {
+  public var subjectToken: String
+  public var audience: [String]
+  public init(subjectToken: String, audience: [String] = []) { self.subjectToken = subjectToken; self.audience = audience }
+}
+public struct CertExchange {
+  public var clientCertPem: String
+  public var clientKeyPem: String
+  public var audience: [String]
+  public init(clientCertPem: String, clientKeyPem: String, audience: [String] = []) { self.clientCertPem = clientCertPem; self.clientKeyPem = clientKeyPem; self.audience = audience }
+}
+public struct TLSOptions {
+  public var clientCertPem = "", clientKeyPem = "", rootCasPem = ""
+  public var audience: [String] = []
+  public init(clientCertPem: String = "", clientKeyPem: String = "", rootCasPem: String = "", audience: [String] = []) { self.clientCertPem = clientCertPem; self.clientKeyPem = clientKeyPem; self.rootCasPem = rootCasPem; self.audience = audience }
+}
+
+/// The reference's Options (shared-source Options); every default is the reference default.
+public struct Options {
+  public var clientId = "", clientSecret = ""
+  public var scopes: [String] = []
+  public var tokenEndpoint = ""
+  public var tokenExchange: TokenExchange? = nil
+  public var certExchange: CertExchange? = nil
+  /// A host token source replacing client credentials; the SDK signs rewrap
+  /// requests with an ephemeral ES256 key unless dpopKeyPem is set.
+  public var tokenProvider: TokenProvider? = nil
+  /// WithPlatformConfiguration; a non-string member is carried as its JSON text.
+  public var platformConfiguration: [String: String]? = nil
+  public var validateConnection = false, insecurePlaintext = false, insecureSkipVerify = false
+  public var tls: TLSOptions? = nil
+  public var unixSocket = ""
+  /// Per-request timeout in milliseconds; 0 keeps the reference default.
+  public var timeoutMillis: Int64 = 0
+  public var coreEndpoint = "", policyEndpoint = "", authorizationEndpoint = "", entityResolutionEndpoint = "", wellknownEndpoint = ""
+  public var sessionEncryptionRsaPem = "", sessionSignerRsaPem = ""
+  /// WithDPoPAlgorithm: ES256, ES384, ES512, RS256, RS384 or RS512.
+  public var dpopAlgorithm = "", dpopKeyPem = ""
+  public var noKidInKao = false
+  public var fulfillableObligationFqns: [String] = []
+  /// WithLogger level: a slog level (-4 debug, 0 info, 4 warn, 8 error); 0 keeps the host sink default.
+  public var logLevel: Int64 = 0
+  public init(
+    clientId: String = "", clientSecret: String = "", scopes: [String] = [], tokenEndpoint: String = "",
+    tokenExchange: TokenExchange? = nil, certExchange: CertExchange? = nil, tokenProvider: TokenProvider? = nil,
+    platformConfiguration: [String: String]? = nil, validateConnection: Bool = false, insecurePlaintext: Bool = false,
+    insecureSkipVerify: Bool = false, tls: TLSOptions? = nil, unixSocket: String = "", timeoutMillis: Int64 = 0,
+    coreEndpoint: String = "", policyEndpoint: String = "", authorizationEndpoint: String = "",
+    entityResolutionEndpoint: String = "", wellknownEndpoint: String = "", sessionEncryptionRsaPem: String = "",
+    sessionSignerRsaPem: String = "", dpopAlgorithm: String = "", dpopKeyPem: String = "", noKidInKao: Bool = false,
+    fulfillableObligationFqns: [String] = [], logLevel: Int64 = 0
+  ) {
+    self.clientId = clientId; self.clientSecret = clientSecret; self.scopes = scopes; self.tokenEndpoint = tokenEndpoint
+    self.tokenExchange = tokenExchange; self.certExchange = certExchange; self.tokenProvider = tokenProvider
+    self.platformConfiguration = platformConfiguration; self.validateConnection = validateConnection
+    self.insecurePlaintext = insecurePlaintext; self.insecureSkipVerify = insecureSkipVerify; self.tls = tls
+    self.unixSocket = unixSocket; self.timeoutMillis = timeoutMillis; self.coreEndpoint = coreEndpoint
+    self.policyEndpoint = policyEndpoint; self.authorizationEndpoint = authorizationEndpoint
+    self.entityResolutionEndpoint = entityResolutionEndpoint; self.wellknownEndpoint = wellknownEndpoint
+    self.sessionEncryptionRsaPem = sessionEncryptionRsaPem; self.sessionSignerRsaPem = sessionSignerRsaPem
+    self.dpopAlgorithm = dpopAlgorithm; self.dpopKeyPem = dpopKeyPem; self.noKidInKao = noKidInKao
+    self.fulfillableObligationFqns = fulfillableObligationFqns; self.logLevel = logLevel
+  }
+  fileprivate var generated: GoalchemyGenerated.Options {
+    var o = GoalchemyGenerated.Options()
+    o.ClientID = go(clientId); o.ClientSecret = go(clientSecret); o.Scopes = gos(scopes); o.TokenEndpoint = go(tokenEndpoint)
+    if let t = tokenExchange { o.TokenExchange = GoalchemyGenerated.TokenExchange(SubjectToken: go(t.subjectToken), Audience: gos(t.audience)) }
+    if let c = certExchange { o.CertExchange = GoalchemyGenerated.CertExchange(ClientCertPEM: go(c.clientCertPem), ClientKeyPEM: go(c.clientKeyPem), Audience: gos(c.audience)) }
+    o.TokenProviderName = go(tokenProvider == nil ? "" : tokenProviderName)
+    if let p = platformConfiguration {
+      o.PlatformConfiguration = GoalchemyGenerated.PlatformConfiguration(Entries: p.map { GoalchemyGenerated.PlatformConfigurationEntry(Key: go($0.key), Value: go($0.value)) })
+    }
+    o.ValidateConnection = validateConnection; o.InsecurePlaintext = insecurePlaintext; o.InsecureSkipVerify = insecureSkipVerify
+    if let t = tls { o.TLS = GoalchemyGenerated.TLSOptions(ClientCertPEM: go(t.clientCertPem), ClientKeyPEM: go(t.clientKeyPem), RootCAsPEM: go(t.rootCasPem), Audience: gos(t.audience)) }
+    o.UnixSocket = go(unixSocket); o.TimeoutMillis = timeoutMillis
+    o.CoreEndpoint = go(coreEndpoint); o.PolicyEndpoint = go(policyEndpoint); o.AuthorizationEndpoint = go(authorizationEndpoint)
+    o.EntityResolutionEndpoint = go(entityResolutionEndpoint); o.WellknownEndpoint = go(wellknownEndpoint)
+    o.SessionEncryptionRSAPEM = go(sessionEncryptionRsaPem); o.SessionSignerRSAPEM = go(sessionSignerRsaPem)
+    o.DPoPAlgorithm = go(dpopAlgorithm); o.DPoPKeyPEM = go(dpopKeyPem); o.NoKIDInKAO = noKidInKao
+    o.FulfillableObligationFQNs = gos(fulfillableObligationFqns); o.LogLevel = logLevel
+    return o
+  }
+}
+
+/// The reference's KASInfo: one key access server for the template.
+public struct KASInfo {
+  public var url: String, publicKey: String, kid: String, algorithm: String
+  public var isDefault: Bool
+  public init(url: String, publicKey: String = "", kid: String = "", algorithm: String = "", isDefault: Bool = false) { self.url = url; self.publicKey = publicKey; self.kid = kid; self.algorithm = algorithm; self.isDefault = isDefault }
+}
+public struct AssertionConfig {
+  public var id: String, type: String, scope: String, appliesToState: String
+  public var statement: Statement
+  public init(id: String, type: String, scope: String, appliesToState: String = "", statement: Statement) { self.id = id; self.type = type; self.scope = scope; self.appliesToState = appliesToState; self.statement = statement }
+}
+
+/// The reference's TDFConfig options (shared-source TDFOptions); every default is the reference default.
+public struct TDFOptions {
+  public var attributes: [String] = []
+  public var disableAutoconfigure = false
+  public var kasInformation: [KASInfo] = []
+  /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
+  public var wrappingKeyAlgorithm = ""
+  public var segmentSize: Int64 = 0, inputSize: Int64 = 0
+  public var mimeType = "", metadata = ""
+  public var assertions: [AssertionConfig] = []
+  public var systemMetadataAssertion = false
+  public var targetMode = ""
+  public init(
+    attributes: [String] = [], disableAutoconfigure: Bool = false, kasInformation: [KASInfo] = [],
+    wrappingKeyAlgorithm: String = "", segmentSize: Int64 = 0, inputSize: Int64 = 0, mimeType: String = "",
+    metadata: String = "", assertions: [AssertionConfig] = [], systemMetadataAssertion: Bool = false, targetMode: String = ""
+  ) {
+    self.attributes = attributes; self.disableAutoconfigure = disableAutoconfigure; self.kasInformation = kasInformation
+    self.wrappingKeyAlgorithm = wrappingKeyAlgorithm; self.segmentSize = segmentSize; self.inputSize = inputSize
+    self.mimeType = mimeType; self.metadata = metadata; self.assertions = assertions
+    self.systemMetadataAssertion = systemMetadataAssertion; self.targetMode = targetMode
+  }
+  fileprivate var generated: GoalchemyGenerated.TDFOptions {
+    var o = GoalchemyGenerated.TDFOptions()
+    o.Attributes = gos(attributes); o.DisableAutoconfigure = disableAutoconfigure
+    o.KasInformation = kasInformation.isEmpty ? nil : kasInformation.map { GoalchemyGenerated.KASInfo(URL: go($0.url), PublicKey: go($0.publicKey), KID: go($0.kid), Algorithm: go($0.algorithm), Default: $0.isDefault) }
+    o.WrappingKeyAlgorithm = go(wrappingKeyAlgorithm); o.SegmentSize = segmentSize; o.InputSize = inputSize
+    o.MimeType = go(mimeType); o.Metadata = go(metadata)
+    o.Assertions = assertions.isEmpty ? nil : assertions.map { GoalchemyGenerated.AssertionConfig(ID: go($0.id), Type: go($0.type), Scope: go($0.scope), AppliesToState: go($0.appliesToState), Statement: GoalchemyGenerated.Statement(Format: go($0.statement.format), Schema: go($0.statement.schema), Value: go($0.statement.value))) }
+    o.SystemMetadataAssertion = systemMetadataAssertion; o.TargetMode = go(targetMode)
+    return o
+  }
+}
+
+/// The reference's TDFReaderConfig options (shared-source ReaderOptions); every default is the reference default.
+public struct ReaderOptions {
+  public var disableAssertionVerification = false
+  /// WithKasAllowlist; nil fetches the registry's list.
+  public var kasAllowlist: [String]? = nil
+  public var ignoreAllowlist = false
+  public var maxManifestSize: Int64 = 0, schemaValidation: Int64 = 0
+  /// WithSessionKeyType: rsa:2048 (default) or ec:secp256r1.
+  public var sessionKeyType = ""
+  public var fulfillableObligationFqns: [String] = []
+  public init(
+    disableAssertionVerification: Bool = false, kasAllowlist: [String]? = nil, ignoreAllowlist: Bool = false,
+    maxManifestSize: Int64 = 0, schemaValidation: Int64 = 0, sessionKeyType: String = "", fulfillableObligationFqns: [String] = []
+  ) {
+    self.disableAssertionVerification = disableAssertionVerification; self.kasAllowlist = kasAllowlist
+    self.ignoreAllowlist = ignoreAllowlist; self.maxManifestSize = maxManifestSize; self.schemaValidation = schemaValidation
+    self.sessionKeyType = sessionKeyType; self.fulfillableObligationFqns = fulfillableObligationFqns
+  }
+  fileprivate var generated: GoalchemyGenerated.ReaderOptions {
+    var o = GoalchemyGenerated.ReaderOptions()
+    o.DisableAssertionVerification = disableAssertionVerification; o.KasAllowlist = kasAllowlist.flatMap(gos)
+    o.IgnoreAllowlist = ignoreAllowlist; o.MaxManifestSize = maxManifestSize; o.SchemaValidation = schemaValidation
+    o.SessionKeyType = go(sessionKeyType); o.FulfillableObligationFQNs = gos(fulfillableObligationFqns)
+    return o
+  }
+}
+
+// Manifest and policy types: the reference's JSON tags in Swift casing.
+public struct Segment { public let hash: String; public let segmentSize: Int64; public let encryptedSegmentSize: Int64 }
+public struct RootSignature { public let alg: String; public let sig: String }
+public struct IntegrityInformation {
+  public let rootSignature: RootSignature
+  public let segmentHashAlg: String
+  public let segmentSizeDefault: Int64, encryptedSegmentSizeDefault: Int64
+  public let segments: [Segment]
+}
+public struct PolicyBinding { public let alg: String; public let hash: String }
+public struct KeyAccess {
+  public let type: String, url: String, protocol: String, wrappedKey: String
+  public let policyBinding: PolicyBinding
+  public let encryptedMetadata: String, kid: String, sid: String, schemaVersion: String, ephemeralPublicKey: String
+}
+public struct Method { public let algorithm: String; public let iv: String; public let isStreamable: Bool }
+public struct EncryptionInformation {
+  public let type: String, policy: String
+  public let keyAccess: [KeyAccess]
+  public let method: Method
+  public let integrityInformation: IntegrityInformation
+}
+public struct Payload { public let type: String, url: String, protocol: String, mimeType: String; public let isEncrypted: Bool }
+public struct Statement {
+  public var format: String, schema: String, value: String
+  public init(format: String = "", schema: String = "", value: String = "") { self.format = format; self.schema = schema; self.value = value }
+}
+public struct Binding { public let method: String; public let signature: String }
+public struct Assertion {
+  public let id: String, type: String, scope: String, appliesToState: String
+  public let statement: Statement
+  public let binding: Binding
+}
+public struct Manifest {
+  public let encryptionInformation: EncryptionInformation
+  public let payload: Payload
+  public let assertions: [Assertion]
+  public let schemaVersion: String
+}
+public struct AttributeObject { public let attribute: String, displayName: String; public let isDefault: Bool; public let pubKey: String, kasURL: String }
+public struct PolicyBody { public let dataAttributes: [AttributeObject]; public let dissem: [String] }
+public struct PolicyObject { public let uuid: String; public let body: PolicyBody }
+public struct SimpleKasPublicKey { public let algorithm: String, kid: String, pem: String }
+public struct SimpleKasKey { public let kasUri: String; public let publicKey: SimpleKasPublicKey; public let kasId: String }
+public struct KasPublicKey {
+  public var pem: String, kid: String, alg: String
+  public init(pem: String, kid: String, alg: String) { self.pem = pem; self.kid = kid; self.alg = alg }
+}
+
+extension Manifest {
+  fileprivate init(_ m: GoalchemyGenerated.Manifest) {
+    let e = m.EncryptionInformation, i = e.IntegrityInformation
+    encryptionInformation = EncryptionInformation(
+      type: text(e.KeyAccessType), policy: text(e.Policy),
+      keyAccess: (e.KeyAccessObjs ?? []).map {
+        KeyAccess(type: text($0.KeyType), url: text($0.KasURL), protocol: text($0.Protocol), wrappedKey: text($0.WrappedKey),
+                  policyBinding: PolicyBinding(alg: text($0.PolicyBinding.Alg), hash: text($0.PolicyBinding.Hash)),
+                  encryptedMetadata: text($0.EncryptedMetadata), kid: text($0.KID), sid: text($0.SplitID), schemaVersion: text($0.SchemaVersion), ephemeralPublicKey: text($0.EphemeralPublicKey))
+      },
+      method: Method(algorithm: text(e.Method.Algorithm), iv: text(e.Method.IV), isStreamable: e.Method.IsStreamable),
+      integrityInformation: IntegrityInformation(
+        rootSignature: RootSignature(alg: text(i.RootSignature.Algorithm), sig: text(i.RootSignature.Signature)),
+        segmentHashAlg: text(i.SegmentHashAlgorithm), segmentSizeDefault: i.DefaultSegmentSize, encryptedSegmentSizeDefault: i.DefaultEncryptedSegSize,
+        segments: (i.Segments ?? []).map { Segment(hash: text($0.Hash), segmentSize: $0.Size, encryptedSegmentSize: $0.EncryptedSize) }))
+    payload = Payload(type: text(m.Payload.Type), url: text(m.Payload.URL), protocol: text(m.Payload.Protocol), mimeType: text(m.Payload.MimeType), isEncrypted: m.Payload.IsEncrypted)
+    assertions = (m.Assertions ?? []).map {
+      Assertion(id: text($0.ID), type: text($0.Type), scope: text($0.Scope), appliesToState: text($0.AppliesToState),
+                statement: Statement(format: text($0.Statement.Format), schema: text($0.Statement.Schema), value: text($0.Statement.Value)),
+                binding: Binding(method: text($0.Binding.Method), signature: text($0.Binding.Signature)))
+    }
+    schemaVersion = text(m.TDFVersion)
+  }
+}
+extension PolicyObject {
+  fileprivate init(_ p: GoalchemyGenerated.PolicyObject) {
+    uuid = text(p.UUID)
+    body = PolicyBody(
+      dataAttributes: (p.Body.DataAttributes ?? []).map { AttributeObject(attribute: text($0.Attribute), displayName: text($0.DisplayName), isDefault: $0.IsDefault, pubKey: text($0.PubKey), kasURL: text($0.KasURL)) },
+      dissem: texts(p.Body.Dissem))
+  }
+}
+extension SimpleKasKey {
+  fileprivate init(_ k: GoalchemyGenerated.SimpleKasKey) {
+    kasUri = text(k.KasURI)
+    publicKey = SimpleKasPublicKey(algorithm: text(k.PublicKey.Algorithm), kid: text(k.PublicKey.Kid), pem: text(k.PublicKey.Pem))
+    kasId = text(k.KasID)
+  }
+}
+
+/// Runs a generated operation under the caller's Task: cancellation cancels the call.
+private func run<T>(_ operation: GoalchemyGenerated.Operation<T>) async throws -> T {
+  do {
+    return try await withTaskCancellationHandler { try await operation.value() } onCancel: { operation.cancel() }
+  } catch let failure as GoalchemyFailure {
+    throw OpenTDFError(failure)
+  }
+}
+private func runSync<T>(_ operation: GoalchemyGenerated.Operation<T>) throws -> T {
+  do { return try operation.wait() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) }
+}
+
+/// The per-call options of an SDK: its token provider on every call.
+private struct Calls {
+  let callbacks: [String: CallbackProvider]
+  init(_ provider: TokenProvider?) {
+    guard let provider = provider else { callbacks = [:]; return }
+    callbacks = [tokenProviderName: { request, completion in
+      provider(request) { result in
+        completion(result.flatMap { token in
+          Result {
+            guard token.expiresAt >= 0, token.value.utf8.count <= 65536, token.scheme.utf8.count <= 128, token.confirmationJKT.utf8.count <= 256
+            else { throw GoalchemyFailure("host", "provider: invalid token") }
+            let body = ["value": token.value, "scheme": token.scheme, "expiresAt": String(token.expiresAt), "confirmationJKT": token.confirmationJKT]
+            return Array(try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]))
+          }
+        })
+      }
+    }]
+  }
+  var options: CallOptions { CallOptions(callbacks: callbacks) }
+}
+
+/// The reference's TDFObject: the TDF bytes and a handle to its manifest.
+public final class TDFObject {
+  /// The TDF archive.
+  public let bytes: Data
+  private let handle: GoalchemyGenerated.TDFObject
+  private let calls: Calls
+  fileprivate init(_ bytes: [UInt8]?, _ handle: GoalchemyGenerated.TDFObject, _ calls: Calls) { self.bytes = Data(bytes ?? []); self.handle = handle; self.calls = calls }
+  public func manifest() async throws -> Manifest { Manifest(try await run(handle.Manifest(calls.options))) }
+  public func size() async throws -> Int64 { try await run(handle.Size(calls.options)) }
+  /// Releases the handle; deinit releases it with a warning when close was not called.
+  public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }
+}
+
+/// The reference's Reader over a loaded TDF; stream methods arrive in Phase 7.
+public final class Reader {
+  private let handle: GoalchemyGenerated.Reader
+  private let calls: Calls
+  fileprivate init(_ handle: GoalchemyGenerated.Reader, _ calls: Calls) { self.handle = handle; self.calls = calls }
+  /// Fetches and unwraps the payload key now, under this Task.
+  public func initialize() async throws { try await run(handle.Init(calls.options)) }
+  public func manifest() async throws -> Manifest { Manifest(try await run(handle.Manifest(calls.options))) }
+  public func policy() async throws -> PolicyObject { PolicyObject(try await run(handle.Policy(calls.options))) }
+  public func dataAttributes() async throws -> [String] { texts(try await run(handle.DataAttributes(calls.options))) }
+  /// The decrypted metadata; runs initialize lazily.
+  public func unencryptedMetadata() async throws -> Data { Data(try await run(handle.UnencryptedMetadata(calls.options)) ?? []) }
+  /// Releases the handle; later calls fail with kind .boundary("closed").
+  public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }
+}
+
+/// The reference SDK handle: `try await SDK(endpoint, options)`.
+public final class SDK {
+  private let handle: GoalchemyGenerated.SDK
+  private let calls: Calls
+  /// The reference's New: discovers the platform configuration and the token endpoint.
+  public init(_ platformEndpoint: String, _ options: Options = Options()) async throws {
+    let calls = Calls(options.tokenProvider)
+    guard let handle = try await run(GoalchemyGenerated.New(go(platformEndpoint), options.generated, calls.options)) else { throw GoalchemyFailure("host", "invalid generated result") }
+    self.handle = handle
+    self.calls = calls
+  }
+  /// The reference's New for synchronous callers.
+  public static func create(_ platformEndpoint: String, _ options: Options = Options()) throws -> SDK {
+    let calls = Calls(options.tokenProvider)
+    guard let handle = try runSync(GoalchemyGenerated.New(go(platformEndpoint), options.generated, calls.options)) else { throw GoalchemyFailure("host", "invalid generated result") }
+    return SDK(handle, calls)
+  }
+  private init(_ handle: GoalchemyGenerated.SDK, _ calls: Calls) { self.handle = handle; self.calls = calls }
+
+  /// The reference's CreateTDF over bytes: the TDF bytes with their TDFObject handle.
+  public func createTDF(_ plaintext: Data, _ options: TDFOptions = TDFOptions()) async throws -> TDFObject {
+    let (bytes, object) = try await run(handle.EncryptBytes(Array(plaintext), options.generated, calls.options))
+    guard let object = object else { throw GoalchemyFailure("host", "invalid generated result") }
+    return TDFObject(bytes, object, calls)
+  }
+  /// createTDF without keeping the handle: the TDF bytes only.
+  public func encryptBytes(_ plaintext: Data, _ options: TDFOptions = TDFOptions()) async throws -> Data {
+    let object = try await createTDF(plaintext, options)
+    try object.close()
+    return object.bytes
+  }
+  /// The reference's LoadTDF over bytes.
+  public func loadTDF(_ ciphertext: Data, _ options: ReaderOptions = ReaderOptions()) async throws -> Reader {
+    guard let reader = try await run(handle.LoadTDF(GoalchemyStream(bytes: Array(ciphertext)), options.generated, calls.options)) else { throw GoalchemyFailure("host", "invalid generated result") }
+    return Reader(reader, calls)
+  }
+  public func decryptBytes(_ ciphertext: Data, _ options: ReaderOptions = ReaderOptions()) async throws -> Data {
+    Data(try await run(handle.DecryptBytes(Array(ciphertext), options.generated, calls.options)) ?? [])
+  }
+  public func isHealthy() async throws -> Bool { try await run(handle.IsHealthy(calls.options)) }
+  /// The platform configuration members as strings (non-string members as compact JSON).
+  public func platformConfiguration() async throws -> [String: String] {
+    var out: [String: String] = [:]
+    for entry in try await run(handle.PlatformConfiguration(calls.options)).Entries ?? [] { out[text(entry.Key)] = text(entry.Value) }
+    return out
+  }
+  public func getBaseKey() async throws -> SimpleKasKey { SimpleKasKey(try await run(handle.GetBaseKey(calls.options))) }
+  public func storeKASKeys(_ url: String, _ keys: [KasPublicKey]) async throws {
+    let set = GoalchemyGenerated.KasPublicKeySet(Keys: keys.map { GoalchemyGenerated.KasPublicKey(Pem: go($0.pem), Kid: go($0.kid), Alg: go($0.alg)) })
+    try await run(handle.StoreKASKeys(go(url), set, calls.options))
+  }
+  /// Releases the handle; later calls fail with kind .boundary("closed").
+  public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }
+
+  // Free functions of the reference, each a library call.
+  public static func isValidTdf(_ data: Data) async throws -> Bool { try await run(GoalchemyGenerated.IsValidTdf(GoalchemyStream(bytes: Array(data)))) }
+  public static func getTdfType(_ data: Data) async throws -> String { text(try await run(GoalchemyGenerated.GetTdfType(GoalchemyStream(bytes: Array(data))))) }
+  public static func isPlatformEndpointMalformed(_ endpoint: String) async throws -> Bool { try await run(GoalchemyGenerated.IsPlatformEndpointMalformed(go(endpoint))) }
+  public static func keyTypeToPolicyAlgorithm(_ keyType: String) async throws -> String { text(try await run(GoalchemyGenerated.KeyTypeToPolicyAlgorithm(go(keyType)))) }
+  public static func policyAlgorithmToKeyType(_ alg: String) async throws -> String { text(try await run(GoalchemyGenerated.PolicyAlgorithmToKeyType(go(alg)))) }
+  public static func version() throws -> String { text(try runSync(GoalchemyGenerated.Version())) }
+  public static func tdfSpecVersion() throws -> String { text(try runSync(GoalchemyGenerated.TDFSpecVersion())) }
+  public static func supportedFeatures() throws -> [String] { texts(try runSync(GoalchemyGenerated.SupportedFeatures())) }
+}
