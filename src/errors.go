@@ -156,11 +156,14 @@ func asError(err error) (*Error, bool) {
 	return nil, false
 }
 
+// contextKind classifies a cancellation or expiry: the context sentinels
+// natively, and the host transport's wording ("http: deadline exceeded")
+// where a target's capability reports the deadline as text.
 func contextKind(err error, fallback ErrorKind) ErrorKind {
 	if errors.Is(err, context.Canceled) {
 		return KindCanceled
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "deadline exceeded") {
 		return KindDeadlineExceeded
 	}
 	return fallback
