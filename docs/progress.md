@@ -1719,3 +1719,77 @@ and no line has trailing whitespace (checked with a scratch script over
 and this file); `parity-matrix.md` has a status on every row; every xtest test
 function has a phase or an `n/a` reason; the six Goalchemy issues exist and
 are linked from `goalchemy-gaps.md`, which `parity-matrix.md` links.
+
+## Full SDK plan, Phase 1
+
+xtest harness and the Go CLI for [full-sdk-plan.md](full-sdk-plan.md),
+2026-10-11, on branch `feat/phase-1-xtest-go-cli` from
+`docs/phase-0-scope-lock` (PR #19, open at the time; `main` at PR #18).
+
+Shared source: `src/version.go` ports the reference `version.go`
+(`TDFSpecVersion = "4.3.0"`, `Version = "0.1.0"`, `ReferenceVersion =
+"0.34.0"`, `SupportedFeatures()`), and the façade exports `Version()`,
+`TDFSpecVersion()` and `SupportedFeatures()`, which Goalchemy lowers as
+`func Version(ctx, ...Callbacks) (string, error)` and so on. No other shared
+source changed. `SupportedFeatures()` lists `hexless` only: the Phase 1 round
+trips prove 4.3.0 output and input; `better-messages-2024` is not advertised
+because no cell proved it.
+
+Native Go CLI: `src/hosts/go/cmd/otdfgc` (own `go.mod`, stdlib only; the
+existing hosts layout keeps per-target host code under `src/hosts/<target>`,
+so the plan's `hosts/go/cmd/otdfgc` lives there), built by
+`scripts/build-go-cli.sh` against the output of
+`scripts/build-generated-go.sh`, which now takes the Goalchemy checkout from
+`GOALCHEMY_DIR`. It implements `encrypt`, `decrypt`, `inspect`, `supports`
+and `--version --json` with exit codes 0/1/2; discovery of the issuer is a
+native port of the reference `getPlatformConfiguration`/`Issuer()` with
+otdfctl's connection wording; every contract flag the façade cannot honour
+(`--with-assertions`, `--ecdsa-binding`, `--target-mode 4.2.2`,
+`--policy-mode plaintext`, `--with-assertion-verification-keys`, wrapping or
+session algorithms other than `rsa:2048`/`ec:secp256r1`, DPoP algorithms
+other than ES256/RS256, `--tls-no-verify` with an https host) exits 2 with
+`unsupported in this build: <flag>`. Failure wording follows
+[error-wording.md](error-wording.md) where the bounded `Failure` record
+allows it (`tdf: rewrap request 403`/`400`, `KasAllowlist: kas url <url> is
+not allowed`, `required obligations: [...]`, the otdfctl authentication and
+connection messages); integrity failures print one generic
+`[tamper detected] tdf: failed integrity check ...` line because the façade
+does not say which check failed (Phase 2's error model does).
+
+Harness ([xtest.md](xtest.md)): `scripts/xtest-run.sh` and
+`scripts/xtest-scoreboard.py`; in the tests repository
+(`eugenioenko/opentdf-sdk-tests`, branch `gc-sdks`): the eight `gc*` types in
+`tdfs.py` and `otdf-sdk-mgr` (source installs from this repository),
+`xtest/sdk/gc-cli.sh`, `xtest/sdk/gc.mk` with one Makefile per type (only
+`gcgo` builds; the rest fail with "not built yet"), the top-level targets,
+the `XT_WITH_KAS_ALLOWLIST`/`XT_WITH_KAS_ALLOW_LIST` tolerance, and
+`tdfs.skip_pqc_decrypt_unsupported`, called from the six `test_pqc.py` tests
+so a gc reader skips PQ cells instead of failing them. `uv run ruff check`,
+`ruff format --check` and `pyright` pass in `xtest` and `otdf-sdk-mgr`
+(`otdf-sdk-mgr` unit tests: 138 passed).
+
+Run: platform from `otdf-local` on the pinned platform `4d9e555b` (worktree
+under `xtest/platform/ref` with `ec_tdf_enabled`, as the upstream workflow
+sets), reference CLIs `go@v0.38.1` and `js@v0.20.0` from
+`otdf-sdk-mgr install stable`, audit-log assertions on.
+`test_tdfs.py::test_tdf_roundtrip test_tdfs.py::test_manifest_validity
+--sdks "go js gcgo" --sizes small --containers ztdf`: 12 passed, 0 failed,
+0 skipped, including `gcgo→gcgo`, `gcgo→go`, `go→gcgo`, `gcgo→js`, `js→gcgo`
+and `test_manifest_validity[gcgo]` (`out/xtest/phase1-go-js-gcgo.xml`,
+recorded in [xtest-scoreboard.md](xtest-scoreboard.md)). An earlier
+`--sdks "go gcgo"` run failed `go→go` and `gcgo→go` in the reference
+reader's EC-session re-decrypt until `ec_tdf_enabled` was switched on; no
+façade or CLI bug was found by the cells. The shim answers `supports` for all
+27 feature names in `tdfs.py` from `SupportedFeatures()` (`hexless` 0, the
+rest 1) and exits 2 for unknown names.
+
+Not met: the plan's "every other scoreboard cell shows `skip` or `fail`, not
+`n/a`" needs every test function to run for `gcgo`, which the working rules
+("run locally only the cells this phase targets") forbid; those cells stay
+`n/a` until the CI matrix (Phase 11) or a dispatch runs them. Other findings
+for the plan owner: the well-known HTTP GET route serves the configuration
+object itself (the Connect reply wraps it in `configuration`); the harness
+requires Python 3.14 (`pydantic-core` does not build on 3.15 yet); the
+otdf-local platform template `opentdf.yaml` is absent from the platform
+checkout and must be made from `opentdf-dev.yaml` with `ec_tdf_enabled`
+on, or the reference reader fails its EC re-decrypt.

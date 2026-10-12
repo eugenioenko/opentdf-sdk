@@ -1,0 +1,28 @@
+package sdk
+
+const (
+	// The latest version of TDF Spec currently targeted by the SDK.
+	// By default, new files will conform to this version of the spec
+	// and, where possible, older versions will still be readable.
+	TDFSpecVersion = "4.3.0"
+
+	// The three-part semantic version number of this SDK
+	Version = "0.1.0"
+
+	// ReferenceVersion is the platform/sdk release this SDK matches.
+	ReferenceVersion = "0.34.0"
+)
+
+// SupportedFeatures returns a list of optional features supported by this SDK build.
+// Used by xtest integration harness for feature detection.
+//
+// These strings are part of the stable API surface. The xtest harness silently
+// SKIPs (rather than fails) tests gated on an unknown feature string, so removing
+// or renaming a feature here must be coordinated with opentdf/tests before merging
+// to avoid quietly disabling coverage. A feature is added only in the change
+// whose xtest cells prove it.
+func SupportedFeatures() []string {
+	return []string{
+		"hexless", // TDF spec 4.3.0: base64 integrity values and schemaVersion
+	}
+}
