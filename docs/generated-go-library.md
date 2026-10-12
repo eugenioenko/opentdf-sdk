@@ -101,9 +101,10 @@ kind `canceled`, as before.
 
 `Encrypt(ctx, Config, []byte, EncryptOptions)` and `Decrypt(ctx, Config, []byte)`
 remain with their previous shapes for one release, implemented as thin
-wrappers that construct an SDK per call: `Config.IssuerURL` becomes the
-provided platform configuration, `Config.KASURL` the KAS information and the
-allowlist, `Config.DPoP` the DPoP algorithm. Their `Failure.Code` is now the
+wrappers that construct an SDK per call: `Config.IssuerURL` with
+`Config.TokenURL` becomes the provided platform configuration (alone, the
+SDK discovers both from the platform), `Config.KASURL` the KAS information
+and the allowlist, `Config.DPoP` the DPoP algorithm. Their `Failure.Code` is now the
 `Error.Kind` string. `PolicyBase64`, `Dissem` and `SegmentHashAlgorithm` other
 than `GMAC` are no longer supported.
 

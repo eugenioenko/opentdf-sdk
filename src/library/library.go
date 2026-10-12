@@ -124,7 +124,10 @@ func options(config Config) (sdk.Options, error) {
 			opts.DPoPAlgorithm = sdk.ES256
 		}
 	}
-	if config.IssuerURL != "" {
+	// As the reference, a provided configuration skips OIDC discovery, so
+	// IssuerURL stands in for the well-known document only together with an
+	// explicit TokenURL; alone, the SDK discovers both from the platform.
+	if config.IssuerURL != "" && config.TokenURL != "" {
 		opts.PlatformConfiguration.Set("platform_issuer", config.IssuerURL)
 		idp, err := json.Marshal(map[string]string{"issuer": config.IssuerURL})
 		if err != nil {
