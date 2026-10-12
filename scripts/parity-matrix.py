@@ -108,7 +108,7 @@ OPTION_PHASES = {
 ROOT = {
     'WithExtraClientOptions': ('not planned: Go-specific Connect client options type (plan: Not planned)',
                                'none; transport configuration lives in Options'),
-    'New': ('phase 2', 'sdk.New(platformEndpoint, Options)'),
+    'New': ('phase 2', 'sdk.New(ctx, platformEndpoint, Options)'),
     'SupportedFeatures': ('phase 1', 'sdk.SupportedFeatures()'),
     'Version': ('phase 1', 'sdk.Version (plus ReferenceVersion)'),
     'TDFSpecVersion': ('phase 6', 'sdk.TDFSpecVersion'),
@@ -263,7 +263,7 @@ VALUE_PHASE = {
     'DefaultRSAKeySize': 2, 'ECKeySize256': 2, 'ECKeySize384': 4, 'ECKeySize521': 4,
     'JSONFormat': 6, 'XMLFormat': 6, 'HS256': 6, 'GMAC': 6,
     'TDFSpecVersion': 6, 'Version': 1,
-    'ErrInvalid': 2, 'ErrInvalidPerSchema': 6,
+    'ErrInvalid': 4, 'ErrInvalidPerSchema': 6,
     'ErrSplitterRequiresDefaultKAS': 4, 'ErrSplitterUnsupportedAlgorithm': 4,
     'Encrypted': 5, 'Unencrypted': 5, 'AssertionKeyAlgRS256': 5, 'AssertionKeyAlgHS256': 5,
     'HandlingAssertion': 5, 'BaseAssertion': 5, 'JWS': 5, 'RootHS256': 6,
@@ -295,7 +295,7 @@ ERROR_KINDS = {
     'ErrPlatformTokenEndpointNotFound': 'KindInvalidInput', 'ErrPlatformEndpointNotFound': 'KindInvalidInput',
     'ErrAccessTokenInvalid': 'KindAuth', 'ErrNoAccessTokenSource': 'KindAuth',
     'ErrWellKnowConfigEmpty': 'KindTransport', 'ErrAttributeNotFound': 'KindInvalidInput',
-    'ErrInvalid': 'KindInvalidInput', 'ErrInvalidPerSchema': 'KindInvalidInput',
+    'ErrInvalid': 'KindInvalidInput (granter.go, phase 4)', 'ErrInvalidPerSchema': 'KindInvalidInput',
     'ErrSplitterRequiresDefaultKAS': 'KindInvalidInput', 'ErrSplitterUnsupportedAlgorithm': 'KindUnsupportedFeature',
 }
 for i, name in enumerate(['ErrChunkedAlreadyFinalized', 'ErrChunkedCleanupFailed', 'ErrChunkedCloseFailed',
@@ -360,7 +360,59 @@ def declaring_file(rel, kind, sym):
     return None
 
 
+# Symbols delivered by a merged phase PR: their rows read `done`. Phase 2
+# part 1 (handle API, discovery, Go).
+DONE = {
+    'New', 'IsValidTdf', 'GetTdfType', 'IsPlatformEndpointMalformed',
+    'KeyTypeToPolicyAlgorithm', 'PolicyAlgorithmToKeyType',
+    'SDK.CreateTDF', 'SDK.CreateTDFContext', 'SDK.LoadTDF', 'SDK.DecryptBytes',
+    'SDK.GetBaseKey', 'SDK.StoreKASKeys', 'SDK.IsHealthy', 'SDK.Close', 'SDK.Logger',
+    'Reader.Init', 'Reader.Manifest', 'Reader.Policy', 'Reader.DataAttributes',
+    'Reader.UnencryptedMetadata', 'TDFObject.Manifest', 'TDFObject.Size',
+    'PlatformConfiguration.AuthzEndpoint', 'PlatformConfiguration.Issuer',
+    'PlatformConfiguration.TokenEndpoint', 'AllowList.Add', 'AllowList.IsAllowed',
+    'Error.Error', 'TdfType.String', 'SigningAlgorithm.Valid',
+    'RootIntegrityAlg.String', 'SegmentIntegrityAlg.String',
+    'SDK', 'Reader', 'TDFObject', 'Option', 'TDFOption', 'TDFConfig', 'TDFReaderOption',
+    'TDFReaderConfig', 'KASClient', 'KASKeyFetcher', 'KASInfo', 'AllowList',
+    'PlatformConfiguration', 'TdfType', 'Error', 'SigningAlgorithm',
+    'RootIntegrityAlg', 'SegmentIntegrityAlg',
+    'Manifest', 'EncryptionInformation', 'KeyAccess', 'PolicyBinding', 'Method',
+    'IntegrityInformation', 'RootSignature', 'Segment', 'Payload', 'PolicyObject',
+    'EncryptedMetadata',
+    'WithClientCredentials', 'WithTokenEndpoint', 'WithPlatformConfiguration',
+    'WithConnectionValidation', 'WithInsecurePlaintextConn', 'WithInsecureSkipVerifyConn',
+    'WithLogger', 'WithKasInformation', 'WithMimeType', 'WithMetaData', 'WithSegmentSize',
+    'WithWrappingKeyAlg', 'WithSessionKeyType', 'WithKasAllowlist', 'WithIgnoreAllowlist',
+    'WithMaxManifestSize', 'WithSessionEncryptionRSA', 'WithSessionSignerRSA',
+    'WithDPoPAlgorithm', 'WithDPoPKeyPEM', 'WithNoKIDInKAO', 'WithInputSize',
+    'WithDisableAssertionVerification',
+    'ErrGrpcDialFailed', 'ErrShutdownFailed', 'ErrPlatformUnreachable',
+    'ErrHealthCheckUnsupported', 'ErrPlatformConfigFailed', 'ErrPlatformEndpointMalformed',
+    'ErrPlatformIssuerNotFound', 'ErrPlatformAuthzEndpointNotFound',
+    'ErrPlatformTokenEndpointNotFound', 'ErrPlatformEndpointNotFound',
+    'ErrNoAccessTokenSource', 'ErrWellKnowConfigEmpty',
+    'DefaultRSAKeySize', 'ECKeySize256', 'ECKeySize384', 'ECKeySize521',
+    'Invalid', 'Standard', 'RootHS256', 'SegmentHS256', 'SegmentGMAC',
+    'ES256', 'ES384', 'ES512', 'RS256', 'RS384', 'RS512',
+    'ErrAESGCMExhausted', 'ErrTampered', 'ErrRootSigValidation', 'ErrSegSizeMismatch',
+    'ErrSegSizeUnresolved', 'ErrSegSigValidation', 'ErrGMACSignatureFailed',
+    'ErrTDFPayloadReadFail', 'ErrTDFPayloadInvalidOffset', 'ErrRootSignatureFailure',
+    'ErrRewrapBadRequest', 'ErrUnsupportedRootIntegrityAlgorithm',
+    'ErrUnsupportedSegmentIntegrityAlgorithm', 'ErrKASRequestError', 'ErrRewrapForbidden',
+    'ErrTDFNotDecryptable', 'ErrTDFDecryptFailed', 'ErrBaseKeyNotFound',
+    'ErrBaseKeyInvalidFormat', 'ErrBaseKeyEmpty', 'ErrMarshalBaseKeyFailed',
+    'ErrUnmarshalBaseKeyFailed',
+}
+
 def root_status(kind, sym):
+    status, equiv = root_status_planned(kind, sym)
+    if sym in DONE:
+        return ('done', equiv)
+    return status, equiv
+
+
+def root_status_planned(kind, sym):
     if sym in ROOT:
         return ROOT[sym]
     if sym in OPTION_FIELDS:
@@ -498,10 +550,11 @@ lines.append('`not planned: <reason>`. Rows are grouped by the reference file th
 lines.append('declares the symbol. The table is generated by `scripts/parity-matrix.py`,')
 lines.append('which encodes the phase assignments; edit the script, not the table.')
 lines.append('')
-lines.append('No reference symbol is `done` at Phase 0: the current `library.Encrypt` and')
-lines.append('`library.Decrypt` facade implements byte encryption and decryption but none of')
-lines.append('the reference names, so `SDK.CreateTDF`, `SDK.DecryptBytes` and their types')
-lines.append('stay at `phase 2`, where the handle API replaces the facade.')
+lines.append('A row turns `done` in the PR that delivers its symbol in the shared source (the')
+lines.append('`DONE` set in the script). Phase 2 part 1 delivered the handle API, platform')
+lines.append('discovery and the generated Go package; the symbols the plan lists under Phase 2')
+lines.append('are all `done` in the shared source, and parts 2 and 3 expose them on the other')
+lines.append('targets. `ErrInvalid` moved to phase 4: it is declared in `granter.go`.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
 lines.append('[goalchemy-gaps.md](goalchemy-gaps.md):')

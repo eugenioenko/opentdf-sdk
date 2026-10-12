@@ -1,157 +1,119 @@
-# Generated Go TDF3 library
+# Generated Go library
 
-The shared façade is [`library`](../src/library/library.go). Goalchemy lowers its
-Encrypt and Decrypt exports and all reachable SDK code into an importable Go
-package. The emitted package imports its bundled standard-library capabilities;
-it never imports the original SDK implementation. All seven native target
-libraries are now available; [final delivery](final-delivery.md) describes their
-packages and the separately attributed validation evidence.
+The shared source compiles into an importable Go package: module
+`goalchemyout`, package `generated`, emitted from the two export roots
+`src/library` (the deprecated `Encrypt`/`Decrypt` façade) and `src` (the
+handle API of [api-spec.md](api-spec.md)). The emitted package imports its
+bundled standard-library capabilities; it never imports the original SDK
+implementation.
 
 ## Build and import
 
 From `goalchemy/`, use `GOTOOLCHAIN=go1.25.14 go build -o
 out/go-tdf-library/goalchemy ./cmd/goalchemy`, then run
-`../sdk/scripts/build-generated-go.sh`. An optional absolute destination argument
+`scripts/build-generated-go.sh`. An optional absolute destination argument
 selects another output directory; `GOALCHEMY_BIN` selects a compiler binary.
-The script runs compilation from the SDK module, copies the small native token
-wire adapter, formats it and builds the emitted package. It emits module
-`goalchemyout`, package `generated`, requiring Go 1.25 on a 64-bit host.
+The script compiles both roots from the SDK module, copies the hand-written
+host adapters from `src/hosts/go` (`token.go.in`, `options.go.in`,
+`errors.go.in`), formats them and builds the package. It requires Go 1.25 on
+a 64-bit host.
 
 A separate native consumer can require `goalchemyout v0.0.0` and replace
-`goalchemyout` with the generated directory. Import it as `tdf "goalchemyout"`.
-For distribution, choose a module path and update `go.mod` and the generated
-`goalchemyout/rt` and `goalchemyout/cap/...` imports together. The current build
-script creates a reviewable local package; it does not publish an artifact.
+`goalchemyout` with the generated directory. Import it as `sdk "goalchemyout"`.
+`tests/interop/generatedlibrary` is the independent consumer; its `controlled`
+mode runs offline checks against an httptest platform (discovery failures,
+deadlines, allowlist rejection, invalid input, unsupported options, handle
+release) and the other modes drive the real platform.
+
+## Handle API
+
+Every generated call takes a `context.Context` first and returns `error`
+last; a method that fails after the handle was closed returns a
+`*LibraryError` with kind `closed`.
 
 ```go
-config := tdf.Config{
-    PlatformURL: "https://platform.example",
-    IssuerURL: "https://issuer.example/realm",
-    ClientID: clientID, ClientSecret: clientSecret,
-}
-archive, err := tdf.Encrypt(ctx, config, payload, tdf.EncryptOptions{
-    Metadata: metadata, IncludeMetadata: true,
-})
-result, err := tdf.Decrypt(ctx, config, archive)
-// result.Payload, result.Metadata, result.HasMetadata, result.ManifestJSON
+s, err := sdk.NewWithOptions(ctx, "http://localhost:8080",
+    sdk.WithClientCredentials("opentdf", "secret", nil))
+defer s.Close()
+
+opts, _ := sdk.TDFOptionsOf(
+    sdk.WithKasInformation(sdk.KASInfo{URL: "http://localhost:8080/kas"}),
+    sdk.WithDataAttributes("https://example.com/attr/attr1/value/value1"),
+    sdk.WithMimeType("text/plain"))
+ciphertext, obj, err := s.EncryptBytes(ctx, plaintext, opts)
+manifest, _ := obj.Manifest(ctx)
+obj.Close()
+
+ropts, _ := sdk.ReaderOptionsOf(sdk.WithSessionKeyType("ec:secp256r1"))
+plaintext, err = s.DecryptBytes(ctx, ciphertext, ropts)
+
+r, err := s.LoadTDF(ctx, file, sdk.ReaderOptions{})
+attrs, _ := r.DataAttributes(ctx)
+if err := r.Init(ctx); err == nil { meta, _ := r.UnencryptedMetadata(ctx) }
+r.Close()
 ```
 
-Config preserves trusted KAS routes, KAS URL/kid, RSA/P-256 wrapping and session
-algorithms, RS256/ES256 auth, DPoP, timeout, token endpoint and server credentials.
-Optional KASPublicKeyPEM and AuthPrivateKeyPEM are imported for each operation;
-the façade owns and closes those imports. Session and authentication keys stay
-distinct. A DPoP token must match the imported authentication key. No native key
-handles or persistent clients are exposed.
+| Generated symbol | Reference | Notes |
+| --- | --- | --- |
+| `New(ctx, endpoint, Options)`, `NewWithOptions(ctx, endpoint, ...Option)` | `New` | Fetches `/.well-known/opentdf-configuration` (Connect reply or the bare document) and the issuer's OpenID configuration unless `PlatformConfiguration` is given; `ValidateConnection` runs the health check first. |
+| `SDK.EncryptBytes`, `SDK.CreateTDF(ctx, io.Writer, io.Reader, TDFOptions)` | `CreateTDFContext` | `CreateTDF` reads the payload whole in this phase; Phase 7 streams it. Single-KAS templates; RSA-2048 and P-256 wrapping. |
+| `SDK.LoadTDF(ctx, io.ReadSeeker, ReaderOptions)`, `SDK.DecryptBytes` | `LoadTDF`, `DecryptBytes` | The KAS allowlist comes from the registry unless `KasAllowlist` or `IgnoreAllowlist` is set, as in the reference. |
+| `Reader.Init`, `Manifest`, `Policy`, `DataAttributes`, `UnencryptedMetadata`, `Close` | `Reader` | Stream methods arrive in Phase 7. |
+| `TDFObject.Manifest`, `Size`, `Close` | `TDFObject` | |
+| `SDK.IsHealthy`, `PlatformConfiguration`, `GetBaseKey`, `StoreKASKeys`, `Close` | same | `GetBaseKey` returns `SimpleKasKey` by value. |
+| `IsValidTdf`, `GetTdfType`, `IsPlatformEndpointMalformed`, `KeyTypeToPolicyAlgorithm`, `PolicyAlgorithmToKeyType`, `SupportedFeatures`, `Version`, `TDFSpecVersion` | same | Free functions. |
 
-EncryptOptions preserves policy base64, attributes/dissemination, MIME type,
-GMAC/HS256 segmentation, int64 SegmentSize/HasSegmentSize and metadata presence.
-The 64-bit source int conversion keeps the shared clamping behavior. Timeout
-and token expiry retain int64 ranges. Raw payload and metadata bytes never pass
-through text/JSON conversion. Go strings retain their byte representation;
-protocol JSON enforces its existing string rules. HasMetadata distinguishes
-absent from explicitly encrypted empty metadata. ManifestJSON represents the
-validated supported manifest, with shared canonical serialization.
+Options are the shared-source structs `Options`, `TDFOptions` and
+`ReaderOptions`; every zero value is the reference default. The host adapter
+provides the reference's `With*` functions over them (`OptionsOf`,
+`TDFOptionsOf`, `ReaderOptionsOf`), including `WithPlatformConfiguration`
+over a `map[string]any` and `WithPolicyFrom(ctx, reader)`. `WithLogger`
+installs the process-wide host log sink (`goalchemyout/cap/log`) for the
+given `*slog.Logger`; `Options.LogLevel` selects the level. Options this
+build does not implement yet (`TokenExchange`, `CertExchange`, `TLS`,
+`UnixSocket`, service endpoint overrides, assertions, target mode `4.2.2`,
+schema validation, RSA-4096 and P-384/P-521 keys) fail with
+`Kind: unsupported_feature` and the message `unsupported in this build:
+<option>`.
 
-`Version`, `TDFSpecVersion` and `SupportedFeatures` are exported alongside
-`Encrypt` and `Decrypt`; they read the shared `src/version.go`.
+Authentication follows the reference: client credentials with HTTP Basic
+authentication, a DPoP proof on every token request (ephemeral ES256 key by
+default, `WithDPoPAlgorithm` or `WithDPoPKeyPEM` otherwise), and
+`Authorization: DPoP` with an `ath`-bound proof on resource requests when the
+IdP issued a DPoP token, `Bearer` otherwise. A host token provider is
+registered with `TokenCallbacks` and selected with `WithTokenProvider()` (or
+`Options.TokenProviderName = TokenProviderName`).
+
+## Errors
+
+SDK failures are `*sdk.Error` values with `Kind`, `Op`, `Message`,
+`HTTPStatus`, `ConnectCode`, `ServiceMessage`, `KASURL` and
+`RequiredObligations`. `Message` is the reference SDK's wording for the whole
+chain (see [error-wording.md](error-wording.md)); the native sentinels in
+`errors.go.in` (`ErrTampered`, `ErrRootSigValidation`, `ErrRewrapForbidden`,
+`ErrTDFNotDecryptable`, `ErrPlatformUnreachable`, ...) and the `Kind*`
+constants let callers write `errors.Is(err, sdk.ErrTampered)` or switch on
+`Kind`. The record carries no cause: interface fields do not cross the
+boundary. Cancellation of the native call itself is a `*LibraryError` with
+kind `canceled`, as before.
+
+## Deprecated façade
+
+`Encrypt(ctx, Config, []byte, EncryptOptions)` and `Decrypt(ctx, Config, []byte)`
+remain with their previous shapes for one release, implemented as thin
+wrappers that construct an SDK per call: `Config.IssuerURL` becomes the
+provided platform configuration, `Config.KASURL` the KAS information and the
+allowlist, `Config.DPoP` the DPoP algorithm. Their `Failure.Code` is now the
+`Error.Kind` string. `PolicyBase64`, `Dissem` and `SegmentHashAlgorithm` other
+than `GMAC` are no longer supported.
+
+## CLI
+
 `src/hosts/go/cmd/otdfgc` is the native CLI over this package (built by
 `scripts/build-go-cli.sh`) that the xtest harness drives as the `gcgo` SDK
-type; see [xtest.md](xtest.md).
-
-## Native token providers
-
-Server hosts may use credentials. Hosts with an independent token provider set
-Config.TokenProviderName to `tdf.TokenProviderName` and pass
-`tdf.TokenCallbacks(provider)` as the optional final argument to Encrypt/Decrypt.
-TokenProvider is `func(context.Context) (AccessToken, error)`; AccessToken retains
-Value, Scheme, int64 ExpiresAt and ConfirmationJKT. The provider runs on the
-owned host worker, can block on cancellation-aware native I/O, and must observe
-its context. Rejections are declared provider errors; panics are host faults.
-The shared SDK validates token expiry, scheme and DPoP binding and owns protocol
-behavior. The provider owns refresh; no token cache survives an operation.
-
-The generic asynchronous Callback/Callbacks boundary is also available. A
-Callback receives native context, copied request bytes and a settlement function,
-and returns a nonblocking cancellation hook. The scoped callback name resolves
-only in the current operation's copied registry. For token acquisition, request
-is `{}` and response is bounded strict JSON:
-
-```json
-{"value":"opaque-token","scheme":"Bearer","expiresAt":"9223372036854775807","confirmationJKT":""}
-```
-
-Expiry is an unsigned decimal string bounded by signed int64; JSON numbers are
-rejected. Scheme is preserved and must agree with Config.DPoP. ConfirmationJKT
-attests opaque DPoP tokens; JWTs still need matching cnf.jkt claims. Unknown and
-duplicate response fields are rejected. Token JSON is bounded to 128 KiB and
-individual strings to 64 KiB. The generic callback capability bounds names to
-128 bytes and request/reply buffers to 1 MiB.
-
-Exactly the first settlement is accepted; reply bytes are copied before settle
-returns. Settlement acknowledges that provider-owned resources have been
-released. Cancellation requests the hook and waits for that acknowledgment.
-If the hook panics, the bridge retains ownership until settlement, then reports
-a host fault. Providers must settle after cancellation. If submission itself
-panics before returning a hook, the provider must already have cleaned any
-unreported asynchronous acquisitions; the bridge cannot retire external
-resources that were never reported. Callback threads never run source frames.
-Duplicate/late completions cannot mutate source or a subsequent operation.
-
-## Ownership, cancellation and errors
-
-All exports in one generated package serialize through a cancellation-aware
-reservation. Native byte/config/option trees and callback registries are copied
-before queue acquisition. Canceling a queued caller leaves the active operation
-untouched. Each acquired call creates a fresh scheduler and initializes source
-packages exactly once in that owner; it resets source globals on retirement.
-It does not expose persistent mutable source instances. Retirement cancels
-pending native work, waits for worker/resource acknowledgments, closes all
-façade-generated/imported keys and clears source/runtime registrations before
-releasing the reservation. Results are independently copied and remain valid
-after later calls. Nil and explicit empty slices are preserved at the public
-value boundary. Callers must avoid concurrent mutation while entry snapshots
-are being taken, as with any Go slice-reading API.
-
-The earliest native caller deadline and inherited source timeout reach native
-HTTP/provider contexts. Cancellation is observed at cooperative driver
-boundaries; a non-yielding source computation is not preempted. A native crypto
-acquisition already running finishes before cleanup/release. Nested invocation
-of this package from its own token provider is unsupported because the provider
-holds the active reservation.
-
-Use `errors.As` with `*tdf.Failure` for declared SDK errors: Code, Operation,
-HTTPStatus, ServerCode, ServerMessage, RequiredObligations and CauseCategory.
-CauseCategory is `canceled`, `deadline_exceeded`, or `source`; source errors are
-bounded value records and do not promise native cause identity. ServerMessage
-is available for reviewed inspection and omitted from Error(). Native caller
-cancellation uses `*tdf.LibraryError`, Kind `canceled`, with the native context
-sentinel available through errors.Is. LibraryError separately categorizes
-source_panic, host_fault, deadlock and invalid native boundary arguments. Panic
-values are omitted to avoid exposing credentials/key material. Unrecovered
-source panic and host faults return after cleanup; they never exit the importing
-process. Decrypt failures return no partial successful payload/metadata.
-
-## Verification scope
-
-Compiler integration tests create a separate native importing module and prove
-actual generated exports, value ownership/init, real HTTP, queued/active
-cancellation, provider success/rejection/duplicate/late completion, gated cleanup
-ACK after stop-hook panic, and source panic versus host fault. Runtime tests
-check imported/generated key retirement after success, source/host fault and
-constructor/init failure. SDK native tests check exact token wire ranges and
-stable error fields. The independent live consumer/reference sources are under
-`tests/interop/generatedlibrary` and `tests/interop/generatedreference`.
-
-Generated Go profile/negative/KAS acceptance is recorded in the delivery ledger.
-The [final delivery record](final-delivery.md) distinguishes those accepted
-matrices from final-package checks and executable CI definitions.
-
-Successful value/error ownership conversion runs inside the active owner before
-source-global reset, runtime retirement or reservation release. This includes
-slices backed by source-global fixed arrays. Public struct value-tree errors
-retain their concrete type with copied slice fields; immutable native
-errors.New/context sentinel identity is preserved. Arbitrary error layouts
-containing private fields or opaque/pointer/interface state are outside the
-bounded export ABI and become LibraryError with Kind `unsupported_error`.
-The shared SDK façade always converts declared failures to its supported public
-Failure record before reaching this boundary.
+type; see [xtest.md](xtest.md). It constructs one SDK from `--host` and
+`--with-client-creds`, encrypts with the platform's KAS as the key access
+server and `--attr` as data attributes, decrypts with `--kas-allowlist`
+(`*` ignores the allowlist) and `--session-key-algorithm`, and prints the
+SDK's error text after otdfctl's `Failed to encrypt:` / `Failed to decrypt
+file:` prefixes.
