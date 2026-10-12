@@ -3,10 +3,10 @@
   "repositories": {
     "goalchemy": {
       "path": "../goalchemy",
-      "revision": "5ddab882c776de92cd0affa27711539cf39026fe",
-      "baseline_revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907",
-      "release": "v0.6.0",
-      "release_note": "revision is the fix commit of goalchemy#77 (Python frame results, map range on an empty map) ahead of its release; re-pin to the tag when v0.6.1 is released"
+      "revision": "629ee5a703a43e83b419b9cdf7ee9ebb9c49733d",
+      "baseline_revision": "9005c419150b8d660bbdfa5b4e429b7094b157eb",
+      "release": "v0.6.1",
+      "release_note": "revision is the head of goalchemy#79 (Swift public-name rename rule and qualified struct types) on top of v0.6.1; re-pin to the tag when the next release includes it"
     },
     "platform": {
       "path": "../platform",
