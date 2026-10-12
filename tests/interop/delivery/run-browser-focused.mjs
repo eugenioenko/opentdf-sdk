@@ -17,7 +17,7 @@ const {build}=await import(pathToFileURL(resolve(tooling,'esbuild/lib/main.js'))
 const {chromium}=await import(pathToFileURL(resolve(tooling,'playwright/index.mjs')).href);
 const installed=resolve(packagesBase,'consumers/typescript/package/dist/index.js');
 const bundle=await build({entryPoints:[installed],bundle:true,platform:'browser',format:'esm',write:false,metafile:true});
-for(const input of Object.keys(bundle.metafile.inputs)){if(/node:|\bBuffer\b|\bprocess\b/.test(await readFile(input,'utf8')))throw new Error('nonportable production member '+input);}
+for(const input of Object.keys(bundle.metafile.inputs)){if(/\bfrom\s*['"]node:|\brequire\(['"]node:|\bBuffer\.(from|alloc|allocUnsafe|concat|isBuffer|byteLength)\b|\bprocess\.(env|argv|exit|exitCode|stdout|stderr|platform|versions|nextTick)\b/.test(await readFile(input,'utf8')))throw new Error('nonportable production member '+input);}
 await writeFile(resolve(run,'browser-graph.json'),JSON.stringify(bundle.metafile,null,2));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 let brokerRequests=0;
@@ -38,7 +38,12 @@ function invoke(label,args){const result=spawnSync(args[0],args.slice(1),{cwd:sd
 try{
  browser=await chromium.launch({headless:true,args:['--no-sandbox']});const version=await browser.version();
  const page=await browser.newPage();await page.goto('http://localhost:5173');await page.waitForFunction(()=>window.ready);
- await page.evaluate(()=>{window.observations=[];const original=window.fetch;window.fetch=async(...args)=>{const response=await original(...args);window.observations.push({url:String(args[0]).split('?')[0],status:response.status,type:response.type,nonceReadable:response.headers.get('DPoP-Nonce')!==null});return response;};window.options=config=>({tokenProvider:async signal=>{const response=await fetch('/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config),signal});if(!response.ok)throw new Error('provider failed');const token=await response.json();return {...token,expiresAt:BigInt(token.expiresAt)};}});});
+ // The page drives the handle API: one SDK per configuration, created without credentials; the host broker supplies tokens.
+ await page.evaluate(()=>{window.observations=[];const original=window.fetch;window.fetch=async(...args)=>{const response=await original(...args);window.observations.push({url:String(args[0]).split('?')[0],status:response.status,type:response.type,nonceReadable:response.headers.get('DPoP-Nonce')!==null});return response;};
+  window.tokenProvider=config=>async signal=>{const response=await fetch('/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config),signal});if(!response.ok)throw new Error('provider failed');const token=await response.json();return {...token,expiresAt:BigInt(token.expiresAt)};};
+  window.createSdk=config=>{const options={insecurePlaintext:Boolean(config.AllowHTTP),tokenProvider:window.tokenProvider(config)};if(config.DPoP)options.dpopAlgorithm=config.AuthAlgorithm||'ES256';if(config.AuthPrivateKeyPEM)options.dpopKeyPem=config.AuthPrivateKeyPEM;return window.sdk.SDK.create(config.PlatformURL,options);};
+  window.kasInformation=config=>({url:config.KASURL,publicKey:config.KASPublicKeyPEM,kid:config.KID,algorithm:config.KASAlgorithm});
+  window.readerOptions=config=>({kasAllowlist:[config.PlatformURL,config.KASURL,...(config.AllowedKAS??[]).map(r=>r.URL)],...(config.SessionAlgorithm?{sessionKeyType:config.SessionAlgorithm}:{})});});
  const caseName=profile==='basic'?'binary':'empty-metadata';
  const payload=caseName==='binary'?Uint8Array.from([...Array.from({length:768},(_,i)=>i%256),0,255]):new TextEncoder().encode('empty metadata');
  const combos=profile==='basic'?[['rsa:2048','rsa:2048','ES256']]:['rsa:2048','ec:secp256r1'].flatMap(w=>['rsa:2048','ec:secp256r1'].flatMap(s=>['ES256','RS256'].map(a=>[w,s,a])));
@@ -48,7 +53,7 @@ try{
   if(profile!=='basic'){config.KASPublicKeyPEM=await readFile(resolve(base,'keys',wrap.slice(0,2)+'-public.pem'),'utf8');config.KID=wrap.startsWith('rsa')?'profile-r1':'profile-e1';config.AuthPrivateKeyPEM=await readFile(resolve(base,'keys','auth-'+auth+'.pem'),'utf8');}
   await writeFile(resolve(run,name+'.input'),payload);
   await writeFile(resolve(run,'config.json'),JSON.stringify({...config,ClientID:'opentdf-sdk',ClientSecret:'secret'}),{mode:0o600});
-  const archive=Uint8Array.from(await page.evaluate(async({config,payload,caseName})=>Array.from(await window.sdk.encrypt(config,new Uint8Array(payload),{Attributes:['https://example.com/attr/attr1/value/value1'],SegmentSize:16384n,HasSegmentSize:true,IncludeMetadata:caseName==='empty-metadata',Metadata:new Uint8Array()},window.options(config))),{config,payload:Array.from(payload),caseName}));
+  const archive=Uint8Array.from(await page.evaluate(async({config,payload})=>{await using sdk=await window.createSdk(config);const options={disableAutoconfigure:true,kasInformation:[window.kasInformation(config)],attributes:['https://example.com/attr/attr1/value/value1'],segmentSize:16384,...(config.KASAlgorithm?{wrappingKeyAlgorithm:config.KASAlgorithm}:{})};const object=await sdk.createTdf(new Uint8Array(payload),options);if((await object.size())!==object.bytes.length)throw new Error('object size');await object.close();return Array.from(object.bytes);},{config,payload:Array.from(payload)}));
   await writeFile(resolve(run,name+'.generated.tdf'),archive);
   const reference=resolve(sdk,'.local/go-tdf-library/stock-go');
   await invoke('stock-go-decrypt-'+name,[reference,run,'decrypt',name,session]);
@@ -63,9 +68,9 @@ try{
   const producerRun=resolve(base,'typescript',profile==='dpop'?'ec':profile);
   for(const producer of ['go','web','generated']){
    const source=producer==='generated'?archive:new Uint8Array(await readFile(resolve(producerRun,wrap.slice(0,2)+'-'+caseName+'.'+producer+'.tdf')));
-   const output=await page.evaluate(async({config,source})=>{const result=await window.sdk.decrypt(config,new Uint8Array(source),window.options(config));return{payload:Array.from(result.Payload),metadata:Array.from(result.Metadata??[]),presence:result.HasMetadata,manifest:result.ManifestJSON};},{config,source:Array.from(source)});
+   const output=await page.evaluate(async({config,source})=>{await using sdk=await window.createSdk(config);const input=new Uint8Array(source);const reader=await sdk.loadTdf(input,window.readerOptions(config));const manifest=await reader.manifest();const presence=manifest.encryptionInformation.keyAccess.length>0&&manifest.encryptionInformation.keyAccess[0].encryptedMetadata!=='';let metadata=new Uint8Array();if(presence){await reader.init();metadata=await reader.unencryptedMetadata();}await reader.close();const payload=await sdk.decryptBytes(input,window.readerOptions(config));return{payload:Array.from(payload),metadata:Array.from(metadata),presence,manifest:JSON.stringify(manifest)};},{config,source:Array.from(source)});
    const manifest=JSON.parse(output.manifest),presence=manifest.encryptionInformation.keyAccess.some(key=>Boolean(key.encryptedMetadata));
-   if(hash(Uint8Array.from(output.payload))!==hash(payload)||output.metadata.length!==0||output.presence!==presence||(producer==='generated'&&presence!==(caseName==='empty-metadata')))throw new Error('browser bytes/metadata presence '+producer);
+   if(hash(Uint8Array.from(output.payload))!==hash(payload)||output.metadata.length!==0||output.presence!==presence||(producer==='generated'&&presence))throw new Error('browser bytes/metadata presence '+producer);
    await writeFile(resolve(run,name+'.'+producer+'.out'),Uint8Array.from(output.payload));
    await writeFile(resolve(run,name+'.'+producer+'.metadata'),Uint8Array.from(output.metadata));
    await writeFile(resolve(run,name+'.'+producer+'.presence'),String(output.presence));

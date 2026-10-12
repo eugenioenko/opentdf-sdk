@@ -46,7 +46,7 @@ def install(target, base):
         artifact = next(destination.glob('*.tgz'))
         with tarfile.open(artifact) as archive:
             archive.extractall(destination, filter='data')
-        for name in ('main.mjs', 'token-provider.mjs'):
+        for name in ('main.mjs', 'token-provider.mjs', 'controlled-negatives.mjs'):
             shutil.copyfile(source/name, destination/name)
         env['TDF_TS_PACKAGE'] = str(package/'dist/index.js')
         env['TDF_TS_NODE_PACKAGE'] = str(package/'dist/node-index.js')
@@ -54,9 +54,9 @@ def install(target, base):
         scope.mkdir(parents=True)
         (scope/'tdf3').symlink_to(package, target_is_directory=True)
         # Type declarations must be usable through the package's public export.
-        (destination/'type-consumer.ts').write_text("import {encrypt, decrypt, type Config} from '@opentdf-local/tdf3';\nconst cfg:Config={PlatformURL:'https://platform.invalid'};\nvoid encrypt(cfg,new Uint8Array());void decrypt(cfg,new Uint8Array());\n")
+        (destination/'type-consumer.ts').write_text("import {SDK, OpenTDFError, isValidTdf, encrypt, decrypt, type Options, type TDFOptions, type Manifest, type Config} from '@opentdf-local/tdf3';\nconst options:Options={clientId:'id',clientSecret:'secret',timeoutMillis:1000};\nconst tdfOptions:TDFOptions={attributes:['https://platform.invalid/attr/a/value/b'],segmentSize:16384};\nasync function use():Promise<void>{await using sdk=await SDK.create('https://platform.invalid',options);const object=await sdk.createTdf(new Uint8Array(),tdfOptions);const manifest:Manifest=await object.manifest();await object.close();const reader=await sdk.loadTdf(object.bytes,{kasAllowlist:[manifest.encryptionInformation.keyAccess[0].url]});try{await reader.init();}catch(e){if(e instanceof OpenTDFError)console.log(e.kind,e.httpStatus,e.requiredObligations);}await reader.close();void isValidTdf(object.bytes);}\nvoid use;\nconst cfg:Config={PlatformURL:'https://platform.invalid'};\nvoid encrypt(cfg,new Uint8Array());void decrypt(cfg,new Uint8Array());\n")
         (destination/'package.json').write_text('{"type":"module"}\n')
-        run([env.get('TSC_BIN', 'tsc'), '--noEmit', '--target', 'ES2022', '--module', 'NodeNext', '--strict', '--skipLibCheck', 'type-consumer.ts'])
+        run([env.get('TSC_BIN', 'tsc'), '--noEmit', '--target', 'ES2022', '--lib', 'ES2022,DOM,ESNext.Disposable', '--module', 'NodeNext', '--strict', '--skipLibCheck', 'type-consumer.ts'])
         command = ['node', str(destination/'main.mjs')]
     elif target == 'java':
         for name in packages.members(build, target):

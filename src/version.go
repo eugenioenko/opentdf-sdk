@@ -23,6 +23,8 @@ const (
 // whose xtest cells prove it.
 func SupportedFeatures() []string {
 	return []string{
-		"hexless", // TDF spec 4.3.0: base64 integrity values and schemaVersion
+		"better-messages-2024", // tamper failures name the check that failed (Phase 2 tamper cells)
+		"hexless",              // TDF spec 4.3.0: base64 integrity values and schemaVersion
+		"kasallowlist",         // reader rejects KAS URLs outside the allowlist (test_tdf_with_malicious_kao)
 	}
 }

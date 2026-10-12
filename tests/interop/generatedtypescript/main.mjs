@@ -1,28 +1,124 @@
-// Independent native importing consumer; no shared SDK/compiler/reference import.
-import{readFile,writeFile}from'node:fs/promises';import{resolve}from'node:path';import{pathToFileURL}from'node:url';import{acquireToken}from'./token-provider.mjs';
-const[sdk,run,mode,name]=process.argv.slice(2);if(!name)throw new Error('consumer sdk run mode case');
-const g=await import(pathToFileURL(resolve(process.env.TDF_TS_NODE_PACKAGE??process.env.TDF_TS_PACKAGE??resolve(sdk,'../goalchemy/out/typescript-tdf-library/sdk/dist/node-index.js'))).href);
-const cfg=JSON.parse(await readFile(resolve(run,'config.json'),'utf8'));if(cfg.TimeoutMillis!==undefined)cfg.TimeoutMillis=BigInt(cfg.TimeoutMillis);
-const read=n=>readFile(resolve(run,n));const write=(n,b)=>writeFile(resolve(run,n),b??new Uint8Array(),{mode:0o600});
+// Independent native importing consumer of the installed package; no shared
+// SDK, compiler or reference import. It drives the handle API: one SDK per
+// run, createTdf/decryptBytes, loadTdf readers, and offline controlled checks.
+import {readFile,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {acquireToken} from './token-provider.mjs';
+import {controlledNegatives} from './controlled-negatives.mjs';
+
+const [sdkRoot,run,mode,name]=process.argv.slice(2);
+if(!name)throw new Error('consumer sdk run mode case');
+const g=await import(pathToFileURL(resolve(process.env.TDF_TS_NODE_PACKAGE??process.env.TDF_TS_PACKAGE??resolve(sdkRoot,'../goalchemy/out/typescript-tdf-library/sdk/dist/node-index.js'))).href);
+const read=n=>readFile(resolve(run,n));
+const write=(n,b)=>writeFile(resolve(run,n),b??new Uint8Array(),{mode:0o600});
 function assert(ok,label){if(!ok)throw new Error(label);}
-const provider=signal=>acquireToken(cfg,signal,name);
-const call=cfg.TokenProviderName?{tokenProvider:provider}:{};
+const ATTRIBUTE='https://example.com/attr/attr1/value/value1';
+
+// config.json carries the façade Config fields the delivery scripts write;
+// they map onto the handle API's options as the Go consumer maps them.
+function optionsOf(cfg){
+ const options={insecurePlaintext:Boolean(cfg.AllowHTTP)};
+ if(cfg.TokenURL)options.tokenEndpoint=cfg.TokenURL;
+ if(cfg.ClientID){options.clientId=cfg.ClientID;options.clientSecret=cfg.ClientSecret??'';}
+ if(cfg.TokenProviderName)options.tokenProvider=signal=>acquireToken(cfg,signal,name);
+ if(cfg.TimeoutMillis)options.timeoutMillis=Number(cfg.TimeoutMillis);
+ if(cfg.DPoP)options.dpopAlgorithm=cfg.AuthAlgorithm||'ES256';
+ if(cfg.AuthPrivateKeyPEM)options.dpopKeyPem=cfg.AuthPrivateKeyPEM;
+ return options;
+}
+function kasInformation(cfg){
+ return {url:cfg.KASURL||cfg.PlatformURL.replace(/\/$/,'')+'/kas',publicKey:cfg.KASPublicKeyPEM,kid:cfg.KID,algorithm:cfg.KASAlgorithm};
+}
+function tdfOptions(cfg,extra={}){
+ const options={disableAutoconfigure:true,kasInformation:[kasInformation(cfg)],attributes:[ATTRIBUTE],segmentSize:16384,...extra};
+ if(cfg.KASAlgorithm)options.wrappingKeyAlgorithm=cfg.KASAlgorithm;
+ return options;
+}
+function readerOptions(cfg){
+ const allow=[cfg.PlatformURL];
+ if(cfg.KASURL)allow.push(cfg.KASURL);
+ for(const r of cfg.AllowedKAS??[])allow.push(r.URL);
+ const options={kasAllowlist:allow};
+ if(cfg.SessionAlgorithm)options.sessionKeyType=cfg.SessionAlgorithm;
+ return options;
+}
+function report(e){
+ if(e instanceof g.OpenTDFError)return {kind:e.kind,op:e.op,httpStatus:e.httpStatus,connectCode:e.connectCode,message:e.message};
+ return {untyped:e?.name+': '+e?.message};
+}
+
 try{
- if(mode==='encrypt'){
-  const options={Attributes:['https://example.com/attr/attr1/value/value1'],SegmentSize:16384n,HasSegmentSize:true};
-  if(name==='metadata'||name.endsWith('-metadata')){options.Metadata=new TextEncoder().encode('{"source":"independent metadata","count":7}');options.IncludeMetadata=true;}
-  if(name==='empty-metadata'||name.endsWith('-empty-metadata')){options.Metadata=new Uint8Array();options.IncludeMetadata=true;}
-  if(name==='hs256'||name.endsWith('-hs256'))options.SegmentHashAlgorithm='HS256';
-  if(name==='denied'||name.endsWith('-denied'))options.Attributes=['https://example.com/attr/attr1/value/value2'];
-  const output=await g.encrypt(cfg,new Uint8Array(await read(name+'.input')),options,call);await write(name+'.generated.tdf',output);
- }else if(mode==='decrypt'){
-  const output=await g.decrypt(cfg,new Uint8Array(await read(name+'.tdf')),call);await write(name+'.out',output.Payload);await write(name+'.metadata',output.Metadata??new Uint8Array());await write(name+'.manifest',output.ManifestJSON);await write(name+'.presence',String(output.HasMetadata));
- }else if(mode==='negative'){
-  let rejected=false;try{await g.decrypt(cfg,new Uint8Array(await read(name+'.tdf')),call);}catch(e){assert(e instanceof g.TDFError,'typed SDK error');rejected=true;await write(name+'.error.json',JSON.stringify({kind:e.kind,code:e.code,operation:e.operation,httpStatus:Number(e.httpStatus),causeCategory:e.causeCategory}));}assert(rejected,'negative returned output');
- }else if(mode==='repeat'){
-  const input=new Uint8Array([0,255,128,1]),metadata=new Uint8Array([0,255]),opts={Attributes:['https://example.com/attr/attr1/value/value1'],Metadata:metadata,IncludeMetadata:true,MimeType:'application/日本語'};
-  let rejected=false;try{await g.encrypt({...cfg,ClientSecret:''},input,opts);}catch(e){assert(e instanceof g.TDFError,'constructor typed');rejected=true;}assert(rejected,'constructor rejected');
-  const archive=await g.encrypt(cfg,input,opts,call),first=await g.decrypt(cfg,archive,call),second=await g.decrypt(cfg,archive,call);assert(first.Payload.every((b,i)=>b===input[i])&&first.Metadata[1]===255,'bytes retained');assert(first.ManifestJSON.includes('日本語'),'UTF8 ergonomic manifest');metadata[0]=1;second.Payload[0]=1;assert(first.Payload[0]===0&&first.Metadata[0]===0,'outputs independent');
-  const started=Promise.withResolvers(),abort=new AbortController();const canceled=g.encrypt({...cfg,ClientID:'',ClientSecret:''},input,{}, {signal:abort.signal,tokenProvider:async signal=>{started.resolve();await new Promise(r=>signal.addEventListener('abort',r,{once:true}));throw new Error('canceled');}});await started.promise;abort.abort('test cancel');let failed=false;try{await canceled;}catch(e){failed=e instanceof g.TDFError&&e.kind==='canceled';}assert(failed,'real active provider cancel');await g.decrypt(cfg,archive,call);
- }else throw new Error('unknown mode');
-}catch(e){console.error('consumer failure',mode,name,e instanceof g.TDFError?{kind:e.kind,code:e.code,operation:e.operation,cause:e.causeCategory}:e.name+': '+e.message);process.exitCode=1;}
+ if(mode==='controlled'){
+  await controlledNegatives(g,run);
+  console.log('PASS generated native library',mode,name);
+ }else{
+  const cfg=JSON.parse(await readFile(resolve(run,'config.json'),'utf8'));
+  await using sdk=await g.SDK.create(cfg.PlatformURL,optionsOf(cfg));
+  if(mode==='encrypt'){
+   const extra={};
+   if((name==='metadata'||name.endsWith('-metadata'))&&name!=='empty-metadata'&&!name.endsWith('-empty-metadata'))extra.metadata='{"source":"independent metadata","count":7}';
+   if(name==='denied'||name.endsWith('-denied'))extra.attributes=['https://example.com/attr/attr1/value/value2'];
+   const object=await sdk.createTdf(new Uint8Array(await read(name+'.input')),tdfOptions(cfg,extra));
+   const manifest=await object.manifest();
+   assert((await object.size())===object.bytes.length&&manifest.encryptionInformation.keyAccess.length===1,'object');
+   await object.close();
+   await write(name+'.generated.tdf',object.bytes);
+  }else if(mode==='decrypt'){
+   const input=new Uint8Array(await read(name+'.tdf'));
+   const reader=await sdk.loadTdf(input,readerOptions(cfg));
+   const manifest=await reader.manifest();
+   const hasMetadata=manifest.encryptionInformation.keyAccess.length>0&&manifest.encryptionInformation.keyAccess[0].encryptedMetadata!=='';
+   let metadata=new Uint8Array();
+   if(hasMetadata){await reader.init();metadata=await reader.unencryptedMetadata();}
+   await reader.close();
+   const payload=await sdk.decryptBytes(input,readerOptions(cfg));
+   await write(name+'.out',payload);await write(name+'.metadata',metadata);await write(name+'.manifest',new TextEncoder().encode(JSON.stringify(manifest)));await write(name+'.presence',String(hasMetadata));
+  }else if(mode==='negative'){
+   let rejected=false;
+   try{await sdk.decryptBytes(new Uint8Array(await read(name+'.tdf')),readerOptions(cfg));}
+   catch(e){assert(e instanceof g.OpenTDFError,'typed SDK error');rejected=true;await write(name+'.error.json',JSON.stringify(report(e)));}
+   assert(rejected,'negative returned output');
+  }else if(mode==='repeat'){
+   await repeat(sdk,cfg);
+  }else throw new Error('unknown mode');
+  console.log('PASS generated native library',mode,name);
+ }
+}catch(e){console.error('consumer failure',mode,name,report(e));process.exitCode=1;}
+
+// repeat runs 100 encrypt and decrypt calls on one SDK, keeps inputs and
+// results independent, closes every reader handle, then closes the SDK and
+// checks that later calls fail; an AbortSignal cancels an active provider.
+async function repeat(sdk,cfg){
+ const original=new Uint8Array([0,255,128,1]);
+ for(let i=0;i<100;i++){
+  const input=new Uint8Array([...original,i]);
+  const object=await sdk.createTdf(input,tdfOptions(cfg,{metadata:'round '+i,mimeType:'application/日本語'}));
+  assert((await object.size())===object.bytes.length,'size');
+  assert((await object.manifest()).payload.mimeType==='application/日本語','UTF-8 manifest');
+  await object.close();
+  const reader=await sdk.loadTdf(object.bytes,readerOptions(cfg));
+  assert((await reader.dataAttributes()).length===1,'attributes');
+  await reader.close();
+  const plain=await sdk.decryptBytes(object.bytes,readerOptions(cfg));
+  assert(plain.length===input.length&&plain.every((b,j)=>b===input[j]),'round trip');
+  plain[0]=1;assert(input[0]===0,'result alias');
+ }
+ let rejected=false;
+ try{const s=await g.SDK.create(cfg.PlatformURL,{...optionsOf(cfg),clientSecret:'wrong'});await s.decryptBytes(original,readerOptions(cfg));}catch(e){assert(e instanceof g.OpenTDFError,'typed rejection');rejected=true;}
+ assert(rejected,'wrong credentials rejected');
+ const started=Promise.withResolvers(),abort=new AbortController();
+ const provider=async signal=>{started.resolve();await new Promise(r=>signal.addEventListener('abort',r,{once:true}));throw new Error('canceled');};
+ const holder=await g.SDK.create(cfg.PlatformURL,{...optionsOf(cfg),clientId:undefined,clientSecret:undefined,tokenProvider:provider});
+ const canceled=holder.decryptBytes(original,readerOptions(cfg),{signal:abort.signal});
+ await Promise.race([started.promise,canceled.catch(()=>{})]);
+ abort.abort('test cancel');
+ let failed=false;
+ try{await canceled;}catch(e){failed=e instanceof g.OpenTDFError;}
+ assert(failed,'active provider cancel is typed');
+ await holder.close();
+ await sdk.close();
+ let closed=false;
+ try{await sdk.decryptBytes(original,readerOptions(cfg));}catch(e){closed=e instanceof g.OpenTDFError&&e.kind==='closed';}
+ assert(closed,'closed handle accepted a call');
+}

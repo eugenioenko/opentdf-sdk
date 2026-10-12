@@ -1,21 +1,137 @@
 package sdk
 
 import (
-	"github.com/eugenioenko/goalchemy/lib/clock"
+	"github.com/eugenioenko/goalchemy/lib/callback"
 	"github.com/eugenioenko/goalchemy/lib/context"
-	j "opentdf-local/sdk/src/tdf/json"
+	"github.com/eugenioenko/goalchemy/lib/encoding"
+	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
+	"github.com/eugenioenko/goalchemy/std/errors"
+	"github.com/eugenioenko/goalchemy/std/strconv"
+	"github.com/eugenioenko/goalchemy/std/strings"
 )
 
-// AccessToken retains token scheme, expiry and optional opaque binding attestation.
-// Scheme must match Config.DPoP. ExpiresAt is UTC Unix seconds in the future.
-// The provider owns refresh; the client caches until five seconds before expiry.
+// AccessToken is an access token with its scheme ("Bearer" or "DPoP"),
+// expiry as UTC Unix seconds (0 = never) and, for opaque DPoP tokens from a
+// host provider, the attested JWK thumbprint.
 type AccessToken struct {
-	Value     string
-	Scheme    string
-	ExpiresAt int64
-	// ConfirmationJKT is the provider attestation for an opaque DPoP token.
-	// JWT tokens must instead contain matching cnf.jkt claims.
+	Value           string
+	Scheme          string
+	ExpiresAt       int64
 	ConfirmationJKT string
+}
+
+// TokenSource supplies access tokens: the reference's auth.AccessTokenSource.
+type TokenSource interface {
+	Token(ctx context.Context) (AccessToken, error)
+}
+
+const (
+	tokenExpirationBuffer = 10
+	tokenRequestMaxBytes  = 1 << 20
+)
+
+// idpAccessTokenSource obtains client-credentials tokens from the IdP, bound
+// to the SDK's DPoP key, and caches them until shortly before they expire.
+type idpAccessTokenSource struct {
+	client      *httpClient
+	credentials clientCredentials
+	endpoint    string
+	scopes      []string
+	gate        chan bool
+	token       AccessToken
+	hasToken    bool
+}
+
+func newIDPAccessTokenSource(client *httpClient, credentials clientCredentials, endpoint string, scopes []string) *idpAccessTokenSource {
+	t := &idpAccessTokenSource{client: client, credentials: credentials, endpoint: endpoint, scopes: scopes, gate: make(chan bool, 1)}
+	t.gate <- true
+	return t
+}
+
+func (t *idpAccessTokenSource) expired(now int64) bool {
+	if !t.hasToken {
+		return true
+	}
+	if t.token.ExpiresAt == 0 {
+		return false
+	}
+	return now > t.token.ExpiresAt-tokenExpirationBuffer
+}
+
+func (t *idpAccessTokenSource) Token(ctx context.Context) (AccessToken, error) {
+	select {
+	case <-ctx.Done():
+		return AccessToken{}, wrapError(KindCanceled, "auth", "", ctx.Err())
+	case <-t.gate:
+	}
+	defer func() { t.gate <- true }()
+	if !t.expired(t.client.clock.Now()) {
+		return t.token, nil
+	}
+	token, err := getAccessToken(ctx, t.client, t.endpoint, t.scopes, t.credentials)
+	if err != nil {
+		return AccessToken{}, wrapError(KindAuth, "auth", "error getting access token", err)
+	}
+	t.token = token
+	t.hasToken = true
+	return token, nil
+}
+
+// getAccessToken performs the client-credentials grant as the reference's
+// oauth.GetAccessToken does: HTTP Basic client authentication, a DPoP proof
+// without ath, and the DPoP-Nonce retry handled by the client.
+func getAccessToken(ctx context.Context, client *httpClient, tokenEndpoint string, scopes []string, credentials clientCredentials) (AccessToken, error) {
+	form := "grant_type=client_credentials"
+	if len(scopes) > 0 {
+		form += "&scope=" + formEscape(strings.Join(scopes, " "))
+	}
+	basic, err := encoding.Base64Encode([]byte(credentials.ClientID + ":" + credentials.ClientAuth))
+	if err != nil {
+		return AccessToken{}, err
+	}
+	headers := []string{"Accept", "application/json", "Content-Type", "application/x-www-form-urlencoded", "Authorization", "Basic " + basic}
+	status, responseHeaders, data, err := client.do(ctx, "POST", tokenEndpoint, headers, []byte(form), "", true)
+	if err != nil {
+		return AccessToken{}, wrapError(KindTransport, "auth", "error making token request", err)
+	}
+	if status < 200 || status >= 300 {
+		message := ""
+		code := ""
+		if v, err := jsonvalue.Parse(data); err == nil && v.Kind() == jsonvalue.KindObject {
+			code, _ = v.Get("error").AsString()
+			message, _ = v.Get("error_description").AsString()
+		}
+		text := "got status " + strconv.Itoa(status) + " when making token request"
+		if code != "" {
+			text += ": " + code
+		}
+		return AccessToken{}, &Error{Kind: KindAuth, Op: "auth", Message: text, HTTPStatus: status, ConnectCode: code, ServiceMessage: message}
+	}
+	if !isJSONContentType(responseHeaders) {
+		return AccessToken{}, newError(KindAuth, "auth", "unexpected content type from token endpoint")
+	}
+	v, err := jsonvalue.Parse(data)
+	if err != nil || v.Kind() != jsonvalue.KindObject {
+		return AccessToken{}, newError(KindAuth, "auth", "invalid token response")
+	}
+	value, ok := v.Get("access_token").AsString()
+	if !ok || value == "" {
+		return AccessToken{}, newError(KindAuth, "auth", "token response has no access_token")
+	}
+	token := AccessToken{Value: value, Scheme: tokenTypeFromOAuthTokenType(v.Get("token_type").String())}
+	if expires, ok := v.Get("expires_in").AsInt64(); ok && expires > 0 {
+		token.ExpiresAt = client.clock.Now() + expires
+	}
+	return token, nil
+}
+
+// tokenTypeFromOAuthTokenType normalises the token_type value: "dpop" in any
+// case is DPoP, everything else is Bearer, as the reference does.
+func tokenTypeFromOAuthTokenType(tokenType string) string {
+	if strings.EqualFold(tokenType, "DPoP") {
+		return "DPoP"
+	}
+	return "Bearer"
 }
 
 func formEscape(s string) string {
@@ -32,8 +148,60 @@ func formEscape(s string) string {
 	}
 	return string(out)
 }
+
+// callbackTokenSource asks the host's registered token provider for tokens
+// and validates them: scheme, expiry and, for DPoP tokens, the binding to the
+// SDK's DPoP key.
+type callbackTokenSource struct {
+	name  string
+	clock Clock
+	dpop  *dpopSigner
+	gate  chan bool
+	token AccessToken
+}
+
+func newCallbackTokenSource(name string, clock Clock, dpop *dpopSigner) *callbackTokenSource {
+	t := &callbackTokenSource{name: name, clock: clock, dpop: dpop, gate: make(chan bool, 1)}
+	t.gate <- true
+	return t
+}
+
+func (t *callbackTokenSource) Token(ctx context.Context) (AccessToken, error) {
+	select {
+	case <-ctx.Done():
+		return AccessToken{}, wrapError(KindCanceled, "auth", "", ctx.Err())
+	case <-t.gate:
+	}
+	defer func() { t.gate <- true }()
+	now := t.clock.Now()
+	if validToken(t.token, now+tokenExpirationBuffer) {
+		return t.token, nil
+	}
+	response, err := callback.Request(ctx, t.name, []byte("{}"))
+	if err != nil {
+		return AccessToken{}, wrapError(KindAuth, "auth", "token provider failed", err)
+	}
+	token, err := parseProviderToken(response)
+	if err != nil {
+		return AccessToken{}, wrapError(KindAuth, "auth", "", err)
+	}
+	if !validToken(token, now) {
+		return AccessToken{}, newError(KindAuth, "auth", "token provider returned an invalid or expired token")
+	}
+	if token.Scheme == "DPoP" {
+		if t.dpop == nil {
+			return AccessToken{}, newError(KindAuth, "auth", "token provider returned a DPoP token but no DPoP key is configured")
+		}
+		if err := validateBinding(token, t.dpop.thumbprint); err != nil {
+			return AccessToken{}, err
+		}
+	}
+	t.token = token
+	return token, nil
+}
+
 func validToken(t AccessToken, now int64) bool {
-	if (t.Scheme != "Bearer" && t.Scheme != "DPoP") || len(t.Value) == 0 || len(t.Value) > 65536 || t.ExpiresAt <= now {
+	if (t.Scheme != "Bearer" && t.Scheme != "DPoP") || len(t.Value) == 0 || len(t.Value) > 65536 || t.ExpiresAt != 0 && t.ExpiresAt <= now {
 		return false
 	}
 	for _, b := range []byte(t.Value) {
@@ -43,128 +211,80 @@ func validToken(t AccessToken, now int64) bool {
 	}
 	return true
 }
-func (c *Client) accessToken(ctx context.Context) (AccessToken, error) {
-	if e := c.check(ctx, "auth"); e != nil {
-		return AccessToken{}, e
+
+// parseProviderToken decodes the host token wire form:
+// {"value","scheme","expiresAt" (decimal string),"confirmationJKT"}.
+func parseProviderToken(data []byte) (AccessToken, error) {
+	v, err := jsonvalue.ParseWithLimits(data, jsonvalue.Limits{Bytes: 128 * 1024, Depth: 2, Nodes: 10, StringBytes: 65536})
+	if err != nil || v.Kind() != jsonvalue.KindObject {
+		return AccessToken{}, errors.New("provider: invalid token response")
 	}
-	child, cancel := c.operationContext(ctx)
-	select {
-	case <-child.Done():
-		cancel()
-		return AccessToken{}, failure("auth", "canceled", child.Err())
-	case <-c.tokenGate:
-	}
-	token, e := c.acquireToken(child)
-	c.tokenGate <- true
-	cancel()
-	return token, e
-}
-func (c *Client) acquireToken(ctx context.Context) (AccessToken, error) {
-	if e := c.check(ctx, "auth"); e != nil {
-		return AccessToken{}, e
-	}
-	now := clock.Unix()
-	c.mu.Lock()
-	cached := c.token
-	c.mu.Unlock()
-	if validToken(cached, now+5) {
-		return cached, nil
-	}
-	var token AccessToken
-	var e error
-	if c.config.TokenProvider != nil {
-		token, e = c.config.TokenProvider(ctx)
-	} else {
-		token, e = c.clientCredentials(ctx)
-	}
-	if e != nil {
-		if c.config.TokenProvider == nil {
-			return AccessToken{}, e
-		}
-		return AccessToken{}, failure("auth", "token_acquisition", e)
-	}
-	expected := "Bearer"
-	if c.config.DPoP {
-		expected = "DPoP"
-	}
-	if token.Scheme != expected {
-		return AccessToken{}, failure("auth", "unsupported_token_scheme", nil)
-	}
-	if !validToken(token, clock.Unix()) {
-		return AccessToken{}, failure("auth", "invalid_token", nil)
-	}
-	if c.config.DPoP {
-		if e := c.validateBinding(token); e != nil {
-			return AccessToken{}, e
+	for _, n := range v.Keys() {
+		if n != "value" && n != "scheme" && n != "expiresAt" && n != "confirmationJKT" {
+			return AccessToken{}, errors.New("provider: unsupported token field")
 		}
 	}
-	if e := c.check(ctx, "auth"); e != nil {
-		return AccessToken{}, e
-	}
-	c.mu.Lock()
-	if !c.closed {
-		c.token = token
-	}
-	c.mu.Unlock()
-	return token, nil
-}
-func (c *Client) tokenEndpoint(ctx context.Context) (string, error) {
-	if c.config.TokenURL != "" {
-		return c.config.TokenURL, nil
-	}
-	// Caller supplies the expected issuer. Metadata cannot expand credential routes.
-	v, e := c.exchange(ctx, "GET", c.config.PlatformURL+"/.well-known/opentdf-configuration", nil, nil, "discovery")
-	if e != nil {
-		return "", e
-	}
-	idp, ok := v.Get("idp")
-	if !ok || idp.Kind != j.Object {
-		return "", failure("discovery", "invalid_idp", nil)
-	}
-	issuer, e := parseEndpoint(text(idp, "issuer"), c.config.AllowHTTP)
-	if e != nil || issuer.String() != c.config.IssuerURL {
-		return "", failure("discovery", "issuer_mismatch", e)
-	}
-	token, e := parseEndpoint(text(idp, "token_endpoint"), c.config.AllowHTTP)
-	if e != nil {
-		return "", e
-	}
-	// Ordinary OpenID discovery token route. Custom routes must be configured explicitly.
-	expected := c.config.IssuerURL + "/protocol/openid-connect/token"
-	if token.String() != expected {
-		return "", failure("discovery", "token_destination_not_allowed", nil)
-	}
-	return token.String(), nil
-}
-func (c *Client) clientCredentials(ctx context.Context) (AccessToken, error) {
-	endpoint, e := c.tokenEndpoint(ctx)
-	if e != nil {
-		return AccessToken{}, e
-	}
-	body := []byte("grant_type=client_credentials&client_id=" + formEscape(c.config.ClientID) + "&client_secret=" + formEscape(c.config.ClientSecret))
-	v, e := c.exchangeProof(ctx, "POST", endpoint, []string{"Content-Type", "application/x-www-form-urlencoded"}, body, "oauth", "", c.config.DPoP)
-	if e != nil {
-		return AccessToken{}, e
-	}
-	expiration, ok := v.Get("expires_in")
+	value, ok := v.Get("value").AsString()
 	if !ok {
-		return AccessToken{}, failure("oauth", "missing_expiration", nil)
+		return AccessToken{}, errors.New("provider: missing value")
 	}
-	seconds, e := expiration.Integer(86400)
-	if e != nil || seconds == 0 {
-		return AccessToken{}, failure("oauth", "invalid_expiration", e)
+	scheme, ok := v.Get("scheme").AsString()
+	if !ok {
+		return AccessToken{}, errors.New("provider: missing scheme")
 	}
-	scheme := text(v, "token_type")
-	if lower(scheme) == "bearer" {
-		scheme = "Bearer"
+	expiration, ok := v.Get("expiresAt").AsString()
+	if !ok {
+		return AccessToken{}, errors.New("provider: missing decimal expiry")
 	}
-	if lower(scheme) == "dpop" {
-		scheme = "DPoP"
+	var seconds int64
+	if len(expiration) == 0 || len(expiration) > 19 {
+		return AccessToken{}, errors.New("provider: invalid expiry")
 	}
-	token := AccessToken{Value: text(v, "access_token"), Scheme: scheme, ExpiresAt: clock.Unix() + int64(seconds)}
-	// An authenticated trusted endpoint declaring DPoP attests opaque token binding.
-	if c.config.DPoP && scheme == "DPoP" {
-		token.ConfirmationJKT = c.thumbprint
+	for _, b := range []byte(expiration) {
+		if b < '0' || b > '9' || seconds > (9223372036854775807-int64(b-'0'))/10 {
+			return AccessToken{}, errors.New("provider: invalid expiry")
+		}
+		seconds = seconds*10 + int64(b-'0')
 	}
-	return token, nil
+	confirmation := ""
+	if c, exists := v.Lookup("confirmationJKT"); exists {
+		s, ok := c.AsString()
+		if !ok {
+			return AccessToken{}, errors.New("provider: invalid confirmation")
+		}
+		confirmation = s
+	}
+	return AccessToken{Value: value, Scheme: scheme, ExpiresAt: seconds, ConfirmationJKT: confirmation}, nil
+}
+
+// validateBinding checks that a DPoP token is bound to thumbprint: a JWT must
+// carry a matching cnf.jkt claim, an opaque token a matching attestation.
+func validateBinding(token AccessToken, thumbprint string) error {
+	parts := strings.Split(token.Value, ".")
+	jwt := false
+	if len(parts) >= 2 && parts[0] != "" {
+		header, err := encoding.Base64URLDecode(parts[0])
+		if err == nil {
+			v, err := jsonvalue.Parse(header)
+			jwt = err == nil && v.Kind() == jsonvalue.KindObject && (v.Get("alg").String() != "" || strings.EqualFold(v.Get("typ").String(), "jwt"))
+		}
+	}
+	if !jwt {
+		if token.ConfirmationJKT != thumbprint {
+			return newError(KindAuth, "auth", "token is not bound to the DPoP key")
+		}
+		return nil
+	}
+	if len(parts) != 3 || parts[2] == "" {
+		return newError(KindAuth, "auth", "token is not bound to the DPoP key")
+	}
+	claims, err := encoding.Base64URLDecode(parts[1])
+	if err != nil {
+		return newError(KindAuth, "auth", "token is not bound to the DPoP key")
+	}
+	v, err := jsonvalue.Parse(claims)
+	if err != nil || v.Get("cnf").Get("jkt").String() != thumbprint {
+		return newError(KindAuth, "auth", "token is not bound to the DPoP key")
+	}
+	return nil
 }

@@ -1,6 +1,7 @@
-// Command otdfgc is the native Go CLI over the generated TDF3 package. It
-// implements the xtest CLI contract of docs/full-sdk-plan.md with the flags
-// the current façade can honour; every other flag exits 2 as unsupported.
+// Command otdfgc is the native Go CLI over the generated OpenTDF package. It
+// implements the xtest CLI contract of docs/full-sdk-plan.md over the handle
+// API: one SDK per invocation, created with --host and the client
+// credentials; every flag this build cannot honour exits 2 as unsupported.
 package main
 
 import (
@@ -103,7 +104,7 @@ func version(ctx context.Context, args []string, stdout, stderr *os.File) int {
 	}
 	info, err := versionInfoOf(ctx)
 	if err != nil {
-		fmt.Fprintf(stderr, "Failed to read version: %s\n", describe(err, ""))
+		fmt.Fprintf(stderr, "Failed to read version: %s\n", describe(err))
 		return exitError
 	}
 	if asJSON {
@@ -122,7 +123,7 @@ func supports(ctx context.Context, args []string, stdout, stderr *os.File) int {
 	}
 	features, err := g.SupportedFeatures(ctx)
 	if err != nil {
-		fmt.Fprintf(stderr, "Failed to read supported features: %s\n", describe(err, ""))
+		fmt.Fprintf(stderr, "Failed to read supported features: %s\n", describe(err))
 		return exitError
 	}
 	for _, f := range features {
@@ -158,6 +159,22 @@ func inspect(args []string, stdout, stderr *os.File) int {
 	return exitSuccess
 }
 
+// newSDK constructs the SDK from --host and the credentials, with otdfctl's
+// wording when the platform cannot be reached or the credentials fail.
+func newSDK(ctx context.Context, p *parsed, stderr *os.File) (*g.SDK, string, int) {
+	host, opts, code, err := p.options()
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return nil, "", code
+	}
+	sdk, err := g.NewWithOptions(ctx, host, opts...)
+	if err != nil {
+		fmt.Fprintln(stderr, describeNew(err, host))
+		return nil, "", exitError
+	}
+	return sdk, host, exitSuccess
+}
+
 func encrypt(ctx context.Context, args []string, stderr *os.File) int {
 	p, err := parseFlags(args, encryptFlags)
 	if err != nil {
@@ -172,34 +189,39 @@ func encrypt(ctx context.Context, args []string, stderr *os.File) int {
 		fmt.Fprintf(stderr, "encrypt needs exactly one input file and --out\n%s", usage)
 		return exitUsage
 	}
-	cfg, code, err := p.config()
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return code
-	}
-	wrapping := p.value("wrapping-key-algorithm")
-	if wrapping == "" {
-		wrapping = "rsa:2048"
-	}
-	cfg.KASAlgorithm = wrapping
 	input, err := os.ReadFile(p.positional[0])
 	if err != nil {
 		fmt.Fprintf(stderr, "Failed to read %s: %s\n", p.positional[0], err)
 		return exitError
 	}
-	options := g.EncryptOptions{MimeType: p.value("mime-type")}
+	sdk, host, code := newSDK(ctx, p, stderr)
+	if code != exitSuccess {
+		return code
+	}
+	defer sdk.Close()
+	// As otdfctl: the platform's KAS is the default key access server and
+	// attributes drive autoconfigure.
+	tdfOpts := []g.TDFOption{g.WithKasInformation(g.KASInfo{URL: host + "/kas"}), g.WithMimeType(p.value("mime-type"))}
 	if attr := p.value("attr"); attr != "" {
-		options.Attributes = splitList(attr)
+		tdfOpts = append(tdfOpts, g.WithDataAttributes(splitList(attr)...))
 	}
-	if err := discover(ctx, &cfg, p.flag("tls-no-verify")); err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitError
+	if wrapping := p.value("wrapping-key-algorithm"); wrapping != "" {
+		tdfOpts = append(tdfOpts, g.WithWrappingKeyAlg(g.KeyType(wrapping)))
 	}
-	data, err := g.Encrypt(ctx, cfg, input, options)
+	if mode := p.value("target-mode"); mode != "" {
+		tdfOpts = append(tdfOpts, g.WithTargetMode(mode))
+	}
+	options, err := g.TDFOptionsOf(tdfOpts...)
 	if err != nil {
-		fmt.Fprintf(stderr, "Failed to encrypt: %s\n", describe(err, ""))
+		fmt.Fprintf(stderr, "Failed to encrypt: %s\n", err)
 		return exitError
 	}
+	data, obj, err := sdk.EncryptBytes(ctx, input, options)
+	if err != nil {
+		fmt.Fprintf(stderr, "Failed to encrypt: %s\n", describe(err))
+		return exitError
+	}
+	obj.Close()
 	if err := writeFile(p.value("out"), data, 0o644); err != nil {
 		fmt.Fprintf(stderr, "Failed to write encrypted file %s: %s\n", p.value("out"), err)
 		return exitError
@@ -221,36 +243,37 @@ func decrypt(ctx context.Context, args []string, stderr *os.File) int {
 		fmt.Fprintf(stderr, "decrypt needs exactly one input file and --out\n%s", usage)
 		return exitUsage
 	}
-	cfg, code, err := p.config()
-	if err != nil {
-		fmt.Fprintln(stderr, err)
-		return code
-	}
-	session := p.value("session-key-algorithm")
-	if session == "" {
-		session = "rsa:2048"
-	}
-	cfg.SessionAlgorithm = session
 	input, err := os.ReadFile(p.positional[0])
 	if err != nil {
 		fmt.Fprintf(stderr, "Failed to read file: %s\n", err)
 		return exitError
 	}
-	kasURL := ""
-	if manifest, err := readManifestBytes(input); err == nil {
-		kasURL = manifestKASURL(manifest)
+	sdk, _, code := newSDK(ctx, p, stderr)
+	if code != exitSuccess {
+		return code
 	}
-	cfg.AllowedKAS = allowedRoutes(cfg.PlatformURL, p.value("kas-allowlist"), kasURL)
-	if err := discover(ctx, &cfg, p.flag("tls-no-verify")); err != nil {
-		fmt.Fprintln(stderr, err)
-		return exitError
+	defer sdk.Close()
+	readerOpts := []g.TDFReaderOption{g.WithDisableAssertionVerification(p.flag("no-verify-assertions"))}
+	if session := p.value("session-key-algorithm"); session != "" {
+		readerOpts = append(readerOpts, g.WithSessionKeyType(g.KeyType(session)))
 	}
-	result, err := g.Decrypt(ctx, cfg, input)
+	// otdfctl: "*" alone ignores the allowlist; any other list is explicit.
+	if allowlist := splitList(p.value("kas-allowlist")); len(allowlist) == 1 && allowlist[0] == "*" {
+		readerOpts = append(readerOpts, g.WithIgnoreAllowlist(true))
+	} else if len(allowlist) > 0 {
+		readerOpts = append(readerOpts, g.WithKasAllowlist(allowlist))
+	}
+	options, err := g.ReaderOptionsOf(readerOpts...)
 	if err != nil {
-		fmt.Fprintf(stderr, "Failed to decrypt file: %s\n", describe(err, kasURL))
+		fmt.Fprintf(stderr, "Failed to decrypt file: %s\n", err)
 		return exitError
 	}
-	if err := writeFile(p.value("out"), result.Payload, 0o600); err != nil {
+	plaintext, err := sdk.DecryptBytes(ctx, input, options)
+	if err != nil {
+		fmt.Fprintf(stderr, "Failed to decrypt file: %s\n", describe(err))
+		return exitError
+	}
+	if err := writeFile(p.value("out"), plaintext, 0o600); err != nil {
 		fmt.Fprintf(stderr, "Failed to write decrypted data to file: %s\n", err)
 		return exitError
 	}

@@ -479,3 +479,86 @@ version it matches (`0.34.0`). `TDFSpecVersion` is `4.3.0`.
 Changes to this document go in their own PR, reviewed before the
 implementing phase starts. A phase that discovers the spec cannot be met
 records the deviation here, with the reason, in the same PR as the code.
+
+### Deviations recorded by Phase 2 part 1
+
+Found while implementing the shared source on Goalchemy v0.6.0; each keeps
+the reference behaviour unless noted.
+
+- `New` takes a leading `context.Context`: the reference's `New` has none,
+  but discovery is network I/O and every generated call already carries the
+  host's context, so the generated signatures are unchanged and the caller's
+  deadline reaches the well-known and OIDC requests.
+- `Options.PlatformConfiguration` is a struct of `Entries []{Key, Value}`
+  rather than `map[string]string`: maps do not cross the Goalchemy value
+  boundary. String members keep their value, other members their compact
+  JSON; the reference's accessors (`Issuer`, `AuthzEndpoint`,
+  `TokenEndpoint`) read them, and the Go adapter's
+  `WithPlatformConfiguration(map[string]any)` converts.
+- `Options.TokenExchange`, `CertExchange` and `TLS` are values whose zero
+  value means unset, not pointers, for the same reason.
+- `Error` has no `Cause` field (an interface field would make the record
+  uncrossable); `Error.Is` matches a sentinel whose text appears in the
+  chain, so `errors.Is` holds for every reference sentinel natively and in
+  the generated Go package. `Op` and the service fields come from the
+  innermost `Error` in the chain; the most specific kind wins over a generic
+  `KindInvalidInput`.
+- `KeyAccess.PolicyBinding` is the `PolicyBinding` struct, whose JSON
+  methods accept the object and the legacy string forms, instead of
+  `jsonvalue.Value` (which has unexported fields and cannot cross); the
+  `Binding()` accessor stays.
+- Manifest types use named fields where the reference embeds
+  (`Manifest.EncryptionInformation`, `Manifest.Payload`,
+  `EncryptionInformation.IntegrityInformation`,
+  `IntegrityInformation.RootSignature`), the anonymous `PolicyObject.Body`
+  is `PolicyBody`, and `attributeObject` is exported as `AttributeObject`;
+  JSON tags are unchanged.
+- `TDFOptions` has no `KeySplitter` (an interface field) or `PolicyFrom`
+  (a handle field) member: the splitter is an `SDK` collaborator and
+  `WithPolicyFrom` is a Go-adapter option that copies the reader's
+  attributes. `AttributeValues` and `ReaderOptions.AssertionVerificationKeys`
+  are added with their phases.
+- `GetBaseKey` returns `SimpleKasKey` by value and `StoreKASKeys` takes
+  `KasPublicKeySet` by value: a pointer to an exported root struct would be
+  read as a handle.
+- The Goalchemy export roots are `./src/library` and `./src` together: a
+  handle must be an exported struct of a root package and only root value
+  types keep their names, so re-exporting through `src/library` alone would
+  have meant duplicating every type.
+- The KAS allowlist is fetched in `LoadTDF`, as the reference does, rather
+  than on the first decrypt.
+
+### Deviations recorded by Phase 2 part 2
+
+Found while exposing the handle API through the generated TypeScript and
+Python packages; each keeps the reference behaviour unless noted.
+
+- A reader's lazy `Init` (run by `UnencryptedMetadata` and, in Phase 7, the
+  stream methods) uses the `LoadTDF` context while it lives; a generated
+  host's call context ends with its call, so a later lazy operation falls
+  back to the background context. Hosts that need cancellation call `Init`
+  first, which every target's generated `Init` takes a context for.
+- Every exported function and method returns `*Error`: a plain `errors.New`
+  or `fmt.Errorf` value does not cross the Goalchemy boundary with its text
+  (Go: `unsupported_error`; other targets: a bare `source` failure), so the
+  boundary wraps it with the chain's text and the operation's kind.
+- A host token provider without a configured DPoP key gets the reference's
+  ephemeral ES256 key for the rewrap request signature, as client
+  credentials do; the api-spec's `TokenProviderName` option alone was
+  unsigned.
+- TypeScript's `createTdf` takes bytes and returns a `TDFObject` holding
+  `bytes` plus the `manifest()`/`size()` handle; `encryptBytes` returns the
+  bytes alone. Python's `create_tdf`/`encrypt_bytes` do the same. Streams
+  arrive in Phase 7.
+- Manifests and policies cross to TypeScript and Python keyed by the
+  reference's JSON tags (`encryptionInformation.keyAccess[0].url`), not by
+  the Go field names, so the "JSON tags are byte-identical" rule holds for
+  the host-visible shape; the generated value interfaces keep the Go names.
+- TypeScript `platformConfiguration()` and Python `platform_configuration()`
+  return the members as a string map, the inverse of the entries the Go
+  adapter's `WithPlatformConfiguration` builds.
+- `IsHealthy` accepts the Connect JSON enum name `SERVING_STATUS_SERVING`
+  as well as `SERVING`; the platform sends the former.
+- The Python `timeout=` of the sync methods cancels the call on expiry and
+  raises `OpenTDFError(kind='deadline_exceeded')`; the reference has no such
+  argument (its `context.Context` carries the deadline).

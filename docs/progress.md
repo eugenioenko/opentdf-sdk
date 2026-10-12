@@ -1793,3 +1793,204 @@ requires Python 3.14 (`pydantic-core` does not build on 3.15 yet); the
 otdf-local platform template `opentdf.yaml` is absent from the platform
 checkout and must be made from `opentdf-dev.yaml` with `ec_tdf_enabled`
 on, or the reference reader fails its EC re-decrypt.
+
+## Full SDK plan, Phase 2 part 1
+
+Handle-based core API and platform discovery in the shared source, exposed
+through the generated Go package, with `otdfgc` switched to it
+([full-sdk-plan.md](full-sdk-plan.md) Phase 2, PR "feat: Phase 2 part 1
+handle API, discovery and Go"). Parts 2 (TypeScript, Python) and 3 (the other
+targets) follow.
+
+Built, file by file against `platform/sdk` at `4d9e555b` so a reviewer can
+diff them: `src/sdk.go` (`New` with well-known and OIDC discovery, the health
+check, `IsValidTdf`, `GetTdfType`, `StoreKASKeys`), `options.go` (the
+`Options` struct and the internal config), `platformconfig.go`, `basekey.go`
+and `basekeyerrors.go`, `kas_client.go` (hand-written Connect JSON rewrap and
+public-key calls, the key cache with the reference's staleness rules),
+`tdf.go` (`Reader`, `TDFObject`, `EncryptBytes`/`CreateTDF`, `LoadTDF`,
+`buildKey`, the integrity functions, `getKasErrorToReturn`, the registry
+allowlist), `tdf_config.go` (`TDFOptions`, `ReaderOptions`, `AllowList`),
+`manifest.go` (the reference JSON tags), `decrypt.go`, `tdferrors.go`,
+`decrypterrors.go`, and `errors.go` (the `Error` record and kinds of
+api-spec.md). The collaborators are interfaces with one default each:
+`Transport` (lib/http), `Clock`, `TokenSource` (client credentials and the
+host callback), `KASKeyFetcher`, `Rewrapper` (`KASClient`), `KeySplitter`
+(single share; XOR splits in Phase 4) and `Granter` (no grants until Phase
+4, so the writer falls back to the base key and the default KAS as the
+reference does). `Client` and `TDFReader` are the public interfaces. The
+URL helpers the reference takes from `net/url` live in
+`src/internal/urlutil` until goalchemy#71 ships, tested against `net/url`.
+The old `library.Encrypt`/`Decrypt` façade stays as a thin wrapper and is
+deprecated. The generated package is compiled from two roots
+(`./src/library ./src`); the Go host adapter adds the reference's `With*`
+options, the native sentinels and the `Kind*` constants.
+
+Deviations from api-spec.md, recorded in its change-control section: `New`
+takes a context; `PlatformConfiguration` is a list of entries, and the
+exchange and TLS options are values, because maps and pointers do not cross
+the boundary; `Error` has no `Cause` (an interface field) and matches
+sentinels by chain text; `PolicyBinding` is a struct with JSON methods for
+both wire forms; manifest embedding becomes named fields; `TDFOptions` has
+no `KeySplitter` or `PolicyFrom` member; `GetBaseKey` and `StoreKASKeys`
+pass their messages by value; the allowlist is fetched in `LoadTDF` as in
+the reference. The Go generated API is unchanged by the first of these.
+
+Tests: `go test ./src/...` (shared source, natively) ports the reference's
+option, allowlist, key cache, base key, rewrap request, segment size, KAS
+error classification, obligation dedup, key access and `IsValidTdf` tests
+and adds round trips and the tamper cells over an httptest platform with an
+independent Go implementation of the KAS; `goalchemy check` passes on both
+roots; `scripts/build-generated-go.sh` builds; the consumer in
+`tests/interop/generatedlibrary` runs its offline checks (discovery
+failures, deadlines, allowlist, invalid input, unsupported options, 100
+reader handles) through the generated package. Skipped from the reference
+tests: the TDFSuite fixtures that mock Connect services (Phase 10 ports
+them), `TestWithTargetMode` and `TestIsLessThanSemver` (Phase 6),
+`TestWithDataAttributes`/`TestWithAssertions` field checks (Phases 4 and 5),
+the concurrency cache tests (no threads in the cooperative gate) and the
+`DecryptFile` tests (Phase 7).
+
+xtest, platform from `otdf-local` at `4d9e555b` with `ec_tdf_enabled`,
+reference CLIs `go@v0.38.1` and `js@v0.20.0`:
+`test_tdf_roundtrip`/`test_manifest_validity` for `--sdks "go js gcgo"
+--sizes small --containers ztdf`: 12 passed; the seven Phase 2 tamper cells
+for `--sdks "go gcgo"`: 28 passed (including `test_tdf_with_malicious_kao`
+rejected client-side with `KasAllowlist: kas url ... is not allowed`);
+`test_policytypes.py` for `--sdks "go gcgo"`: 15 passed, 9 skipped (the
+`ztdf-ecwrap` container; `ecwrap` is advertised in Phase 4). The scoreboard
+shows the policy-type rows as `skip` because a row is the worst result over
+its parametrised cases. `SupportedFeatures()` adds `kasallowlist` and
+`better-messages-2024`, proven by those cells.
+
+Not met or deferred: `Reader.Read/ReadAt/Seek/WriteTo`, `DecryptTo` and
+`DecryptFile` (Phase 7); `resource_locator.go` (its rows are Phase 4 and it
+was not needed by any cell); schema validation in `IsValidTdf` is a bounded
+required-member check until Phase 6. Findings for the plan owner: a
+Goalchemy handle must be an exported struct of a root package and only root
+types keep their names, so "re-export through src/library" cannot work
+without duplicating every type; the two-root compile is what makes the
+reference names cross unchanged, and parts 2 and 3 should verify it on the
+other emitters. The PR CI workflow (`tdf3-delivery.yml`) still drives the
+old façade consumers for every target; the façade keeps its shapes so they
+compile, but the other targets' generated packages now include the handle
+API and were not built here.
+
+## Full SDK plan, Phase 2 part 2
+
+The handle API exposed through the generated TypeScript (Node and browser)
+and Python packages, the `gcts` and `gcpy` CLIs, and the fixes that make PR
+#22's delivery CI green on every required target
+([full-sdk-plan.md](full-sdk-plan.md) Phase 2, same PR as part 1, branch
+`feat/phase-2-handle-api`). Part 3 (Java, C#, Rust, C, Swift) follows.
+
+Red targets on #22 and their causes, each reproduced locally with the
+delivery scripts before the fix:
+
+- Every real-KAS job (`go`, `typescript`, `java`, `csharp`, `rust`, `c`) failed
+  its `<target>-basic` step. `Reader.UnencryptedMetadata` ran the lazy `Init`
+  with the context `LoadTDF` stored; a generated host's call context ends
+  with its call, so the rewrap's token request failed as `http: invalid
+  request or limit` on every TDF carrying encrypted metadata (the web SDK
+  writes one for every file). The lazy `Init` now uses the `LoadTDF`
+  context while it lives and the background context afterwards (recorded in
+  api-spec.md). The failure itself was invisible: exported methods returned
+  `fmt.Errorf` values, which the boundary cannot cross (Go
+  `unsupported_error`, other targets a bare `source` failure); every
+  exported function and method now returns `*Error`. The delivery runners
+  (`run-focused.py`, `delivery-coverage.py`, `run-basic.py`) then still
+  expected the old façade's `archive` code for a malformed input and an
+  `encryptedMetadata` entry for empty metadata; the handle API reports
+  `not_decryptable` and, as the reference, writes no entry. The `ec` and
+  `dpop` profiles failed to select because `tests/interop/profiles`
+  compiled against the removed engine; it drives the shared-source handle
+  API natively now. The façade consumers (Java, C#, Rust, C) set
+  `Config.IssuerURL` without `TokenURL`, which the façade turned into a
+  provided platform configuration that, as in the reference, skips OIDC
+  discovery and leaves the token endpoint empty; the façade now provides
+  the configuration only with an explicit `TokenURL`.
+- `python` failed its `consumers` step: the wheel could not be imported.
+  The Python frame emitter dropped the closing parenthesis of a cloned named
+  struct result (`fr.v_rv_1._clone(]`) in `std/log/slog`'s `Value.Resolve`,
+  which the shared source compiles since part 1. Fixed in Goalchemy
+  ([goalchemy#77](https://github.com/eugenioenko/goalchemy/pull/77), corpus
+  `r008`); the same PR fixes the TypeScript and Python emitters cloning a
+  map iterator's struct key and value after `mapNext` returned false
+  (`TypeError: Cannot read properties of undefined (reading '$clone')` in the
+  KAS key cache lookup on an empty cache; corpus `r009`). Its CI is green;
+  `references.lock.json` and the delivery workflow pin its commit ahead of
+  the v0.6.1 release, to be re-pinned to the tag in a bump PR.
+- `swift` fails its `packages` step with `GCE007: Swift public name
+  collision: Error`: the shared source's `Error` record collides with
+  Swift's reserved name list in the Swift emitter. Not fixed here (Swift is
+  not a required check); part 3 needs a Goalchemy rename rule for reserved
+  Swift names, as Rust has for `Self`.
+
+Built: `src/hosts/typescript/index.ts.in` (`SDK.create`, `createTdf` and
+`encryptBytes` over bytes, `loadTdf` returning a `Reader` with `init`,
+`manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close` and
+`Symbol.asyncDispose`, `decryptBytes`, `isHealthy`, `platformConfiguration`,
+`getBaseKey`, `storeKasKeys`, the free functions, `OpenTDFError` with
+`kind`, `op`, `message`, `httpStatus`, `connectCode`, `serviceMessage`,
+`kasUrl`, `requiredObligations`, `assertionId`; camelCase option objects,
+`number` sizes, UTF-8 strings, manifests keyed by the reference's JSON
+tags, `{ signal }` per call, `tokenProvider` on `Options`) and
+`src/hosts/python/__init__.py.in` (`SDK(endpoint, **options)` with sync
+methods, `_async` twins, context managers, `Reader`, `OpenTDFError` in
+snake_case, `timeout=` on the sync methods). Both keep the deprecated
+façade. The adapters are table-driven name maps and error translation; no
+protocol logic. `src/hosts/typescript/cmd/otdfgc/otdfgc.mjs` and
+`src/hosts/python/cmd/otdfgc/otdfgc.py` implement the Go `otdfgc` contract
+(same flags, exit codes, wording; `inspect` reads the manifest natively),
+built by `scripts/build-typescript-cli.sh` and `scripts/build-python-cli.sh`
+(a venv beside the wheel with the locked runtime wheels);
+`scripts/python-wheelhouse.sh` fills and verifies the wheelhouse so
+`build-generated-python.sh` works from a fresh checkout. In the tests
+repository (`eugenioenko/opentdf-sdk-tests`, branch `gc-ts-py`):
+`gc.mk` builds `gcts` and `gcpy` and clones Goalchemy by the pinned
+revision. Consumers: `tests/interop/generatedtypescript/main.mjs` and
+`generatedpython/consumer.py` construct one SDK, run 100 encrypt and decrypt
+calls with every handle closed, and run the Go consumer's offline
+controlled checks in `controlled` mode (`controlled-negatives.mjs`, and
+in-process for Python); the browser check creates the SDK in Chromium with
+the host token broker. Two shared-source fixes found by the consumers: a
+host token provider without a DPoP key now gets the reference's ephemeral
+ES256 key (the rewrap request was unsigned), the host transport's "deadline
+exceeded" wording classifies as `deadline_exceeded`, `IsHealthy` accepts
+`SERVING_STATUS_SERVING`, and an unreadable archive is `not_decryptable`
+from `LoadTDF`. Docs: [generated-typescript-library.md](generated-typescript-library.md),
+[generated-python-library.md](generated-python-library.md), the part 2
+deviations in [api-spec.md](api-spec.md), [xtest.md](xtest.md).
+
+Verified locally, throttled, one target at a time, with the Goalchemy fix
+commit as the sibling checkout: `scripts/delivery-job.py <target>` (bootstrap,
+compiler, packages, consumers, the focused real-KAS profiles and coverage)
+passes for `go` (basic, ec, dpop), `typescript` (basic, ec, dpop and the
+Chromium browser check in each), `python`, `rust`, `java`, `csharp` and `c`;
+`go test ./src/...` and `goalchemy check -gate cooperative` pass.
+xtest, platform from `otdf-local` at `4d9e555b` with `ec_tdf_enabled`,
+reference CLIs `go@v0.38.1` and `js@v0.20.0`, the `gcts` and `gcpy` CLIs
+built by the tests repository's Makefiles from this checkout:
+`test_tdf_roundtrip`/`test_manifest_validity` for `--sdks "go js gcgo gcts
+gcpy" --sizes small --containers ztdf`: 30 passed, 0 failed, 0 skipped
+(`out/xtest/phase2b-roundtrip.xml`); the seven Phase 2 tamper cells and
+`test_policytypes.py` for `--sdks "go gcts gcpy" --sizes small --containers
+ztdf`: 90 passed, 0 failed, 0 skipped (`out/xtest/phase2b-tamper.xml`,
+including `test_tdf_with_malicious_kao` rejected client-side by both CLIs
+with `KasAllowlist: kas url ... is not allowed`). The scoreboard is
+regenerated from these and part 1's JUnit files, so the `gcgo` column keeps
+part 1's results.
+
+Not met or deferred: Swift (above); `Reader` streams, `DecryptTo` and
+`DecryptFile` (Phase 7); the TypeScript and Python full-mode matrices
+(`run-basic.py`, `browser.mjs`) still drive the façade and are not run by
+the PR CI. Findings for the plan owner: a stored call context is dead after
+its call on every generated target, so any reference method that lazily
+reuses a context from an earlier call needs the fallback recorded in
+api-spec.md; a plain Go error crosses the boundary without its text, so
+"errors are data" must hold at every exported return; the Python http
+capability honours the context deadline but reports an expired request with
+the Go sentinel text rather than TypeScript's `http: deadline exceeded`,
+which is why the shared source classifies both; the delivery audit for
+browser portability matched the words `Buffer` and `process`, which
+`std/bytes`' panic texts contain, and now matches Node imports and globals.

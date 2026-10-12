@@ -7,7 +7,7 @@ DEST=${1:-"$SDK/out/swift-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target swift -out "$DEST" ./src/library)
+(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target swift -out "$DEST" ./src/library ./src)
 mkdir -p "$DEST/Sources/OpenTDFTDF3"
 cp "$SDK/src/hosts/swift/TDF3.swift.in" "$DEST/Sources/OpenTDFTDF3/TDF3.swift"
 python3 - "$DEST" <<'PY'

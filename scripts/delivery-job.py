@@ -160,6 +160,7 @@ def main():
                 elif target == 'go':
                     execute('go-controlled',[*consumer['consumer_command'],SDK,SDK/'.local/go-tdf-library/basic','controlled','transport'],180)
                 elif target == 'typescript': execute('typescript-controlled',['node',directory/'controlled.mjs'],180)
+                elif target == 'python': execute('python-controlled',[*consumer['consumer_command'],SDK,SDK/'.local/python-tdf-library/controlled','controlled','all'],300)
                 else:
                     environment['TDF_DELIVERY_ARCHIVE'] = str(SDK/'.local'/(target+'-tdf-library')/'basic/binary.generated.tdf')
                     execute(target+'-controlled',['python3',directory/'controlled.py'],300)

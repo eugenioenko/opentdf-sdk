@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	capcrypto "github.com/eugenioenko/goalchemy/lib/crypto"
+	libcontext "github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jws"
@@ -36,6 +36,7 @@ import (
 	"github.com/opentdf/platform/lib/ocrypto"
 	reference "github.com/opentdf/platform/sdk"
 	"github.com/opentdf/platform/sdk/auth/oauth"
+	sdk "opentdf-local/sdk/src"
 	"opentdf-local/sdk/src/tdf"
 )
 
@@ -369,8 +370,9 @@ func smoke() {
 		_, e := s.CreateTDF(&out, bytes.NewReader(payload), reference.WithDataAttributes(attr))
 		check(e)
 		ar := must(tdf.ReadArchive(out.Bytes(), tdf.DefaultArchiveLimits()))
-		m := must(tdf.ParseManifest(ar.Manifest))
-		if len(m.Encryption.KeyAccess) != 1 || m.Encryption.KeyAccess[0].Type != "ec-wrapped" || m.Encryption.KeyAccess[0].KID != "profile-e1" {
+		var m sdk.Manifest
+		check(json.Unmarshal(ar.Manifest, &m))
+		if len(m.EncryptionInformation.KeyAccessObjs) != 1 || m.EncryptionInformation.KeyAccessObjs[0].KeyType != "ec-wrapped" || m.EncryptionInformation.KeyAccessObjs[0].KID != "profile-e1" {
 			panic("default registry did not select EC")
 		}
 		write(map[bool]string{true: "denied", false: "allowed"}[attr == denied]+"-"+profile+".tdf", out.Bytes())
@@ -402,9 +404,16 @@ func smoke() {
 	pub := reference.KASInfo{}
 	check(json.NewDecoder(response.Body).Decode(&pub))
 	// JSON uses kid, whereas KASInfo's exported field is KID; both match case insensitively.
-	key := must(capcrypto.ImportPEM(pub.PublicKey))
-	defer key.Close()
-	data := must(tdf.Encrypt(payload, tdf.EncryptConfig{KASPublicKey: key, KASURL: kas, KID: pub.KID, Algorithm: "ec:secp256r1", Attributes: []string{allowed}}))
+	// The shared source's handle API, natively: an explicit EC KAS key, no autoconfigure.
+	engine := must(sdk.New(libcontext.Background(), platform, sdk.Options{ClientID: "opentdf-sdk", ClientSecret: "secret", InsecurePlaintext: true}))
+	defer engine.Close()
+	data, _, encryptErr := engine.EncryptBytes(libcontext.Background(), payload, sdk.TDFOptions{
+		DisableAutoconfigure: true,
+		KasInformation:       []sdk.KASInfo{{URL: kas, PublicKey: pub.PublicKey, KID: pub.KID, Algorithm: "ec:secp256r1"}},
+		WrappingKeyAlgorithm: "ec:secp256r1",
+		Attributes:           []string{allowed},
+	})
+	check(encryptErr)
 	for _, session := range []ocrypto.KeyType{ocrypto.EC256Key, ocrypto.RSA2048Key} {
 		r := must(s.LoadTDF(bytes.NewReader(data), reference.WithKasAllowlist([]string{kas}), reference.WithSessionKeyType(session)))
 		plain := must(io.ReadAll(r))

@@ -70,7 +70,7 @@ payload=bytearray(entries['0.payload']);payload[12]^=1;entries['0.payload']=payl
 with zipfile.ZipFile(run/'tampered.tdf','w',compression=zipfile.ZIP_STORED) as z:
     for n,b in entries.items():z.writestr(n,b)
 new('negative','tampered');assert json.loads((run/'tampered.error.json').read_text())['code']=='integrity'
-(run/'malformed.tdf').write_bytes(b'bad archive');new('negative','malformed');assert json.loads((run/'malformed.error.json').read_text())['code']=='archive'
+(run/'malformed.tdf').write_bytes(b'bad archive');new('negative','malformed');malformed=json.loads((run/'malformed.error.json').read_text());assert 'not_decryptable' in (malformed.get('kind'),malformed.get('code')),malformed
 # Authenticated root signature tampering and unsupported mandatory features fail.
 with zipfile.ZipFile(io.BytesIO(archive)) as z: original={n:z.read(n) for n in z.namelist()}
 manifestName='manifest.json' if 'manifest.json' in original else '0.manifest.json'

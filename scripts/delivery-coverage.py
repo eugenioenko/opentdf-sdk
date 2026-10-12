@@ -91,7 +91,8 @@ def check(target, profile, mode, output):
     if mode == 'focused' and profile == 'basic' and not browser:
         labels = {event['label'] for event in events}
         assert {'repeat-ownership','negative-malformed'} <= labels
-        assert json.loads((output/'malformed.error.json').read_text())['code'] == 'archive'
+        malformed = json.loads((output/'malformed.error.json').read_text())
+        assert 'not_decryptable' in (malformed.get('kind'), malformed.get('code')), malformed
         if target == 'c':
             assert 'public-no-preinit-real-kas' in labels
     if mode == 'full' and not browser:
