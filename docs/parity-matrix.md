@@ -18,8 +18,9 @@ which encodes the phase assignments; edit the script, not the table.
 A row turns `done` in the PR that delivers its symbol in the shared source (the
 `DONE` set in the script). Phase 2 part 1 delivered the handle API, platform
 discovery and the generated Go package; the symbols the plan lists under Phase 2
-are all `done` in the shared source, and parts 2 and 3 expose them on the other
-targets. `ErrInvalid` moved to phase 4: it is declared in `granter.go`.
+are all `done` in the shared source; part 2 exposes them through the generated
+TypeScript and Python packages and part 3 through the remaining targets.
+`ErrInvalid` moved to phase 4: it is declared in `granter.go`.
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
