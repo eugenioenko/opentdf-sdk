@@ -1,5 +1,8 @@
-//! Owned Rust TDF3 façade over the generated shared implementation.
+//! The OpenTDF SDK: the handle API of api-spec.md (sdk.rs) and the deprecated
+//! encrypt/decrypt façade over the generated shared implementation.
 mod generated;
+mod sdk;
+pub use sdk::*;
 pub use generated::{
     CallOptions, Cancellation, ErrorKind, HostWire, LibraryError, Operation, ProviderError,
     ProviderRequest,

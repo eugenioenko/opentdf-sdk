@@ -9,6 +9,7 @@ if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; GOALCHEMY_ROOT="$SDK/../goalchemy" "$COMPILER" compile -gate cooperative -target rust -out "$DEST" ./src/library ./src)
 mv "$DEST/src/lib.rs" "$DEST/src/generated.rs"
 cp "$SDK/src/hosts/rust/lib.rs.in" "$DEST/src/lib.rs"
+cp "$SDK/src/hosts/rust/sdk.rs.in" "$DEST/src/sdk.rs"
 python3 - "$DEST" <<'PY'
 from pathlib import Path
 import sys
