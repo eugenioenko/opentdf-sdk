@@ -527,3 +527,38 @@ the reference behaviour unless noted.
   have meant duplicating every type.
 - The KAS allowlist is fetched in `LoadTDF`, as the reference does, rather
   than on the first decrypt.
+
+### Deviations recorded by Phase 2 part 2
+
+Found while exposing the handle API through the generated TypeScript and
+Python packages; each keeps the reference behaviour unless noted.
+
+- A reader's lazy `Init` (run by `UnencryptedMetadata` and, in Phase 7, the
+  stream methods) uses the `LoadTDF` context while it lives; a generated
+  host's call context ends with its call, so a later lazy operation falls
+  back to the background context. Hosts that need cancellation call `Init`
+  first, which every target's generated `Init` takes a context for.
+- Every exported function and method returns `*Error`: a plain `errors.New`
+  or `fmt.Errorf` value does not cross the Goalchemy boundary with its text
+  (Go: `unsupported_error`; other targets: a bare `source` failure), so the
+  boundary wraps it with the chain's text and the operation's kind.
+- A host token provider without a configured DPoP key gets the reference's
+  ephemeral ES256 key for the rewrap request signature, as client
+  credentials do; the api-spec's `TokenProviderName` option alone was
+  unsigned.
+- TypeScript's `createTdf` takes bytes and returns a `TDFObject` holding
+  `bytes` plus the `manifest()`/`size()` handle; `encryptBytes` returns the
+  bytes alone. Python's `create_tdf`/`encrypt_bytes` do the same. Streams
+  arrive in Phase 7.
+- Manifests and policies cross to TypeScript and Python keyed by the
+  reference's JSON tags (`encryptionInformation.keyAccess[0].url`), not by
+  the Go field names, so the "JSON tags are byte-identical" rule holds for
+  the host-visible shape; the generated value interfaces keep the Go names.
+- TypeScript `platformConfiguration()` and Python `platform_configuration()`
+  return the members as a string map, the inverse of the entries the Go
+  adapter's `WithPlatformConfiguration` builds.
+- `IsHealthy` accepts the Connect JSON enum name `SERVING_STATUS_SERVING`
+  as well as `SERVING`; the platform sends the former.
+- The Python `timeout=` of the sync methods cancels the call on expiry and
+  raises `OpenTDFError(kind='deadline_exceeded')`; the reference has no such
+  argument (its `context.Context` carries the deadline).

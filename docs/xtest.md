@@ -13,10 +13,10 @@ harness and the scoreboard they maintain.
 
 | Where | What |
 | --- | --- |
-| `src/hosts/go/cmd/otdfgc` | The native Go CLI over the generated package: `encrypt`, `decrypt`, `inspect`, `supports <feature>`, `--version --json`. Exit 0 on success, 1 when the operation fails (reference wording on stderr where the façade can produce it), 2 for usage errors and for every contract flag this build cannot honour (`unsupported in this build: <flag>`). |
-| `scripts/build-go-cli.sh <generated-dir> <binary>` | Builds `otdfgc` against a package produced by `scripts/build-generated-go.sh`. |
+| `src/hosts/go/cmd/otdfgc`, `src/hosts/typescript/cmd/otdfgc/otdfgc.mjs`, `src/hosts/python/cmd/otdfgc/otdfgc.py` | The native CLIs over the generated Go package, TypeScript package and Python wheel (`gcgo`, `gcts`, `gcpy`): `encrypt`, `decrypt`, `inspect`, `supports <feature>`, `--version --json` with the same flags and wording. Exit 0 on success, 1 when the operation fails (the `Error.Message` chain after otdfctl's prefix), 2 for usage errors and for every contract flag this build cannot honour (`unsupported in this build: <flag>`). |
+| `scripts/build-go-cli.sh`, `scripts/build-typescript-cli.sh`, `scripts/build-python-cli.sh` `<generated-dir> <binary>` | Build `otdfgc` against a package produced by the matching `scripts/build-generated-<target>.sh`: a Go binary, a launcher over `node` and the package's Node entry, a launcher over a venv holding the locked runtime wheels and the SDK wheel. |
 | `tests: xtest/sdk/gc-cli.sh` | The one shim shared by every gc type; each type's Makefile copies it to `dist/<version>/cli.sh`. It maps the `XT_WITH_*` variables to `otdfgc` flags and answers `supports` for every name in `tdfs.feature_type` by asking `otdfgc supports`, which reads `SupportedFeatures()`; unknown names exit 2. |
-| `tests: xtest/sdk/gc.mk`, `xtest/sdk/<type>/Makefile` | Build `dist/<version>/otdfgc` from `src/<version>` (a checkout or symlink of this repository): clone and build the Goalchemy release pinned in `references.lock.json`, run `scripts/build-generated-<target>.sh`, then the target's CLI build. Only `gcgo` builds today; the other types fail with "not built yet". |
+| `tests: xtest/sdk/gc.mk`, `xtest/sdk/<type>/Makefile` | Build `dist/<version>/otdfgc` from `src/<version>` (a checkout or symlink of this repository): clone and build Goalchemy at the revision pinned in `references.lock.json` (a sibling `../goalchemy` checkout at that revision is used as is), run `scripts/build-generated-<target>.sh`, then the target's CLI build. `gcgo`, `gcts` and `gcpy` build today; the other types fail with "not built yet". |
 | `tests: otdf-sdk-mgr` | `install tip [--ref <ref>] gcgo` and `checkout gcgo <ref>` work (source only; no release artifacts yet). |
 | `scripts/xtest-run.sh` | Builds the requested types into the tests repository via a symlink to this checkout, starts the platform when needed, runs a pytest selection with `--junitxml`, and regenerates the scoreboard. |
 | `scripts/xtest-scoreboard.py` | JUnit XML to [xtest-scoreboard.md](xtest-scoreboard.md). |
@@ -30,7 +30,7 @@ systemd-run --user --scope -p MemoryMax=10G -p CPUQuota=800% -- \
   --sizes small --containers ztdf -v
 ```
 
-- `--types` (default `gcgo`): the gc types to build; each gets
+- `--types` (default `gcgo`; `gcgo,gcts,gcpy` build today): the gc types to build; each gets
   `xtest/sdk/<type>/src/<version>` symlinked to this checkout and
   `make -C xtest/sdk <type> VERSIONS=<version>`.
 - `--version` (default `main`): the dist name, so the SDKs appear to pytest
