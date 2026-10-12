@@ -1,0 +1,234 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import io.goalchemy.runtime.Library;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
+
+/** Value conversion between the generated package (binary strings, Go field names) and Java. */
+final class Values {
+ private Values() {}
+
+ // Generated value classes carry the Go field names; manifests and policies
+ // cross to Java keyed by the reference's JSON tags, as in TypeScript and Python.
+ private static final Map<Class<?>, Map<String, String>> TAGS = Map.ofEntries(
+  Map.entry(Generated.Manifest.class, Map.of("EncryptionInformation", "encryptionInformation", "Payload", "payload", "Assertions", "assertions", "TDFVersion", "schemaVersion")),
+  Map.entry(Generated.EncryptionInformation.class, Map.of("KeyAccessType", "type", "Policy", "policy", "KeyAccessObjs", "keyAccess", "Method", "method", "IntegrityInformation", "integrityInformation")),
+  Map.entry(Generated.KeyAccess.class, Map.of("KeyType", "type", "KasURL", "url", "Protocol", "protocol", "WrappedKey", "wrappedKey", "PolicyBinding", "policyBinding", "EncryptedMetadata", "encryptedMetadata", "KID", "kid", "SplitID", "sid", "SchemaVersion", "schemaVersion", "EphemeralPublicKey", "ephemeralPublicKey")),
+  Map.entry(Generated.PolicyBinding.class, Map.of("Alg", "alg", "Hash", "hash")),
+  Map.entry(Generated.Method.class, Map.of("Algorithm", "algorithm", "IV", "iv", "IsStreamable", "isStreamable")),
+  Map.entry(Generated.IntegrityInformation.class, Map.of("RootSignature", "rootSignature", "SegmentHashAlgorithm", "segmentHashAlg", "DefaultSegmentSize", "segmentSizeDefault", "DefaultEncryptedSegSize", "encryptedSegmentSizeDefault", "Segments", "segments")),
+  Map.entry(Generated.RootSignature.class, Map.of("Algorithm", "alg", "Signature", "sig")),
+  Map.entry(Generated.Segment.class, Map.of("Hash", "hash", "Size", "segmentSize", "EncryptedSize", "encryptedSegmentSize")),
+  Map.entry(Generated.Payload.class, Map.of("Type", "type", "URL", "url", "Protocol", "protocol", "MimeType", "mimeType", "IsEncrypted", "isEncrypted")),
+  Map.entry(Generated.Assertion.class, Map.of("ID", "id", "Type", "type", "Scope", "scope", "AppliesToState", "appliesToState", "Statement", "statement", "Binding", "binding")),
+  Map.entry(Generated.Statement.class, Map.of("Format", "format", "Schema", "schema", "Value", "value")),
+  Map.entry(Generated.Binding.class, Map.of("Method", "method", "Signature", "signature")),
+  Map.entry(Generated.PolicyObject.class, Map.of("UUID", "uuid", "Body", "body")),
+  Map.entry(Generated.PolicyBody.class, Map.of("DataAttributes", "dataAttributes", "Dissem", "dissem")),
+  Map.entry(Generated.AttributeObject.class, Map.of("Attribute", "attribute", "DisplayName", "displayName", "IsDefault", "isDefault", "PubKey", "pubKey", "KasURL", "kasURL")),
+  Map.entry(Generated.SimpleKasKey.class, Map.of("KasURI", "kasUri", "PublicKey", "publicKey", "KasID", "kasId")),
+  Map.entry(Generated.SimpleKasPublicKey.class, Map.of("Algorithm", "algorithm", "Kid", "kid", "Pem", "pem")),
+  Map.entry(Generated.PlatformConfiguration.class, Map.of("Entries", "entries")),
+  Map.entry(Generated.PlatformConfigurationEntry.class, Map.of("Key", "key", "Value", "value")));
+
+ static String decode(String binary) {
+  if (binary == null) return "";
+  byte[] a = new byte[binary.length()];
+  for (int i = 0; i < a.length; i++) {
+   char c = binary.charAt(i);
+   if (c > 255) throw new IllegalStateException("invalid source text");
+   a[i] = (byte) c;
+  }
+  return decodeBytes(a);
+ }
+
+ static String decodeBytes(byte[] bytes) {
+  try {
+   return StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
+  } catch (CharacterCodingException e) {
+   throw new IllegalStateException("invalid generated UTF8 text", e);
+  }
+ }
+
+ static String encode(String value) {
+  if (value == null) return "";
+  try {
+   ByteBuffer encoded = StandardCharsets.UTF_8.newEncoder().onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT).encode(CharBuffer.wrap(value));
+   byte[] a = new byte[encoded.remaining()];
+   encoded.get(a);
+   return new String(a, StandardCharsets.ISO_8859_1);
+  } catch (CharacterCodingException e) {
+   throw Library.invalid();
+  }
+ }
+
+ static String[] encode(List<String> values) {
+  if (values == null) return null;
+  if (values.size() > 64 << 20) throw Library.invalid();
+  String[] result = new String[values.size()];
+  for (int i = 0; i < result.length; i++) result[i] = encode(values.get(i));
+  return result;
+ }
+
+ static List<String> decode(String[] values) {
+  if (values == null) return List.of();
+  List<String> result = new ArrayList<>(values.length);
+  for (String v : values) result.add(decode(v));
+  return Collections.unmodifiableList(result);
+ }
+
+ static byte[] bytes(byte[] value) {
+  if (value == null) throw Library.invalid();
+  return value;
+ }
+
+ /** A generated value tree as unmodifiable Java collections keyed by JSON tags. */
+ @SuppressWarnings("unchecked")
+ static <T> T fromGenerated(Object value) {
+  if (value == null) return null;
+  if (value instanceof String s) return (T) decode(s);
+  if (value instanceof Long || value instanceof Boolean) return (T) value;
+  if (value instanceof byte[] b) return (T) b.clone();
+  if (value instanceof Object[] array) {
+   List<Object> list = new ArrayList<>(array.length);
+   for (Object item : array) list.add(fromGenerated(item));
+   return (T) Collections.unmodifiableList(list);
+  }
+  Map<String, String> tags = TAGS.getOrDefault(value.getClass(), Map.of());
+  Map<String, Object> map = new LinkedHashMap<>();
+  try {
+   for (java.lang.reflect.Field field : value.getClass().getFields()) {
+    Object converted = fromGenerated(field.get(value));
+    if (converted == null) converted = field.getType().isArray() ? List.of() : "";
+    map.put(tags.getOrDefault(field.getName(), field.getName()), converted);
+   }
+  } catch (IllegalAccessException e) {
+   throw new IllegalStateException(e);
+  }
+  return (T) Collections.unmodifiableMap(map);
+ }
+
+ static Map<String, Object> map(Object value) {
+  Map<String, Object> result = fromGenerated(value);
+  return result == null ? Map.of() : result;
+ }
+
+ /** Waits for an operation; a timeout cancels it and reports deadline_exceeded. */
+ static <T> T await(Library.Operation<T> op, Duration timeout) {
+  CompletableFuture<T> future = op.completion().toCompletableFuture();
+  try {
+   return timeout == null ? future.get() : future.get(timeout.toNanos(), TimeUnit.NANOSECONDS);
+  } catch (TimeoutException e) {
+   op.cancel();
+   try {
+    future.get();
+   } catch (InterruptedException | ExecutionException ignored) {
+    Thread.currentThread().interrupt();
+    Thread.interrupted();
+   }
+   throw OpenTDFException.boundary("deadline_exceeded", "deadline exceeded after " + timeout);
+  } catch (InterruptedException e) {
+   op.cancel();
+   Thread.currentThread().interrupt();
+   throw OpenTDFException.boundary("canceled", "interrupted");
+  } catch (ExecutionException e) {
+   throw translate(e.getCause());
+  }
+ }
+
+ static RuntimeException translate(Throwable e) {
+  if (e instanceof Library.Failure f) return new OpenTDFException(f);
+  if (e instanceof RuntimeException r) return r;
+  return new IllegalStateException(e);
+ }
+
+ /** A CompletableFuture whose cancel cancels the library operation. */
+ static final class Future<T> extends CompletableFuture<T> {
+  private final Library.Operation<?> op;
+  Future(Library.Operation<?> op) { this.op = op; }
+  @Override public boolean cancel(boolean mayInterrupt) { op.cancel(); return super.cancel(mayInterrupt); }
+ }
+
+ static <T, R> CompletableFuture<R> future(Library.Operation<T> op, Function<T, R> convert) {
+  Future<R> future = new Future<>(op);
+  op.completion().whenComplete((value, error) -> {
+   if (error != null) {
+    Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
+    future.completeExceptionally(translate(cause));
+   } else {
+    try {
+     future.complete(convert.apply(value));
+    } catch (Throwable t) {
+     future.completeExceptionally(t);
+    }
+   }
+  });
+  return future;
+ }
+
+ /** Compact JSON for a platform configuration member that is not a string. */
+ static String json(Object v) {
+  StringBuilder b = new StringBuilder();
+  json(b, v);
+  return b.toString();
+ }
+
+ private static void json(StringBuilder b, Object v) {
+  if (v == null) b.append("null");
+  else if (v instanceof String s) {
+   b.append('"');
+   for (int i = 0; i < s.length(); i++) {
+    char c = s.charAt(i);
+    if (c == '"' || c == '\\') b.append('\\').append(c);
+    else if (c < 0x20) b.append(String.format(java.util.Locale.ROOT, "\\u%04x", (int) c));
+    else b.append(c);
+   }
+   b.append('"');
+  } else if (v instanceof Boolean || v instanceof Number) b.append(v);
+  else if (v instanceof Map<?, ?> m) {
+   b.append('{');
+   boolean first = true;
+   for (Map.Entry<?, ?> e : m.entrySet()) {
+    if (!first) b.append(',');
+    first = false;
+    json(b, String.valueOf(e.getKey()));
+    b.append(':');
+    json(b, e.getValue());
+   }
+   b.append('}');
+  } else if (v instanceof Iterable<?> l) {
+   b.append('[');
+   boolean first = true;
+   for (Object item : l) {
+    if (!first) b.append(',');
+    first = false;
+    json(b, item);
+   }
+   b.append(']');
+  } else json(b, String.valueOf(v));
+ }
+
+ static <T> Library.Operation<T> run(java.util.function.Supplier<Library.Operation<T>> call) {
+  try {
+   return call.get();
+  } catch (Library.Failure f) {
+   return Library.failed(f);
+  }
+ }
+}

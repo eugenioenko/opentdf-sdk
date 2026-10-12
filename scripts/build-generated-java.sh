@@ -9,7 +9,7 @@ if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; "$COMPILER" compile -gate cooperative -target java -out "$DEST" ./src/library ./src)
 cmp "$SDK/src/hosts/java/dependencies.lock.json" "$SDK/../goalchemy/targets/java/dependencies.lock.json"
 mkdir -p "$DEST/src/io/opentdf/tdf3" "$DEST/lib" "$DEST/licenses"
-cp "$SDK/src/hosts/java/TDF3.java.in" "$DEST/src/io/opentdf/tdf3/TDF3.java"
+for adapter in "$SDK"/src/hosts/java/*.java.in; do cp "$adapter" "$DEST/src/io/opentdf/tdf3/$(basename "${adapter%.in}")"; done
 cp "$SDK/src/hosts/java/dependencies.lock.json" "$DEST/dependencies.lock.json"
 "$SDK/../goalchemy/targets/java/tests/crypto-dependencies.sh" "$DEST/lib" >/dev/null
 if [[ -n ${JAVA_HOME:-} ]]; then PATH="$JAVA_HOME/bin:$PATH"; fi
@@ -20,7 +20,7 @@ sources=sorted({p/name for name in manifest['generated_files']+manifest['runtime
 if not sources or any(not source.is_file() for source in sources):
  raise RuntimeError('generated Java source inventory is incomplete')
 subprocess.run(['javac','-nowarn','-encoding','UTF-8','-d',str(p/'classes'),
-                *map(str,sources),str(p/'src/io/opentdf/tdf3/TDF3.java')],check=True)
+                *map(str,sources),*map(str,sorted((p/'src/io/opentdf/tdf3').glob('*.java')))],check=True)
 PY
 jar --create --date=2026-01-01T00:00:00Z --file "$DEST/tdf3-java.jar" -C "$DEST/classes" .
 python3 - "$DEST" "$SDK" <<'PY'

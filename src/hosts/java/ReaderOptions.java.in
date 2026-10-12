@@ -1,0 +1,35 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import java.util.List;
+
+/** The reference's TDFReaderConfig options (shared-source ReaderOptions); every unset field is the reference default. */
+public final class ReaderOptions {
+ private final Generated.ReaderOptions generated;
+ private ReaderOptions(Generated.ReaderOptions generated) { this.generated = generated; }
+ Generated.ReaderOptions toGenerated() { return generated; }
+
+ public static Builder builder() { return new Builder(); }
+ public static ReaderOptions defaults() { return builder().build(); }
+
+ public static final class Builder {
+  private final Generated.ReaderOptions o = new Generated.ReaderOptions();
+  private Builder() {}
+  /** WithDisableAssertionVerification */
+  public Builder disableAssertionVerification(boolean disable) { o.DisableAssertionVerification = disable; return this; }
+  /** WithKasAllowlist; unset fetches the registry's list. */
+  public Builder kasAllowlist(List<String> allowlist) { o.KasAllowlist = Values.encode(allowlist); return this; }
+  public Builder kasAllowlist(String... allowlist) { return kasAllowlist(List.of(allowlist)); }
+  /** WithIgnoreAllowlist */
+  public Builder ignoreAllowlist(boolean ignore) { o.IgnoreAllowlist = ignore; return this; }
+  /** WithMaxManifestSize; 0 keeps the reference default. */
+  public Builder maxManifestSize(long size) { o.MaxManifestSize = size; return this; }
+  /** WithSchemaValidation; unsupported in this build. */
+  public Builder schemaValidation(long intensity) { o.SchemaValidation = intensity; return this; }
+  /** WithSessionKeyType: rsa:2048 (default) or ec:secp256r1. */
+  public Builder sessionKeyType(String keyType) { o.SessionKeyType = Values.encode(keyType); return this; }
+  /** WithTDFFulfillableObligationFQNs */
+  public Builder fulfillableObligationFqns(List<String> fqns) { o.FulfillableObligationFQNs = Values.encode(fqns); return this; }
+  public ReaderOptions build() { return new ReaderOptions(o); }
+ }
+}
