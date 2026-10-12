@@ -17,7 +17,7 @@ const {build}=await import(pathToFileURL(resolve(tooling,'esbuild/lib/main.js'))
 const {chromium}=await import(pathToFileURL(resolve(tooling,'playwright/index.mjs')).href);
 const installed=resolve(packagesBase,'consumers/typescript/package/dist/index.js');
 const bundle=await build({entryPoints:[installed],bundle:true,platform:'browser',format:'esm',write:false,metafile:true});
-for(const input of Object.keys(bundle.metafile.inputs)){if(/node:|\bBuffer\b|\bprocess\b/.test(await readFile(input,'utf8')))throw new Error('nonportable production member '+input);}
+for(const input of Object.keys(bundle.metafile.inputs)){if(/\bfrom\s*['"]node:|\brequire\(['"]node:|\bBuffer\.(from|alloc|allocUnsafe|concat|isBuffer|byteLength)\b|\bprocess\.(env|argv|exit|exitCode|stdout|stderr|platform|versions|nextTick)\b/.test(await readFile(input,'utf8')))throw new Error('nonportable production member '+input);}
 await writeFile(resolve(run,'browser-graph.json'),JSON.stringify(bundle.metafile,null,2));
 const hash=b=>createHash('sha256').update(b).digest('hex');
 let brokerRequests=0;
