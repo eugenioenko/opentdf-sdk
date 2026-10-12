@@ -9,7 +9,7 @@
     },
     "platform": {
       "path": "../platform",
-      "revision": "f2635158b681fa970aafce7eacf108a453521f63"
+      "revision": "4d9e555bddf0c850190680807118fbac1851a9aa"
     },
     "web-sdk": {
       "path": "../web-sdk",
