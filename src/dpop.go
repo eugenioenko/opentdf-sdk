@@ -1,118 +1,180 @@
 package sdk
 
 import (
-	"github.com/eugenioenko/goalchemy/lib/clock"
-	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/lib/encoding"
-	"github.com/eugenioenko/goalchemy/lib/http"
-	j "opentdf-local/sdk/src/tdf/json"
+	"github.com/eugenioenko/goalchemy/lib/sync"
+	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
+	"github.com/eugenioenko/goalchemy/std/errors"
 )
 
-type nonceEntry struct {
-	origin string
-	value  string
+// validDPoPAlgs is the single source of truth for the JWS algorithms permitted
+// for DPoP proofs (RFC 9449 §4.2, restricted to the asymmetric families we
+// support).
+var validDPoPAlgs = []SigningAlgorithm{ES256, ES384, ES512, RS256, RS384, RS512}
+
+// Valid reports whether a is a SigningAlgorithm supported for DPoP proofs.
+func (a SigningAlgorithm) Valid() bool {
+	for _, v := range validDPoPAlgs {
+		if v == a {
+			return true
+		}
+	}
+	return false
 }
 
-// authJWK emits only the RFC 7638 required public members in lexical order.
-func authJWK(key *crypto.Key, algorithm string) (j.Value, error) {
-	expected := "ec:secp256r1"
-	if algorithm == "RS256" {
-		expected = "rsa:2048"
-	}
-	if e := validateWrappingKey(key, expected); e != nil {
-		return j.Value{}, e
-	}
-	k, e := key.PublicJWK()
-	if e != nil {
-		return j.Value{}, e
-	}
-	if algorithm == "RS256" {
-		return object([]string{"e", "kty", "n"}, []j.Value{j.Str(k[3]), j.Str(k[0]), j.Str(k[2])}), nil
-	}
-	return object([]string{"crv", "kty", "x", "y"}, []j.Value{j.Str(k[1]), j.Str(k[0]), j.Str(k[4]), j.Str(k[5])}), nil
-}
-func authThumbprint(key *crypto.Key, algorithm string) (string, error) {
-	jwk, e := authJWK(key, algorithm)
-	if e != nil {
-		return "", e
-	}
-	data, e := j.Marshal(jwk, jsonLimits())
-	if e != nil {
-		return "", e
-	}
-	hash, e := crypto.SHA256(data)
-	if e != nil {
-		return "", e
-	}
-	return encoding.Base64URLEncode(hash)
+const dpopAllowedAlgs = "ES256, ES384, ES512, RS256, RS384, RS512"
+
+// dpopSigner holds the DPoP key for the lifetime of an SDK: it signs the
+// token-endpoint and resource proofs, binds the access token through the
+// JWK thumbprint, and remembers the nonce each origin last issued.
+type dpopSigner struct {
+	key        *crypto.Key
+	algorithm  SigningAlgorithm
+	thumbprint string
+	mu         sync.Mutex
+	nonces     map[string]string
 }
 
-// validateBinding checks consistency, not JWT authenticity. Authentication of
-// the issuer belongs to the trusted token endpoint/provider and resource server.
-func (c *Client) validateBinding(token AccessToken) error {
-	dots := []int{}
-	for i, b := range []byte(token.Value) {
-		if b == '.' {
-			dots = append(dots, i)
+func newDPoPSigner(key *crypto.Key, algorithm SigningAlgorithm) (*dpopSigner, error) {
+	thumbprint, err := jwkThumbprint(key)
+	if err != nil {
+		return nil, err
+	}
+	return &dpopSigner{key: key, algorithm: algorithm, thumbprint: thumbprint, nonces: map[string]string{}}, nil
+}
+
+func (d *dpopSigner) close() {
+	if d != nil && d.key != nil {
+		d.key.Close()
+		d.key = nil
+	}
+}
+
+// generateDPoPKeyForAlg generates an ephemeral DPoP private key for the given algorithm.
+// Supported algorithms: ES256, ES384, ES512, RS256, RS384, RS512.
+func generateDPoPKeyForAlg(alg SigningAlgorithm) (*crypto.Key, error) {
+	switch alg {
+	case ES256:
+		return crypto.GenerateP256()
+	case ES384:
+		return crypto.GenerateP384()
+	case ES512:
+		return crypto.GenerateP521()
+	case RS256, RS384, RS512:
+		return crypto.GenerateRSA2048()
+	}
+	return nil, errors.New("unsupported DPoP algorithm \"" + string(alg) + "\"; allowed: " + dpopAllowedAlgs)
+}
+
+// loadDPoPKeyFromPEM parses a PEM-encoded private key. The DPoP algorithm is
+// inferred from the key type: EC P-256 → ES256, P-384 → ES384, P-521 → ES512,
+// RSA → RS256.
+func loadDPoPKeyFromPEM(pem string) (*crypto.Key, SigningAlgorithm, error) {
+	key, err := crypto.ImportPEM(pem)
+	if err != nil {
+		return nil, "", errors.New("failed to parse DPoP key PEM: " + err.Error())
+	}
+	if _, err := key.PrivatePEM(); err != nil {
+		key.Close()
+		return nil, "", errors.New("DPoP key PEM must contain private signing material; a public-only key cannot sign proofs")
+	}
+	alg, err := signingAlgorithmForKey(key)
+	if err != nil {
+		key.Close()
+		return nil, "", err
+	}
+	return key, alg, nil
+}
+
+// validateDPoPKey ensures the algorithm family matches the key type and, for
+// EC keys, that the curve matches the ES algorithm.
+func validateDPoPKey(key *crypto.Key, alg SigningAlgorithm) error {
+	if !alg.Valid() {
+		return errors.New("unsupported DPoP JWK algorithm \"" + string(alg) + "\"; allowed: " + dpopAllowedAlgs)
+	}
+	inferred, err := signingAlgorithmForKey(key)
+	if err != nil {
+		return err
+	}
+	switch alg {
+	case RS256, RS384, RS512:
+		if inferred != RS256 {
+			return errors.New("DPoP algorithm \"" + string(alg) + "\" requires an RSA key")
 		}
-	}
-	// Recognize a compact JWT by its JOSE JSON header, not token punctuation.
-	// Explicitly attested opaque providers may legitimately return dotted values.
-	jwt := false
-	if len(dots) > 0 && dots[0] > 0 {
-		header, err := encoding.Base64URLDecode(token.Value[:dots[0]])
-		if err == nil {
-			v, err := j.Parse(header, jsonLimits())
-			jwt = err == nil && v.Kind == j.Object && (text(v, "alg") != "" || lower(text(v, "typ")) == "jwt")
+	default:
+		if inferred == RS256 {
+			return errors.New("DPoP algorithm \"" + string(alg) + "\" requires an EC key, got key type \"RSA\"")
 		}
-	}
-	if !jwt {
-		if token.ConfirmationJKT != c.thumbprint {
-			return failure("auth", "token_binding", nil)
+		if inferred != alg {
+			return errors.New("DPoP algorithm \"" + string(alg) + "\" does not match EC key curve (expected \"" + string(inferred) + "\" for this curve)")
 		}
-		return nil
-	}
-	if len(dots) != 2 || dots[1] == len(token.Value)-1 {
-		return failure("auth", "token_binding", nil)
-	}
-	claims, e := encoding.Base64URLDecode(token.Value[dots[0]+1 : dots[1]])
-	if e != nil {
-		return failure("auth", "token_binding", e)
-	}
-	v, e := j.Parse(claims, jsonLimits())
-	if e != nil {
-		return failure("auth", "token_binding", e)
-	}
-	cnf, ok := v.Get("cnf")
-	if !ok || cnf.Kind != j.Object || text(cnf, "jkt") != c.thumbprint {
-		return failure("auth", "token_binding", nil)
 	}
 	return nil
 }
-func (c *Client) dpopProof(method, htu, token, nonce string) (string, error) {
-	jwk, e := authJWK(c.authKey, c.config.AuthAlgorithm)
-	if e != nil {
-		return "", failure("dpop", "auth_key", e)
+
+// resolveDPoPKey returns the DPoP signer for the config by the reference's
+// fixed priority: a PEM key (with an optional algorithm override), an
+// algorithm alone (fresh ephemeral key), else nil, nil.
+func resolveDPoPKey(c *config) (*dpopSigner, error) {
+	switch {
+	case c.dpopKeyPEM != "":
+		key, alg, err := loadDPoPKeyFromPEM(c.dpopKeyPEM)
+		if err != nil {
+			return nil, errors.New("failed to load DPoP key from PEM: " + err.Error())
+		}
+		if c.dpopAlgorithm != "" {
+			if !c.dpopAlgorithm.Valid() {
+				key.Close()
+				return nil, errors.New("invalid DPoP algorithm override \"" + string(c.dpopAlgorithm) + "\"; allowed: " + dpopAllowedAlgs)
+			}
+			alg = c.dpopAlgorithm
+		}
+		if err := validateDPoPKey(key, alg); err != nil {
+			key.Close()
+			return nil, err
+		}
+		return newDPoPSigner(key, alg)
+	case c.dpopAlgorithm != "":
+		key, err := generateDPoPKeyForAlg(c.dpopAlgorithm)
+		if err != nil {
+			return nil, errors.New("failed to generate DPoP key: " + err.Error())
+		}
+		return newDPoPSigner(key, c.dpopAlgorithm)
 	}
-	random, e := crypto.Random(32)
-	if e != nil {
-		return "", failure("dpop", "random", e)
+	return nil, nil
+}
+
+func (d *dpopSigner) cachedNonce(origin string) string {
+	d.mu.Lock()
+	value := d.nonces[origin]
+	d.mu.Unlock()
+	return value
+}
+
+func (d *dpopSigner) cacheNonce(origin, nonce string) {
+	d.mu.Lock()
+	d.nonces[origin] = nonce
+	d.mu.Unlock()
+}
+
+// proof builds a DPoP proof JWT (RFC 9449 §4.2) for method and htu. token is
+// hashed into ath for resource requests; nonce is the server's last nonce.
+func (d *dpopSigner) proof(clock Clock, method, htu, token, nonce string) (string, error) {
+	jwk, err := publicJWK(d.key)
+	if err != nil {
+		return "", err
 	}
-	id, e := encoding.Base64URLEncode(random)
-	if e != nil {
-		return "", e
+	random, err := crypto.Random(32)
+	if err != nil {
+		return "", err
 	}
-	now := clock.Unix()
-	if now <= 0 {
-		return "", failure("dpop", "clock", nil)
+	id, err := encoding.Base64URLEncode(random)
+	if err != nil {
+		return "", err
 	}
-	header, e := j.Marshal(object([]string{"alg", "typ", "jwk"}, []j.Value{j.Str(c.config.AuthAlgorithm), j.Str("dpop+jwt"), jwk}), jsonLimits())
-	if e != nil {
-		return "", e
-	}
-	names := []string{"jti", "iat", "htm", "htu"}
-	values := []j.Value{j.Str(id), j.Num(integerString(now)), j.Str(method), j.Str(htu)}
+	header := jsonvalue.Object("alg", jsonvalue.String(string(d.algorithm)), "typ", jsonvalue.String("dpop+jwt"), "jwk", jwk)
+	claims := jsonvalue.Object("jti", jsonvalue.String(id), "iat", jsonvalue.Int(clock.Now()), "htm", jsonvalue.String(method), "htu", jsonvalue.String(htu))
 	if token != "" {
 		hash, err := crypto.SHA256([]byte(token))
 		if err != nil {
@@ -122,117 +184,10 @@ func (c *Client) dpopProof(method, htu, token, nonce string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		names = append(names, "ath")
-		values = append(values, j.Str(ath))
+		claims = claims.Set("ath", jsonvalue.String(ath))
 	}
 	if nonce != "" {
-		names = append(names, "nonce")
-		values = append(values, j.Str(nonce))
+		claims = claims.Set("nonce", jsonvalue.String(nonce))
 	}
-	claims, e := j.Marshal(object(names, values), jsonLimits())
-	if e != nil {
-		return "", e
-	}
-	return signJWT(c.authKey, c.config.AuthAlgorithm, header, claims)
-}
-func responseNonce(headers []string) (string, error) {
-	value := ""
-	count := 0
-	for i := 0; i+1 < len(headers); i += 2 {
-		if lower(headers[i]) == "dpop-nonce" {
-			count++
-			value = headers[i+1]
-		}
-	}
-	if count == 0 {
-		return "", nil
-	}
-	if count != 1 || len(value) == 0 || len(value) > 1024 {
-		return "", failure("dpop", "invalid_nonce", nil)
-	}
-	// RFC 9449 nonce ABNF is unquoted visible ASCII excluding quote/backslash.
-	for _, b := range []byte(value) {
-		if b < 33 || b > 126 || b == '"' || b == '\\' {
-			return "", failure("dpop", "invalid_nonce", nil)
-		}
-	}
-	return value, nil
-}
-func (c *Client) cachedNonce(origin string) string {
-	c.mu.Lock()
-	value := ""
-	for _, entry := range c.nonces {
-		if entry.origin == origin {
-			value = entry.value
-		}
-	}
-	c.mu.Unlock()
-	return value
-}
-func (c *Client) cacheNonce(origin, nonce string) {
-	c.mu.Lock()
-	if !c.closed {
-		found := false
-		for i := range c.nonces {
-			if c.nonces[i].origin == origin {
-				c.nonces[i].value = nonce
-				found = true
-			}
-		}
-		// Trusted routes cap resources at 64, plus platform metadata and token origin.
-		if !found && len(c.nonces) < 66 {
-			c.nonces = append(c.nonces, nonceEntry{origin: origin, value: nonce})
-		}
-	}
-	c.mu.Unlock()
-}
-func (c *Client) proofHTTP(ctx context.Context, method, url string, headers []string, body []byte, token string, proof bool) (int, []string, []byte, error) {
-	if !proof {
-		return http.Do(ctx, method, url, headers, body, 1<<20, c.config.TimeoutMillis)
-	}
-	u, e := parseEndpoint(url, c.config.AllowHTTP)
-	if e != nil {
-		return 0, nil, nil, e
-	}
-	// Preserve the complete request path. parseEndpoint's route normalization
-	// removes one trailing slash, which is meaningful in a DPoP HTTP URI.
-	path := u.path
-	if len(url) > 0 && url[len(url)-1] == '/' {
-		path += "/"
-	}
-	if path == "" {
-		path = "/"
-	}
-	htu := u.origin + path
-	nonce := c.cachedNonce(u.origin)
-	for attempt := 0; attempt < 2; attempt++ {
-		if e := c.check(ctx, "dpop"); e != nil {
-			return 0, nil, nil, e
-		}
-		jwt, e := c.dpopProof(method, htu, token, nonce)
-		if e != nil {
-			return 0, nil, nil, e
-		}
-		outgoing := make([]string, len(headers), len(headers)+2)
-		copy(outgoing, headers)
-		outgoing = append(outgoing, "DPoP", jwt)
-		status, responseHeaders, data, e := http.Do(ctx, method, url, outgoing, body, 1<<20, c.config.TimeoutMillis)
-		if e != nil {
-			return 0, nil, nil, failure("dpop", "transport", e)
-		}
-		received, e := responseNonce(responseHeaders)
-		if e != nil {
-			return status, responseHeaders, nil, &Error{Code: "invalid_nonce", Operation: "dpop", HTTPStatus: status, Cause: e}
-		}
-		challenge := status == 400 || status == 401
-		if received != "" && (challenge || status >= 200 && status < 300) {
-			c.cacheNonce(u.origin, received)
-		}
-		if attempt == 0 && challenge && received != "" && received != nonce {
-			nonce = received
-			continue
-		}
-		return status, responseHeaders, data, nil
-	}
-	return 0, nil, nil, failure("dpop", "retry_limit", nil)
+	return signJWT(d.key, d.algorithm, header, claims)
 }
