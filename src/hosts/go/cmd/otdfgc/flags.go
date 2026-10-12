@@ -10,8 +10,8 @@ import (
 )
 
 // flagSpec is the otdfctl flag subset of the CLI contract; bool flags take no
-// value. Every contract flag is declared so that it parses, and the ones the
-// façade cannot honour are rejected afterwards with a reason instead of being
+// value. Every contract flag is declared so that it parses, and the ones this
+// build cannot honour are rejected afterwards with a reason instead of being
 // ignored.
 type flagSpec struct {
 	name string
@@ -86,7 +86,7 @@ func parseFlags(args []string, spec []flagSpec) (*parsed, error) {
 func (p *parsed) value(name string) string { return p.values[name] }
 func (p *parsed) flag(name string) bool    { return p.set[name] }
 
-// unsupportedRule names a flag the façade cannot honour, optionally only for
+// unsupportedRule names a flag this build cannot honour, optionally only for
 // values other than the ones listed in allowed.
 type unsupportedRule struct {
 	name    string
@@ -99,14 +99,14 @@ var encryptUnsupported = []unsupportedRule{
 	{name: "target-mode", allowed: []string{"4.3.0"}},
 	{name: "policy-mode", allowed: []string{"encrypted"}},
 	{name: "wrapping-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1"}},
-	{name: "dpop", allowed: []string{"ES256", "RS256"}},
+	{name: "dpop", allowed: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"}},
 	{name: "with-client-creds-file"},
 }
 
 var decryptUnsupported = []unsupportedRule{
 	{name: "with-assertion-verification-keys"},
 	{name: "session-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1"}},
-	{name: "dpop", allowed: []string{"ES256", "RS256"}},
+	{name: "dpop", allowed: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"}},
 	{name: "with-client-creds-file"},
 }
 
@@ -137,39 +137,40 @@ type clientCredentials struct {
 	ClientSecret string `json:"clientSecret"`
 }
 
-// config builds the façade configuration from --host, --with-client-creds and
-// the DPoP flags. Discovery fills IssuerURL afterwards.
-func (p *parsed) config() (g.Config, int, error) {
+// options builds the SDK options from --host, --with-client-creds and the
+// DPoP and TLS flags; the SDK discovers everything else from the platform.
+func (p *parsed) options() (string, []g.Option, int, error) {
 	host := strings.TrimRight(p.value("host"), "/")
 	if host == "" {
-		return g.Config{}, exitUsage, fmt.Errorf("--host is required\n%s", usage)
+		return "", nil, exitUsage, fmt.Errorf("--host is required\n%s", usage)
 	}
 	creds := p.value("with-client-creds")
 	if creds == "" {
-		return g.Config{}, exitUsage, fmt.Errorf("--with-client-creds is required\n%s", usage)
+		return "", nil, exitUsage, fmt.Errorf("--with-client-creds is required\n%s", usage)
 	}
 	var c clientCredentials
 	if err := json.Unmarshal([]byte(creds), &c); err != nil || c.ClientID == "" || c.ClientSecret == "" {
-		return g.Config{}, exitUsage, fmt.Errorf("--with-client-creds must be JSON with clientId and clientSecret")
+		return "", nil, exitUsage, fmt.Errorf("--with-client-creds must be JSON with clientId and clientSecret")
 	}
-	insecure := strings.HasPrefix(strings.ToLower(host), "http://")
-	if p.flag("tls-no-verify") && !insecure {
-		return g.Config{}, exitUsage, fmt.Errorf("unsupported in this build: --tls-no-verify with an https host")
+	opts := []g.Option{g.WithClientCredentials(c.ClientID, c.ClientSecret, nil)}
+	if strings.HasPrefix(strings.ToLower(host), "http://") {
+		opts = append(opts, g.WithInsecurePlaintextConn())
 	}
-	cfg := g.Config{PlatformURL: host, ClientID: c.ClientID, ClientSecret: c.ClientSecret, AllowHTTP: insecure}
+	if p.flag("tls-no-verify") {
+		opts = append(opts, g.WithInsecureSkipVerifyConn())
+	}
 	if alg := p.value("dpop"); alg != "" {
-		cfg.DPoP = true
-		cfg.AuthAlgorithm = alg
+		opts = append(opts, g.WithDPoPAlgorithm(g.SigningAlgorithm(alg)))
 	}
 	if key := p.value("dpop-key"); key != "" {
-		if !cfg.DPoP {
-			return g.Config{}, exitUsage, fmt.Errorf("--dpop-key needs --dpop")
+		if p.value("dpop") == "" {
+			return "", nil, exitUsage, fmt.Errorf("--dpop-key needs --dpop")
 		}
 		pem, err := os.ReadFile(key)
 		if err != nil {
-			return g.Config{}, exitError, fmt.Errorf("Failed to read DPoP key %s: %s", key, err)
+			return "", nil, exitError, fmt.Errorf("Failed to read DPoP key %s: %s", key, err)
 		}
-		cfg.AuthPrivateKeyPEM = string(pem)
+		opts = append(opts, g.WithDPoPKeyPEM(pem))
 	}
-	return cfg, exitSuccess, nil
+	return host, opts, exitSuccess, nil
 }

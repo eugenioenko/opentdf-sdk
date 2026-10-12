@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"io"
 	"log"
@@ -16,112 +20,151 @@ import (
 	g "goalchemyout"
 )
 
-// These endpoints only reject requests. Positive TDF/KAS interoperability is
-// established separately against the real service, never by these fixtures.
+// A platform that only discovers and rejects: no KAS. Positive TDF/KAS
+// interoperability is established separately against the real service.
+func fakePlatform(mode string, requests *atomic.Int32, entered, released chan struct{}) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		requests.Add(1)
+		io.Copy(io.Discard, r.Body)
+		r.Body.Close()
+		w.Header().Set("Content-Type", "application/json")
+		issuer := "http://" + r.Host + "/issuer"
+		switch {
+		case mode == "wellknown-500" && r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
+			w.WriteHeader(500)
+			io.WriteString(w, `{"code":"internal","message":"harmless fixture diagnostic"}`)
+		case mode == "redirect" && r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
+			w.Header().Set("Location", "/leak")
+			w.WriteHeader(307)
+		case mode == "content-type" && r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
+			w.Header().Set("Content-Type", "text/html")
+			io.WriteString(w, `{}`)
+		case mode == "malformed-response" && r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
+			io.WriteString(w, `{bad`)
+		case (mode == "caller-deadline" || mode == "source-deadline") && r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
+			entered <- struct{}{}
+			<-r.Context().Done()
+			released <- struct{}{}
+		case r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
+			json.NewEncoder(w).Encode(map[string]any{"configuration": map[string]any{"platform_issuer": issuer, "idp": map[string]any{"issuer": issuer, "token_endpoint": issuer + "/protocol/openid-connect/token"}}})
+		case r.URL.Path == "/issuer/.well-known/openid-configuration":
+			json.NewEncoder(w).Encode(map[string]any{"token_endpoint": issuer + "/protocol/openid-connect/token"})
+		case r.URL.Path == "/issuer/protocol/openid-connect/token":
+			w.WriteHeader(401)
+			io.WriteString(w, `{"error":"invalid_client","error_description":"harmless fixture diagnostic"}`)
+		case r.URL.Path == "/grpc.health.v1.Health/Check":
+			io.WriteString(w, `{"status":"SERVING"}`)
+		case r.URL.Path == "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers":
+			io.WriteString(w, `{"keyAccessServers":[]}`)
+		default:
+			w.WriteHeader(404)
+			io.WriteString(w, `{"code":"unimplemented","message":"`+r.URL.Path+`"}`)
+		}
+	}
+}
+
+func offlineKASKey() (string, *rsa.PrivateKey) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	fail("kas key", err)
+	der, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
+	fail("kas key der", err)
+	return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: der})), key
+}
+
+func kind(err error) (string, map[string]any) {
+	var failure *g.Error
+	var boundary *g.LibraryError
+	if errors.As(err, &failure) {
+		return string(failure.Kind), map[string]any{"kind": failure.Kind, "op": failure.Op, "httpStatus": failure.HTTPStatus, "connectCode": failure.ConnectCode, "message": failure.Message}
+	}
+	if errors.As(err, &boundary) {
+		return "boundary:" + boundary.Kind, map[string]any{"boundary": boundary.Kind}
+	}
+	return "untyped", map[string]any{"error": err.Error()}
+}
+
 func controlledNegatives(run string) {
-	archive := read(filepath.Join(run, "binary.generated.tdf"))
-	callbacks := g.TokenCallbacks(func(context.Context) (g.AccessToken, error) {
-		return g.AccessToken{Value: "negative-fixture-token", Scheme: "Bearer", ExpiresAt: time.Now().Unix() + 300}, nil
-	})
 	var rows []map[string]any
-	for _, name := range []string{"http401", "http403", "redirect", "content-type", "malformed-response", "oversized-response", "untrusted-tls", "caller-deadline", "source-deadline", "active-http-cancel"} {
-		var requests, redirected atomic.Int32
+	ctx := context.Background()
+	kasPEM, _ := offlineKASKey()
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closedURL := closed.URL
+	closed.Close()
+
+	// A TDF written offline against an explicit KAS key: it needs no platform
+	// to create, so the reader's allowlist, option and input checks can be
+	// driven without a KAS.
+	plain := httptest.NewServer(fakePlatform("", new(atomic.Int32), nil, nil))
+	sdk, err := g.NewWithOptions(ctx, plain.URL, g.WithClientCredentials("opentdf", "secret", nil))
+	fail("offline sdk", err)
+	tdfOpts, err := g.TDFOptionsOf(g.WithAutoconfigure(false), g.WithKasInformation(g.KASInfo{URL: "http://localhost:9999/malicious/kas", PublicKey: kasPEM, KID: "k1", Algorithm: "rsa:2048"}), g.WithDataAttributes("https://example.com/attr/a/value/b"))
+	fail("tdf options", err)
+	archive, obj, err := sdk.EncryptBytes(ctx, []byte("offline payload"), tdfOpts)
+	fail("offline encrypt", err)
+	fail("object close", obj.Close())
+
+	check := func(name string, err error, want string, extra map[string]any) {
+		got, row := kind(err)
+		if got != want {
+			panic("controlled wrong kind: " + name + ": " + got + " (" + err.Error() + ")")
+		}
+		row["case"] = name
+		for k, v := range extra {
+			row[k] = v
+		}
+		rows = append(rows, row)
+	}
+
+	_, err = g.NewWithOptions(ctx, closedURL, g.WithConnectionValidation())
+	if !errors.Is(err, g.ErrPlatformUnreachable) {
+		panic("unreachable platform sentinel")
+	}
+	check("unreachable", err, "transport", nil)
+
+	for _, name := range []string{"wellknown-500", "redirect", "content-type", "malformed-response", "untrusted-tls", "caller-deadline", "source-deadline", "token-401"} {
+		var requests atomic.Int32
 		entered, released := make(chan struct{}, 1), make(chan struct{}, 1)
-		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requests.Add(1)
-			io.Copy(io.Discard, r.Body)
-			r.Body.Close()
-			if r.URL.Path == "/leak" {
-				redirected.Add(1)
-			}
-			w.Header().Set("Content-Type", "application/json")
-			switch name {
-			case "http401", "http403":
-				status := 401
-				if name == "http403" {
-					status = 403
-				}
-				w.WriteHeader(status)
-				io.WriteString(w, `{"code":"fixture-rejected","message":"harmless fixture diagnostic"}`)
-			case "redirect":
-				w.Header().Set("Location", "/leak")
-				w.WriteHeader(307)
-			case "content-type":
-				w.Header().Set("Content-Type", "text/html")
-				io.WriteString(w, `{}`)
-			case "malformed-response":
-				io.WriteString(w, `{bad`)
-			case "oversized-response":
-				io.WriteString(w, strings.Repeat(" ", (1<<20)+1))
-			case "caller-deadline", "source-deadline", "active-http-cancel":
-				entered <- struct{}{}
-				<-r.Context().Done()
-				released <- struct{}{}
-			default:
-				panic("TLS verification should reject before HTTP")
-			}
-		})
-		server := httptest.NewUnstartedServer(handler)
+		server := httptest.NewUnstartedServer(fakePlatform(name, &requests, entered, released))
 		server.Config.ErrorLog = log.New(io.Discard, "", 0)
 		if name == "untrusted-tls" {
 			server.StartTLS()
 		} else {
 			server.Start()
 		}
-		cfg := g.Config{PlatformURL: server.URL, KASURL: "http://localhost:8080/kas", AllowedKAS: []g.KASRoute{{URL: "http://localhost:8080/kas", APIBaseURL: server.URL}}, AllowHTTP: true, TokenProviderName: g.TokenProviderName}
-		ctx, cancel := context.WithCancel(context.Background())
+		callCtx, cancel := context.WithCancel(ctx)
+		opts := []g.Option{g.WithClientCredentials("opentdf", "secret", nil)}
 		if name == "caller-deadline" {
 			cancel()
-			ctx, cancel = context.WithTimeout(context.Background(), 100*time.Millisecond)
+			callCtx, cancel = context.WithTimeout(ctx, 100*time.Millisecond)
 		}
 		if name == "source-deadline" {
-			cfg.TimeoutMillis = 100
-		}
-		if name == "active-http-cancel" {
-			go func() { <-entered; cancel() }()
+			opts = append(opts, g.WithTimeout(100))
 		}
 		start := time.Now()
-		result, err := g.Decrypt(ctx, cfg, archive, callbacks)
-		cancel()
+		s, err := g.NewWithOptions(callCtx, server.URL, opts...)
+		if name == "token-401" {
+			fail("token-401 new", err)
+			_, err = s.DecryptBytes(ctx, archive, g.ReaderOptions{IgnoreAllowlist: true})
+			s.Close()
+		}
 		elapsed := time.Since(start)
-		if err == nil || result.Payload != nil || result.Metadata != nil || result.ManifestJSON != nil {
-			panic("controlled negative successful output: " + name)
+		if err == nil {
+			panic("controlled negative succeeded: " + name)
 		}
-		row := map[string]any{"case": name, "requests": requests.Load(), "zero_output": true}
-		var failure *g.Failure
-		var boundary *g.LibraryError
-		if errors.As(err, &failure) {
-			row["code"], row["operation"], row["httpStatus"], row["causeCategory"] = failure.Code, failure.Operation, failure.HTTPStatus, failure.CauseCategory
-			want := map[string]string{"http401": "unauthenticated", "http403": "denied", "redirect": "http_status", "content-type": "invalid_content_type", "malformed-response": "invalid_json", "oversized-response": "transport", "untrusted-tls": "transport", "source-deadline": "transport"}[name]
-			if failure.Code != want {
-				panic("controlled wrong source category: " + name + ":" + failure.Code)
-			}
-			if name == "http401" || name == "http403" {
-				if failure.ServerCode != "fixture-rejected" || failure.ServerMessage != "harmless fixture diagnostic" {
-					panic("service fields dropped")
-				}
-			}
-			if name == "source-deadline" && failure.CauseCategory != "deadline_exceeded" {
-				panic("source deadline category dropped")
-			}
-		} else if errors.As(err, &boundary) {
-			row["kind"] = boundary.Kind
-			if name != "caller-deadline" && name != "active-http-cancel" {
-				panic("unexpected boundary fault")
-			}
-			want := context.Canceled
-			if name == "caller-deadline" {
-				want = context.DeadlineExceeded
-			}
-			if boundary.Kind != "canceled" || !errors.Is(err, want) {
-				panic("native cancellation identity dropped")
-			}
-		} else {
-			panic("untyped controlled failure")
+		want := map[string]string{"wellknown-500": "transport", "redirect": "transport", "content-type": "transport", "malformed-response": "transport", "untrusted-tls": "transport", "caller-deadline": "boundary:canceled", "source-deadline": "deadline_exceeded", "token-401": "auth"}[name]
+		check(name, err, want, map[string]any{"requests": requests.Load(), "elapsed_ms": elapsed.Milliseconds()})
+		if name != "caller-deadline" && name != "token-401" && !errors.Is(err, g.ErrPlatformConfigFailed) && name != "untrusted-tls" {
+			panic("discovery failures carry ErrPlatformConfigFailed: " + name)
 		}
-		if name == "caller-deadline" || name == "source-deadline" || name == "active-http-cancel" {
+		if name == "token-401" {
+			var e *g.Error
+			if !errors.As(err, &e) || e.HTTPStatus != 401 || e.ConnectCode != "invalid_client" || !strings.Contains(e.Message, "tdf: decrypt failed") {
+				panic("token failure fields")
+			}
+		}
+		if name == "caller-deadline" || name == "source-deadline" {
 			if elapsed > 2*time.Second {
-				panic("deadline/cancel delayed")
+				panic("deadline delayed")
 			}
 			select {
 			case <-released:
@@ -132,13 +175,71 @@ func controlledNegatives(run string) {
 		if name == "untrusted-tls" && requests.Load() != 0 {
 			panic("untrusted TLS reached handler")
 		}
-		if redirected.Load() != 0 {
-			panic("redirect followed")
-		}
+		cancel()
 		server.Close()
-		rows = append(rows, row)
 	}
-	encoded, err := json.MarshalIndent(map[string]any{"scope": "controlled rejecting endpoints through actual generated exports; no mock positive KAS", "negatives": rows}, "", "  ")
+
+	_, err = sdk.DecryptBytes(ctx, archive, g.ReaderOptions{KasAllowlist: []string{plain.URL}})
+	if !errors.Is(err, g.ErrTDFDecryptFailed) {
+		panic("allowlist rejection is a decrypt failure")
+	}
+	check("allowlist", err, "allowlist_rejected", nil)
+	_, err = sdk.DecryptBytes(ctx, []byte("not a tdf"), g.ReaderOptions{})
+	if !errors.Is(err, g.ErrTDFNotDecryptable) {
+		panic("invalid input sentinel")
+	}
+	check("invalid-tdf", err, "not_decryptable", nil)
+	badOpts, _ := g.TDFOptionsOf(g.WithTargetMode("4.2.2"))
+	_, _, err = sdk.EncryptBytes(ctx, []byte("x"), badOpts)
+	check("unsupported-option", err, "unsupported_feature", nil)
+
+	// 100 reader handles on one SDK, every one closed; then the SDK.
+	for i := 0; i < 100; i++ {
+		reader, err := sdk.LoadTDF(ctx, &readSeeker{data: archive}, g.ReaderOptions{IgnoreAllowlist: true})
+		fail("load", err)
+		manifest, err := reader.Manifest(ctx)
+		fail("manifest", err)
+		if manifest.EncryptionInformation.KeyAccessObjs[0].KID != "k1" {
+			panic("manifest")
+		}
+		fail("reader close", reader.Close())
+	}
+	fail("sdk close", sdk.Close())
+	_, err = sdk.DecryptBytes(ctx, archive, g.ReaderOptions{})
+	if err == nil {
+		panic("closed sdk")
+	}
+	check("closed-handle", err, "boundary:closed", nil)
+	rows = append(rows, map[string]any{"case": "handles", "readers": 100, "closed": true})
+	plain.Close()
+
+	encoded, err := json.MarshalIndent(map[string]any{"scope": "controlled discovery, transport, allowlist, option and handle checks through actual generated exports; no mock positive KAS", "negatives": rows}, "", "  ")
 	fail("controlled report", err)
 	write(filepath.Join(run, "controlled-negatives.json"), encoded)
+}
+
+type readSeeker struct {
+	data []byte
+	pos  int64
+}
+
+func (r *readSeeker) Read(p []byte) (int, error) {
+	if r.pos >= int64(len(r.data)) {
+		return 0, io.EOF
+	}
+	n := copy(p, r.data[r.pos:])
+	r.pos += int64(n)
+	return n, nil
+}
+
+func (r *readSeeker) Seek(offset int64, whence int) (int64, error) {
+	switch whence {
+	case io.SeekStart:
+		r.pos = offset
+	case io.SeekCurrent:
+		r.pos += offset
+	case io.SeekEnd:
+		r.pos = int64(len(r.data)) + offset
+	}
+	return r.pos, nil
 }
