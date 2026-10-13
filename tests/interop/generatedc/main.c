@@ -128,7 +128,7 @@ static void controlled(const char *run,J *cfg,const char *name){
  else if(!strcmp(name,"token-401")){
   TRY(name,otdf_sdk_new(url,&credentials,NULL,&sdk,&e_));otdf_owned_bytes archive={0};TRY("offline encrypt",otdf_encrypt_bytes(sdk,(otdf_bytes){(const uint8_t *)"offline payload",15},&offline,NULL,&archive,&e_));
   otdf_reader_options ro=OTDF_READER_OPTIONS_INIT;ro.ignore_allowlist=true;otdf_owned_bytes out={0};
-  error=EXPECT(name,otdf_decrypt_bytes(sdk,(otdf_bytes){archive.data,archive.length},&ro,NULL,&out,&e_));otdf_bytes_free(&archive);otdf_sdk_close(sdk,NULL);otdf_sdk_free(sdk);
+  error=EXPECT(name,otdf_decrypt_bytes(sdk,(otdf_bytes){archive.data,archive.length},&ro,NULL,&out,&e_));otdf_bytes_free(&archive);otdf_sdk_close(sdk,NULL);otdf_sdk_free(sdk);sdk=NULL;
  }
  else if(!strcmp(name,"offline")){
   J *rows=j_new(J_OBJ);TRY(name,otdf_sdk_new(url,&credentials,NULL,&sdk,&e_));otdf_owned_bytes archive={0};TRY("offline encrypt",otdf_encrypt_bytes(sdk,(otdf_bytes){(const uint8_t *)"offline payload",15},&offline,NULL,&archive,&e_));
