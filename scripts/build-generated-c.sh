@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPILER=${GOALCHEMY_BIN:-"$SDK/../goalchemy/out/c-tdf-library/goalchemy"}
-DEST=${1:-"$SDK/../goalchemy/out/c-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+COMPILER=${GOALCHEMY_BIN:-"$ROOT/out/c-tdf-library/goalchemy"}
+DEST=${1:-"$ROOT/out/c-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$SDK/../goalchemy" "$COMPILER" compile -gate cooperative -target c -out "$DEST" ./src/library ./src)
-export GOALCHEMY_BDWGC=${GOALCHEMY_BDWGC:-"$SDK/../goalchemy/.toolchains/bdwgc"}
+(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target c -out "$DEST" ./src/library ./src)
+export GOALCHEMY_BDWGC=${GOALCHEMY_BDWGC:-"$ROOT/.toolchains/bdwgc"}
 CURL_PREFIX=${TDF3_CURL_PREFIX:-"$SDK/.local/root-c-development-prerequisites/prefix"}
 if [[ -d "$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig" ]]; then
  export PKG_CONFIG_PATH="$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig"

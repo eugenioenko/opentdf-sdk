@@ -5,7 +5,8 @@
 # launcher that runs the binary with the libcurl runtime path.
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-GENERATED=${1:-"$SDK/../goalchemy/out/c-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+GENERATED=${1:-"$ROOT/out/c-tdf-library/sdk"}
 OUT=${2:-"$SDK/.local/c-tdf-library/otdfgc"}
 GENERATED=$(cd "$GENERATED" && pwd)
 if [[ "$OUT" != /* ]]; then OUT="$(pwd)/$OUT"; fi

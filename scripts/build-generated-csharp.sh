@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPILER=${GOALCHEMY_BIN:-"$SDK/../goalchemy/out/csharp-tdf-library/goalchemy"}
-DEST=${1:-"$SDK/../goalchemy/out/csharp-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+COMPILER=${GOALCHEMY_BIN:-"$ROOT/out/csharp-tdf-library/goalchemy"}
+DEST=${1:-"$ROOT/out/csharp-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-DOTNET=${DOTNET_BIN:-"$SDK/../goalchemy/.toolchains/dotnet/dotnet"}
+DOTNET=${DOTNET_BIN:-"$ROOT/.toolchains/dotnet/dotnet"}
 (cd "$SDK"; "$COMPILER" compile -gate cooperative -target csharp -out "$DEST" ./src/library ./src)
 cp "$SDK/src/hosts/csharp/TDF3.cs.in" "$DEST/TDF3.cs"
 cp "$SDK/src/hosts/csharp/Sdk.cs.in" "$DEST/Sdk.cs"
@@ -17,9 +18,9 @@ p=pathlib.Path(sys.argv[1]);p.write_text(p.read_text().replace('<TargetFramework
 PY
 "$DOTNET" build "$DEST/main.csproj" -c Release -o "$DEST/lib" --nologo
 mkdir -p "$DEST/licenses"
-cp "$SDK/../goalchemy/LICENSE" "$DEST/licenses/Goalchemy-LICENSE"
-cp "$SDK/../goalchemy/.toolchains/dotnet/LICENSE.txt" "$DEST/licenses/DotNet-LICENSE"
-cp "$SDK/../goalchemy/.toolchains/dotnet/ThirdPartyNotices.txt" "$DEST/licenses/DotNet-ThirdPartyNotices"
+cp "$ROOT/LICENSE" "$DEST/licenses/Goalchemy-LICENSE"
+cp "$ROOT/.toolchains/dotnet/LICENSE.txt" "$DEST/licenses/DotNet-LICENSE"
+cp "$ROOT/.toolchains/dotnet/ThirdPartyNotices.txt" "$DEST/licenses/DotNet-ThirdPartyNotices"
 NUGET_CACHE=$(DOTNET_CLI_UI_LANGUAGE=en "$DOTNET" nuget locals global-packages --list | sed -n 's/^global-packages: //p')
 python3 - "$SDK" "$DEST" "$NUGET_CACHE" <<'PY'
 import hashlib,json,pathlib,sys,zipfile

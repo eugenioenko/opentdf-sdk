@@ -5,12 +5,13 @@
 # is a launcher that runs it with the pinned .NET runtime.
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-GENERATED=${1:-"$SDK/../goalchemy/out/csharp-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+GENERATED=${1:-"$ROOT/out/csharp-tdf-library/sdk"}
 OUT=${2:-"$SDK/.local/csharp-tdf-library/otdfgc"}
 GENERATED=$(cd "$GENERATED" && pwd)
 if [[ "$OUT" != /* ]]; then OUT="$(pwd)/$OUT"; fi
 BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-csharp-build"}
-DOTNET=${DOTNET_BIN:-"$SDK/../goalchemy/.toolchains/dotnet/dotnet"}
+DOTNET=${DOTNET_BIN:-"$ROOT/.toolchains/dotnet/dotnet"}
 [[ -f "$GENERATED/lib/OpenTDF.TDF3.dll" ]] || { echo "generated package has no lib/OpenTDF.TDF3.dll: $GENERATED" >&2; exit 1; }
 rm -rf "$BUILD"
 mkdir -p "$BUILD" "$(dirname "$OUT")"

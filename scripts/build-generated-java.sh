@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPILER=${GOALCHEMY_BIN:-"$SDK/../goalchemy/out/java-tdf-library/goalchemy"}
-DEST=${1:-"$SDK/../goalchemy/out/java-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+COMPILER=${GOALCHEMY_BIN:-"$ROOT/out/java-tdf-library/goalchemy"}
+DEST=${1:-"$ROOT/out/java-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; "$COMPILER" compile -gate cooperative -target java -out "$DEST" ./src/library ./src)
-cmp "$SDK/src/hosts/java/dependencies.lock.json" "$SDK/../goalchemy/targets/java/dependencies.lock.json"
+cmp "$SDK/src/hosts/java/dependencies.lock.json" "$ROOT/targets/java/dependencies.lock.json"
 mkdir -p "$DEST/src/io/opentdf/tdf3" "$DEST/lib" "$DEST/licenses"
 for adapter in "$SDK"/src/hosts/java/*.java.in; do cp "$adapter" "$DEST/src/io/opentdf/tdf3/$(basename "${adapter%.in}")"; done
 cp "$SDK/src/hosts/java/dependencies.lock.json" "$DEST/dependencies.lock.json"
-"$SDK/../goalchemy/targets/java/tests/crypto-dependencies.sh" "$DEST/lib" >/dev/null
+"$ROOT/targets/java/tests/crypto-dependencies.sh" "$DEST/lib" >/dev/null
 if [[ -n ${JAVA_HOME:-} ]]; then PATH="$JAVA_HOME/bin:$PATH"; fi
 python3 - "$DEST" <<'PY'
 import json,pathlib,subprocess,sys

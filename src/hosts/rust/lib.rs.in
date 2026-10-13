@@ -4,7 +4,7 @@ mod generated;
 mod sdk;
 pub use sdk::*;
 pub use generated::{
-    CallOptions, Cancellation, ErrorKind, HostWire, LibraryError, Operation, ProviderError,
+    CallOptions, Cancellation, ErrorKind, HostWire, LibraryError, Operation, Provider, ProviderError,
     ProviderRequest,
 };
 use std::sync::Arc;

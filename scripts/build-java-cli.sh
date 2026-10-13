@@ -5,12 +5,13 @@
 # with the pinned JDK and the package's JARs on the classpath.
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-GENERATED=${1:-"$SDK/../goalchemy/out/java-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+GENERATED=${1:-"$ROOT/out/java-tdf-library/sdk"}
 OUT=${2:-"$SDK/.local/java-tdf-library/otdfgc"}
 GENERATED=$(cd "$GENERATED" && pwd)
 if [[ "$OUT" != /* ]]; then OUT="$(pwd)/$OUT"; fi
 BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-java-build"}
-JDK=${JAVA_HOME:-"$SDK/../goalchemy/.toolchains/jdk-21.0.12.1+1"}
+JDK=${JAVA_HOME:-"$ROOT/.toolchains/jdk-21.0.12.1+1"}
 CP="$GENERATED/tdf3-java.jar:$GENERATED/lib/bcprov-jdk18on-1.86.jar"
 [[ -f "$GENERATED/tdf3-java.jar" ]] || { echo "generated package has no tdf3-java.jar: $GENERATED" >&2; exit 1; }
 rm -rf "$BUILD"

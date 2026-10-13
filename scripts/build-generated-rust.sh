@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SDK=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-COMPILER=${GOALCHEMY_BIN:-"$SDK/../goalchemy/out/rust-tdf-library/goalchemy"}
-DEST=${1:-"$SDK/../goalchemy/out/rust-tdf-library/sdk"}
+ROOT=${GOALCHEMY_ROOT:-"$SDK/../goalchemy"}
+COMPILER=${GOALCHEMY_BIN:-"$ROOT/out/rust-tdf-library/goalchemy"}
+DEST=${1:-"$ROOT/out/rust-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$SDK/../goalchemy" "$COMPILER" compile -gate cooperative -target rust -out "$DEST" ./src/library ./src)
+(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target rust -out "$DEST" ./src/library ./src)
 mv "$DEST/src/lib.rs" "$DEST/src/generated.rs"
 cp "$SDK/src/hosts/rust/lib.rs.in" "$DEST/src/lib.rs"
 cp "$SDK/src/hosts/rust/sdk.rs.in" "$DEST/src/sdk.rs"

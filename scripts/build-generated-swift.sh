@@ -24,4 +24,6 @@ s = s.replace('exclude: ["rt/native",', 'exclude: ["Sources", "rt/native",', 1)
 p.write_text(s)
 PY
 cp "$SDK/src/hosts/swift/README.md.in" "$DEST/README.md"
+if ! command -v swift >/dev/null && [[ -d "$ROOT/.toolchains/swift-6.4.0/usr/bin" ]]; then export PATH="$ROOT/.toolchains/swift-6.4.0/usr/bin:$PATH"; fi
+if ! pkg-config --exists libcurl 2>/dev/null && [[ -d "$ROOT/.toolchains/pkgconfig" ]]; then export PKG_CONFIG_PATH="$ROOT/.toolchains/pkgconfig:${PKG_CONFIG_PATH:-}"; fi
 swift build --package-path "$DEST" -c release
