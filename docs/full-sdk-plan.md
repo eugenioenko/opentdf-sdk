@@ -34,7 +34,7 @@ when its verification items passed and its PRs are on `main`.
 | --- | --- | --- | --- |
 | 0 Scope lock and gap inventory | done | #18, #19 | Parity matrix 669 symbols; Goalchemy issues #71–#76; 336 xtest tests inventoried |
 | 1 xtest harness and Go CLI | done | #20, opentdf-sdk-tests #9 | `gcgo` passes roundtrip and manifest validity against go and js (12/12 cells) |
-| 2 Handle API and platform discovery | in progress | #22 (parts 1 and 2), opentdf-sdk-tests #10 | Parts 1 and 2 done: shared source ported, Go, TypeScript and Python handle APIs, `gcgo`/`gcts`/`gcpy` green on roundtrip, tamper and policy-type cells (120/120). Part 3 (Java, C#, Rust, C, Swift) next |
+| 2 Handle API and platform discovery | done | #22, #24, opentdf-sdk-tests #10, #11 | Handle API on all eight targets. xtest: `gcgo`/`gcts`/`gcpy` 120/120 roundtrip, tamper and policy-type cells; `gcjava`/`gccs`/`gcrs`/`gcc`/`gcswift` 42/42 roundtrip and manifest, `gcjava`/`gccs`/`gcrs`/`gcc` 250/250 tamper and policy types. Swift CI times out on the hosted runner (not required) |
 | 3 Generated platform service clients | pending | | |
 | 4 Autoconfigure, key splitting, key management | pending | | |
 | 5 Assertions | pending | | |
@@ -46,6 +46,7 @@ when its verification items passed and its PRs are on `main`.
 | 11 Packaging, CI, benchmarks, release | pending | | |
 | Goalchemy: `std/net/url` (#71) | pending | | after Phase 2 part 3 |
 | Goalchemy: emitter fixes found by Phase 2 (#77) | done | goalchemy #77, #78 | v0.6.1; the SDK pins the fix commit until the v0.6.1 bump PR |
+| Goalchemy: Swift reserved public names (GCE007) | in review | goalchemy #79 | the SDK pins fix commit a9287323 until a v0.6.2 release and bump PR |
 | Goalchemy: JSON canonicalisation (#72), `std/os` files (#73), runtime info (#74), schema validator (#75), X.509 keys (#76) | pending | | before the phases that need them |
 
 ## References and pins
