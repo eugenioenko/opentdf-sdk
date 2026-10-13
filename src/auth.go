@@ -6,6 +6,8 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/encoding"
 	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
 	"github.com/eugenioenko/goalchemy/std/errors"
+	"github.com/eugenioenko/goalchemy/std/fmt"
+	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strconv"
 	"github.com/eugenioenko/goalchemy/std/strings"
 )
@@ -33,19 +35,23 @@ const (
 // idpAccessTokenSource obtains client-credentials tokens from the IdP, bound
 // to the SDK's DPoP key, and caches them until shortly before they expire.
 type idpAccessTokenSource struct {
-	client      *httpClient
-	credentials clientCredentials
-	endpoint    string
-	scopes      []string
-	gate        chan bool
-	token       AccessToken
-	hasToken    bool
+	client           *httpClient
+	credentials      clientCredentials
+	idpTokenEndpoint url.URL
+	scopes           []string
+	gate             chan bool
+	token            AccessToken
+	hasToken         bool
 }
 
-func newIDPAccessTokenSource(client *httpClient, credentials clientCredentials, endpoint string, scopes []string) *idpAccessTokenSource {
-	t := &idpAccessTokenSource{client: client, credentials: credentials, endpoint: endpoint, scopes: scopes, gate: make(chan bool, 1)}
+func newIDPAccessTokenSource(client *httpClient, credentials clientCredentials, idpTokenEndpoint string, scopes []string) (*idpAccessTokenSource, error) {
+	endpoint, err := url.Parse(idpTokenEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid url [%s]: %w", idpTokenEndpoint, err)
+	}
+	t := &idpAccessTokenSource{client: client, credentials: credentials, idpTokenEndpoint: *endpoint, scopes: scopes, gate: make(chan bool, 1)}
 	t.gate <- true
-	return t
+	return t, nil
 }
 
 func (t *idpAccessTokenSource) expired(now int64) bool {
@@ -68,7 +74,7 @@ func (t *idpAccessTokenSource) Token(ctx context.Context) (AccessToken, error) {
 	if !t.expired(t.client.clock.Now()) {
 		return t.token, nil
 	}
-	token, err := getAccessToken(ctx, t.client, t.endpoint, t.scopes, t.credentials)
+	token, err := getAccessToken(ctx, t.client, t.idpTokenEndpoint.String(), t.scopes, t.credentials)
 	if err != nil {
 		return AccessToken{}, wrapError(KindAuth, "auth", "error getting access token", err)
 	}
@@ -81,16 +87,17 @@ func (t *idpAccessTokenSource) Token(ctx context.Context) (AccessToken, error) {
 // oauth.GetAccessToken does: HTTP Basic client authentication, a DPoP proof
 // without ath, and the DPoP-Nonce retry handled by the client.
 func getAccessToken(ctx context.Context, client *httpClient, tokenEndpoint string, scopes []string, credentials clientCredentials) (AccessToken, error) {
-	form := "grant_type=client_credentials"
+	formData := url.Values{}
+	formData.Set("grant_type", "client_credentials")
 	if len(scopes) > 0 {
-		form += "&scope=" + formEscape(strings.Join(scopes, " "))
+		formData.Set("scope", strings.Join(scopes, " "))
 	}
 	basic, err := encoding.Base64Encode([]byte(credentials.ClientID + ":" + credentials.ClientAuth))
 	if err != nil {
 		return AccessToken{}, err
 	}
 	headers := []string{"Accept", "application/json", "Content-Type", "application/x-www-form-urlencoded", "Authorization", "Basic " + basic}
-	status, responseHeaders, data, err := client.do(ctx, "POST", tokenEndpoint, headers, []byte(form), "", true)
+	status, responseHeaders, data, err := client.do(ctx, "POST", tokenEndpoint, headers, []byte(formData.Encode()), "", true)
 	if err != nil {
 		return AccessToken{}, wrapError(KindTransport, "auth", "error making token request", err)
 	}
@@ -132,21 +139,6 @@ func tokenTypeFromOAuthTokenType(tokenType string) string {
 		return "DPoP"
 	}
 	return "Bearer"
-}
-
-func formEscape(s string) string {
-	const hex = "0123456789ABCDEF"
-	out := make([]byte, 0, len(s))
-	for _, b := range []byte(s) {
-		if b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z' || b >= '0' && b <= '9' || b == '-' || b == '_' || b == '.' || b == '~' {
-			out = append(out, b)
-		} else if b == ' ' {
-			out = append(out, '+')
-		} else {
-			out = append(out, '%', hex[int(b)>>4], hex[int(b)&15])
-		}
-	}
-	return string(out)
 }
 
 // callbackTokenSource asks the host's registered token provider for tokens

@@ -72,6 +72,29 @@ How the reader composes them (`platform/sdk/tdf.go`):
 | `test_zip64_band_roundtrip` (`zip64_reader_is_broken`) | none asserted on the message; java < 0.19.0 must fail | n/a | n/a |
 | `test_audit_logs_on_tampered_file` | none on the message; a rewrap `error` audit event must exist | the altered binding reaches KAS and is refused with `bad request` (`rewrap.go:888`) | `KindRewrapBadRequest` |
 
+## URL parsing
+
+URL errors come from Goalchemy's `std/net/url` (v0.6.3), which reproduces Go's
+`net/url` text for a module declaring `go 1.25` built with the pinned go1.25.14
+toolchain: `parse "<url>": <reason>` (`*url.Error`), `invalid URL escape "%zz"`,
+`invalid port ":x" after host`, `invalid character " " in host name`,
+`missing protocol scheme`, `first path segment in URL cannot contain colon`,
+`net/url: invalid control character in URL`. The SDK wraps them with the
+reference's prefixes: `cannot parse kas url(<url>): ` (`sdk/tdf_config.go:392`,
+`sdk/kas_client.go:87`, `:476`), `invalid issuer URL "<url>": ` (`sdk/sdk.go:587`) and, new
+with v0.6.3, `invalid url [<endpoint>]: ` when `New` is given a token endpoint
+`url.Parse` rejects (`sdk/idp_access_token_source.go:73`, `KindInvalidInput`;
+previously the request was attempted and failed as a transport error).
+
+Changes from the interim `src/internal/urlutil` parser, all now matching Go:
+non-ASCII bytes in a quoted URL print as UTF-8 (`"https://exámple.com:9x/"`)
+instead of `\xc3\xa1` escapes; a non-ASCII host such as `exámple.com` is
+accepted instead of failing with `invalid character "\xc3" in host name`; and a
+bracketed host must be an IPv6 address, so `https://[zz]/` fails with
+`invalid host: ParseAddr("zz"): unable to parse IP` and `http://[1.2.3.4]/` with
+`invalid IP-literal`, where the interim parser accepted both. A host with
+several colons (`https://example.com:80:`) is still accepted.
+
 ## Shim and CLI contract strings
 
 Strings the shims themselves assert or emit, which the generated `cli.sh`

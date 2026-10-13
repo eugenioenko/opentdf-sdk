@@ -11,8 +11,8 @@ import (
 	"github.com/eugenioenko/goalchemy/std/fmt"
 	"github.com/eugenioenko/goalchemy/std/io"
 	"github.com/eugenioenko/goalchemy/std/log/slog"
+	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strings"
-	"opentdf-local/sdk/src/internal/urlutil"
 	"opentdf-local/sdk/src/tdf"
 )
 
@@ -150,7 +150,7 @@ func (s *SDK) init(ctx context.Context) error {
 }
 
 func IsPlatformEndpointMalformed(e string) bool {
-	u, err := urlutil.ParseRequestURI(e)
+	u, err := url.ParseRequestURI(e)
 	if err != nil || u.Hostname() == "" || strings.Contains(u.Hostname(), ":") {
 		return true
 	}
@@ -203,7 +203,11 @@ func (s *SDK) buildIDPTokenSource(c *config) (TokenSource, *dpopSigner, error) {
 	}
 
 	tokenClient := &httpClient{transport: s.transport, clock: s.clock, timeoutMillis: c.timeoutMillis, dpop: dpop, tokenEndpoint: c.tokenEndpoint}
-	return newIDPAccessTokenSource(tokenClient, *c.clientCredentials, c.tokenEndpoint, c.scopes), dpop, nil
+	tokenSource, err := newIDPAccessTokenSource(tokenClient, *c.clientCredentials, c.tokenEndpoint, c.scopes)
+	if err != nil {
+		return nil, nil, wrapError(KindInvalidInput, "New", "", err)
+	}
+	return tokenSource, dpop, nil
 }
 
 // defaultDPoPSigner is the reference's ephemeral DPoP key: ES256 over P-256.
@@ -395,7 +399,7 @@ func isValidManifest(manifest string, intensity SchemaValidationIntensity) (bool
 // checkPlatformHealth issues a single gRPC Health v1 Check against the platform endpoint and
 // reports whether the response is SERVING. ctx controls deadline and cancellation.
 func checkPlatformHealth(ctx context.Context, endpoint string, client *httpClient) (bool, error) {
-	checkURL, err := urlutil.JoinPath(endpoint, "grpc.health.v1.Health", "Check")
+	checkURL, err := url.JoinPath(endpoint, "grpc.health.v1.Health", "Check")
 	if err != nil {
 		return false, err
 	}
@@ -452,7 +456,7 @@ func getTokenEndpoint(ctx context.Context, c config, client *httpClient) (string
 		return "", errors.New("platform_issuer is not set, or is not a string")
 	}
 
-	oidcConfigURL, err := urlutil.JoinPath(issuerURL, ".well-known/openid-configuration")
+	oidcConfigURL, err := url.JoinPath(issuerURL, ".well-known/openid-configuration")
 	if err != nil {
 		return "", fmt.Errorf("invalid issuer URL %q: %w", issuerURL, err)
 	}

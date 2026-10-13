@@ -5,8 +5,9 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/lib/http"
 	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
+	"github.com/eugenioenko/goalchemy/std/fmt"
+	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strings"
-	"opentdf-local/sdk/src/internal/urlutil"
 )
 
 const (
@@ -75,14 +76,16 @@ func isJSONContentType(headers []string) bool {
 // do sends one request, adding a DPoP proof (and a nonce retry) when the
 // client has a signing key. token is the access token bound by ath, or empty
 // for token-endpoint requests.
-func (c *httpClient) do(ctx context.Context, method, url string, headers []string, body []byte, token string, proof bool) (int, []string, []byte, error) {
+func (c *httpClient) do(ctx context.Context, method, rawURL string, headers []string, body []byte, token string, proof bool) (int, []string, []byte, error) {
 	if !proof || c.dpop == nil {
-		return c.transport.Do(ctx, method, url, headers, body, maxResponseBytes, c.timeoutMillis)
+		return c.transport.Do(ctx, method, rawURL, headers, body, maxResponseBytes, c.timeoutMillis)
 	}
-	htu, origin, err := normalizeURI(url)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return 0, nil, nil, err
 	}
+	htu := normalizeURI(u)
+	origin := getOrigin(u)
 	nonce := c.dpop.cachedNonce(origin)
 	for attempt := 0; attempt < 2; attempt++ {
 		jwt, err := c.dpop.proof(c.clock, method, htu, token, nonce)
@@ -92,7 +95,7 @@ func (c *httpClient) do(ctx context.Context, method, url string, headers []strin
 		outgoing := make([]string, len(headers), len(headers)+2)
 		copy(outgoing, headers)
 		outgoing = append(outgoing, "DPoP", jwt)
-		status, responseHeaders, data, err := c.transport.Do(ctx, method, url, outgoing, body, maxResponseBytes, c.timeoutMillis)
+		status, responseHeaders, data, err := c.transport.Do(ctx, method, rawURL, outgoing, body, maxResponseBytes, c.timeoutMillis)
 		if err != nil {
 			return 0, nil, nil, err
 		}
@@ -221,29 +224,38 @@ func connectCodeForHTTPStatus(status int) string {
 	return "unknown"
 }
 
-// normalizeURI returns the DPoP htu for a request URL (scheme and host
-// lower-cased, default port dropped, query and fragment removed) and the
-// origin the nonce cache is keyed on, as the reference's DPoP transport does.
-func normalizeURI(rawURL string) (string, string, error) {
-	u, err := urlutil.Parse(rawURL)
-	if err != nil {
-		return "", "", err
-	}
+// normalizedHostPort returns the URL host lowercased with the scheme's default
+// port (80 for http, 443 for https) removed. IPv6 literals keep their brackets.
+func normalizedHostPort(u *url.URL) string {
 	scheme := strings.ToLower(u.Scheme)
 	host := strings.ToLower(u.Hostname())
-	port := u.Port()
-	if port == "443" && scheme == "https" || port == "80" && scheme == "http" {
-		port = ""
-	}
-	if port != "" {
-		host = urlutil.JoinHostPort(host, port)
-	} else if strings.Contains(host, ":") {
+	if strings.Contains(host, ":") {
 		host = "[" + host + "]"
 	}
-	origin := scheme + "://" + host
-	path := u.EscapedPath()
-	if path == "" {
-		path = "/"
+
+	port := u.Port()
+	if port == "" ||
+		(scheme == "http" && port == "80") ||
+		(scheme == "https" && port == "443") {
+		return host
 	}
-	return origin + path, origin, nil
+
+	return host + ":" + port
+}
+
+// normalizeURI normalizes the URI per RFC 9449 HTTP URI Normalization:
+// lowercase scheme and host, remove default ports, normalize an empty path to
+// "/", strip query and fragment. The path keeps percent-encoded reserved bytes.
+func normalizeURI(u *url.URL) string {
+	escapedPath := u.EscapedPath()
+	if escapedPath == "" {
+		escapedPath = "/"
+	}
+	return fmt.Sprintf("%s://%s%s", strings.ToLower(u.Scheme), normalizedHostPort(u), escapedPath)
+}
+
+// getOrigin returns the origin (scheme://host:port) from a URL, normalized to
+// lowercase with the scheme's default port removed.
+func getOrigin(u *url.URL) string {
+	return fmt.Sprintf("%s://%s", strings.ToLower(u.Scheme), normalizedHostPort(u))
 }

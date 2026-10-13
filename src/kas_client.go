@@ -8,7 +8,8 @@ import (
 	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
 	"github.com/eugenioenko/goalchemy/std/errors"
 	"github.com/eugenioenko/goalchemy/std/fmt"
-	"opentdf-local/sdk/src/internal/urlutil"
+	"github.com/eugenioenko/goalchemy/std/net"
+	"github.com/eugenioenko/goalchemy/std/net/url"
 )
 
 const (
@@ -298,7 +299,7 @@ func (k *KASClient) processResponse(response jsonvalue.Value, decrypt func([]byt
 }
 
 func parseBaseURL(rawURL string) (string, error) {
-	u, err := urlutil.Parse(rawURL)
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return "", err
 	}
@@ -309,7 +310,7 @@ func parseBaseURL(rawURL string) (string, error) {
 	// Add port only if it's present
 	addr := host
 	if port != "" {
-		addr = urlutil.JoinHostPort(host, port)
+		addr = net.JoinHostPort(host, port)
 	}
 
 	return fmt.Sprintf("%s://%s", u.Scheme, addr), nil

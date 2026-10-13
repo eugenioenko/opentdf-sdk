@@ -8,9 +8,9 @@ experimental, like the rest of this POC, and its API may change.
 
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. The
 Goalchemy revision for all eight targets is pinned in
-[references.lock.json](../references.lock.json): v0.6.2, the first release
-with the Swift emitter fixes of goalchemy#79 (v0.6.1 rejects the shared
-source's `Error` record with `GCE007`).
+[references.lock.json](../references.lock.json): v0.6.3. v0.6.2 is the first
+release with the Swift emitter fixes of goalchemy#79 (v0.6.1 rejects the
+shared source's `Error` record with `GCE007`).
 
 Ubuntu 22.04 prerequisites:
 

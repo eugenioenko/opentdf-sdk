@@ -4,8 +4,9 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/std/errors"
 	"github.com/eugenioenko/goalchemy/std/fmt"
+	"github.com/eugenioenko/goalchemy/std/net"
+	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strings"
-	"opentdf-local/sdk/src/internal/urlutil"
 )
 
 const (
@@ -250,7 +251,7 @@ func getKasAddress(kasURL string) (string, error) {
 	if !strings.Contains(kasURL, schemeSeperator) {
 		kasURL = schemeHTTPS + schemeSeperator + kasURL
 	}
-	parsedURL, err := urlutil.Parse(kasURL)
+	parsedURL, err := url.Parse(kasURL)
 	if err != nil {
 		return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
@@ -260,14 +261,13 @@ func getKasAddress(kasURL string) (string, error) {
 
 	// Default to port 443 if scheme is https and no port is provided
 	if parsedURL.Port() != "" {
-		parsedURL.Host = urlutil.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
+		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
 	} else if parsedURL.Scheme == schemeHTTPS {
-		parsedURL.Host = urlutil.JoinHostPort(parsedURL.Hostname(), "443")
+		parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), "443")
 	}
 
 	// Reconstruct the URL with only the scheme, host, and port
 	parsedURL.Path = ""
-	parsedURL.RawPath = ""
 	parsedURL.RawQuery = ""
 	parsedURL.Fragment = ""
 

@@ -16,7 +16,7 @@ through this file.
 
 | Issue | Gap | Needed by |
 | --- | --- | --- |
-| [goalchemy#71](https://github.com/eugenioenko/goalchemy/issues/71) | `std/net/url`: `Parse`, `ParseRequestURI`, `URL.Hostname/Port/String/JoinPath`, `JoinPath`, `PathEscape`, `QueryEscape`, `Values`, `JoinHostPort` | Phase 2 (KAS origin, allowlist normalisation, discovery URLs, DPoP `htu`) |
+| [goalchemy#71](https://github.com/eugenioenko/goalchemy/issues/71) | `std/net/url`: `Parse`, `ParseRequestURI`, `URL.Hostname/Port/String/JoinPath`, `JoinPath`, `PathEscape`, `QueryEscape`, `Values`, `JoinHostPort` | Phase 2 (KAS origin, allowlist normalisation, discovery URLs, DPoP `htu`); released in v0.6.3 as `std/net/url` and `std/net`, pinned |
 | [goalchemy#72](https://github.com/eugenioenko/goalchemy/issues/72) | `std/encoding/json/jcs`: RFC 8785 `Transform` | Phase 5 (assertion hashes) |
 | [goalchemy#73](https://github.com/eugenioenko/goalchemy/issues/73) | `std/os` and `lib/os` file handles: `Open`, `Create`, `OpenFile`, `CreateTemp`, `Stat`, `Remove`, `Rename`, `*File` as `io.Reader/ReaderAt/Writer/Seeker/Closer`; `std/path/filepath` `Dir/Base/Join/Clean` | Phase 7 (`DecryptFile`, streaming file CLI, payloads above `MaxFileBytes`) |
 | [goalchemy#74](https://github.com/eugenioenko/goalchemy/issues/74) | `lib/runtime`: `OS`, `Arch`, `Version` | Phase 5 (system-metadata assertion) |
@@ -69,9 +69,9 @@ and the subpackage or `ocrypto` where noted.
 | `log/slog` (root, `auth`, `auth/oauth`, `keysplit`, `experimental/tdf`) | SDK diagnostics, `WithLogger`, `SDK.Logger` | `std/log/slog` with `lib/log` host sink; `Options.LogLevel` | 2 (`WithLogger`); 8 (sink idioms per target) |
 | `log` (`codegen`) | generator messages | not planned: build tooling | n/a |
 | `math` (root, `internal/zipstream`) | `MaxInt32`/`MaxInt64` bounds | subset-Go constants | 6, 7 |
-| `net` (root) | `JoinHostPort` in `parseBaseURL` | part of goalchemy#71 | 2 |
+| `net` (root) | `JoinHostPort` in `parseBaseURL` | `std/net` (goalchemy#71, v0.6.3) | now |
 | `net/http` (root, `auth`, `auth/oauth`, `httputil`) | the HTTP client, `RoundTripper` for DPoP, interceptors | `lib/http` (`Do`, `DoWith`, `Open` streamed exchange), `std/http` bodies, `std/connect` for RPC; the DPoP transport becomes the SDK's own request layer with no `http.Client` exposure | now (bounded); 3 (Connect); 7 (streamed bodies) |
-| `net/url` (root, `auth`, `auth/oauth`, `keysplit`) | see goalchemy#71 | goalchemy#71; `src/url.go` `parseEndpoint` is the interim origin parser | 2 |
+| `net/url` (root, `auth`, `auth/oauth`, `keysplit`) | see goalchemy#71 | `std/net/url` (goalchemy#71, v0.6.3) | now |
 | `os` (root, `codegen/runner`) | `DecryptFile` temp file and rename; generator output | `std/os.ReadFile/WriteFile` today; goalchemy#73 for handles | 7 |
 | `path`, `path/filepath` (root, `codegen`) | `filepath.Dir(outputPath)` for the temp file | `std/path/filepath` subset in goalchemy#73 | 7 |
 | `regexp` (root, `keysplit`) | attribute FQN validation and splitting | subset-Go FQN parser in `sdk/tdf` | 4 |

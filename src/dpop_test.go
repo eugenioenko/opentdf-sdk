@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/eugenioenko/goalchemy/lib/crypto"
+	"github.com/eugenioenko/goalchemy/std/net/url"
 )
 
 func decodeProof(t *testing.T, proof string) (map[string]any, map[string]any) {
@@ -100,14 +101,51 @@ func TestDPoPKeys(t *testing.T) {
 	if signer, err := resolveDPoPKey(&config{}); err != nil || signer != nil {
 		t.Fatal("none configured")
 	}
-	for _, c := range []struct{ in, htu, origin string }{
-		{"HTTPS://Example.COM:443/kas/", "https://example.com/kas/", "https://example.com"},
-		{"http://localhost:8080/kas.AccessService/Rewrap?x=1#f", "http://localhost:8080/kas.AccessService/Rewrap", "http://localhost:8080"},
-		{"http://localhost", "http://localhost/", "http://localhost"},
+}
+
+// Ported from TestNormalizeURI (sdk/auth/dpop_transport_test.go).
+func TestNormalizeURI(t *testing.T) {
+	for _, tt := range []struct{ name, url, want string }{
+		{"https default port stripped", "https://example.com:443/path", "https://example.com/path"},
+		{"http default port stripped", "http://example.com:80/path", "http://example.com/path"},
+		{"https non-default port kept", "https://example.com:8443/path", "https://example.com:8443/path"},
+		{"http non-default port kept", "http://example.com:8080/path", "http://example.com:8080/path"},
+		{"scheme and host lowercased, path preserved", "HTTPS://EXAMPLE.COM/Path", "https://example.com/Path"},
+		{"escaped reserved path preserved", "https://example.com/a%2Fb", "https://example.com/a%2Fb"},
+		{"query and fragment dropped", "https://example.com/p?a=b#frag", "https://example.com/p"},
+		{"empty path normalized to slash", "https://example.com", "https://example.com/"},
+		{"uppercase host with default port", "HTTPS://EXAMPLE.COM:443/Path", "https://example.com/Path"},
+		{"ipv6 default port stripped", "https://[::1]:443/path", "https://[::1]/path"},
+		{"ipv6 non-default port kept", "https://[::1]:8443/path", "https://[::1]:8443/path"},
+		{"ipv6 literal ending in 443 kept", "https://[fe80::443]/path", "https://[fe80::443]/path"},
 	} {
-		htu, origin, err := normalizeURI(c.in)
-		if err != nil || htu != c.htu || origin != c.origin {
-			t.Fatalf("normalizeURI(%q) = %q %q %v", c.in, htu, origin, err)
+		u, err := url.Parse(tt.url)
+		if err != nil {
+			t.Fatalf("%s: parse %q: %v", tt.name, tt.url, err)
+		}
+		if got := normalizeURI(u); got != tt.want {
+			t.Fatalf("%s: normalizeURI(%q) = %q, want %q", tt.name, tt.url, got, tt.want)
+		}
+	}
+}
+
+// Ported from TestGetOrigin (sdk/auth/dpop_transport_test.go).
+func TestGetOrigin(t *testing.T) {
+	for _, tt := range []struct{ name, url, want string }{
+		{"no port", "https://example.com/path", "https://example.com"},
+		{"default https port stripped", "https://example.com:443/path", "https://example.com"},
+		{"default http port stripped", "http://example.com:80/path", "http://example.com"},
+		{"non-default port kept", "https://example.com:8443/path", "https://example.com:8443"},
+		{"scheme and host lowercased", "HTTPS://EXAMPLE.COM:443/p", "https://example.com"},
+		{"ipv6 default port stripped", "https://[::1]:443/path", "https://[::1]"},
+		{"ipv6 non-default port kept", "https://[::1]:8443/path", "https://[::1]:8443"},
+	} {
+		u, err := url.Parse(tt.url)
+		if err != nil {
+			t.Fatalf("%s: parse %q: %v", tt.name, tt.url, err)
+		}
+		if got := getOrigin(u); got != tt.want {
+			t.Fatalf("%s: getOrigin(%q) = %q, want %q", tt.name, tt.url, got, tt.want)
 		}
 	}
 }

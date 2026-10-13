@@ -2086,3 +2086,56 @@ reports each target's cancellation idiom (`deadline_exceeded` for a Java
 `Duration`, `canceled` elsewhere). Swift needs `protocol` and `repeat`
 backquoted or renamed in host code. Deviations from api-spec.md are
 recorded in its "Deviations recorded by Phase 2 part 3".
+
+## Goalchemy v0.6.3: `std/net/url` and `std/net`
+
+Goalchemy v0.6.3 (`500c95d1`, goalchemy#81 and #82) ships `std/net/url`, a
+port of Go's `net/url` with Go's parsing rules and error text, and `std/net`
+with `JoinHostPort`, `SplitHostPort` and `AddrError` (goalchemy#71).
+`references.lock.json` (`revision` and `release`; `baseline_revision`
+unchanged), the delivery workflow's checkout `ref`s and every `go.mod`
+`require` pin the tag.
+
+The interim `src/internal/urlutil` is deleted; the shared source now calls the
+reference's packages at the reference's call sites:
+
+- `kas_client.go` `parseBaseURL`: `url.Parse`, `Hostname`, `Port`, `Scheme`,
+  `net.JoinHostPort`.
+- `tdf_config.go` `getKasAddress` (behind `newAllowList`, `AllowList.Add` and
+  `IsAllowed`): `url.Parse`, `net.JoinHostPort`; the extra `RawPath` reset the
+  interim parser needed is gone, as in the reference.
+- `sdk.go` `IsPlatformEndpointMalformed` (`url.ParseRequestURI`),
+  `checkPlatformHealth` and `getTokenEndpoint` (`url.JoinPath`).
+- `transport.go` `normalizedHostPort`, `normalizeURI` and `getOrigin` from
+  `sdk/auth/dpop_transport.go`, taking a `*url.URL` as there; `httpClient.do`
+  parses the request URL once for the `htu` and the nonce-cache origin.
+- `auth.go`: the client-credentials form is a `url.Values` encoded as in
+  `sdk/auth/oauth/oauth.go` `getAccessTokenRequest` (the hand-written
+  `formEscape` is gone; the bytes sent are unchanged), and
+  `newIDPAccessTokenSource` parses the token endpoint with `url.Parse` as
+  `NewIDPAccessTokenSource` does, failing `New` with
+  `invalid url [<endpoint>]: <parse error>` (`KindInvalidInput`) and sending
+  token requests to the parsed URL's `String()`.
+
+Granter `url.PathEscape`/`PathUnescape` (Phase 4), `isTokenEndpointRequest`
+(Phase 8) and the key-split planner's URL validation (Phase 4) have no
+counterpart in the shared source yet and come with their phases.
+
+Tests: `TestNormalizeURI` and `TestGetOrigin` ported from
+`sdk/auth/dpop_transport_test.go`; `TestParseBaseURLMatchesNetURL`,
+`TestGetKasAddressMatchesNetURL` and
+`TestIsPlatformEndpointMalformedMatchesNetURL` run the reference functions on
+Go's `net/url` and compare results and error text; `TestGetAccessTokenForm`,
+`TestIDPAccessTokenSourceEndpoint` and `TestNewRejectsUnparseableTokenEndpoint`
+cover the form body and token endpoint parsing. The offline gate
+(`scripts/delivery-offline.sh`) runs the URL parity tests in place of the
+deleted `./src/internal/...` package. Error text changes are listed in
+[error-wording.md](error-wording.md#url-parsing).
+
+Verified locally, throttled: `go vet ./src/`; the targeted `go test` runs
+above plus the DPoP, discovery, allowlist and SDK construction tests;
+`scripts/delivery-offline.sh` (39 named checks); `tests/ci` (34 tests);
+`goalchemy check -gate cooperative ./src/library ./src`; `goalchemy compile`
+for all eight targets; and the `scripts/build-generated-<target>.sh` package
+builds for Go, TypeScript, Python, Java, C#, Rust and C. Swift was compiled to
+source only; its package build is left to CI.
