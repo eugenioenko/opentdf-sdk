@@ -1,6 +1,95 @@
-# Native C TDF3 library
+# Native C library
 
-`src/hosts/c/tdf3.h` exposes independently linkable C17 encryption/decryption and asynchronous operations. The generated native library executes `sdk/src/library`; its shared protocol implementation is compiled into the archive. Production calls need no compiler, Go process, or source SDK process. This delivery targets Linux x86_64 with threaded Boehm GC8.2.8, OpenSSL3 EVP and libcurl's OpenSSL backend. Exact tested package/runtime/source/license identities are in `src/hosts/c/dependencies.lock.json`; external native dependencies are not bundled.
+`opentdf.h` exposes the handle API of [api-spec.md](api-spec.md) in C idiom
+(`otdf_sdk_new`, `otdf_create_tdf`, `otdf_load_tdf`, `otdf_decrypt_bytes`,
+...), over the generated library compiled from the two export roots
+`src/library` (the deprecated façade, still exposed as `tdf3.h`) and `src`.
+The hand-written [adapter](../src/hosts/c/opentdf.c) maps names, values and
+errors onto `goalchemy_invoke` and implements no protocol. Production calls
+need no compiler, Go process or source SDK process. This delivery targets
+Linux x86_64 with threaded Boehm GC 8.2.8, OpenSSL 3 EVP and libcurl's
+OpenSSL backend. Exact tested package/runtime/source/license identities are
+in `src/hosts/c/dependencies.lock.json`; external native dependencies are not
+bundled.
+
+## Handle API
+
+```c
+#include "opentdf.h"
+otdf_options o = OTDF_OPTIONS_INIT;
+o.client_id = "opentdf-sdk"; o.client_secret = "secret"; o.insecure_plaintext = true;
+otdf_sdk *sdk; otdf_error e = {0};
+if (otdf_sdk_new("http://localhost:8080", &o, NULL, &sdk, &e)) { fprintf(stderr, "%s: %s\n", e.kind, e.message); otdf_error_free(&e); }
+
+const char *attr = "https://example.com/attr/attr1/value/value1";
+otdf_kas_info kas = {.url = "http://localhost:8080/kas"};
+otdf_tdf_options t = OTDF_TDF_OPTIONS_INIT;
+t.attributes = &attr; t.attribute_count = 1; t.kas_information = &kas; t.kas_information_count = 1;
+otdf_owned_bytes tdf; otdf_tdf_object *object; char *manifest;
+otdf_create_tdf(sdk, (otdf_bytes){plaintext, n}, &t, NULL, &tdf, &object, &e);
+otdf_tdf_object_manifest_json(object, NULL, &manifest, &e);   /* keyed by the reference's JSON tags */
+otdf_tdf_object_close(object, &e); otdf_tdf_object_free(object);
+
+const char *allow = "http://localhost:8080";
+otdf_reader_options r = OTDF_READER_OPTIONS_INIT; r.kas_allowlist = &allow; r.kas_allowlist_count = 1;
+otdf_reader *reader;
+otdf_load_tdf(sdk, (otdf_bytes){tdf.data, tdf.length}, &r, NULL, &reader, &e);
+otdf_reader_init(reader, NULL, &e);                           /* fetch and unwrap keys now */
+otdf_reader_close(reader, &e); otdf_reader_free(reader);
+
+atomic_bool cancel = false; otdf_call call = {.canceled = &cancel, .timeout_millis = 30000};
+otdf_owned_bytes plain;
+otdf_decrypt_bytes(sdk, (otdf_bytes){tdf.data, tdf.length}, &r, &call, &plain, &e);
+otdf_sdk_close(sdk, &e); otdf_sdk_free(sdk);
+```
+
+| Function | Reference | Notes |
+| --- | --- | --- |
+| `otdf_sdk_new(endpoint, &options, call, &sdk, &error)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platform_configuration` is given; `validate_connection` runs the health check first. |
+| `otdf_create_tdf` → bytes and `otdf_tdf_object` (`otdf_tdf_object_manifest_json`, `_size`, `_close`, `_free`), `otdf_encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
+| `otdf_load_tdf` → `otdf_reader` (`otdf_reader_init`, `_manifest_json`, `_policy_json`, `_data_attributes`, `_unencrypted_metadata`, `_close`, `_free`), `otdf_decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The reader keeps a copy of the bytes. The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set. |
+| `otdf_is_healthy`, `otdf_platform_configuration_json`, `otdf_get_base_key_json`, `otdf_store_kas_keys`, `otdf_sdk_close`, `otdf_sdk_free` | same | Configuration and keys are returned as JSON text. |
+| `otdf_is_valid_tdf`, `otdf_get_tdf_type`, `otdf_is_platform_endpoint_malformed`, `otdf_key_type_to_policy_algorithm`, `otdf_policy_algorithm_to_key_type`, `otdf_version`, `otdf_tdf_spec_version`, `otdf_supported_features` | same | Free functions. |
+
+Every call returns 0 or the generated library's error kind (1 an SDK error,
+2 source panic, 3 host fault, 4 fatal, 5 invalid argument, 6 canceled, 7
+closed handle, 8 poisoned, 9 handles of different instances) and fills the
+optional `otdf_error` with `kind` (the `ErrorKind` string of api-spec.md, or
+the boundary kind's name), `op`, `message` (the reference's wording, see
+[error-wording.md](error-wording.md)), `http_status`, `connect_code`,
+`service_message`, `kas_url`, `required_obligations` and `assertion_id`;
+release it with `otdf_error_free`. Option structs are zero-initialised
+(`OTDF_OPTIONS_INIT`, `OTDF_TDF_OPTIONS_INIT`, `OTDF_READER_OPTIONS_INIT`)
+with the shared field names in snake_case: strings are NUL-terminated UTF-8
+(NULL is unset), lists carry explicit counts, payloads are `otdf_bytes` with
+lengths. Outputs (`otdf_owned_bytes`, strings, string lists) are
+malloc-owned and released with `otdf_bytes_free`, `otdf_string_free` and
+`otdf_strings_free`. An `otdf_call` carries an atomic cancellation flag and a
+per-call deadline (NULL means neither). A host token source is a
+`gxc_provider` in `token_provider` answering the JSON
+`{"value","scheme","expiresAt","confirmationJKT"}`. `*_close` runs the
+source Close and releases the instance (later calls fail with kind 7);
+`*_free` disposes of the handle. Options this build does not implement yet
+fail with kind `unsupported_feature` and `unsupported in this build:
+<option>`.
+
+`src/hosts/c/cmd/otdfgc/otdfgc.c` is the native C CLI over this library,
+built by `scripts/build-c-cli.sh <package> <launcher>` (linking `libtdf3.a`
+with the dependencies of `native-link.env`) and driven by the xtest harness
+as the `gcc` SDK type (see [xtest.md](xtest.md)); it implements the Go
+`otdfgc` contract. The consumer in `tests/interop/generatedc/main.c` drives
+the real platform and, in `controlled` mode, the offline checks of
+`tests/interop/delivery/controlled_platform.py`. The C runtime reports an
+expired request timeout as a transport failure, so the per-request timeout
+(`timeout_millis`) surfaces as kind `transport` rather than
+`deadline_exceeded`; a cancelled `otdf_call` flag is reported as `canceled`.
+
+The deprecated `tdf3.h` façade (`tdf3_encrypt`, `tdf3_decrypt`, the submit,
+drive, wake, cancel, take and destroy operations) keeps its previous shape
+for one release, implemented in the shared source as thin wrappers that
+construct an SDK per call; its `Code` field is now the `Error.kind` string.
+The sections below describe the package build and the façade's value and
+ownership rules, which the handle API shares.
 
 ## Build and isolated import
 
@@ -10,7 +99,7 @@ so consumers must include `-lz` when linking the static SDK archive.
 
 From the SDK checkout, run `bash scripts/build-generated-c.sh /absolute/output`. `GOALCHEMY_BIN` selects a freshly built Goalchemy compiler; `GOALCHEMY_BDWGC` selects the threaded collector installation. `TDF3_CURL_PREFIX` optionally selects locally extracted matching libcurl development/runtime packages. The default development prefix is ignored `.local/root-c-development-prerequisites/prefix`. `CC`, `CFLAGS`, `CPPFLAGS`, and `AR` select native build tools/flags. The build emits `libtdf3.a`, public headers, `native-link.env`, content hashes, and a reproducibly ordered archive `opentdf-tdf3-c-0.1.0-linux-x86_64.tar.gz`.
 
-Extract that archive in a separate directory. A consumer includes only `tdf3.h` from its `include/` directory and links the SDK archive plus native dependencies:
+Extract that archive in a separate directory. A consumer includes only `opentdf.h` (or the façade `tdf3.h`) from its `include/` directory and links the SDK archive plus native dependencies:
 
 ```sh
 cc -std=c17 -I package/include consumer.c package/lib/libtdf3.a \
