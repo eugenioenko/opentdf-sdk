@@ -1,63 +1,180 @@
 using System;using System.IO;using System.Text;using System.Text.Json;using System.Collections.Generic;using System.Linq;using System.Threading;using System.Threading.Tasks;using System.Security.Cryptography;using System.Net.Http;using OpenTDF;
 namespace Consumer;
 
-/// Independent assembly consumer with native .NET OAuth/DPoP provider.
+/// Independent assembly consumer of the handle API: one SDK per run, CreateTdfAsync/DecryptBytesAsync, LoadTdfAsync readers, 100 round trips, and the controlled checks of tests/interop/delivery/controlled_platform.py. Host OAuth/DPoP is native .NET.
 static class Entry
 {
- static string run;static JsonElement raw;static TDF3.Config config;static readonly HttpClient HTTP=new(new SocketsHttpHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(15)};
- static string Text(JsonElement value,string name)=>value.TryGetProperty(name,out var result)?result.ValueKind==JsonValueKind.String?result.GetString():result.ToString():"";
- static bool Bool(JsonElement value,string name)=>value.TryGetProperty(name,out var result)&&result.ValueKind==JsonValueKind.True;
- static TDF3.Config Config(JsonElement value)
- {var result=new TDF3.Config();foreach(var field in typeof(TDF3.Config).GetFields()){if(field.FieldType==typeof(string))field.SetValue(result,Text(value,field.Name));else if(field.FieldType==typeof(bool))field.SetValue(result,Bool(value,field.Name));else if(field.FieldType==typeof(long))field.SetValue(result,Text(value,field.Name)==""?0:long.Parse(Text(value,field.Name)));}if(value.TryGetProperty("AllowedKAS",out var routes))result.AllowedKAS=routes.EnumerateArray().Select(v=>new TDF3.KASRoute{URL=Text(v,"URL"),APIBaseURL=Text(v,"APIBaseURL")}).ToArray();return result;}
- static void Check(bool ok,string name){if(!ok)throw new Exception("ASSERT: "+name);}
- static byte[] Read(string name)=>File.ReadAllBytes(Path.Combine(run,name));static void Write(string name,byte[] value)=>File.WriteAllBytes(Path.Combine(run,name),value);static void Write(string name,string value)=>File.WriteAllText(Path.Combine(run,name),value,new UTF8Encoding(false));
- static T Await<T>(TDF3.Operation<T> operation)=>operation.Completion.WaitAsync(TimeSpan.FromSeconds(90)).GetAwaiter().GetResult();
+ static string run,name;static JsonElement raw;static readonly HttpClient HTTP=new(new SocketsHttpHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(15)};
+ const string Attribute="https://example.com/attr/attr1/value/value1";
+ static string Text(JsonElement value,string key)=>value.TryGetProperty(key,out var result)?result.ValueKind==JsonValueKind.String?result.GetString():result.ToString():"";
+ static bool Bool(JsonElement value,string key)=>value.TryGetProperty(key,out var result)&&result.ValueKind==JsonValueKind.True;
+ static void Check(bool ok,string label){if(!ok)throw new Exception("ASSERT: "+label);}
+ static byte[] Read(string file)=>File.ReadAllBytes(Path.Combine(run,file));static void Write(string file,byte[] value)=>File.WriteAllBytes(Path.Combine(run,file),value);static void Write(string file,string value)=>File.WriteAllText(Path.Combine(run,file),value,new UTF8Encoding(false));
  static string B64(byte[] value)=>Convert.ToBase64String(value).TrimEnd('=').Replace('+','-').Replace('/','_');
- static async Task<TDF3.AccessToken> Token(string name,TDF3.ProviderRequest request)
+ // The host token source: native OAuth client credentials with a DPoP proof when the profile asks for one.
+ static async Task<TDF3.AccessToken> Token(JsonElement cfg,TDF3.ProviderRequest request)
  {
   long now=DateTimeOffset.UtcNow.ToUnixTimeSeconds();if(name=="invalid-token")return new("invalid-token","Bearer",now+300);if(name=="expired-token")return new("expired-token","Bearer",now-1);if(name=="provider-reject")throw new ArgumentException("provider rejected");
-  const string endpoint="http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token";string nonce="",thumb="";RSA rsa=null;ECDsa ec=null;SortedDictionary<string,string> jwk=null;
+  const string endpoint="http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token";string nonce="",thumb="";RSA rsa=null;ECDsa ec=null;SortedDictionary<string,string> jwk=null;bool dpop=Bool(cfg,"DPoP");
   using var cancel=new CancellationTokenSource();request.OnStop(()=>cancel.Cancel());
   try
   {
-   if(config.DPoP)
+   if(dpop)
    {
     if(name=="mismatched-provider")ec=ECDsa.Create(ECCurve.NamedCurves.nistP256);
-    else{try{rsa=RSA.Create();rsa.ImportFromPem(config.AuthPrivateKeyPEM);}catch(CryptographicException){rsa?.Dispose();rsa=null;ec=ECDsa.Create();ec.ImportFromPem(config.AuthPrivateKeyPEM);}}
+    else{try{rsa=RSA.Create();rsa.ImportFromPem(Text(cfg,"AuthPrivateKeyPEM"));}catch(CryptographicException){rsa?.Dispose();rsa=null;ec=ECDsa.Create();ec.ImportFromPem(Text(cfg,"AuthPrivateKeyPEM"));}}
     jwk=new(StringComparer.Ordinal);if(rsa!=null){var p=rsa.ExportParameters(false);jwk["e"]=B64(p.Exponent);jwk["kty"]="RSA";jwk["n"]=B64(p.Modulus);}else{var p=ec.ExportParameters(false);jwk["crv"]="P-256";jwk["kty"]="EC";jwk["x"]=B64(p.Q.X);jwk["y"]=B64(p.Q.Y);}thumb=B64(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(jwk)));
    }
    for(int attempt=0;attempt<3;attempt++)
    {
     using var message=new HttpRequestMessage(HttpMethod.Post,endpoint){Content=new FormUrlEncodedContent(new Dictionary<string,string>{{"grant_type","client_credentials"},{"client_id","opentdf-sdk"},{"client_secret","secret"}})};
-    if(config.DPoP)
+    if(dpop)
     {var header=new Dictionary<string,object>{{"typ","dpop+jwt"},{"alg",rsa!=null?"RS256":"ES256"},{"jwk",jwk}};var claims=new Dictionary<string,object>{{"htu",endpoint},{"htm","POST"},{"iat",DateTimeOffset.UtcNow.ToUnixTimeSeconds()},{"jti",B64(RandomNumberGenerator.GetBytes(16))}};if(nonce!="")claims["nonce"]=nonce;string data=B64(JsonSerializer.SerializeToUtf8Bytes(header))+"."+B64(JsonSerializer.SerializeToUtf8Bytes(claims));var bytes=Encoding.ASCII.GetBytes(data);byte[] sig=rsa!=null?rsa.SignData(bytes,HashAlgorithmName.SHA256,RSASignaturePadding.Pkcs1):ec.SignData(bytes,HashAlgorithmName.SHA256,DSASignatureFormat.IeeeP1363FixedFieldConcatenation);message.Headers.TryAddWithoutValidation("DPoP",data+"."+B64(sig));}
     using var response=await HTTP.SendAsync(message,cancel.Token);byte[] body=await response.Content.ReadAsByteArrayAsync(cancel.Token);if(body.Length>128<<10)throw new ArgumentException("provider body limit");string next=response.Headers.TryGetValues("DPoP-Nonce",out var nonces)?nonces.First():"";
-    if(((int)response.StatusCode==400||(int)response.StatusCode==401)&&next!=""&&next!=nonce){nonce=next;continue;}if((int)response.StatusCode!=200)throw new ArgumentException("provider status");var value=JsonDocument.Parse(body).RootElement;return new(Text(value,"access_token"),config.DPoP?"DPoP":"Bearer",DateTimeOffset.UtcNow.ToUnixTimeSeconds()+long.Parse(Text(value,"expires_in")),thumb);
+    if(((int)response.StatusCode==400||(int)response.StatusCode==401)&&next!=""&&next!=nonce){nonce=next;continue;}if((int)response.StatusCode!=200)throw new ArgumentException("provider status");var value=JsonDocument.Parse(body).RootElement;return new(Text(value,"access_token"),dpop?"DPoP":"Bearer",DateTimeOffset.UtcNow.ToUnixTimeSeconds()+long.Parse(Text(value,"expires_in")),thumb);
    }
    throw new ArgumentException("provider nonce retries");
   }
   finally{rsa?.Dispose();ec?.Dispose();}
  }
- static TDF3.CallOptions Call(string name)=>new(){Provider=config.TokenProviderName==""?null:TDF3.FromTask(request=>Token(name,request))};
- static TDF3.EncryptOptions Opts(string name)
- {var result=new TDF3.EncryptOptions{Attributes=new[]{"https://example.com/attr/attr1/value/"+(name=="denied"||name.EndsWith("-denied")?"value2":"value1")},SegmentSize=16384,HasSegmentSize=true};if(name=="metadata"||name.EndsWith("-metadata")){result.Metadata=Encoding.UTF8.GetBytes("{\"source\":\"independent metadata\",\"count\":7}");result.IncludeMetadata=true;}if(name=="empty-metadata"||name.EndsWith("-empty-metadata")){result.Metadata=Array.Empty<byte>();result.IncludeMetadata=true;}if(name=="hs256"||name.EndsWith("-hs256"))result.SegmentHashAlgorithm="HS256";return result;}
- static void Error(string name,TDF3.TDFError e)=>Write(name+".error.json",JsonSerializer.Serialize(new{kind=e.Kind,code=e.Code,operation=e.Operation,httpStatus=e.HTTPStatus,causeCategory=e.CauseCategory}));
- static void Repeat()
+ // config.json carries the façade Config fields the delivery scripts write; they map onto the handle API's options as the Go consumer maps them.
+ static Options OptionsOf(JsonElement cfg,bool credentials=true)=>new()
  {
-  byte[] payload={0,255,128,1},metadata={0,255};var options=Opts("metadata");options.Metadata=metadata;options.MimeType="application/日本語";var archive=Await(TDF3.Encrypt(config,payload,options,Call("ownership")));var a=Await(TDF3.Decrypt(config,archive,Call("ownership")));var b=Await(TDF3.Decrypt(config,archive,Call("ownership")));Check(a.Payload.SequenceEqual(payload)&&a.Metadata.SequenceEqual(metadata),"durable bytes");Check(a.ManifestJSON.Contains("日本語"),"UTF8 manifest");var own=b.Payload;own[0]=44;metadata[0]=44;Check(a.Payload[0]==0&&a.Metadata[0]==0,"owned output");
-  using var started=new ManualResetEventSlim();var held=new TDF3.CallOptions{Provider=request=>{request.Retain();request.OnStop(()=>request.Reject("provider: stopped"));started.Set();}};var fresh=Config(raw);fresh.ClientID="";fresh.ClientSecret="";var active=TDF3.Decrypt(fresh,archive,held);Check(started.Wait(20000),"provider started");var queued=TDF3.Decrypt(config,archive,Call("ownership"));Check(queued.Cancel(),"queued cancel");try{Await(queued);throw new Exception("queued success");}catch(TDF3.TDFError e){Check(e.Kind=="canceled","queued category");}Check(active.Cancel(),"active cancel");try{Await(active);throw new Exception("active success");}catch(TDF3.TDFError e){Check(e.Kind=="canceled","active category");}Check(Await(TDF3.Decrypt(config,archive,Call("ownership"))).Payload.SequenceEqual(payload),"nextcall recovery");
+  InsecurePlaintext=Bool(cfg,"AllowHTTP"),TokenEndpoint=Text(cfg,"TokenURL")==""?null:Text(cfg,"TokenURL"),
+  ClientId=credentials&&Text(cfg,"ClientID")!=""?Text(cfg,"ClientID"):null,ClientSecret=credentials&&Text(cfg,"ClientID")!=""?Text(cfg,"ClientSecret"):null,
+  TokenProvider=Text(cfg,"TokenProviderName")==""?null:TDF3.FromTask(request=>Token(cfg,request)),
+  Timeout=Text(cfg,"TimeoutMillis")==""?null:TimeSpan.FromMilliseconds(long.Parse(Text(cfg,"TimeoutMillis"))),
+  DpopAlgorithm=Bool(cfg,"DPoP")?(Text(cfg,"AuthAlgorithm")==""?"ES256":Text(cfg,"AuthAlgorithm")):null,DpopKeyPem=Text(cfg,"AuthPrivateKeyPEM")==""?null:Text(cfg,"AuthPrivateKeyPEM"),
+ };
+ static KasInfo KasInformation(JsonElement cfg)=>new(Text(cfg,"KASURL")==""?Text(cfg,"PlatformURL").TrimEnd('/')+"/kas":Text(cfg,"KASURL")){PublicKey=Text(cfg,"KASPublicKeyPEM"),Kid=Text(cfg,"KID"),Algorithm=Text(cfg,"KASAlgorithm")};
+ static TdfOptions TdfOptionsOf(JsonElement cfg)=>new(){DisableAutoconfigure=true,KasInformation=new[]{KasInformation(cfg)},Attributes=new[]{Attribute},SegmentSize=16384,WrappingKeyAlgorithm=Text(cfg,"KASAlgorithm")==""?null:Text(cfg,"KASAlgorithm")};
+ static ReaderOptions ReaderOptionsOf(JsonElement cfg)
+ {
+  var allow=new List<string>{Text(cfg,"PlatformURL")};if(Text(cfg,"KASURL")!="")allow.Add(Text(cfg,"KASURL"));
+  if(cfg.TryGetProperty("AllowedKAS",out var routes))foreach(var r in routes.EnumerateArray())allow.Add(Text(r,"URL"));
+  return new(){KasAllowlist=allow,SessionKeyType=Text(cfg,"SessionAlgorithm")==""?null:Text(cfg,"SessionAlgorithm")};
  }
- static void Controlled(string name)
+ static Dictionary<string,object> Report(Exception e)=>e is OpenTdfException o?new(){["kind"]=o.Kind,["op"]=o.Op,["httpStatus"]=o.HttpStatus,["connectCode"]=o.ConnectCode,["message"]=o.Message}:new(){["untyped"]=e.GetType().Name+": "+e.Message};
+ static async Task<Dictionary<string,object>> ExpectFailure(string label,Func<Task> call)
  {
-  var options=new TDF3.CallOptions{Provider=request=>request.Resolve(new("negative-fixture-token","Bearer",DateTimeOffset.UtcNow.ToUnixTimeSeconds()+300))};var operation=TDF3.Decrypt(config,Read("archive.tdf"),options);Task cancel=null;
-  if(name=="active-cancel")cancel=Task.Run(async()=>{var end=DateTime.UtcNow.AddSeconds(15);while(!File.Exists(Path.Combine(run,"entered"))){if(DateTime.UtcNow>end)throw new Exception("HTTP not acquired");await Task.Delay(2);}operation.Cancel();});
-  TDF3.TDFError error;try{Await(operation);throw new Exception("controlled plaintext");}catch(TDF3.TDFError e){error=e;}
-  string expected=name switch{"http401"=>"unauthenticated","http403"=>"denied","redirect"=>"http_status","content-type"=>"invalid_content_type","malformed"=>"invalid_json","active-cancel"=>"canceled","bom"=>"invalid_destination",_=>"transport"};Check(error.Code==expected,"controlled category "+name+" "+error.Code);if(name=="http401"||name=="http403")Check(error.ServerCode=="fixture-rejected"&&error.ServerMessage=="診断 café","UTF8 server error");cancel?.GetAwaiter().GetResult();Error(name,error);try{Await(TDF3.Decrypt(new(),new byte[]{0}));throw new Exception("invalid config success");}catch(TDF3.TDFError e){Check(e.Kind=="source","recovery");}
+  try{await call();}catch(OpenTdfException e){return Report(e);}catch(Exception e){throw new Exception(label+" untyped: "+e);}
+  throw new Exception(label+" returned successful output");
  }
- public static void Main(string[] args)
+ static IReadOnlyList<object> KeyAccess(IReadOnlyDictionary<string,object> manifest)=>(IReadOnlyList<object>)((IReadOnlyDictionary<string,object>)manifest["encryptionInformation"])["keyAccess"];
+
+ /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
+ static async Task Repeat(Sdk sdk,JsonElement cfg)
  {
-  if(args.Length!=4)throw new ArgumentException("consumer sdk run mode case");run=args[1];string mode=args[2],name=args[3];raw=JsonDocument.Parse(File.ReadAllText(Path.Combine(run,"config.json"))).RootElement;config=Config(raw);
-  try{switch(mode){case "encrypt":Write(name+".generated.tdf",Await(TDF3.Encrypt(config,Read(name+".input"),Opts(name),Call(name))));break;case "decrypt":var value=Await(TDF3.Decrypt(config,Read(name+".tdf"),Call(name)));Write(name+".out",value.Payload);Write(name+".metadata",value.Metadata);Write(name+".manifest",value.ManifestJSON);Write(name+".presence",value.HasMetadata?"true":"false");break;case "negative":try{Await(TDF3.Decrypt(config,Read(name+".tdf"),Call(name)));throw new Exception("negative plaintext");}catch(TDF3.TDFError e){Error(name,e);}break;case "repeat":Repeat();break;case "controlled":Controlled(name);break;default:throw new ArgumentException("unknown mode");}}
-  catch(TDF3.TDFError e){throw new Exception("consumer failure "+mode+" "+name+" kind="+e.Kind+" code="+e.Code+" operation="+e.Operation+" cause="+e.CauseCategory,e);}
+  byte[] original={0,255,128,1};byte[] archive=null;
+  for(int i=0;i<100;i++)
+  {
+   byte[] input=original.Append((byte)i).ToArray();
+   await using(var obj=await sdk.CreateTdfAsync(input,TdfOptionsOf(cfg) with{Metadata="round "+i,MimeType="application/日本語"}))
+   {
+    Check(await obj.SizeAsync()==obj.Bytes.Length,"size");
+    var manifest=await obj.ManifestAsync();Check((string)((IReadOnlyDictionary<string,object>)manifest["payload"])["mimeType"]=="application/日本語","UTF-8 manifest");
+    archive=obj.Bytes;
+   }
+   input[0]=9;
+   await using(var reader=await sdk.LoadTdfAsync(archive,ReaderOptionsOf(cfg)))Check((await reader.DataAttributesAsync()).Count==1,"attributes");
+   var plain=await sdk.DecryptBytesAsync(archive,ReaderOptionsOf(cfg));Check(plain.SequenceEqual(original.Append((byte)i)),"round trip");
+  }
+  var wrong=await ExpectFailure("wrong credentials",async()=>{await using var s=await Sdk.CreateAsync(Text(cfg,"PlatformURL"),OptionsOf(cfg) with{ClientSecret="wrong"});await s.DecryptBytesAsync(archive,ReaderOptionsOf(cfg));});
+  Check((string)wrong["kind"]=="auth"&&(long)wrong["httpStatus"]==401,"wrong credentials rejected: "+JsonSerializer.Serialize(wrong));
+  using var started=new ManualResetEventSlim();
+  await using(var holder=await Sdk.CreateAsync(Text(cfg,"PlatformURL"),OptionsOf(cfg,false) with{TokenProvider=request=>{request.Retain();request.OnStop(()=>request.Reject("provider: stopped"));started.Set();}}))
+  {
+   using var cts=new CancellationTokenSource();
+   var pending=holder.DecryptBytesAsync(archive,ReaderOptionsOf(cfg),cts.Token);
+   Check(started.Wait(20000),"provider started");cts.Cancel();
+   var canceled=await ExpectFailure("active cancel",()=>pending);Check((string)canceled["kind"]=="canceled","active provider cancel is typed: "+JsonSerializer.Serialize(canceled));
+  }
+  var asyncArchive=await sdk.EncryptBytesAsync(new byte[]{(byte)'a',0,255},TdfOptionsOf(cfg));
+  Check((await sdk.DecryptBytesAsync(asyncArchive,ReaderOptionsOf(cfg))).SequenceEqual(new byte[]{(byte)'a',0,255}),"async round trip");
+  await sdk.DisposeAsync();
+  Check((string)(await ExpectFailure("closed",()=>sdk.DecryptBytesAsync(archive,ReaderOptionsOf(cfg))))["kind"]=="closed","closed handle");
+ }
+
+ /// One controlled case against the harness fixture (tests/interop/delivery/controlled_platform.py).
+ static async Task Controlled(JsonElement cfg)
+ {
+  string url=Text(cfg,"PlatformURL"),kasPem=Text(cfg,"KASPublicKeyPEM");
+  var offline=new TdfOptions{DisableAutoconfigure=true,KasInformation=new[]{new KasInfo("http://localhost:9999/malicious/kas"){PublicKey=kasPem,Kid="k1",Algorithm="rsa:2048"}},Attributes=new[]{"https://example.com/attr/a/value/b"}};
+  var credentials=new Options{ClientId="opentdf",ClientSecret="secret"};
+  Dictionary<string,object> error;
+  switch(name)
+  {
+   case "unreachable":error=await ExpectFailure(name,()=>Sdk.CreateAsync(url,new Options{ValidateConnection=true}));break;
+   case "caller-deadline":{using var cts=new CancellationTokenSource(1000);error=await ExpectFailure(name,()=>Sdk.CreateAsync(url,credentials,cts.Token));break;}
+   case "source-deadline":error=await ExpectFailure(name,()=>Sdk.CreateAsync(url,credentials with{Timeout=TimeSpan.FromMilliseconds(100)}));break;
+   case "token-401":
+   {
+    await using var sdk=await Sdk.CreateAsync(url,credentials);
+    var archive=await sdk.EncryptBytesAsync(Encoding.UTF8.GetBytes("offline payload"),offline);
+    error=await ExpectFailure(name,()=>sdk.DecryptBytesAsync(archive,new ReaderOptions{IgnoreAllowlist=true}));
+    break;
+   }
+   case "offline":
+   {
+    var rows=new Dictionary<string,object>();
+    var sdk=await Sdk.CreateAsync(url,credentials);
+    var archive=await sdk.EncryptBytesAsync(Encoding.UTF8.GetBytes("offline payload"),offline);
+    rows["allowlist"]=await ExpectFailure("allowlist",()=>sdk.DecryptBytesAsync(archive,new ReaderOptions{KasAllowlist=new[]{url}}));
+    rows["invalid-tdf"]=await ExpectFailure("invalid-tdf",()=>sdk.DecryptBytesAsync(Encoding.UTF8.GetBytes("not a tdf")));
+    rows["unsupported-option"]=await ExpectFailure("unsupported-option",()=>sdk.CreateTdfAsync(new byte[]{(byte)'x'},new TdfOptions{TargetMode="4.2.2"}));
+    rows["invalid-argument"]=await ExpectFailure("invalid-argument",()=>sdk.CreateTdfAsync(null));
+    for(int i=0;i<100;i++){await using var reader=await sdk.LoadTdfAsync(archive,new ReaderOptions{IgnoreAllowlist=true});Check((string)((IReadOnlyDictionary<string,object>)KeyAccess(await reader.ManifestAsync())[0])["kid"]=="k1","manifest");}
+    await sdk.DisposeAsync();
+    rows["closed-handle"]=await ExpectFailure("closed-handle",()=>sdk.DecryptBytesAsync(archive));
+    rows["handles"]=new Dictionary<string,object>{["readers"]=100,["closed"]=true};
+    Check(await Sdk.IsValidTdfAsync(archive)&&(await Sdk.VersionAsync())!=""&&(await Sdk.SupportedFeaturesAsync()).Contains("hexless"),"free functions");
+    Write("offline.json",JsonSerializer.Serialize(rows));
+    return;
+   }
+   default:error=await ExpectFailure(name,()=>Sdk.CreateAsync(url,credentials));break;
+  }
+  Write(name+".error.json",JsonSerializer.Serialize(error));
+ }
+
+ public static async Task<int> Main(string[] args)
+ {
+  if(args.Length!=4)throw new ArgumentException("consumer sdk run mode case");run=args[1];string mode=args[2];name=args[3];raw=JsonDocument.Parse(File.ReadAllText(Path.Combine(run,"config.json"))).RootElement;
+  try
+  {
+   if(mode=="controlled"){await Controlled(raw);Console.WriteLine("PASS generated native library "+mode+" "+name);return 0;}
+   await using var sdk=await Sdk.CreateAsync(Text(raw,"PlatformURL"),OptionsOf(raw));
+   switch(mode)
+   {
+    case "encrypt":
+    {
+     var options=TdfOptionsOf(raw);
+     if((name=="metadata"||name.EndsWith("-metadata"))&&name!="empty-metadata"&&!name.EndsWith("-empty-metadata"))options=options with{Metadata="{\"source\":\"independent metadata\",\"count\":7}"};
+     if(name=="denied"||name.EndsWith("-denied"))options=options with{Attributes=new[]{"https://example.com/attr/attr1/value/value2"}};
+     await using var obj=await sdk.CreateTdfAsync(Read(name+".input"),options);
+     Check(await obj.SizeAsync()==obj.Bytes.Length&&KeyAccess(await obj.ManifestAsync()).Count==1,"object");
+     Write(name+".generated.tdf",obj.Bytes);
+     break;
+    }
+    case "decrypt":
+    {
+     var input=Read(name+".tdf");IReadOnlyDictionary<string,object> manifest;byte[] metadata=Array.Empty<byte>();bool hasMetadata;
+     await using(var reader=await sdk.LoadTdfAsync(input,ReaderOptionsOf(raw)))
+     {
+      manifest=await reader.ManifestAsync();var kao=KeyAccess(manifest);
+      hasMetadata=kao.Count>0&&(string)((IReadOnlyDictionary<string,object>)kao[0])["encryptedMetadata"]!="";
+      if(hasMetadata){await reader.InitAsync();metadata=await reader.UnencryptedMetadataAsync();}
+     }
+     var payload=await sdk.DecryptBytesAsync(input,ReaderOptionsOf(raw));
+     Write(name+".out",payload);Write(name+".metadata",metadata);Write(name+".manifest",JsonSerializer.Serialize(manifest));Write(name+".presence",hasMetadata?"true":"false");
+     break;
+    }
+    case "negative":Write(name+".error.json",JsonSerializer.Serialize(await ExpectFailure("negative",()=>sdk.DecryptBytesAsync(Read(name+".tdf"),ReaderOptionsOf(raw)))));break;
+    case "repeat":await Repeat(sdk,raw);break;
+    default:throw new ArgumentException("unknown mode");
+   }
+   Console.WriteLine("PASS generated native library "+mode+" "+name);
+   return 0;
+  }
+  catch(OpenTdfException e){throw new Exception("consumer failure "+mode+" "+name+" "+JsonSerializer.Serialize(Report(e)),e);}
  }
 }

@@ -1,111 +1,140 @@
-# Java TDF3 SDK
+# Generated Java library
 
-Build with Bash, Python 3, JDK 21 (the repository pins Temurin 21.0.12.1+1), and the adjacent
-Goalchemy compiler built with Go 1.25.14:
+The shared source compiles into `tdf3-java.jar` (package `io.opentdf.tdf3`),
+emitted from the two export roots `src/library` (the deprecated `TDF3`
+façade) and `src` (the handle API of [api-spec.md](api-spec.md)). The
+hand-written [host adapter](../src/hosts/java) (`SDK`, `Reader`, `TDFObject`,
+`TDFOptions`, `ReaderOptions`, `OpenTDFException`, `Values`) presents that API
+in Java idiom: it maps names, idioms and errors and implements no protocol.
+Production calls use the generated Java, JDK 21 JCA, `java.net.http` and the
+pinned Bouncy Castle provider; no compiler, Go process or external executable.
 
-```sh
-(cd ../goalchemy && GOTOOLCHAIN=go1.25.14 go build -o out/java-tdf-library/goalchemy ./cmd/goalchemy)
-export JAVA_HOME="$PWD/../goalchemy/.toolchains/jdk-21.0.12.1+1"
-scripts/build-generated-java.sh ../goalchemy/out/java-tdf-library/sdk
-```
+## Build and import
 
-The package contains `tdf3-java.jar`, `lib/bcprov-jdk18on-1.86.jar`, dependency
-lock, licenses and `package-sha256.json`. JAR entry timestamps are fixed for
-repeatable builds. Build helpers resolve relative compiler/destination paths
-from the caller's working directory. Both dependency locks are byte-equivalent;
-the downloader verifies the pin before atomic publication, with independent
-concurrent temporary downloads. Bouncy Castle supplies only native HKDF-SHA256
-and absent-Q P-256 derivation; JCA supplies other cryptography. The dependency
-is required, including when an imported private key omits its public point.
-No global provider registration or crypto-default changes occur.
+JDK 21 (the repository pins Temurin 21.0.12.1+1 under
+`goalchemy/.toolchains`), Bash and Python 3. From `goalchemy/`, build
+`GOTOOLCHAIN=go1.25.14 go build -o out/java-tdf-library/goalchemy
+./cmd/goalchemy`, then run `scripts/build-generated-java.sh [destination]`.
+`GOALCHEMY_BIN` selects a compiler binary, `GOALCHEMY_ROOT` the Goalchemy
+checkout (toolchains, the Java target's dependency lock) and `JAVA_HOME` a
+JDK (default: the pinned one under the checkout). The script compiles both
+roots, copies every `src/hosts/java/*.java.in` adapter file into
+`src/io/opentdf/tdf3/`, compiles the generated and adapter sources with
+`javac`, and writes `tdf3-java.jar`, `lib/bcprov-jdk18on-1.86.jar`, the
+dependency lock, licenses and `package-sha256.json`. JAR entry timestamps are
+fixed for repeatable builds.
 
-An independent named-package application compiles and runs using only the JARs:
+An independent application compiles and runs using only the JARs:
 
 ```sh
 javac -cp "$PACKAGE/tdf3-java.jar:$PACKAGE/lib/bcprov-jdk18on-1.86.jar" -d classes Consumer.java
 java -cp "classes:$PACKAGE/tdf3-java.jar:$PACKAGE/lib/bcprov-jdk18on-1.86.jar" example.Consumer
 ```
 
-The exported adapter is `io.opentdf.tdf3.TDF3`; the compiler/native runtime source
-layout is not part of a consumer build. For example:
+`tests/interop/generatedjava/Consumer.java` is the independent consumer: it
+drives the real platform (encrypt, decrypt, 100 round trips with a cancelled
+host provider, a typed negative) and, in `controlled` mode, the offline
+checks of `tests/interop/delivery/controlled_platform.py` (unreachable
+platform, discovery failures, untrusted TLS, caller and source deadlines, a
+401 token endpoint, allowlist, invalid input, unsupported option, invalid
+argument, 100 reader handles, closed handle).
+
+## Handle API
 
 ```java
-package example;
-import io.opentdf.tdf3.TDF3;
+import io.opentdf.tdf3.*;
 
-public class Consumer {
-  public static void main(String[] args) throws Exception {
-    var config = new TDF3.Config();
-    config.PlatformURL = "https://platform.example";
-    config.KASURL = "https://platform.example/kas";
-    config.ClientID = System.getenv("TDF_CLIENT_ID");
-    config.ClientSecret = System.getenv("TDF_CLIENT_SECRET");
-    var options = new TDF3.EncryptOptions();
-    options.Attributes = new String[]{"https://example.com/attr/class/value/public"};
-    byte[] archive = TDF3.encrypt(config, new byte[]{0, (byte)255}, options, null)
-        .completion().toCompletableFuture().get();
-    var clear = TDF3.decrypt(config, archive, null)
-        .completion().toCompletableFuture().get();
-    System.out.println(clear.Payload().length);
-  }
+try (SDK sdk = SDK.builder("http://localhost:8080")
+        .clientCredentials("opentdf-sdk", "secret").insecurePlaintext(true).build()) {
+    TDFOptions options = TDFOptions.builder()
+        .attributes("https://example.com/attr/attr1/value/value1")
+        .kasInformation(new TDFOptions.KASInfo("http://localhost:8080/kas"))
+        .mimeType("text/plain").build();
+    byte[] ciphertext;
+    try (TDFObject object = sdk.createTDF(plaintext, options)) {
+        Map<String, Object> manifest = object.manifest();   // keyed by the reference's JSON tags
+        ciphertext = object.bytes();                        // or: sdk.encryptBytes(plaintext, options)
+    }
+    ReaderOptions reading = ReaderOptions.builder().kasAllowlist("http://localhost:8080").build();
+    try (Reader reader = sdk.loadTDF(ciphertext, reading)) {
+        List<String> attributes = reader.dataAttributes();
+        reader.init(Duration.ofSeconds(30));               // fetch and unwrap keys now, within the Duration
+        byte[] metadata = reader.unencryptedMetadata();
+    }
+    try {
+        byte[] plain = sdk.decryptBytes(ciphertext, reading);
+    } catch (OpenTDFException e) {
+        System.out.println(e.kind() + " " + e.httpStatus() + " " + e.getMessage());
+    }
+    CompletableFuture<byte[]> pending = sdk.decryptBytesAsync(ciphertext, reading);
+    pending.cancel(true);                                   // cancels the library call
 }
 ```
 
-Per call, the generated shared Go source builds/closes its client. Operations
-are serialized within one generated graph per JVM classloader; independent
-graphs require independent classloaders. Configuration, payload and nested
-collections are snapshotted before queueing. Outputs and failures are copied
-before owner retirement. `Decrypted.Payload()` and `Metadata()` return fresh
-arrays; `HasMetadata()` distinguishes absence from explicit empty metadata.
-Text fields use strict UTF-8, while generic generated source exports use binary
-byte strings. `long` preserves source integer ranges, including exact full
-64-bit values. Unsupported generic public shapes fail honestly before emission.
+| Adapter symbol | Reference | Notes |
+| --- | --- | --- |
+| `SDK.builder(endpoint)....build()`, `build(Duration)`, `buildAsync()` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection(true)` runs the health check first. |
+| `sdk.createTDF(byte[], TDFOptions)` → `TDFObject` (`bytes()`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
+| `sdk.loadTDF(byte[], ReaderOptions)` → `Reader` (`init`, `manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set, as in the reference. |
+| `sdk.isHealthy`, `platformConfiguration`, `getBaseKey`, `storeKASKeys`, `close` | same | `platformConfiguration()` returns the members as `Map<String, String>` (non-string members as compact JSON); `getBaseKey()` a map keyed `kasUri`, `publicKey{algorithm,kid,pem}`, `kasId`. |
+| `SDK.isValidTdf`, `getTdfType`, `isPlatformEndpointMalformed`, `keyTypeToPolicyAlgorithm`, `policyAlgorithmToKeyType`, `version`, `tdfSpecVersion`, `supportedFeatures` | same | Static methods; each is a library call. |
 
-`Operation.cancel()` requests stop. A queued operation does no source work;
-an active operation completes only after real native/provider release.
-`completion()` is a CompletionStage view, and cancelling a derived Future is
-not SDK cancellation. Completion continuations can submit and wait for another
-operation. Native owner launch failures roll back the unacquired call; completion
-launch failures use the JDK common-pool after retirement. If both independent
-publishers reject, the retired driver releases the queue/gate and faults detached
-calls outside the monitor. This synchronous emergency path cannot guarantee
-parallel progress for arbitrary blocking host callback graphs when independent
-native dispatch is unavailable. Failures are `TDF3.TDFError`, with `kind`, `code`, `operation`,
-`httpStatus`, `serverCode`, `serverMessage`, `causeCategory` and copied
-`requiredObligations()`. Kinds distinguish declared source failure, cancellation,
-source panic, invalid argument and unexpected adapter/cleanup fault. SDK calls
-never use executable `System.exit` semantics.
+Every blocking method has an overload taking a `Duration`: when it expires
+the call is cancelled and `OpenTDFException` with kind `deadline_exceeded`
+is thrown. Every method has an `*Async` twin returning a
+`CompletableFuture` whose `cancel` cancels the library call. `SDK`,
+`TDFObject` and `Reader` are `AutoCloseable`. Options are builders over the
+shared-source structs (`SDK.Builder` for `Options`, `TDFOptions.Builder`,
+`ReaderOptions.Builder`) with the shared field names in camelCase
+(`clientCredentials`, `insecurePlaintext`, `dpopAlgorithm`,
+`kasInformation`, `wrappingKeyAlgorithm`, `kasAllowlist`, `sessionKeyType`,
+...); every unset field is the reference default. Sizes are `long`, strings
+UTF-8 `String`s, payloads `byte[]`. `tokenProvider` takes the façade's
+`TDF3.TokenProvider` (a `ProviderRequest` resolved with an `AccessToken`)
+and replaces client credentials; the SDK then signs rewrap requests with the
+reference's ephemeral ES256 key unless `dpopKeyPem` is set. Options this
+build does not implement yet (`tokenExchange`, `certExchange`, `tls`,
+`unixSocket`, service endpoint overrides, assertions, target mode `4.2.2`,
+schema validation, RSA-4096 and P-384/P-521 keys) fail with kind
+`unsupported_feature` and the message `unsupported in this build: <option>`.
 
-For client credentials held outside shared source, provide
-`CallOptions.tokenProvider`. It receives a native `ProviderRequest` and resolves
-an `AccessToken(value, scheme, expiresAt, confirmationJKT)`. Expiry is exact Unix
-seconds. Matching DPoP tokens must carry the generated authentication key's
-canonical JWK thumbprint, and provider acquisition must handle the issuer's
-nonce. `retain()`/`onStop()` records native acquisition; stop only requests
-cancellation. Resolve/reject/fault means provider resources have actually been
-released. A synchronous adapter throw remains `host_fault`, even after a
-synchronous resolve/reject. Async stage rejection via `TDF3.fromStage` is declared
-token acquisition failure. An attachment throw on a live stage waits for explicit
-terminal request settlement, with host-fault precedence. A provider that retains
-resources and never settles intentionally prevents completion.
+Manifests and policies are returned as unmodifiable `Map<String, Object>`
+trees keyed by the reference's JSON tags
+(`encryptionInformation.keyAccess[0].url`, `payload.mimeType`,
+`policy.body.dataAttributes`), with `String`, `Long`, `Boolean` and `List`
+leaves, so they read like `manifest.json`.
 
-Transport uses trusted JVM TLS and NEVER follows redirects. It supports bounded
-GET/POST, native deadlines/context cancellation, automatic gzip, Latin-1 response
-header bytes and canonical sorted duplicate headers. Request header values are
-ASCII-only and rejected before contact otherwise, because the pinned JDK writer
-silently replaces obs-text. JVM ProxySelector/system proxy settings apply;
-Go environment proxy behavior and raw header whitespace are not promised.
-Exposed response headers are bounded at 64 KiB and decoded bodies at each shared
-call's configured limit; native parser limits can reject earlier.
+## Errors
 
-Verification uses the actual importing consumer under
-`tests/interop/generatedjava`. BASIC, EC and enforced-DPoP matrices preserve
-separate artifact-scoped results, stock Go/Web producers and consumers, native
-OAuth providers, RSA/P-256 sessions/authentication/wrapping, metadata presence
-and rejection cases. Stock Web enforced nonce failures remain explicitly labeled;
-Bearer-produced format fixtures do not establish stock Web DPoP authentication.
-Controlled endpoints are negative tests only; positive interoperability uses
-real KAS. Generic compiler tests independently verify queue re-entry, structured
-error copies, field/key GC, retained native JCA work, Close and cleanup ordering.
-See [the Java library design](../../goalchemy/docs/java-library-boundary.md) for
-the precise compiler boundary and reviewed JDK/dependency observations.
+Every failure is an `OpenTDFException` with `kind()`, `op()`,
+`getMessage()` (the reference's wording, see
+[error-wording.md](error-wording.md)), `httpStatus()`, `connectCode()`,
+`serviceMessage()`, `kasUrl()`, `requiredObligations()` and
+`assertionId()`. Boundary failures keep the runtime's kind: `canceled`,
+`deadline_exceeded` (a Duration expired), `closed` (a call after `close()`),
+`invalid_argument` (a null payload), `poisoned`, `host_fault`. Switch on
+`kind()`; the kinds are the `ErrorKind` list of [api-spec.md](api-spec.md).
+
+## Deprecated façade
+
+`TDF3.encrypt`, `TDF3.decrypt`, `TDF3.Config`, `TDF3.EncryptOptions`,
+`TDF3.Decrypted`, `TDF3.Operation` and `TDF3.TDFError` remain with their
+previous shapes for one release, implemented in the shared source as thin
+wrappers that construct an SDK per call. `TDFError.code` is now the
+`Error.kind` string; `PolicyBase64`, `Dissem` and `SegmentHashAlgorithm`
+other than `GMAC` are no longer supported, and empty metadata writes no
+`encryptedMetadata` entry, as the reference does. Its token provider types
+(`TDF3.TokenProvider`, `ProviderRequest`, `AccessToken`, `fromStage`) are
+shared with the handle API.
+
+## CLI
+
+`src/hosts/java/cmd/otdfgc/Main.java` is the native Java CLI over this
+package, built by `scripts/build-java-cli.sh <package> <launcher>` (a
+launcher over the pinned JDK with the package's JARs on the classpath) and
+driven by the xtest harness as the `gcjava` SDK type (see
+[xtest.md](xtest.md)). It implements the same contract as the Go `otdfgc`:
+`encrypt`, `decrypt`, `inspect` (the manifest read from the ZIP), `supports
+<feature>` and `--version --json` with the same flags, exit codes (0, 1
+operation failed, 2 usage or `unsupported in this build: <flag>`) and
+otdfctl's wording.

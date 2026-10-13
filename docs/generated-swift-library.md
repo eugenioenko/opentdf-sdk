@@ -6,10 +6,11 @@ experimental, like the rest of this POC, and its API may change.
 
 ## Build
 
-Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. A shared
-[Goalchemy **v0.6.0**](https://github.com/eugenioenko/goalchemy/releases/tag/v0.6.0)
-is pinned for all eight targets in
-[references.lock.json](../references.lock.json).
+Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. The
+Goalchemy revision for all eight targets is pinned in
+[references.lock.json](../references.lock.json): v0.6.1 plus the Swift
+emitter fixes of goalchemy#79, which the Swift package needs (v0.6.1 alone
+rejects the shared source's `Error` record with `GCE007`).
 
 Ubuntu 22.04 prerequisites:
 
@@ -22,7 +23,7 @@ From the workspace containing the adjacent repositories:
 
 ```sh
 cd goalchemy
-git checkout v0.6.0
+git checkout "$(python3 -c 'import json;print(json.load(open("../sdk/references.lock.json"))["repositories"]["goalchemy"]["revision"])')"
 bash scripts/fetch-toolchains.sh swift
 export PATH="$PWD/.toolchains/swift-6.4.0/usr/bin:$PATH"
 GOTOOLCHAIN=go1.25.14 go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy
@@ -59,65 +60,83 @@ let package = Package(
 )
 ```
 
-The product/module is `OpenTDFTDF3`. Its wrapper accepts Foundation `Data` for
-payloads and returns owned `Data`. Configuration/option structs retain Go field
-names and exact integer widths. Text fields use binary-preserving `GoString`:
-literals encode UTF-8, dynamic strings use `GoString(text)`, and
-`GoString(bytes: ...)` preserves arbitrary bytes. Optional arrays distinguish
-nil from explicitly empty source slices.
+The product/module is `OpenTDFTDF3`. It exports the handle API of
+[api-spec.md](api-spec.md) through the hand-written
+[adapter](../src/hosts/swift/OpenTDF.swift.in) and keeps the deprecated
+`encrypt`/`decrypt` façade ([TDF3.swift.in](../src/hosts/swift/TDF3.swift.in)).
+The package is compiled from the two export roots `src/library` and `src`;
+the shared source's `Error` record is emitted as `Error_` by the Swift
+emitter's public-name rule (goalchemy#79), and the adapter presents it as
+`OpenTDFError`.
 
 ```swift
 import Foundation
 import OpenTDFTDF3
 
-var config = Config()
-config.PlatformURL = "http://localhost:8080"
-config.KASURL = "http://localhost:8080/kas"
-config.IssuerURL = "http://localhost:8888/auth/realms/opentdf"
-config.ClientID = "opentdf-sdk"
-config.ClientSecret = "secret"
-config.AllowHTTP = true
-
-var options = EncryptOptions()
-options.Attributes = ["https://example.com/attr/attr1/value/value1"]
-options.IncludeMetadata = true
-options.Metadata = [] // present, explicitly empty metadata
-
-let archive = try encrypt(config, Data([0, 255, 128, 1]), options).wait()
-let result = try await decrypt(config, archive).value()
-print(result.payload, result.hasMetadata)
+let sdk = try await SDK("http://localhost:8080",
+                        Options(clientId: "opentdf-sdk", clientSecret: "secret", insecurePlaintext: true))
+let object = try await sdk.createTDF(plaintext, TDFOptions(
+  attributes: ["https://example.com/attr/attr1/value/value1"],
+  kasInformation: [KASInfo(url: "http://localhost:8080/kas")], mimeType: "text/plain"))
+let manifest = try await object.manifest()      // typed, the reference's JSON tags
+try object.close()
+let reading = ReaderOptions(kasAllowlist: ["http://localhost:8080"])
+let reader = try await sdk.loadTDF(object.bytes, reading)
+let attributes = try await reader.dataAttributes()
+try await reader.initialize()                   // fetch and unwrap keys now
+let metadata = try await reader.unencryptedMetadata()
+try reader.close()
+do {
+  let plain = try await sdk.decryptBytes(object.bytes, reading)
+} catch let e as OpenTDFError {
+  print(e.kind.name, e.httpStatus, e.message)
+}
+try sdk.close()
 ```
 
-`Decrypted` owns `payload`, `metadata`, `hasMetadata` and `manifestJSON` bytes.
-Calls are lazy: `.wait()` or `.value()` starts execution. Inputs are copied when
-the operation is created. Calls serialize through the generated runtime and
-results detach from source storage. Caller mutations cannot alter a submitted
-call's inputs.
+| Adapter symbol | Reference | Notes |
+| --- | --- | --- |
+| `try await SDK(endpoint, Options)`, `SDK.create` (synchronous) | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection` runs the health check first. |
+| `sdk.createTDF(Data, TDFOptions)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
+| `sdk.loadTDF(Data, ReaderOptions)` → `Reader` (`initialize()`, `manifest()`, `policy()`, `dataAttributes()`, `unencryptedMetadata()`, `close()`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | `Reader.Init` is `initialize()` (`init` is reserved for initializers in Swift). The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set. |
+| `sdk.isHealthy()`, `platformConfiguration()`, `getBaseKey()`, `storeKASKeys`, `close()` | same | `platformConfiguration()` returns `[String: String]` (non-string members as compact JSON). |
+| `SDK.isValidTdf`, `getTdfType`, `isPlatformEndpointMalformed`, `keyTypeToPolicyAlgorithm`, `policyAlgorithmToKeyType`, `version`, `tdfSpecVersion`, `supportedFeatures` | same | Static functions; each is a library call. |
 
-## Authentication, cancellation and failures
+Methods are `async throws` and honour Swift `Task` cancellation: cancelling
+the calling task cancels the library call (kind `canceled`). Options are
+structs with defaults (`Options`, `TDFOptions`, `ReaderOptions`, `KASInfo`,
+`TokenExchange`, `CertExchange`, `TLSOptions`) using the shared field names
+in camelCase; every default is the reference default. Strings are Swift
+`String`s, payloads `Data`, sizes `Int64`. `tokenProvider` takes the
+façade's `TokenProvider` closure and replaces client credentials; the SDK
+then signs rewrap requests with the reference's ephemeral ES256 key unless
+`dpopKeyPem` is set. Options this build does not implement yet fail with
+`.unsupportedFeature` and `unsupported in this build: <option>`. `Manifest`,
+`PolicyObject`, `KeyAccess` and the other manifest types are typed structs
+whose fields are the reference's JSON tags.
 
-The shared implementation handles discovery, client-credentials OAuth,
-RSA-2048/P-256 wrapping and response sessions, RS256/ES256 signing and DPoP.
-Set `DPoP`, `KASAlgorithm`, `SessionAlgorithm`, `AuthAlgorithm` and any explicit
-PEM/KID fields as in the other native packages.
+Every failure is an `OpenTDFError` with `kind` (an `ErrorKind` enum whose
+`name` is the api-spec string; `.boundary(name)` carries the runtime's kind
+for `closed`, `poisoned`, `invalid_argument`, `host`), `op`, `message` (the
+reference's wording, see [error-wording.md](error-wording.md)),
+`httpStatus`, `connectCode`, `serviceMessage`, `kasUrl`,
+`requiredObligations` and `assertionId`.
 
-A typed `TokenProvider` receives a `CallbackRequest` and completion callback.
-Complete once with an `AccessToken` or an error, including after cancellation;
-optionally return a cancellation/cleanup hook. The adapter serializes the token
-into the shared callback format. DPoP providers must acquire a token bound to
-the configured auth key and supply its `confirmationJKT`. The host supplies its
-own OAuth implementation and signer. Do not synchronously wait on another
-generated call from a callback or cleanup hook.
+`src/hosts/swift/cmd/otdfgc/main.swift` is the native Swift CLI over this
+package, built by `scripts/build-swift-cli.sh <package> <binary>` and
+registered with the xtest harness as the `gcswift` SDK type (see
+[xtest.md](xtest.md)); it implements the Go `otdfgc` contract. The consumer
+in `tests/interop/generatedswift/Consumer.swift` drives the real platform
+and, in `controlled` mode, the offline checks of
+`tests/interop/delivery/controlled_platform.py`.
 
-`CallOptions` carries a `CancellationToken`, optional `timeoutNanoseconds`, and
-raw callbacks. `.cancel()` requests operation cancellation. The runtime waits
-for native/provider cleanup before publishing results. `.value()` does not
-automatically wire Swift Task cancellation; use the token or `.cancel()`.
+### Deprecated façade
 
-Failures throw `TDFError` with `kind`, `code`, `operation`, `httpStatus`,
-`causeCategory`, `serverCode`, `serverMessage` and `requiredObligations`.
-Cancellation/deadline errors retain their categories. Error descriptions contain
-a short code/operation summary; server diagnostics remain separate fields.
+The façade is unchanged for one release: `encrypt`/`decrypt` over
+`Config`/`EncryptOptions` returning a lazy `Operation` (`.wait()` or
+`.value()`), `Decrypted` and `TDFError`, implemented in the shared source as
+thin wrappers that construct an SDK per call. Its `code` is now the
+`Error.kind` string.
 
 ## Verification
 

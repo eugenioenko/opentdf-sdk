@@ -1,0 +1,73 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import java.util.ArrayList;
+import java.util.List;
+
+/** The reference's TDFConfig options (shared-source TDFOptions); every unset field is the reference default. */
+public final class TDFOptions {
+ /** The reference's KASInfo: one key access server for the template. */
+ public record KASInfo(String url, String publicKey, String kid, String algorithm, boolean isDefault) {
+  public KASInfo(String url) { this(url, "", "", "", false); }
+  Generated.KASInfo toGenerated() {
+   Generated.KASInfo k = new Generated.KASInfo();
+   k.URL = Values.encode(url); k.PublicKey = Values.encode(publicKey); k.KID = Values.encode(kid); k.Algorithm = Values.encode(algorithm); k.Default = isDefault;
+   return k;
+  }
+ }
+ /** The reference's AssertionConfig; assertions arrive in Phase 5. */
+ public record AssertionConfig(String id, String type, String scope, String appliesToState, String format, String schema, String value) {}
+
+ private final Generated.TDFOptions generated;
+ private TDFOptions(Generated.TDFOptions generated) { this.generated = generated; }
+ Generated.TDFOptions toGenerated() { return generated; }
+
+ public static Builder builder() { return new Builder(); }
+
+ public static final class Builder {
+  private final Generated.TDFOptions o = new Generated.TDFOptions();
+  private Builder() {}
+  /** WithDataAttributes */
+  public Builder attributes(List<String> attributes) { o.Attributes = Values.encode(attributes); return this; }
+  public Builder attributes(String... attributes) { return attributes(List.of(attributes)); }
+  /** WithAutoconfigure(false) */
+  public Builder disableAutoconfigure(boolean disable) { o.DisableAutoconfigure = disable; return this; }
+  /** WithKasInformation */
+  public Builder kasInformation(List<KASInfo> kases) {
+   if (kases == null) { o.KasInformation = null; return this; }
+   o.KasInformation = new Generated.KASInfo[kases.size()];
+   for (int i = 0; i < kases.size(); i++) o.KasInformation[i] = kases.get(i).toGenerated();
+   return this;
+  }
+  public Builder kasInformation(KASInfo... kases) { return kasInformation(List.of(kases)); }
+  /** WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build. */
+  public Builder wrappingKeyAlgorithm(String keyType) { o.WrappingKeyAlgorithm = Values.encode(keyType); return this; }
+  /** WithSegmentSize; 0 keeps the reference default. */
+  public Builder segmentSize(long size) { o.SegmentSize = size; return this; }
+  /** WithInputSize */
+  public Builder inputSize(long size) { o.InputSize = size; return this; }
+  /** WithMimeType */
+  public Builder mimeType(String mimeType) { o.MimeType = Values.encode(mimeType); return this; }
+  /** WithMetaData */
+  public Builder metadata(String metadata) { o.Metadata = Values.encode(metadata); return this; }
+  /** WithAssertions; unsupported in this build. */
+  public Builder assertions(List<AssertionConfig> assertions) {
+   if (assertions == null) { o.Assertions = null; return this; }
+   List<Generated.AssertionConfig> out = new ArrayList<>();
+   for (AssertionConfig a : assertions) {
+    Generated.AssertionConfig g = new Generated.AssertionConfig();
+    g.ID = Values.encode(a.id()); g.Type = Values.encode(a.type()); g.Scope = Values.encode(a.scope()); g.AppliesToState = Values.encode(a.appliesToState());
+    g.Statement = new Generated.Statement();
+    g.Statement.Format = Values.encode(a.format()); g.Statement.Schema = Values.encode(a.schema()); g.Statement.Value = Values.encode(a.value());
+    out.add(g);
+   }
+   o.Assertions = out.toArray(new Generated.AssertionConfig[0]);
+   return this;
+  }
+  /** WithSystemMetadataAssertion; unsupported in this build. */
+  public Builder systemMetadataAssertion(boolean enable) { o.SystemMetadataAssertion = enable; return this; }
+  /** WithTargetMode; 4.3.0 in this build. */
+  public Builder targetMode(String mode) { o.TargetMode = Values.encode(mode); return this; }
+  public TDFOptions build() { return new TDFOptions(o); }
+ }
+}

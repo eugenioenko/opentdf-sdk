@@ -1,0 +1,214 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import io.goalchemy.runtime.Callback;
+import io.goalchemy.runtime.Library;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * The reference SDK handle (api-spec.md) in Java idiom: a builder over the
+ * shared-source Options, blocking methods with an optional Duration, and
+ * *Async twins returning a CompletableFuture whose cancel cancels the call.
+ * The adapter maps names, idioms and errors only; the protocol executes in
+ * the generated package.
+ */
+public final class SDK implements AutoCloseable {
+ /** A KAS public key for storeKASKeys (reference KasPublicKey). */
+ public record KasPublicKey(String pem, String kid, String alg) {}
+
+ static final String TOKEN_PROVIDER = "access-token";
+ private final Generated.SDK handle;
+ private final Callback.Registration[] callbacks;
+
+ private SDK(Generated.SDK handle, Callback.Registration[] callbacks) {
+  this.handle = handle;
+  this.callbacks = callbacks;
+ }
+
+ Library.Options call() {
+  Library.Options o = new Library.Options();
+  o.callbacks = callbacks;
+  return o;
+ }
+
+ /** The reference's New: options over the platform endpoint, then build(). */
+ public static Builder builder(String platformEndpoint) { return new Builder(platformEndpoint); }
+
+ public static final class Builder {
+  private final String endpoint;
+  private final Generated.Options o = new Generated.Options();
+  private TDF3.TokenProvider provider;
+  private Builder(String endpoint) {
+   if (endpoint == null) throw Library.invalid();
+   this.endpoint = endpoint;
+  }
+  /** WithClientCredentials */
+  public Builder clientCredentials(String clientId, String clientSecret) { o.ClientID = Values.encode(clientId); o.ClientSecret = Values.encode(clientSecret); return this; }
+  public Builder scopes(List<String> scopes) { o.Scopes = Values.encode(scopes); return this; }
+  /** WithTokenEndpoint */
+  public Builder tokenEndpoint(String endpoint) { o.TokenEndpoint = Values.encode(endpoint); return this; }
+  /** WithTokenExchange; unsupported in this build. */
+  public Builder tokenExchange(String subjectToken, List<String> audience) { o.TokenExchange = new Generated.TokenExchange(); o.TokenExchange.SubjectToken = Values.encode(subjectToken); o.TokenExchange.Audience = Values.encode(audience); return this; }
+  /** WithCertExchange; unsupported in this build. */
+  public Builder certExchange(String clientCertPem, String clientKeyPem, List<String> audience) { o.CertExchange = new Generated.CertExchange(); o.CertExchange.ClientCertPEM = Values.encode(clientCertPem); o.CertExchange.ClientKeyPEM = Values.encode(clientKeyPem); o.CertExchange.Audience = Values.encode(audience); return this; }
+  /** A host token source (WithOAuthAccessTokenSource); replaces client credentials. */
+  public Builder tokenProvider(TDF3.TokenProvider provider) { this.provider = provider; o.TokenProviderName = provider == null ? "" : TOKEN_PROVIDER; return this; }
+  /** WithPlatformConfiguration; non-string members are carried as JSON text. */
+  public Builder platformConfiguration(Map<String, ?> configuration) {
+   List<Generated.PlatformConfigurationEntry> entries = new ArrayList<>();
+   for (Map.Entry<String, ?> e : configuration.entrySet()) {
+    Generated.PlatformConfigurationEntry entry = new Generated.PlatformConfigurationEntry();
+    entry.Key = Values.encode(e.getKey());
+    entry.Value = Values.encode(e.getValue() instanceof String s ? s : Values.json(e.getValue()));
+    entries.add(entry);
+   }
+   o.PlatformConfiguration = new Generated.PlatformConfiguration();
+   o.PlatformConfiguration.Entries = entries.toArray(new Generated.PlatformConfigurationEntry[0]);
+   return this;
+  }
+  /** WithConnectionValidation */
+  public Builder validateConnection(boolean validate) { o.ValidateConnection = validate; return this; }
+  /** WithInsecurePlaintextConn */
+  public Builder insecurePlaintext(boolean allow) { o.InsecurePlaintext = allow; return this; }
+  /** WithInsecureSkipVerifyConn */
+  public Builder insecureSkipVerify(boolean skip) { o.InsecureSkipVerify = skip; return this; }
+  /** WithTLSCredentials; unsupported in this build. */
+  public Builder tls(String clientCertPem, String clientKeyPem, String rootCasPem, List<String> audience) { o.TLS = new Generated.TLSOptions(); o.TLS.ClientCertPEM = Values.encode(clientCertPem); o.TLS.ClientKeyPEM = Values.encode(clientKeyPem); o.TLS.RootCAsPEM = Values.encode(rootCasPem); o.TLS.Audience = Values.encode(audience); return this; }
+  /** WithIPC equivalent; unsupported in this build. */
+  public Builder unixSocket(String path) { o.UnixSocket = Values.encode(path); return this; }
+  /** Per-request timeout; null or zero keeps the reference default. */
+  public Builder timeout(Duration timeout) { o.TimeoutMillis = timeout == null ? 0 : timeout.toMillis(); return this; }
+  public Builder coreEndpoint(String endpoint) { o.CoreEndpoint = Values.encode(endpoint); return this; }
+  public Builder policyEndpoint(String endpoint) { o.PolicyEndpoint = Values.encode(endpoint); return this; }
+  public Builder authorizationEndpoint(String endpoint) { o.AuthorizationEndpoint = Values.encode(endpoint); return this; }
+  public Builder entityResolutionEndpoint(String endpoint) { o.EntityResolutionEndpoint = Values.encode(endpoint); return this; }
+  public Builder wellknownEndpoint(String endpoint) { o.WellknownEndpoint = Values.encode(endpoint); return this; }
+  /** WithSessionEncryptionRSA */
+  public Builder sessionEncryptionRsaPem(String pem) { o.SessionEncryptionRSAPEM = Values.encode(pem); return this; }
+  /** WithSessionSignerRSA; unsupported in this build. */
+  public Builder sessionSignerRsaPem(String pem) { o.SessionSignerRSAPEM = Values.encode(pem); return this; }
+  /** WithDPoPAlgorithm: ES256, ES384, ES512, RS256, RS384 or RS512. */
+  public Builder dpopAlgorithm(String algorithm) { o.DPoPAlgorithm = Values.encode(algorithm); return this; }
+  /** WithDPoPKeyPEM */
+  public Builder dpopKeyPem(String pem) { o.DPoPKeyPEM = Values.encode(pem); return this; }
+  /** WithNoKIDInKAO */
+  public Builder noKidInKao(boolean noKid) { o.NoKIDInKAO = noKid; return this; }
+  /** WithFulfillableObligationFQNs */
+  public Builder fulfillableObligationFqns(List<String> fqns) { o.FulfillableObligationFQNs = Values.encode(fqns); return this; }
+  /** WithLogger level: a slog level (-4 debug, 0 info, 4 warn, 8 error); 0 keeps the host sink default. */
+  public Builder logLevel(long level) { o.LogLevel = level; return this; }
+
+  private Callback.Registration[] callbacks() {
+   return provider == null ? null : new Callback.Registration[]{new Callback.Registration(TOKEN_PROVIDER, request -> provider.start(new TDF3.ProviderRequest(request)))};
+  }
+  private Library.Operation<Generated.SDK> start(Callback.Registration[] callbacks) {
+   Library.Options call = new Library.Options();
+   call.callbacks = callbacks;
+   return Values.run(() -> Generated.New(Values.encode(endpoint), o, call));
+  }
+  /** Discovers the platform configuration and the token endpoint. */
+  public SDK build() { return build(null); }
+  public SDK build(Duration timeout) {
+   Callback.Registration[] callbacks = callbacks();
+   return new SDK(Values.await(start(callbacks), timeout), callbacks);
+  }
+  public CompletableFuture<SDK> buildAsync() {
+   Callback.Registration[] callbacks = callbacks();
+   return Values.future(start(callbacks), h -> new SDK(h, callbacks));
+  }
+ }
+
+ /** The reference's CreateTDF over bytes: the TDF bytes with their TDFObject handle. */
+ public TDFObject createTDF(byte[] plaintext, TDFOptions options) { return createTDF(plaintext, options, null); }
+ public TDFObject createTDF(byte[] plaintext, TDFOptions options, Duration timeout) { return object(Values.await(startCreate(plaintext, options), timeout)); }
+ public CompletableFuture<TDFObject> createTDFAsync(byte[] plaintext, TDFOptions options) { return Values.future(startCreate(plaintext, options), this::object); }
+ private Library.Operation<Generated.SDK.SDKEncryptBytesResult> startCreate(byte[] plaintext, TDFOptions options) {
+  return Values.run(() -> handle.EncryptBytes(Values.bytes(plaintext), (options == null ? TDFOptions.builder().build() : options).toGenerated(), call()));
+ }
+ private TDFObject object(Generated.SDK.SDKEncryptBytesResult r) { return new TDFObject(r.value0(), r.value1(), this); }
+
+ /** createTDF without keeping the handle: the TDF bytes only. */
+ public byte[] encryptBytes(byte[] plaintext, TDFOptions options) { return encryptBytes(plaintext, options, null); }
+ public byte[] encryptBytes(byte[] plaintext, TDFOptions options, Duration timeout) {
+  TDFObject object = createTDF(plaintext, options, timeout);
+  object.close();
+  return object.bytes();
+ }
+ public CompletableFuture<byte[]> encryptBytesAsync(byte[] plaintext, TDFOptions options) {
+  return createTDFAsync(plaintext, options).thenCompose(o -> o.closeAsync().thenApply(v -> o.bytes()));
+ }
+
+ /** The reference's LoadTDF over bytes. */
+ public Reader loadTDF(byte[] ciphertext, ReaderOptions options) { return loadTDF(ciphertext, options, null); }
+ public Reader loadTDF(byte[] ciphertext, ReaderOptions options, Duration timeout) { return new Reader(Values.await(startLoad(ciphertext, options), timeout), this); }
+ public CompletableFuture<Reader> loadTDFAsync(byte[] ciphertext, ReaderOptions options) { return Values.future(startLoad(ciphertext, options), r -> new Reader(r, this)); }
+ private Library.Operation<Generated.Reader> startLoad(byte[] ciphertext, ReaderOptions options) {
+  return Values.run(() -> handle.LoadTDF(Values.bytes(ciphertext), (options == null ? ReaderOptions.defaults() : options).toGenerated(), call()));
+ }
+
+ /** The reference's DecryptBytes. */
+ public byte[] decryptBytes(byte[] ciphertext, ReaderOptions options) { return decryptBytes(ciphertext, options, null); }
+ public byte[] decryptBytes(byte[] ciphertext, ReaderOptions options, Duration timeout) { return orEmpty(Values.await(startDecrypt(ciphertext, options), timeout)); }
+ public CompletableFuture<byte[]> decryptBytesAsync(byte[] ciphertext, ReaderOptions options) { return Values.future(startDecrypt(ciphertext, options), SDK::orEmpty); }
+ private Library.Operation<byte[]> startDecrypt(byte[] ciphertext, ReaderOptions options) {
+  return Values.run(() -> handle.DecryptBytes(Values.bytes(ciphertext), (options == null ? ReaderOptions.defaults() : options).toGenerated(), call()));
+ }
+ private static byte[] orEmpty(byte[] b) { return b == null ? new byte[0] : b; }
+
+ public boolean isHealthy() { return isHealthy(null); }
+ public boolean isHealthy(Duration timeout) { return Values.await(Values.run(() -> handle.IsHealthy(call())), timeout); }
+ public CompletableFuture<Boolean> isHealthyAsync() { return Values.future(Values.run(() -> handle.IsHealthy(call())), b -> b); }
+
+ /** The platform configuration members as strings (non-string members as compact JSON). */
+ public Map<String, String> platformConfiguration() { return configuration(Values.await(Values.run(() -> handle.PlatformConfiguration(call())), null)); }
+ public CompletableFuture<Map<String, String>> platformConfigurationAsync() { return Values.future(Values.run(() -> handle.PlatformConfiguration(call())), SDK::configuration); }
+ private static Map<String, String> configuration(Generated.PlatformConfiguration c) {
+  Map<String, String> out = new LinkedHashMap<>();
+  if (c != null && c.Entries != null) for (Generated.PlatformConfigurationEntry e : c.Entries) out.put(Values.decode(e.Key), Values.decode(e.Value));
+  return java.util.Collections.unmodifiableMap(out);
+ }
+
+ /** The reference's GetBaseKey, keyed by the reference's JSON tags (kasUri, publicKey{algorithm,kid,pem}, kasId). */
+ public Map<String, Object> getBaseKey() { return getBaseKey(null); }
+ public Map<String, Object> getBaseKey(Duration timeout) { return Values.map(Values.await(Values.run(() -> handle.GetBaseKey(call())), timeout)); }
+ public CompletableFuture<Map<String, Object>> getBaseKeyAsync() { return Values.future(Values.run(() -> handle.GetBaseKey(call())), Values::map); }
+
+ /** The reference's StoreKASKeys. */
+ public void storeKASKeys(String url, List<KasPublicKey> keys) { Values.await(startStore(url, keys), null); }
+ public CompletableFuture<Void> storeKASKeysAsync(String url, List<KasPublicKey> keys) { return Values.future(startStore(url, keys), v -> null); }
+ private Library.Operation<Void> startStore(String url, List<KasPublicKey> keys) {
+  Generated.KasPublicKeySet set = new Generated.KasPublicKeySet();
+  set.Keys = new Generated.KasPublicKey[keys.size()];
+  for (int i = 0; i < keys.size(); i++) {
+   Generated.KasPublicKey k = new Generated.KasPublicKey();
+   k.Pem = Values.encode(keys.get(i).pem()); k.Kid = Values.encode(keys.get(i).kid()); k.Alg = Values.encode(keys.get(i).alg());
+   set.Keys[i] = k;
+  }
+  return Values.run(() -> handle.StoreKASKeys(Values.encode(url), set, call()));
+ }
+
+ /** Releases the handle; later calls fail with kind "closed". */
+ @Override public void close() {
+  try {
+   handle.close();
+  } catch (Library.Failure f) {
+   throw new OpenTDFException(f);
+  }
+ }
+ public CompletableFuture<Void> closeAsync() { return Values.future(handle.closeAsync(), v -> null); }
+
+ // Free functions of the reference, each a library call.
+ public static boolean isValidTdf(byte[] data) { return Values.await(Values.run(() -> Generated.IsValidTdf(Values.bytes(data), new Library.Options())), null); }
+ public static String getTdfType(byte[] data) { return Values.decode(Values.await(Values.run(() -> Generated.GetTdfType(Values.bytes(data), new Library.Options())), null)); }
+ public static boolean isPlatformEndpointMalformed(String endpoint) { return Values.await(Values.run(() -> Generated.IsPlatformEndpointMalformed(Values.encode(endpoint), new Library.Options())), null); }
+ public static String keyTypeToPolicyAlgorithm(String keyType) { return Values.decode(Values.await(Values.run(() -> Generated.KeyTypeToPolicyAlgorithm(Values.encode(keyType), new Library.Options())), null)); }
+ public static String policyAlgorithmToKeyType(String alg) { return Values.decode(Values.await(Values.run(() -> Generated.PolicyAlgorithmToKeyType(Values.encode(alg), new Library.Options())), null)); }
+ public static String version() { return Values.decode(Values.await(Values.run(() -> Generated.Version(new Library.Options())), null)); }
+ public static String tdfSpecVersion() { return Values.decode(Values.await(Values.run(() -> Generated.TDFSpecVersion(new Library.Options())), null)); }
+ public static List<String> supportedFeatures() { return Values.decode(Values.await(Values.run(() -> Generated.SupportedFeatures(new Library.Options())), null)); }
+}

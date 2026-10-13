@@ -1,0 +1,6 @@
+[package]
+name = "otdfgc"
+version = "0.1.0"
+edition = "2021"
+[dependencies]
+opentdf-tdf3 = { path = "@PACKAGE@" }

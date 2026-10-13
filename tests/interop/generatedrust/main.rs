@@ -1,386 +1,305 @@
+//! Independent native consumer of the installed crate's handle API: one SDK
+//! per run, create_tdf/decrypt_bytes, load_tdf readers, 100 round trips, and
+//! the controlled checks of tests/interop/delivery/controlled_platform.py.
+//! Host OAuth/DPoP is native Rust.
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use opentdf_tdf3::*;
+use opentdf_tdf3::{self as tdf, AccessToken, Error, KasInfo, Options, ProviderError, ProviderRequest, ReaderOptions, Sdk, TdfOptions};
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeMap,
     fs,
+    future::Future,
     path::Path,
+    pin::pin,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    task::{Context, Poll, Wake, Waker},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
+
+const ATTRIBUTE: &str = "https://example.com/attr/attr1/value/value1";
+
 fn text(v: &Value, k: &str) -> String {
     v[k].as_str().unwrap_or_default().to_owned()
 }
-fn config(v: &Value) -> Config {
-    Config {
-        platform_url: text(v, "PlatformURL"),
-        kas_url: text(v, "KASURL"),
-        allowed_kas: v["AllowedKAS"]
-            .as_array()
-            .map(|a| {
-                a.iter()
-                    .map(|v| KASRoute {
-                        url: text(v, "URL"),
-                        api_base_url: text(v, "APIBaseURL"),
-                    })
-                    .collect()
-            })
-            .unwrap_or_default(),
-        issuer_url: text(v, "IssuerURL"),
-        token_url: text(v, "TokenURL"),
-        client_id: text(v, "ClientID"),
-        client_secret: text(v, "ClientSecret"),
-        token_provider_name: text(v, "TokenProviderName"),
-        allow_http: v["AllowHTTP"].as_bool().unwrap_or(false),
-        timeout_millis: v["TimeoutMillis"].as_i64().unwrap_or(0),
-        kas_public_key_pem: text(v, "KASPublicKeyPEM"),
-        kid: text(v, "KID"),
-        kas_algorithm: text(v, "KASAlgorithm"),
-        session_algorithm: text(v, "SessionAlgorithm"),
-        auth_private_key_pem: text(v, "AuthPrivateKeyPEM"),
-        auth_algorithm: text(v, "AuthAlgorithm"),
-        dpop: v["DPoP"].as_bool().unwrap_or(false),
-    }
-}
 fn now() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as i64
 }
 fn b64(b: impl AsRef<[u8]>) -> String {
     URL_SAFE_NO_PAD.encode(b)
 }
-fn token(c: &Config, name: &str, r: ProviderRequest) -> Result<AccessToken, ProviderError> {
+fn check(ok: bool, label: &str) {
+    if !ok {
+        panic!("ASSERT: {label}")
+    }
+}
+
+// The host token source: native OAuth client credentials with a DPoP proof when the profile asks for one.
+fn token(cfg: &Value, name: &str, r: ProviderRequest) -> Result<AccessToken, ProviderError> {
     if name == "invalid-token" || name == "expired-token" {
-        return Ok(AccessToken {
-            value: name.into(),
-            scheme: "Bearer".into(),
-            expires_at: now() + if name == "expired-token" { -1 } else { 300 },
-            confirmation_jkt: String::new(),
-        });
+        return Ok(AccessToken { value: name.into(), scheme: "Bearer".into(), expires_at: now() + if name == "expired-token" { -1 } else { 300 }, confirmation_jkt: String::new() });
     }
     if name == "provider-reject" {
         return Err(ProviderError::Rejected("provider rejected".into()));
     }
     let endpoint = "http://localhost:8888/auth/realms/opentdf/protocol/openid-connect/token";
-    let key = if c.dpop {
+    let dpop = cfg["DPoP"].as_bool().unwrap_or(false);
+    let key = if dpop {
         Some(if name == "mismatched-provider" {
-            openssl::pkey::PKey::from_ec_key(
-                openssl::ec::EcKey::generate(
-                    &openssl::ec::EcGroup::from_curve_name(openssl::nid::Nid::X9_62_PRIME256V1)
-                        .unwrap(),
-                )
-                .unwrap(),
-            )
-            .unwrap()
+            openssl::pkey::PKey::from_ec_key(openssl::ec::EcKey::generate(&openssl::ec::EcGroup::from_curve_name(openssl::nid::Nid::X9_62_PRIME256V1).unwrap()).unwrap()).unwrap()
         } else {
-            openssl::pkey::PKey::private_key_from_pem(c.auth_private_key_pem.as_bytes()).unwrap()
+            openssl::pkey::PKey::private_key_from_pem(text(cfg, "AuthPrivateKeyPEM").as_bytes()).unwrap()
         })
     } else {
         None
     };
     let jwk=key.as_ref().map(|p|{if p.id()==openssl::pkey::Id::RSA{let k=p.rsa().unwrap();json!({"e":b64(k.e().to_vec()),"kty":"RSA","n":b64(k.n().to_vec())})}else{let k=p.ec_key().unwrap();let mut x=openssl::bn::BigNum::new().unwrap();let mut y=openssl::bn::BigNum::new().unwrap();k.public_key().affine_coordinates_gfp(k.group(),&mut x,&mut y,&mut openssl::bn::BigNumContext::new().unwrap()).unwrap();json!({"crv":"P-256","kty":"EC","x":b64(x.to_vec_padded(32).unwrap()),"y":b64(y.to_vec_padded(32).unwrap())})}});
-    let thumb = jwk
-        .as_ref()
-        .map(|j| b64(openssl::sha::sha256(j.to_string().as_bytes())))
-        .unwrap_or_default();
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
+    let thumb = jwk.as_ref().map(|j| b64(openssl::sha::sha256(j.to_string().as_bytes()))).unwrap_or_default();
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     let result=runtime.block_on(async{
  let client=reqwest::Client::builder().redirect(reqwest::redirect::Policy::none()).pool_max_idle_per_host(0).timeout(Duration::from_secs(15)).build().unwrap();let mut nonce=String::new();
  for _ in 0..3{if r.cancellation.is_canceled(){return Err(ProviderError::Rejected("provider stopped".into()))};let mut request=client.post(endpoint).header("Content-Type","application/x-www-form-urlencoded");
  if let Some(key)=&key{let mut random=[0;16];openssl::rand::rand_bytes(&mut random).unwrap();let mut claims=json!({"htu":endpoint,"htm":"POST","iat":now(),"jti":b64(random)});if !nonce.is_empty(){claims["nonce"]=json!(nonce)};let data=format!("{}.{}",b64(json!({"typ":"dpop+jwt","alg":if key.id()==openssl::pkey::Id::RSA{"RS256"}else{"ES256"},"jwk":jwk}).to_string()),b64(claims.to_string()));let mut signer=openssl::sign::Signer::new(openssl::hash::MessageDigest::sha256(),key).unwrap();signer.update(data.as_bytes()).unwrap();let mut sig=signer.sign_to_vec().unwrap();if key.id()!=openssl::pkey::Id::RSA{let s=openssl::ecdsa::EcdsaSig::from_der(&sig).unwrap();sig=s.r().to_vec_padded(32).unwrap();sig.extend(s.s().to_vec_padded(32).unwrap())};request=request.header("DPoP",format!("{}.{}",data,b64(sig)))}
- let response=request.body("grant_type=client_credentials&client_id=opentdf-sdk&client_secret=secret").send().await.map_err(|_|ProviderError::Rejected("provider transport".into()))?;let status=response.status();let next=response.headers().get("DPoP-Nonce").and_then(|s|s.to_str().ok()).unwrap_or_default().to_owned();let body=response.bytes().await.map_err(|_|ProviderError::Rejected("provider body".into()))?;if (status.as_u16()==400||status.as_u16()==401)&&!next.is_empty()&&next!=nonce{nonce=next;continue};if status.as_u16()!=200||body.len()>128*1024{return Err(ProviderError::Rejected("provider status".into()))};let v:Value=serde_json::from_slice(&body).map_err(|_|ProviderError::Rejected("provider JSON".into()))?;return Ok(AccessToken{value:text(&v,"access_token"),scheme:if c.dpop{"DPoP"}else{"Bearer"}.into(),expires_at:now()+v["expires_in"].as_i64().unwrap(),confirmation_jkt:thumb.clone()})};Err(ProviderError::Rejected("provider nonce retries".into()))
+ let response=request.body("grant_type=client_credentials&client_id=opentdf-sdk&client_secret=secret").send().await.map_err(|_|ProviderError::Rejected("provider transport".into()))?;let status=response.status();let next=response.headers().get("DPoP-Nonce").and_then(|s|s.to_str().ok()).unwrap_or_default().to_owned();let body=response.bytes().await.map_err(|_|ProviderError::Rejected("provider body".into()))?;if (status.as_u16()==400||status.as_u16()==401)&&!next.is_empty()&&next!=nonce{nonce=next;continue};if status.as_u16()!=200||body.len()>128*1024{return Err(ProviderError::Rejected("provider status".into()))};let v:Value=serde_json::from_slice(&body).map_err(|_|ProviderError::Rejected("provider JSON".into()))?;return Ok(AccessToken{value:text(&v,"access_token"),scheme:if dpop{"DPoP"}else{"Bearer"}.into(),expires_at:now()+v["expires_in"].as_i64().unwrap(),confirmation_jkt:thumb.clone()})};Err(ProviderError::Rejected("provider nonce retries".into()))
  });
     drop(runtime);
     result
 }
-fn call(c: &Config, name: &str) -> CallOptions {
-    let mut o = CallOptions::default();
-    if !c.token_provider_name.is_empty() {
-        let cfg = c.clone();
-        let name = name.to_owned();
-        o.providers.insert(
-            c.token_provider_name.clone(),
-            token_provider(move |r| token(&cfg, &name, r)),
-        );
-    }
-    o
-}
-fn opts(name: &str) -> EncryptOptions {
-    let metadata = name == "metadata" || name.ends_with("-metadata");
-    let empty = name == "empty-metadata" || name.ends_with("-empty-metadata");
-    EncryptOptions {
-        attributes: vec![format!(
-            "https://example.com/attr/attr1/value/{}",
-            if name == "denied" || name.ends_with("-denied") {
-                "value2"
-            } else {
-                "value1"
-            }
-        )],
-        segment_size: 16384,
-        has_segment_size: true,
-        segment_hash_algorithm: if name == "hs256" || name.ends_with("-hs256") {
-            "HS256".into()
-        } else {
-            String::new()
-        },
-        metadata: if metadata && !empty {
-            b"{\"source\":\"independent metadata\",\"count\":7}".to_vec()
-        } else {
-            vec![]
-        },
-        include_metadata: metadata,
+
+// config.json carries the façade Config fields the delivery scripts write; they map onto the handle API's options as the Go consumer maps them.
+fn options_of(cfg: &Value, name: &str, credentials: bool) -> Options {
+    let provider_cfg = cfg.clone();
+    let provider_name = name.to_owned();
+    Options {
+        insecure_plaintext: cfg["AllowHTTP"].as_bool().unwrap_or(false),
+        token_endpoint: text(cfg, "TokenURL"),
+        client_id: if credentials { text(cfg, "ClientID") } else { String::new() },
+        client_secret: if credentials { text(cfg, "ClientSecret") } else { String::new() },
+        token_provider: if text(cfg, "TokenProviderName").is_empty() { None } else { Some(tdf::token_provider(move |r| token(&provider_cfg, &provider_name, r))) },
+        timeout_millis: cfg["TimeoutMillis"].as_i64().unwrap_or(0),
+        dpop_algorithm: if cfg["DPoP"].as_bool().unwrap_or(false) { if text(cfg, "AuthAlgorithm").is_empty() { "ES256".into() } else { text(cfg, "AuthAlgorithm") } } else { String::new() },
+        dpop_key_pem: text(cfg, "AuthPrivateKeyPEM"),
         ..Default::default()
     }
 }
-fn kind(e: &LibraryError) -> &'static str {
-    match e.kind {
-        ErrorKind::Source => "source",
-        ErrorKind::Canceled => "canceled",
-        ErrorKind::DeadlineExceeded => "deadline_exceeded",
-        ErrorKind::SourcePanic => "source_panic",
-        ErrorKind::SourceFatal => "source_fatal",
-        ErrorKind::HostFault => "host_fault",
-        ErrorKind::InvalidArgument => "invalid_argument",
-        ErrorKind::Closed => "closed",
-        ErrorKind::Poisoned => "poisoned",
-        ErrorKind::InstanceMismatch => "instance_mismatch",
-        ErrorKind::Reentrant => "reentrant",
-        ErrorKind::Unsupported => "unsupported",
+fn kas_information(cfg: &Value) -> KasInfo {
+    let url = if text(cfg, "KASURL").is_empty() { text(cfg, "PlatformURL").trim_end_matches('/').to_owned() + "/kas" } else { text(cfg, "KASURL") };
+    KasInfo { url, public_key: text(cfg, "KASPublicKeyPEM"), kid: text(cfg, "KID"), algorithm: text(cfg, "KASAlgorithm"), default: false }
+}
+fn tdf_options(cfg: &Value) -> TdfOptions {
+    TdfOptions { disable_autoconfigure: true, kas_information: vec![kas_information(cfg)], attributes: vec![ATTRIBUTE.into()], segment_size: 16384, wrapping_key_algorithm: text(cfg, "KASAlgorithm"), ..Default::default() }
+}
+fn reader_options(cfg: &Value) -> ReaderOptions {
+    let mut allow = vec![text(cfg, "PlatformURL")];
+    if !text(cfg, "KASURL").is_empty() {
+        allow.push(text(cfg, "KASURL"));
+    }
+    for r in cfg["AllowedKAS"].as_array().map(|a| a.as_slice()).unwrap_or_default() {
+        allow.push(text(r, "URL"));
+    }
+    ReaderOptions { kas_allowlist: Some(allow), session_key_type: text(cfg, "SessionAlgorithm"), ..Default::default() }
+}
+fn report(e: &Error) -> Value {
+    json!({"kind": e.kind.as_str(), "op": e.op, "httpStatus": e.http_status, "connectCode": e.connect_code, "message": e.message})
+}
+fn expect_failure<T>(label: &str, result: Result<T, Error>) -> Value {
+    match result {
+        Ok(_) => panic!("{label} returned successful output"),
+        Err(e) => report(&e),
     }
 }
-fn write_error(run: &Path, name: &str, e: &LibraryError) {
-    fs::write(run.join(format!("{name}.error.json")),json!({"kind":kind(e),"code":e.text("Code"),"operation":e.text("Operation"),"httpStatus":e.integer("HTTPStatus"),"causeCategory":e.text("CauseCategory"),"serverCode":e.text("ServerCode"),"serverMessage":e.text("ServerMessage")}).to_string()).unwrap()
+/// Polls a future for at most the duration, then drops it (the Rust cancellation idiom).
+fn poll_for<F: Future>(future: F, limit: Duration) -> Option<F::Output> {
+    poll_until(future, limit, || false)
 }
-fn repeat(c: &Config) -> Result<(), LibraryError> {
-    let mut payload = vec![0, 255, 128, 1];
-    let mut option = opts("metadata");
-    option.metadata = vec![0, 255];
-    option.mime_type = "application/日本語".into();
-    let work = encrypt(
-        c.clone(),
-        payload.clone(),
-        option.clone(),
-        call(c, "repeat"),
-    );
-    payload.fill(120);
-    option.metadata.fill(120);
-    let archive = work.wait()?;
-    let a = decrypt(c.clone(), archive.clone(), call(c, "repeat")).wait()?;
-    let b = decrypt(c.clone(), archive.clone(), call(c, "repeat")).wait()?;
-    assert_eq!(a, b);
-    assert_eq!(a.Payload, vec![0, 255, 128, 1]);
-    assert_eq!(a.Metadata, vec![0, 255]);
-    assert!(String::from_utf8_lossy(&a.ManifestJSON).contains("日本語"));
-    let mut cfg = c.clone();
-    cfg.token_provider_name = "held".into();
+/// Polls a future until it completes, the duration passes or stop() holds, then drops it.
+fn poll_until<F: Future>(future: F, limit: Duration, stop: impl Fn() -> bool) -> Option<F::Output> {
+    struct Noop;
+    impl Wake for Noop {
+        fn wake(self: Arc<Self>) {}
+    }
+    let waker = Waker::from(Arc::new(Noop));
+    let mut cx = Context::from_waker(&waker);
+    let mut future = pin!(future);
+    let start = Instant::now();
+    loop {
+        if let Poll::Ready(v) = future.as_mut().poll(&mut cx) {
+            return Some(v);
+        }
+        if start.elapsed() > limit || stop() {
+            return None;
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
+fn repeat(sdk: &Sdk, cfg: &Value, name: &str) -> Result<(), Error> {
+    let original = vec![0u8, 255, 128, 1];
+    let mut archive = vec![];
+    for i in 0..100u8 {
+        let mut input = original.clone();
+        input.push(i);
+        let object = sdk.create_tdf(&input, &TdfOptions { metadata: format!("round {i}"), mime_type: "application/日本語".into(), ..tdf_options(cfg) })?;
+        check(object.size()? == object.bytes.len() as i64, "size");
+        check(object.manifest()?.payload.mime_type == "application/日本語", "UTF-8 manifest");
+        object.close()?;
+        archive = object.bytes.clone();
+        input[0] = 9;
+        let reader = sdk.load_tdf(&archive, &reader_options(cfg))?;
+        check(reader.data_attributes()?.len() == 1, "attributes");
+        reader.close()?;
+        let plain = sdk.decrypt_bytes(&archive, &reader_options(cfg))?;
+        let mut expected = original.clone();
+        expected.push(i);
+        check(plain == expected, "round trip");
+    }
+    let wrong = expect_failure("wrong credentials", Sdk::new(&text(cfg, "PlatformURL"), Options { client_secret: "wrong".into(), ..options_of(cfg, name, true) }).and_then(|s| sdk_decrypt(&s, &archive, cfg)));
+    check(wrong["kind"] == "auth" && wrong["httpStatus"] == 401, &format!("wrong credentials rejected: {wrong}"));
     let started = Arc::new(AtomicBool::new(false));
     let released = Arc::new(AtomicBool::new(false));
-    let s = started.clone();
-    let r = released.clone();
-    let mut option = CallOptions::default();
-    option.providers.insert(
-        "held".into(),
-        Arc::new(move |request| {
-            s.store(true, Ordering::Release);
-            while !request.cancellation.is_canceled() {
-                std::thread::sleep(Duration::from_millis(2))
-            }
-            std::thread::sleep(Duration::from_millis(40));
-            r.store(true, Ordering::Release);
-            Err(ProviderError::Rejected("stopped".into()))
-        }),
-    );
-    let active = decrypt(cfg.clone(), archive.clone(), option);
-    for _ in 0..10000 {
-        if started.load(Ordering::Acquire) {
-            break;
-        };
-        std::thread::sleep(Duration::from_millis(2))
+    let (s, r) = (started.clone(), released.clone());
+    let held: tdf::Provider = Arc::new(move |request: ProviderRequest| {
+        s.store(true, Ordering::Release);
+        while !request.cancellation.is_canceled() {
+            std::thread::sleep(Duration::from_millis(2))
+        }
+        r.store(true, Ordering::Release);
+        Err(ProviderError::Rejected("stopped".into()))
+    });
+    let holder = Sdk::new(&text(cfg, "PlatformURL"), Options { token_provider: Some(held), ..options_of(cfg, name, false) })?;
+    // Dropping the pending future once the provider has started is the
+    // cancellation; the provider then observes it and releases.
+    let pending = holder.decrypt_bytes_async(&archive, &reader_options(cfg));
+    let watch = started.clone();
+    let outcome = poll_until(pending, Duration::from_secs(20), move || watch.load(Ordering::Acquire));
+    check(outcome.is_none(), "held provider returned before cancellation");
+    check(started.load(Ordering::Acquire), "provider started");
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while !released.load(Ordering::Acquire) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(5));
     }
-    assert!(started.load(Ordering::Acquire));
-    let queued = decrypt(c.clone(), archive.clone(), call(c, "repeat"));
-    queued.cancel();
-    assert_eq!(queued.wait().unwrap_err().kind, ErrorKind::Canceled);
-    assert!(!released.load(Ordering::Acquire));
-    active.cancel();
-    assert_eq!(active.wait().unwrap_err().kind, ErrorKind::Canceled);
-    assert!(released.load(Ordering::Acquire));
-    assert_eq!(
-        decrypt(c.clone(), archive, call(c, "repeat"))
-            .wait()?
-            .Payload,
-        a.Payload
-    );
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    rt.block_on(async {
-        let archive = encrypt(
-            c.clone(),
-            b"async\0\xff".to_vec(),
-            opts("binary"),
-            call(c, "repeat"),
-        )
-        .await?;
-        assert_eq!(
-            decrypt(c.clone(), archive, call(c, "repeat"))
-                .await?
-                .Payload,
-            b"async\0\xff"
-        );
-        Ok(())
-    })
+    check(released.load(Ordering::Acquire), "dropped future cancelled the provider");
+    holder.close()?;
+    let async_archive = poll_for(sdk.encrypt_bytes_async(b"async\0\xff", &tdf_options(cfg)), Duration::from_secs(60)).expect("async encrypt")?;
+    check(poll_for(sdk.decrypt_bytes_async(&async_archive, &reader_options(cfg)), Duration::from_secs(60)).expect("async decrypt")? == b"async\0\xff", "async round trip");
+    sdk.close()?;
+    check(expect_failure("closed", sdk.decrypt_bytes(&archive, &reader_options(cfg)))["kind"] == "closed", "closed handle");
+    Ok(())
 }
+fn sdk_decrypt(s: &Sdk, archive: &[u8], cfg: &Value) -> Result<Vec<u8>, Error> {
+    let r = s.decrypt_bytes(archive, &reader_options(cfg));
+    let _ = s.close();
+    r
+}
+
+/// One controlled case against the harness fixture (tests/interop/delivery/controlled_platform.py).
+fn controlled(run: &Path, cfg: &Value, name: &str) -> Result<(), Error> {
+    let url = text(cfg, "PlatformURL");
+    let offline = TdfOptions { disable_autoconfigure: true, kas_information: vec![KasInfo { url: "http://localhost:9999/malicious/kas".into(), public_key: text(cfg, "KASPublicKeyPEM"), kid: "k1".into(), algorithm: "rsa:2048".into(), default: false }], attributes: vec!["https://example.com/attr/a/value/b".into()], ..Default::default() };
+    let credentials = || Options { client_id: "opentdf".into(), client_secret: "secret".into(), ..Default::default() };
+    let error = match name {
+        "unreachable" => expect_failure(name, Sdk::new(&url, Options { validate_connection: true, ..Default::default() })),
+        "caller-deadline" => match poll_for(Sdk::new_async(&url, credentials()), Duration::from_secs(1)) {
+            Some(result) => expect_failure(name, result),
+            None => json!({"kind": "canceled", "op": "", "httpStatus": 0, "connectCode": "", "message": "future dropped before completion"}),
+        },
+        "source-deadline" => expect_failure(name, Sdk::new(&url, Options { timeout_millis: 100, ..credentials() })),
+        "token-401" => {
+            let sdk = Sdk::new(&url, credentials())?;
+            let archive = sdk.encrypt_bytes(b"offline payload", &offline)?;
+            let error = expect_failure(name, sdk.decrypt_bytes(&archive, &ReaderOptions { ignore_allowlist: true, ..Default::default() }));
+            sdk.close()?;
+            error
+        }
+        "offline" => {
+            let mut rows = BTreeMap::new();
+            let sdk = Sdk::new(&url, credentials())?;
+            let archive = sdk.encrypt_bytes(b"offline payload", &offline)?;
+            rows.insert("allowlist", expect_failure("allowlist", sdk.decrypt_bytes(&archive, &ReaderOptions { kas_allowlist: Some(vec![url.clone()]), ..Default::default() })));
+            rows.insert("invalid-tdf", expect_failure("invalid-tdf", sdk.decrypt_bytes(b"not a tdf", &ReaderOptions::default())));
+            rows.insert("unsupported-option", expect_failure("unsupported-option", sdk.create_tdf(b"x", &TdfOptions { target_mode: "4.2.2".into(), ..Default::default() })));
+            for _ in 0..100 {
+                let reader = sdk.load_tdf(&archive, &ReaderOptions { ignore_allowlist: true, ..Default::default() })?;
+                check(reader.manifest()?.encryption_information.key_access[0].kid == "k1", "manifest");
+                reader.close()?;
+            }
+            sdk.close()?;
+            rows.insert("closed-handle", expect_failure("closed-handle", sdk.decrypt_bytes(&archive, &ReaderOptions::default())));
+            rows.insert("handles", json!({"readers": 100, "closed": true}));
+            check(tdf::is_valid_tdf(&archive)? && !tdf::version()?.is_empty() && tdf::supported_features()?.iter().any(|f| f == "hexless"), "free functions");
+            fs::write(run.join("offline.json"), json!(rows).to_string()).unwrap();
+            return Ok(());
+        }
+        _ => expect_failure(name, Sdk::new(&url, credentials())),
+    };
+    fs::write(run.join(format!("{name}.error.json")), error.to_string()).unwrap();
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let run = Path::new(&args[2]);
     let mode = &args[3];
     let name = &args[4];
-    let raw: Value = serde_json::from_slice(&fs::read(run.join("config.json")).unwrap()).unwrap();
-    let mut c = config(&raw);
-    let result: Result<(), LibraryError> = match mode.as_str() {
-        "smoke" => {
-            let mut input = vec![0, 255, 128];
-            let mut cfg = Config::default();
-            cfg.platform_url = "http://invalid.example".into();
-            cfg.kas_url = "http://invalid.example/kas".into();
-            cfg.allow_http = true;
-            cfg.issuer_url = "http://invalid.example/issuer".into();
-            cfg.client_id = "native-proof".into();
-            cfg.client_secret = "test-only".into();
-            cfg.kas_public_key_pem =
-                String::from_utf8(fs::read(run.join("rsa.public.pem")).unwrap()).unwrap();
-            cfg.kid = "explicit-native-proof".into();
-            let mut options = opts("empty-metadata");
-            let work = encrypt(cfg, input.clone(), options.clone(), CallOptions::default());
-            input.fill(7);
-            options.metadata.push(7);
-            work.wait().map(|archive|{assert!(!archive.is_empty());assert_eq!(decrypt(Config::default(),vec![0],CallOptions::default()).wait().unwrap_err().kind,ErrorKind::Source);println!("PASS installed Cargo package native Config/Vec/Result boundary and explicit-key TDF creation");})
-        }
-        "encrypt" => encrypt(
-            c.clone(),
-            fs::read(run.join(format!("{name}.input"))).unwrap(),
-            opts(name),
-            call(&c, name),
-        )
-        .wait()
-        .map(|v| fs::write(run.join(format!("{name}.generated.tdf")), v).unwrap()),
-        "decrypt" => decrypt(
-            c.clone(),
-            fs::read(run.join(format!("{name}.tdf"))).unwrap(),
-            call(&c, name),
-        )
-        .wait()
-        .map(|v| {
-            for (suffix, bytes) in [
-                ("out", v.Payload),
-                ("metadata", v.Metadata),
-                ("manifest", v.ManifestJSON),
-            ] {
-                fs::write(run.join(format!("{name}.{suffix}")), bytes).unwrap()
-            }
-            fs::write(
-                run.join(format!("{name}.presence")),
-                if v.HasMetadata { "true" } else { "false" },
-            )
-            .unwrap()
-        }),
-        "negative" => {
-            let e = decrypt(
-                c.clone(),
-                fs::read(run.join(format!("{name}.tdf"))).unwrap(),
-                call(&c, name),
-            )
-            .wait()
-            .unwrap_err();
-            write_error(run, name, &e);
-            Ok(())
-        }
-        "repeat" => repeat(&c),
-        "controlled" => {
-            c.token_provider_name = "controlled".into();
-            let mut o = CallOptions::default();
-            o.providers.insert(
-                "controlled".into(),
-                token_provider(|_| {
-                    Ok(AccessToken {
-                        value: "negative-fixture-token".into(),
-                        scheme: "Bearer".into(),
-                        expires_at: now() + 300,
-                        confirmation_jkt: String::new(),
-                    })
-                }),
-            );
-            let work = decrypt(c, fs::read(run.join("archive.tdf")).unwrap(), o);
-            let cancel = work.cancellation();
-            let stop = if name == "active-cancel" {
-                let run = run.to_owned();
-                Some(std::thread::spawn(move || {
-                    for _ in 0..7500 {
-                        if run.join("entered").exists() {
-                            cancel.cancel();
-                            return;
-                        };
-                        std::thread::sleep(Duration::from_millis(2))
+    let cfg: Value = serde_json::from_slice(&fs::read(run.join("config.json")).unwrap()).unwrap();
+    let result: Result<(), Error> = if mode == "controlled" {
+        controlled(run, &cfg, name)
+    } else {
+        (|| {
+            let sdk = Sdk::new(&text(&cfg, "PlatformURL"), options_of(&cfg, name, true))?;
+            match mode.as_str() {
+                "encrypt" => {
+                    let mut options = tdf_options(&cfg);
+                    if (name == "metadata" || name.ends_with("-metadata")) && name != "empty-metadata" && !name.ends_with("-empty-metadata") {
+                        options.metadata = "{\"source\":\"independent metadata\",\"count\":7}".into();
                     }
-                    panic!("transport not entered")
-                }))
-            } else {
-                None
-            };
-            let e = work.wait().unwrap_err();
-            let expected = match name.as_str() {
-                "http401" => "unauthenticated",
-                "http403" => "denied",
-                "redirect" => "http_status",
-                "content-type" => "invalid_content_type",
-                "malformed" => "invalid_json",
-                "bom" => "invalid_destination",
-                _ => "transport",
-            };
-            if name == "active-cancel" {
-                assert_eq!(e.kind, ErrorKind::Canceled);
-                assert_eq!(e.text("CauseCategory"), "canceled")
-            } else {
-                assert_eq!(e.text("Code"), expected)
-            };
-            if name == "http401" || name == "http403" {
-                assert_eq!(e.text("ServerCode"), "fixture-rejected");
-                assert_eq!(e.text("ServerMessage"), "診断 café")
-            };
-            write_error(run, name, &e);
-            if let Some(s) = stop {
-                s.join().unwrap()
-            };
-            assert_eq!(
-                decrypt(Config::default(), vec![0], CallOptions::default())
-                    .wait()
-                    .unwrap_err()
-                    .kind,
-                ErrorKind::Source
-            );
-            Ok(())
-        }
-        _ => panic!("unknown mode"),
+                    if name == "denied" || name.ends_with("-denied") {
+                        options.attributes = vec!["https://example.com/attr/attr1/value/value2".into()];
+                    }
+                    let object = sdk.create_tdf(&fs::read(run.join(format!("{name}.input"))).unwrap(), &options)?;
+                    check(object.size()? == object.bytes.len() as i64 && object.manifest()?.encryption_information.key_access.len() == 1, "object");
+                    object.close()?;
+                    fs::write(run.join(format!("{name}.generated.tdf")), &object.bytes).unwrap();
+                }
+                "decrypt" => {
+                    let input = fs::read(run.join(format!("{name}.tdf"))).unwrap();
+                    let reader = sdk.load_tdf(&input, &reader_options(&cfg))?;
+                    let manifest = reader.manifest()?;
+                    let has_metadata = manifest.encryption_information.key_access.first().is_some_and(|k| !k.encrypted_metadata.is_empty());
+                    let metadata = if has_metadata {
+                        reader.init()?;
+                        reader.unencrypted_metadata()?
+                    } else {
+                        vec![]
+                    };
+                    reader.close()?;
+                    let payload = sdk.decrypt_bytes(&input, &reader_options(&cfg))?;
+                    fs::write(run.join(format!("{name}.out")), payload).unwrap();
+                    fs::write(run.join(format!("{name}.metadata")), metadata).unwrap();
+                    fs::write(run.join(format!("{name}.manifest")), format!("{manifest:?}")).unwrap();
+                    fs::write(run.join(format!("{name}.presence")), if has_metadata { "true" } else { "false" }).unwrap();
+                }
+                "negative" => {
+                    let error = expect_failure("negative", sdk.decrypt_bytes(&fs::read(run.join(format!("{name}.tdf"))).unwrap(), &reader_options(&cfg)));
+                    fs::write(run.join(format!("{name}.error.json")), error.to_string()).unwrap();
+                }
+                "repeat" => {
+                    repeat(&sdk, &cfg, name)?;
+                    return Ok(());
+                }
+                _ => panic!("unknown mode"),
+            }
+            sdk.close()
+        })()
     };
-    if let Err(e) = result {
-        eprintln!(
-            "consumer failure {mode} {name}: kind={} code={} operation={} cause={} diagnostic={}",
-            kind(&e),
-            e.text("Code"),
-            e.text("Operation"),
-            e.text("CauseCategory"),
-            e.message
-        );
-        std::process::exit(1)
+    match result {
+        Ok(()) => println!("PASS generated native library {mode} {name}"),
+        Err(e) => {
+            eprintln!("consumer failure {mode} {name}: {}", report(&e));
+            std::process::exit(1)
+        }
     }
 }

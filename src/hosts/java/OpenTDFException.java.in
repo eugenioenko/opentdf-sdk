@@ -1,0 +1,56 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.runtime.Library;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The shared-source Error record (api-spec.md): kind, op, the reference's
+ * message and the service fields. A boundary failure (canceled, closed,
+ * invalid_argument, ...) keeps the runtime's kind.
+ */
+public final class OpenTDFException extends RuntimeException {
+ private final String kind, op, connectCode, serviceMessage, kasUrl, assertionId;
+ private final long httpStatus;
+ private final List<String> requiredObligations;
+
+ OpenTDFException(Library.Failure failure) {
+  this(failure, failure.fields());
+ }
+
+ private OpenTDFException(Library.Failure failure, Map<String, Object> f) {
+  super(failure.kind.equals("source") && f.get("Kind") instanceof String ? Values.decode((String) f.get("Message")) : "goalchemy library: " + failure.kind, failure.getCause());
+  boolean record = failure.kind.equals("source") && f.get("Kind") instanceof String;
+  kind = record ? Values.decode((String) f.get("Kind")) : failure.kind;
+  op = record ? text(f.get("Op")) : "";
+  httpStatus = record && f.get("HTTPStatus") instanceof Long n ? n : 0;
+  connectCode = record ? text(f.get("ConnectCode")) : "";
+  serviceMessage = record ? text(f.get("ServiceMessage")) : "";
+  kasUrl = record ? text(f.get("KASURL")) : "";
+  assertionId = record ? text(f.get("AssertionID")) : "";
+  requiredObligations = record && f.get("RequiredObligations") instanceof Object[] a ? Values.decode(java.util.Arrays.copyOf(a, a.length, String[].class)) : List.of();
+ }
+
+ private OpenTDFException(String kind, String message) {
+  super(message);
+  this.kind = kind;
+  op = connectCode = serviceMessage = kasUrl = assertionId = "";
+  httpStatus = 0;
+  requiredObligations = List.of();
+ }
+
+ static OpenTDFException boundary(String kind, String message) { return new OpenTDFException(kind, message); }
+
+ private static String text(Object value) { return value instanceof String s ? Values.decode(s) : ""; }
+
+ /** The stable ErrorKind value, e.g. "tampered", "rewrap_forbidden", "closed". */
+ public String kind() { return kind; }
+ /** The operation that failed, e.g. "LoadTDF". */
+ public String op() { return op; }
+ public long httpStatus() { return httpStatus; }
+ public String connectCode() { return connectCode; }
+ public String serviceMessage() { return serviceMessage; }
+ public String kasUrl() { return kasUrl; }
+ public List<String> requiredObligations() { return requiredObligations; }
+ public String assertionId() { return assertionId; }
+}

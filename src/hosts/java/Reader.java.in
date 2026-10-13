@@ -1,0 +1,53 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import io.goalchemy.runtime.Library;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+/** The reference's Reader over a loaded TDF; stream methods arrive in Phase 7. */
+public final class Reader implements AutoCloseable {
+ private final Generated.Reader handle;
+ private final SDK sdk;
+
+ Reader(Generated.Reader handle, SDK sdk) {
+  this.handle = handle;
+  this.sdk = sdk;
+ }
+
+ /** Fetches and unwraps the payload key now. */
+ public void init() { init(null); }
+ public void init(Duration timeout) { Values.await(Values.run(() -> handle.Init(sdk.call())), timeout); }
+ public CompletableFuture<Void> initAsync() { return Values.future(Values.run(() -> handle.Init(sdk.call())), v -> null); }
+
+ /** The manifest keyed by the reference's JSON tags. */
+ public Map<String, Object> manifest() { return manifest(null); }
+ public Map<String, Object> manifest(Duration timeout) { return Values.map(Values.await(Values.run(() -> handle.Manifest(sdk.call())), timeout)); }
+ public CompletableFuture<Map<String, Object>> manifestAsync() { return Values.future(Values.run(() -> handle.Manifest(sdk.call())), Values::map); }
+
+ /** The policy keyed by the reference's JSON tags (uuid, body.dataAttributes, body.dissem). */
+ public Map<String, Object> policy() { return policy(null); }
+ public Map<String, Object> policy(Duration timeout) { return Values.map(Values.await(Values.run(() -> handle.Policy(sdk.call())), timeout)); }
+ public CompletableFuture<Map<String, Object>> policyAsync() { return Values.future(Values.run(() -> handle.Policy(sdk.call())), Values::map); }
+
+ public List<String> dataAttributes() { return dataAttributes(null); }
+ public List<String> dataAttributes(Duration timeout) { return Values.decode(Values.await(Values.run(() -> handle.DataAttributes(sdk.call())), timeout)); }
+ public CompletableFuture<List<String>> dataAttributesAsync() { return Values.future(Values.run(() -> handle.DataAttributes(sdk.call())), Values::decode); }
+
+ /** The decrypted metadata; runs init lazily. */
+ public byte[] unencryptedMetadata() { return unencryptedMetadata(null); }
+ public byte[] unencryptedMetadata(Duration timeout) { return orEmpty(Values.await(Values.run(() -> handle.UnencryptedMetadata(sdk.call())), timeout)); }
+ public CompletableFuture<byte[]> unencryptedMetadataAsync() { return Values.future(Values.run(() -> handle.UnencryptedMetadata(sdk.call())), Reader::orEmpty); }
+ private static byte[] orEmpty(byte[] b) { return b == null ? new byte[0] : b; }
+
+ @Override public void close() {
+  try {
+   handle.close();
+  } catch (Library.Failure f) {
+   throw new OpenTDFException(f);
+  }
+ }
+ public CompletableFuture<Void> closeAsync() { return Values.future(handle.closeAsync(), v -> null); }
+}

@@ -1,0 +1,827 @@
+//! The handle API of api-spec.md in Rust idiom: option structs with
+//! `Default`, methods returning `Result`, `*_async` twins whose future drop
+//! cancels the call, and one `Error`. The adapter maps names, idioms and
+//! errors only; the TDF protocol executes in the generated crate.
+use crate::generated::{self, CallOptions, LibraryError, Operation, Provider, Stream};
+use std::collections::BTreeMap;
+use std::future::Future;
+
+const TOKEN_PROVIDER: &str = "access-token";
+
+fn text(v: Vec<u8>) -> String {
+    String::from_utf8_lossy(&v).into_owned()
+}
+fn texts(v: Vec<Vec<u8>>) -> Vec<String> {
+    v.into_iter().map(text).collect()
+}
+fn bytes(s: &str) -> Vec<u8> {
+    s.as_bytes().to_vec()
+}
+fn list(v: &[String]) -> Vec<Vec<u8>> {
+    v.iter().map(|s| bytes(s)).collect()
+}
+
+/// The stable classification of an [`Error`]; `Message` carries the reference's wording.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Kind {
+    Tampered,
+    RootSignature,
+    SegmentSize,
+    SegmentSignature,
+    PayloadRead,
+    InvalidOffset,
+    RewrapBadRequest,
+    UnsupportedRootIntegrity,
+    UnsupportedSegmentIntegrity,
+    NotDecryptable,
+    DecryptFailed,
+    AesGcmExhausted,
+    KasRequest,
+    RewrapForbidden,
+    RewrapUnauthorized,
+    AssertionFailure,
+    ObligationsRequired,
+    BaseKeyNotFound,
+    BaseKeyInvalid,
+    AllowlistRejected,
+    UnsupportedKeyAccess,
+    UnsupportedFeature,
+    InvalidInput,
+    Auth,
+    Transport,
+    Canceled,
+    DeadlineExceeded,
+    Bulk,
+    /// A boundary failure: closed, poisoned, instance_mismatch, invalid_argument, source_panic, host_fault, ...
+    Boundary(String),
+}
+
+impl Kind {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Kind::Tampered => "tampered",
+            Kind::RootSignature => "root_signature",
+            Kind::SegmentSize => "segment_size",
+            Kind::SegmentSignature => "segment_signature",
+            Kind::PayloadRead => "payload_read",
+            Kind::InvalidOffset => "invalid_offset",
+            Kind::RewrapBadRequest => "rewrap_bad_request",
+            Kind::UnsupportedRootIntegrity => "unsupported_root_integrity",
+            Kind::UnsupportedSegmentIntegrity => "unsupported_segment_integrity",
+            Kind::NotDecryptable => "not_decryptable",
+            Kind::DecryptFailed => "decrypt_failed",
+            Kind::AesGcmExhausted => "aes_gcm_exhausted",
+            Kind::KasRequest => "kas_request",
+            Kind::RewrapForbidden => "rewrap_forbidden",
+            Kind::RewrapUnauthorized => "rewrap_unauthorized",
+            Kind::AssertionFailure => "assertion_failure",
+            Kind::ObligationsRequired => "obligations_required",
+            Kind::BaseKeyNotFound => "base_key_not_found",
+            Kind::BaseKeyInvalid => "base_key_invalid",
+            Kind::AllowlistRejected => "allowlist_rejected",
+            Kind::UnsupportedKeyAccess => "unsupported_key_access",
+            Kind::UnsupportedFeature => "unsupported_feature",
+            Kind::InvalidInput => "invalid_input",
+            Kind::Auth => "auth",
+            Kind::Transport => "transport",
+            Kind::Canceled => "canceled",
+            Kind::DeadlineExceeded => "deadline_exceeded",
+            Kind::Bulk => "bulk",
+            Kind::Boundary(s) => s,
+        }
+    }
+    fn parse(s: &str) -> Kind {
+        match s {
+            "tampered" => Kind::Tampered,
+            "root_signature" => Kind::RootSignature,
+            "segment_size" => Kind::SegmentSize,
+            "segment_signature" => Kind::SegmentSignature,
+            "payload_read" => Kind::PayloadRead,
+            "invalid_offset" => Kind::InvalidOffset,
+            "rewrap_bad_request" => Kind::RewrapBadRequest,
+            "unsupported_root_integrity" => Kind::UnsupportedRootIntegrity,
+            "unsupported_segment_integrity" => Kind::UnsupportedSegmentIntegrity,
+            "not_decryptable" => Kind::NotDecryptable,
+            "decrypt_failed" => Kind::DecryptFailed,
+            "aes_gcm_exhausted" => Kind::AesGcmExhausted,
+            "kas_request" => Kind::KasRequest,
+            "rewrap_forbidden" => Kind::RewrapForbidden,
+            "rewrap_unauthorized" => Kind::RewrapUnauthorized,
+            "assertion_failure" => Kind::AssertionFailure,
+            "obligations_required" => Kind::ObligationsRequired,
+            "base_key_not_found" => Kind::BaseKeyNotFound,
+            "base_key_invalid" => Kind::BaseKeyInvalid,
+            "allowlist_rejected" => Kind::AllowlistRejected,
+            "unsupported_key_access" => Kind::UnsupportedKeyAccess,
+            "unsupported_feature" => Kind::UnsupportedFeature,
+            "invalid_input" => Kind::InvalidInput,
+            "auth" => Kind::Auth,
+            "transport" => Kind::Transport,
+            "canceled" => Kind::Canceled,
+            "deadline_exceeded" => Kind::DeadlineExceeded,
+            "bulk" => Kind::Bulk,
+            other => Kind::Boundary(other.to_owned()),
+        }
+    }
+}
+
+/// The shared-source Error record: kind, op, the reference's message and the
+/// service fields. A boundary failure (canceled, closed, invalid_argument, ...)
+/// keeps the runtime's kind in `Kind::Boundary` or the matching variant.
+#[derive(Clone, Debug)]
+pub struct Error {
+    pub kind: Kind,
+    pub op: String,
+    pub message: String,
+    pub http_status: i64,
+    pub connect_code: String,
+    pub service_message: String,
+    pub kas_url: String,
+    pub required_obligations: Vec<String>,
+    pub assertion_id: String,
+}
+
+impl From<LibraryError> for Error {
+    fn from(e: LibraryError) -> Self {
+        let runtime = match e.kind {
+            generated::ErrorKind::Canceled => "canceled",
+            generated::ErrorKind::DeadlineExceeded => "deadline_exceeded",
+            generated::ErrorKind::Source => "source",
+            generated::ErrorKind::SourcePanic => "source_panic",
+            generated::ErrorKind::SourceFatal => "source_fatal",
+            generated::ErrorKind::HostFault => "host_fault",
+            generated::ErrorKind::InvalidArgument => "invalid_argument",
+            generated::ErrorKind::Closed => "closed",
+            generated::ErrorKind::Poisoned => "poisoned",
+            generated::ErrorKind::InstanceMismatch => "instance_mismatch",
+            generated::ErrorKind::Reentrant => "reentrant",
+            generated::ErrorKind::Unsupported => "unsupported",
+        };
+        let record = runtime == "source" && e.fields.contains_key("Kind");
+        if !record {
+            return Error {
+                kind: Kind::parse(runtime),
+                op: String::new(),
+                message: format!("goalchemy library: {runtime}"),
+                http_status: 0,
+                connect_code: String::new(),
+                service_message: String::new(),
+                kas_url: String::new(),
+                required_obligations: vec![],
+                assertion_id: String::new(),
+            };
+        }
+        let obligations = match e.fields.get("RequiredObligations") {
+            Some(generated::HostWire::List(items)) => items
+                .iter()
+                .map(|item| match item {
+                    generated::HostWire::Bytes(b) => String::from_utf8_lossy(b).into_owned(),
+                    _ => String::new(),
+                })
+                .collect(),
+            _ => vec![],
+        };
+        Error {
+            kind: Kind::parse(&e.text("Kind")),
+            op: e.text("Op"),
+            message: e.text("Message"),
+            http_status: e.integer("HTTPStatus"),
+            connect_code: e.text("ConnectCode"),
+            service_message: e.text("ServiceMessage"),
+            kas_url: e.text("KASURL"),
+            required_obligations: obligations,
+            assertion_id: e.text("AssertionID"),
+        }
+    }
+}
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+impl std::error::Error for Error {}
+
+type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Clone, Debug, Default)]
+pub struct TokenExchange {
+    pub subject_token: String,
+    pub audience: Vec<String>,
+}
+#[derive(Clone, Debug, Default)]
+pub struct CertExchange {
+    pub client_cert_pem: String,
+    pub client_key_pem: String,
+    pub audience: Vec<String>,
+}
+#[derive(Clone, Debug, Default)]
+pub struct TlsOptions {
+    pub client_cert_pem: String,
+    pub client_key_pem: String,
+    pub root_cas_pem: String,
+    pub audience: Vec<String>,
+}
+
+/// The reference's Options (shared-source `Options`); every default is the reference default.
+#[derive(Clone, Default)]
+pub struct Options {
+    pub client_id: String,
+    pub client_secret: String,
+    pub scopes: Vec<String>,
+    pub token_endpoint: String,
+    pub token_exchange: Option<TokenExchange>,
+    pub cert_exchange: Option<CertExchange>,
+    /// A host token source (see [`crate::token_provider`]) replacing client credentials;
+    /// the SDK signs rewrap requests with an ephemeral ES256 key unless `dpop_key_pem` is set.
+    pub token_provider: Option<Provider>,
+    /// WithPlatformConfiguration; a non-string member is carried as its JSON text.
+    pub platform_configuration: Option<BTreeMap<String, String>>,
+    pub validate_connection: bool,
+    pub insecure_plaintext: bool,
+    pub insecure_skip_verify: bool,
+    pub tls: Option<TlsOptions>,
+    pub unix_socket: String,
+    /// Per-request timeout in milliseconds; 0 keeps the reference default.
+    pub timeout_millis: i64,
+    pub core_endpoint: String,
+    pub policy_endpoint: String,
+    pub authorization_endpoint: String,
+    pub entity_resolution_endpoint: String,
+    pub wellknown_endpoint: String,
+    pub session_encryption_rsa_pem: String,
+    pub session_signer_rsa_pem: String,
+    /// WithDPoPAlgorithm: ES256, ES384, ES512, RS256, RS384 or RS512.
+    pub dpop_algorithm: String,
+    pub dpop_key_pem: String,
+    pub no_kid_in_kao: bool,
+    pub fulfillable_obligation_fqns: Vec<String>,
+    /// WithLogger level: a slog level (-4 debug, 0 info, 4 warn, 8 error); 0 keeps the host sink default.
+    pub log_level: i64,
+}
+
+impl Options {
+    fn generated(&self) -> generated::Options {
+        generated::Options {
+            ClientID: bytes(&self.client_id),
+            ClientSecret: bytes(&self.client_secret),
+            Scopes: list(&self.scopes),
+            TokenEndpoint: bytes(&self.token_endpoint),
+            TokenExchange: self
+                .token_exchange
+                .as_ref()
+                .map(|t| generated::TokenExchange { SubjectToken: bytes(&t.subject_token), Audience: list(&t.audience) })
+                .unwrap_or_default(),
+            CertExchange: self
+                .cert_exchange
+                .as_ref()
+                .map(|c| generated::CertExchange {
+                    ClientCertPEM: bytes(&c.client_cert_pem),
+                    ClientKeyPEM: bytes(&c.client_key_pem),
+                    Audience: list(&c.audience),
+                })
+                .unwrap_or_default(),
+            TokenProviderName: if self.token_provider.is_some() { bytes(TOKEN_PROVIDER) } else { vec![] },
+            PlatformConfiguration: generated::PlatformConfiguration {
+                Entries: self
+                    .platform_configuration
+                    .iter()
+                    .flatten()
+                    .map(|(k, v)| generated::PlatformConfigurationEntry { Key: bytes(k), Value: bytes(v) })
+                    .collect(),
+            },
+            ValidateConnection: self.validate_connection,
+            InsecurePlaintext: self.insecure_plaintext,
+            InsecureSkipVerify: self.insecure_skip_verify,
+            TLS: self
+                .tls
+                .as_ref()
+                .map(|t| generated::TLSOptions {
+                    ClientCertPEM: bytes(&t.client_cert_pem),
+                    ClientKeyPEM: bytes(&t.client_key_pem),
+                    RootCAsPEM: bytes(&t.root_cas_pem),
+                    Audience: list(&t.audience),
+                })
+                .unwrap_or_default(),
+            UnixSocket: bytes(&self.unix_socket),
+            TimeoutMillis: self.timeout_millis,
+            CoreEndpoint: bytes(&self.core_endpoint),
+            PolicyEndpoint: bytes(&self.policy_endpoint),
+            AuthorizationEndpoint: bytes(&self.authorization_endpoint),
+            EntityResolutionEndpoint: bytes(&self.entity_resolution_endpoint),
+            WellknownEndpoint: bytes(&self.wellknown_endpoint),
+            SessionEncryptionRSAPEM: bytes(&self.session_encryption_rsa_pem),
+            SessionSignerRSAPEM: bytes(&self.session_signer_rsa_pem),
+            DPoPAlgorithm: bytes(&self.dpop_algorithm),
+            DPoPKeyPEM: bytes(&self.dpop_key_pem),
+            NoKIDInKAO: self.no_kid_in_kao,
+            FulfillableObligationFQNs: list(&self.fulfillable_obligation_fqns),
+            LogLevel: self.log_level,
+        }
+    }
+}
+
+/// The reference's KASInfo: one key access server for the template.
+#[derive(Clone, Debug, Default)]
+pub struct KasInfo {
+    pub url: String,
+    pub public_key: String,
+    pub kid: String,
+    pub algorithm: String,
+    pub default: bool,
+}
+impl KasInfo {
+    pub fn new(url: &str) -> Self {
+        KasInfo { url: url.to_owned(), ..Default::default() }
+    }
+}
+#[derive(Clone, Debug, Default)]
+pub struct AssertionConfig {
+    pub id: String,
+    pub type_: String,
+    pub scope: String,
+    pub applies_to_state: String,
+    pub statement: Statement,
+}
+
+/// The reference's TDFConfig options (shared-source `TDFOptions`); every default is the reference default.
+#[derive(Clone, Debug, Default)]
+pub struct TdfOptions {
+    pub attributes: Vec<String>,
+    pub disable_autoconfigure: bool,
+    pub kas_information: Vec<KasInfo>,
+    /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
+    pub wrapping_key_algorithm: String,
+    pub segment_size: i64,
+    pub input_size: i64,
+    pub mime_type: String,
+    pub metadata: String,
+    pub assertions: Vec<AssertionConfig>,
+    pub system_metadata_assertion: bool,
+    pub target_mode: String,
+}
+impl TdfOptions {
+    fn generated(&self) -> generated::TDFOptions {
+        generated::TDFOptions {
+            Attributes: list(&self.attributes),
+            DisableAutoconfigure: self.disable_autoconfigure,
+            KasInformation: self
+                .kas_information
+                .iter()
+                .map(|k| generated::KASInfo {
+                    URL: bytes(&k.url),
+                    PublicKey: bytes(&k.public_key),
+                    KID: bytes(&k.kid),
+                    Algorithm: bytes(&k.algorithm),
+                    Default: k.default,
+                })
+                .collect(),
+            WrappingKeyAlgorithm: bytes(&self.wrapping_key_algorithm),
+            SegmentSize: self.segment_size,
+            InputSize: self.input_size,
+            MimeType: bytes(&self.mime_type),
+            Metadata: bytes(&self.metadata),
+            Assertions: self
+                .assertions
+                .iter()
+                .map(|a| generated::AssertionConfig {
+                    ID: bytes(&a.id),
+                    Type: bytes(&a.type_),
+                    Scope: bytes(&a.scope),
+                    AppliesToState: bytes(&a.applies_to_state),
+                    Statement: generated::Statement {
+                        Format: bytes(&a.statement.format),
+                        Schema: bytes(&a.statement.schema),
+                        Value: bytes(&a.statement.value),
+                    },
+                })
+                .collect(),
+            SystemMetadataAssertion: self.system_metadata_assertion,
+            TargetMode: bytes(&self.target_mode),
+        }
+    }
+}
+
+/// The reference's TDFReaderConfig options (shared-source `ReaderOptions`); every default is the reference default.
+#[derive(Clone, Debug, Default)]
+pub struct ReaderOptions {
+    pub disable_assertion_verification: bool,
+    /// WithKasAllowlist; `None` fetches the registry's list.
+    pub kas_allowlist: Option<Vec<String>>,
+    pub ignore_allowlist: bool,
+    pub max_manifest_size: i64,
+    pub schema_validation: i64,
+    /// WithSessionKeyType: rsa:2048 (default) or ec:secp256r1.
+    pub session_key_type: String,
+    pub fulfillable_obligation_fqns: Vec<String>,
+}
+impl ReaderOptions {
+    fn generated(&self) -> generated::ReaderOptions {
+        generated::ReaderOptions {
+            DisableAssertionVerification: self.disable_assertion_verification,
+            KasAllowlist: self.kas_allowlist.as_deref().map(list).unwrap_or_default(),
+            IgnoreAllowlist: self.ignore_allowlist,
+            MaxManifestSize: self.max_manifest_size,
+            SchemaValidation: self.schema_validation,
+            SessionKeyType: bytes(&self.session_key_type),
+            FulfillableObligationFQNs: list(&self.fulfillable_obligation_fqns),
+        }
+    }
+}
+
+// Manifest and policy types: the reference's JSON tags in snake_case.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Segment {
+    pub hash: String,
+    pub segment_size: i64,
+    pub encrypted_segment_size: i64,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RootSignature {
+    pub alg: String,
+    pub sig: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct IntegrityInformation {
+    pub root_signature: RootSignature,
+    pub segment_hash_alg: String,
+    pub segment_size_default: i64,
+    pub encrypted_segment_size_default: i64,
+    pub segments: Vec<Segment>,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PolicyBinding {
+    pub alg: String,
+    pub hash: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct KeyAccess {
+    pub type_: String,
+    pub url: String,
+    pub protocol: String,
+    pub wrapped_key: String,
+    pub policy_binding: PolicyBinding,
+    pub encrypted_metadata: String,
+    pub kid: String,
+    pub sid: String,
+    pub schema_version: String,
+    pub ephemeral_public_key: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Method {
+    pub algorithm: String,
+    pub iv: String,
+    pub is_streamable: bool,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct EncryptionInformation {
+    pub type_: String,
+    pub policy: String,
+    pub key_access: Vec<KeyAccess>,
+    pub method: Method,
+    pub integrity_information: IntegrityInformation,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Payload {
+    pub type_: String,
+    pub url: String,
+    pub protocol: String,
+    pub mime_type: String,
+    pub is_encrypted: bool,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Statement {
+    pub format: String,
+    pub schema: String,
+    pub value: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Binding {
+    pub method: String,
+    pub signature: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Assertion {
+    pub id: String,
+    pub type_: String,
+    pub scope: String,
+    pub applies_to_state: String,
+    pub statement: Statement,
+    pub binding: Binding,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Manifest {
+    pub encryption_information: EncryptionInformation,
+    pub payload: Payload,
+    pub assertions: Vec<Assertion>,
+    pub schema_version: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AttributeObject {
+    pub attribute: String,
+    pub display_name: String,
+    pub is_default: bool,
+    pub pub_key: String,
+    pub kas_url: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PolicyBody {
+    pub data_attributes: Vec<AttributeObject>,
+    pub dissem: Vec<String>,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PolicyObject {
+    pub uuid: String,
+    pub body: PolicyBody,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SimpleKasPublicKey {
+    pub algorithm: String,
+    pub kid: String,
+    pub pem: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SimpleKasKey {
+    pub kas_uri: String,
+    pub public_key: SimpleKasPublicKey,
+    pub kas_id: String,
+}
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct KasPublicKey {
+    pub pem: String,
+    pub kid: String,
+    pub alg: String,
+}
+
+impl From<generated::Manifest> for Manifest {
+    fn from(m: generated::Manifest) -> Self {
+        let e = m.EncryptionInformation;
+        let i = e.IntegrityInformation;
+        Manifest {
+            encryption_information: EncryptionInformation {
+                type_: text(e.KeyAccessType),
+                policy: text(e.Policy),
+                key_access: e
+                    .KeyAccessObjs
+                    .into_iter()
+                    .map(|k| KeyAccess {
+                        type_: text(k.KeyType),
+                        url: text(k.KasURL),
+                        protocol: text(k.Protocol),
+                        wrapped_key: text(k.WrappedKey),
+                        policy_binding: PolicyBinding { alg: text(k.PolicyBinding.Alg), hash: text(k.PolicyBinding.Hash) },
+                        encrypted_metadata: text(k.EncryptedMetadata),
+                        kid: text(k.KID),
+                        sid: text(k.SplitID),
+                        schema_version: text(k.SchemaVersion),
+                        ephemeral_public_key: text(k.EphemeralPublicKey),
+                    })
+                    .collect(),
+                method: Method { algorithm: text(e.Method.Algorithm), iv: text(e.Method.IV), is_streamable: e.Method.IsStreamable },
+                integrity_information: IntegrityInformation {
+                    root_signature: RootSignature { alg: text(i.RootSignature.Algorithm), sig: text(i.RootSignature.Signature) },
+                    segment_hash_alg: text(i.SegmentHashAlgorithm),
+                    segment_size_default: i.DefaultSegmentSize,
+                    encrypted_segment_size_default: i.DefaultEncryptedSegSize,
+                    segments: i
+                        .Segments
+                        .into_iter()
+                        .map(|s| Segment { hash: text(s.Hash), segment_size: s.Size, encrypted_segment_size: s.EncryptedSize })
+                        .collect(),
+                },
+            },
+            payload: Payload {
+                type_: text(m.Payload.Type),
+                url: text(m.Payload.URL),
+                protocol: text(m.Payload.Protocol),
+                mime_type: text(m.Payload.MimeType),
+                is_encrypted: m.Payload.IsEncrypted,
+            },
+            assertions: m
+                .Assertions
+                .into_iter()
+                .map(|a| Assertion {
+                    id: text(a.ID),
+                    type_: text(a.Type),
+                    scope: text(a.Scope),
+                    applies_to_state: text(a.AppliesToState),
+                    statement: Statement { format: text(a.Statement.Format), schema: text(a.Statement.Schema), value: text(a.Statement.Value) },
+                    binding: Binding { method: text(a.Binding.Method), signature: text(a.Binding.Signature) },
+                })
+                .collect(),
+            schema_version: text(m.TDFVersion),
+        }
+    }
+}
+impl From<generated::PolicyObject> for PolicyObject {
+    fn from(p: generated::PolicyObject) -> Self {
+        PolicyObject {
+            uuid: text(p.UUID),
+            body: PolicyBody {
+                data_attributes: p
+                    .Body
+                    .DataAttributes
+                    .into_iter()
+                    .map(|a| AttributeObject {
+                        attribute: text(a.Attribute),
+                        display_name: text(a.DisplayName),
+                        is_default: a.IsDefault,
+                        pub_key: text(a.PubKey),
+                        kas_url: text(a.KasURL),
+                    })
+                    .collect(),
+                dissem: texts(p.Body.Dissem),
+            },
+        }
+    }
+}
+impl From<generated::SimpleKasKey> for SimpleKasKey {
+    fn from(k: generated::SimpleKasKey) -> Self {
+        SimpleKasKey {
+            kas_uri: text(k.KasURI),
+            public_key: SimpleKasPublicKey { algorithm: text(k.PublicKey.Algorithm), kid: text(k.PublicKey.Kid), pem: text(k.PublicKey.Pem) },
+            kas_id: text(k.KasID),
+        }
+    }
+}
+
+fn wait<T, R>(op: Operation<T>, convert: impl FnOnce(T) -> R) -> Result<R> {
+    op.wait().map(convert).map_err(Error::from)
+}
+fn future<T: Send + 'static, R>(op: Operation<T>, convert: impl FnOnce(T) -> R) -> impl Future<Output = Result<R>> {
+    async move { op.await.map(convert).map_err(Error::from) }
+}
+
+/// The reference's TDFObject: the TDF bytes and a handle to its manifest.
+pub struct TdfObject {
+    /// The TDF archive.
+    pub bytes: Vec<u8>,
+    handle: generated::TDFObject,
+    calls: Calls,
+}
+impl TdfObject {
+    pub fn manifest(&self) -> Result<Manifest> {
+        wait(self.handle.Manifest(self.calls.options()), Manifest::from)
+    }
+    pub fn manifest_async(&self) -> impl Future<Output = Result<Manifest>> {
+        future(self.handle.Manifest(self.calls.options()), Manifest::from)
+    }
+    pub fn size(&self) -> Result<i64> {
+        wait(self.handle.Size(self.calls.options()), |n| n)
+    }
+    /// Releases the handle; dropping it without close releases it with a warning.
+    pub fn close(&self) -> Result<()> {
+        wait(self.handle.close(), |v| v)
+    }
+}
+
+/// The reference's Reader over a loaded TDF; stream methods arrive in Phase 7.
+pub struct Reader {
+    handle: generated::Reader,
+    calls: Calls,
+}
+impl Reader {
+    /// Fetches and unwraps the payload key now.
+    pub fn init(&self) -> Result<()> {
+        wait(self.handle.Init(self.calls.options()), |v| v)
+    }
+    pub fn init_async(&self) -> impl Future<Output = Result<()>> {
+        future(self.handle.Init(self.calls.options()), |v| v)
+    }
+    pub fn manifest(&self) -> Result<Manifest> {
+        wait(self.handle.Manifest(self.calls.options()), Manifest::from)
+    }
+    pub fn policy(&self) -> Result<PolicyObject> {
+        wait(self.handle.Policy(self.calls.options()), PolicyObject::from)
+    }
+    pub fn data_attributes(&self) -> Result<Vec<String>> {
+        wait(self.handle.DataAttributes(self.calls.options()), texts)
+    }
+    /// The decrypted metadata; runs `init` lazily.
+    pub fn unencrypted_metadata(&self) -> Result<Vec<u8>> {
+        wait(self.handle.UnencryptedMetadata(self.calls.options()), |v| v)
+    }
+    pub fn unencrypted_metadata_async(&self) -> impl Future<Output = Result<Vec<u8>>> {
+        future(self.handle.UnencryptedMetadata(self.calls.options()), |v| v)
+    }
+    /// Releases the handle; later calls fail with `Kind::Boundary("closed")`.
+    pub fn close(&self) -> Result<()> {
+        wait(self.handle.close(), |v| v)
+    }
+}
+
+#[derive(Clone, Default)]
+struct Calls {
+    provider: Option<Provider>,
+}
+impl Calls {
+    fn options(&self) -> CallOptions {
+        let mut o = CallOptions::default();
+        if let Some(p) = &self.provider {
+            o.providers.insert(TOKEN_PROVIDER.to_owned(), p.clone());
+        }
+        o
+    }
+}
+
+/// The reference SDK handle; create it with [`Sdk::new`].
+pub struct Sdk {
+    handle: generated::SDK,
+    calls: Calls,
+}
+impl Sdk {
+    /// The reference's New: discovers the platform configuration and the token endpoint.
+    pub fn new(platform_endpoint: &str, options: Options) -> Result<Sdk> {
+        let calls = Calls { provider: options.token_provider.clone() };
+        let c = calls.clone();
+        wait(generated::New(bytes(platform_endpoint), options.generated(), calls.options()), move |h| Sdk { handle: h.expect("invalid generated result"), calls: c })
+    }
+    pub fn new_async(platform_endpoint: &str, options: Options) -> impl Future<Output = Result<Sdk>> {
+        let calls = Calls { provider: options.token_provider.clone() };
+        let c = calls.clone();
+        future(generated::New(bytes(platform_endpoint), options.generated(), calls.options()), move |h| Sdk { handle: h.expect("invalid generated result"), calls: c })
+    }
+    /// The reference's CreateTDF over bytes: the TDF bytes with their TdfObject handle.
+    pub fn create_tdf(&self, plaintext: &[u8], options: &TdfOptions) -> Result<TdfObject> {
+        let calls = self.calls.clone();
+        wait(self.handle.EncryptBytes(plaintext.to_vec(), options.generated(), self.calls.options()), move |(data, handle)| TdfObject { bytes: data, handle: handle.expect("invalid generated result"), calls })
+    }
+    pub fn create_tdf_async(&self, plaintext: &[u8], options: &TdfOptions) -> impl Future<Output = Result<TdfObject>> {
+        let calls = self.calls.clone();
+        future(self.handle.EncryptBytes(plaintext.to_vec(), options.generated(), self.calls.options()), move |(data, handle)| TdfObject { bytes: data, handle: handle.expect("invalid generated result"), calls })
+    }
+    /// create_tdf without keeping the handle: the TDF bytes only.
+    pub fn encrypt_bytes(&self, plaintext: &[u8], options: &TdfOptions) -> Result<Vec<u8>> {
+        let object = self.create_tdf(plaintext, options)?;
+        object.close()?;
+        Ok(object.bytes)
+    }
+    pub fn encrypt_bytes_async(&self, plaintext: &[u8], options: &TdfOptions) -> impl Future<Output = Result<Vec<u8>>> {
+        let op = self.create_tdf_async(plaintext, options);
+        async move {
+            let object = op.await?;
+            object.close()?;
+            Ok(object.bytes)
+        }
+    }
+    /// The reference's LoadTDF over bytes.
+    pub fn load_tdf(&self, ciphertext: &[u8], options: &ReaderOptions) -> Result<Reader> {
+        let calls = self.calls.clone();
+        wait(self.handle.LoadTDF(Some(Stream::bytes(ciphertext.to_vec())), options.generated(), self.calls.options()), move |h| Reader { handle: h.expect("invalid generated result"), calls })
+    }
+    pub fn load_tdf_async(&self, ciphertext: &[u8], options: &ReaderOptions) -> impl Future<Output = Result<Reader>> {
+        let calls = self.calls.clone();
+        future(self.handle.LoadTDF(Some(Stream::bytes(ciphertext.to_vec())), options.generated(), self.calls.options()), move |h| Reader { handle: h.expect("invalid generated result"), calls })
+    }
+    pub fn decrypt_bytes(&self, ciphertext: &[u8], options: &ReaderOptions) -> Result<Vec<u8>> {
+        wait(self.handle.DecryptBytes(ciphertext.to_vec(), options.generated(), self.calls.options()), |v| v)
+    }
+    pub fn decrypt_bytes_async(&self, ciphertext: &[u8], options: &ReaderOptions) -> impl Future<Output = Result<Vec<u8>>> {
+        future(self.handle.DecryptBytes(ciphertext.to_vec(), options.generated(), self.calls.options()), |v| v)
+    }
+    pub fn is_healthy(&self) -> Result<bool> {
+        wait(self.handle.IsHealthy(self.calls.options()), |b| b)
+    }
+    /// The platform configuration members as strings (non-string members as compact JSON).
+    pub fn platform_configuration(&self) -> Result<BTreeMap<String, String>> {
+        wait(self.handle.PlatformConfiguration(self.calls.options()), |c| c.Entries.into_iter().map(|e| (text(e.Key), text(e.Value))).collect())
+    }
+    pub fn get_base_key(&self) -> Result<SimpleKasKey> {
+        wait(self.handle.GetBaseKey(self.calls.options()), SimpleKasKey::from)
+    }
+    pub fn store_kas_keys(&self, url: &str, keys: &[KasPublicKey]) -> Result<()> {
+        let set = generated::KasPublicKeySet {
+            Keys: keys.iter().map(|k| generated::KasPublicKey { Pem: bytes(&k.pem), Kid: bytes(&k.kid), Alg: bytes(&k.alg) }).collect(),
+        };
+        wait(self.handle.StoreKASKeys(bytes(url), set, self.calls.options()), |v| v)
+    }
+    /// Releases the handle; later calls fail with `Kind::Boundary("closed")`.
+    pub fn close(&self) -> Result<()> {
+        wait(self.handle.close(), |v| v)
+    }
+}
+
+// Free functions of the reference, each a library call.
+pub fn is_valid_tdf(data: &[u8]) -> Result<bool> {
+    wait(generated::IsValidTdf(Some(Stream::bytes(data.to_vec())), CallOptions::default()), |b| b)
+}
+pub fn get_tdf_type(data: &[u8]) -> Result<String> {
+    wait(generated::GetTdfType(Some(Stream::bytes(data.to_vec())), CallOptions::default()), text)
+}
+pub fn is_platform_endpoint_malformed(endpoint: &str) -> Result<bool> {
+    wait(generated::IsPlatformEndpointMalformed(bytes(endpoint), CallOptions::default()), |b| b)
+}
+pub fn key_type_to_policy_algorithm(key_type: &str) -> Result<String> {
+    wait(generated::KeyTypeToPolicyAlgorithm(bytes(key_type), CallOptions::default()), text)
+}
+pub fn policy_algorithm_to_key_type(alg: &str) -> Result<String> {
+    wait(generated::PolicyAlgorithmToKeyType(bytes(alg), CallOptions::default()), text)
+}
+pub fn version() -> Result<String> {
+    wait(generated::Version(CallOptions::default()), text)
+}
+pub fn tdf_spec_version() -> Result<String> {
+    wait(generated::TDFSpecVersion(CallOptions::default()), text)
+}
+pub fn supported_features() -> Result<Vec<String>> {
+    wait(generated::SupportedFeatures(CallOptions::default()), texts)
+}

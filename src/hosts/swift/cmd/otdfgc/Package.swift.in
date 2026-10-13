@@ -1,0 +1,10 @@
+// swift-tools-version: 6.0
+import PackageDescription
+let package = Package(
+    name: "otdfgc",
+    dependencies: [.package(path: "@PACKAGE@")],
+    targets: [
+        .executableTarget(name: "otdfgc", dependencies: [.product(name: "OpenTDFTDF3", package: "@PACKAGE_NAME@")], path: "Sources/otdfgc")
+    ],
+    swiftLanguageModes: [.v5]
+)

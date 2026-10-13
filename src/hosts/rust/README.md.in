@@ -7,6 +7,27 @@ The tested platform is Rust 1.98.0 on x86_64 Linux GNU. Dependency metadata
 requires Rust 1.88 or later. Native builds need a C compiler, CMake, Make and Perl.
 Vendored OpenSSL and AWS-LC are built from the pinned crate archives.
 
+The OpenTDF handle API (`Sdk`, `Reader`, `TdfObject`, `Options`,
+`TdfOptions`, `ReaderOptions`, `Error`):
+
+```rust,no_run
+use opentdf_tdf3::{Sdk, Options, TdfOptions, ReaderOptions, KasInfo};
+let sdk = Sdk::new("https://platform.example", Options {
+    client_id: "server-client".into(),
+    client_secret: "read-from-server-storage".into(),
+    ..Default::default()
+})?;
+let tdf = sdk.encrypt_bytes(&[0, 255], &TdfOptions {
+    kas_information: vec![KasInfo::new("https://platform.example/kas")],
+    ..Default::default()
+})?;
+let plain = sdk.decrypt_bytes(&tdf, &ReaderOptions::default())?;
+sdk.close()?;
+# Ok::<(), opentdf_tdf3::Error>(())
+```
+
+The deprecated per-call façade:
+
 ```rust,no_run
 use opentdf_tdf3::{Config, EncryptOptions, CallOptions, encrypt, decrypt};
 let config = Config {

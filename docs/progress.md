@@ -1994,3 +1994,95 @@ the Go sentinel text rather than TypeScript's `http: deadline exceeded`,
 which is why the shared source classifies both; the delivery audit for
 browser portability matched the words `Buffer` and `process`, which
 `std/bytes`' panic texts contain, and now matches Node imports and globals.
+
+## Full SDK plan, Phase 2 part 3
+
+The handle API exposed through the generated Java, C#, Rust, C and Swift
+packages, their `otdfgc` CLIs registered in the xtest harness
+([full-sdk-plan.md](full-sdk-plan.md) Phase 2, PR "feat: Phase 2 part 3
+handle API for Java, C#, Rust, C and Swift", branch
+`feat/phase-2-part-3-handle-api`; tests repository branch
+`gc-compiled-targets`).
+
+Built: thin host adapters that map names, idioms and errors only, beside the
+unchanged deprecated façades. Java (`src/hosts/java/*.java.in`):
+`SDK.builder(endpoint)...build()`, `TDFObject`, `Reader` (`AutoCloseable`),
+`TDFOptions`/`ReaderOptions` builders, blocking methods with an optional
+`Duration` and `*Async` `CompletableFuture` twins whose `cancel` cancels the
+call, `OpenTDFException`. C# (`Sdk.cs.in`): `await Sdk.CreateAsync`, `Task`
+methods with a `CancellationToken`, `IAsyncDisposable` handles, option
+records, `OpenTdfException`. Rust (`sdk.rs.in`): `Sdk::new`, `Result`
+methods with `*_async` futures (dropping one cancels), `Options` structs
+with `Default`, typed manifest structs, `Error` with a `Kind` enum. C
+(`opentdf.h`, `opentdf.c`): `otdf_sdk_new`/`_close`/`_free`, `otdf_create_tdf`,
+`otdf_load_tdf` and the reader functions, an `otdf_call` for cancellation and
+deadlines, an `otdf_error` out parameter, manifests as JSON. Swift
+(`OpenTDF.swift.in`): `try await SDK(...)`, `Reader`/`TDFObject` classes,
+option structs with defaults, Task cancellation, `OpenTDFError` with an
+`ErrorKind` enum. Every adapter exposes `createTdf` over bytes,
+`encryptBytes`, `loadTdf`, `decryptBytes`, the reader's `init`, `manifest`,
+`policy`, `dataAttributes`, `unencryptedMetadata` and `close`, `isHealthy`,
+`platformConfiguration`, `getBaseKey`, `storeKasKeys`, and the free
+functions. CLIs: `src/hosts/<target>/cmd/otdfgc`, built by
+`scripts/build-<target>-cli.sh`, implementing the Go CLI contract (same
+flags, exit codes and otdfctl wording). The build scripts take the
+Goalchemy checkout from `GOALCHEMY_ROOT`, so the tests repository builds
+against its pinned clone. Consumers: `tests/interop/generated<target>` drive
+the handle API in the delivery modes (encrypt, decrypt, a `repeat` of 100
+round trips with every handle closed, a cancelled host token provider and a
+closed-handle call, typed negatives) and a `controlled` mode driven by the
+shared fixture harness `tests/interop/delivery/controlled_platform.py`: the
+Go consumer's offline cases (unreachable platform, well-known 500, redirect,
+content type, malformed response, untrusted TLS, caller and source
+deadlines, token endpoint 401) plus allowlist, invalid input, unsupported
+option, invalid argument (Java, C#, C), 100 reader handles and closed
+handle on a TDF written against an explicit KAS key. The full-mode matrices
+(`run-basic.py`, `run-profile.py`) still expect the façade's codes, as part
+2 recorded for TypeScript and Python; PR CI runs the focused jobs.
+
+Swift: v0.6.1 rejected the shared source's `Error` record with `GCE007:
+Swift public name collision: Error`. Fixed in Goalchemy
+([goalchemy#79](https://github.com/eugenioenko/goalchemy/pull/79), branch
+`fix/swift-reserved-public-names` on v0.6.1): a public struct or handle
+whose name Swift, Foundation or the runtime uses gets a trailing underscore
+(`Error_`, as Rust renames `Self` to `Self_`), struct type references are
+module-qualified so a field named like its type (`Options.TokenExchange`)
+does not shadow it, and an error type without exported fields crosses as
+`[:]`; three emitter tests and notes in `docs/library-handles.md` and
+`docs/usage.md`. `references.lock.json` and the delivery workflow pin its
+head `a9287323`; only the Swift emitter differs from the v0.6.1 tag.
+
+Verified locally, throttled, one target at a time, with the pinned compiler
+and the delivery scripts (`delivery-packages.py` repeatable builds,
+`delivery-consumers.py`, `controlled.py`, `delivery-job.py --profile basic`
+against the private platform): Java 15/15 controlled cases, focused basic
+real-KAS pass; C# 15/15, pass; Rust 14/14, pass; C 15/15, pass; Swift 14/14,
+pass. PR CI: offline, go, typescript, java, csharp, python, rust and c pass;
+swift fails its `packages` step on the 1800 s step timeout (each hosted
+Swift release build of the generated package takes about 25 minutes and the
+step builds twice), recorded rather than raised since Swift is not a
+required check.
+
+xtest, platform from `otdf-local` at `4d9e555b` with `ec_tdf_enabled`,
+reference CLI `go@v0.38.1`, the five CLIs built by the tests repository's
+Makefiles from this checkout (`GOALCHEMY_CHECKOUT` at the pinned revision):
+`test_tdf_roundtrip`/`test_manifest_validity` for `--sdks "go gcjava gccs gcrs
+gcc gcswift" --sizes small --containers ztdf`: 42 passed, 0 failed, 0 skipped
+(`out/xtest/phase2c-roundtrip.xml`, every pair in both directions including
+Swift); the seven Phase 2 tamper cells and `test_policytypes.py` for `--sdks
+"go gcjava gccs gcrs gcc" --sizes small --containers ztdf`: 250 passed, 0
+failed, 0 skipped (`out/xtest/phase2c-tamper.xml`; a first attempt errored in
+fixture setup when the harness's `go run otdfctl@latest` hit a transient DNS
+failure, and was rerun whole). The scoreboard is regenerated from these two
+files; the earlier JUnit files were no longer on disk, so the gcgo, gcts and
+gcpy columns are carried over from the previous scoreboard.
+
+Findings: the Goalchemy C runtime reports an expired libcurl request
+timeout as `http: transport failure` instead of the deadline sentinel, so a
+per-request timeout on C surfaces as `transport` or `deadline_exceeded`,
+whichever of libcurl's timeout and the call context fires first (recorded in
+api-spec.md; to be fixed in Goalchemy, not worked around). A caller deadline
+reports each target's cancellation idiom (`deadline_exceeded` for a Java
+`Duration`, `canceled` elsewhere). Swift needs `protocol` and `repeat`
+backquoted or renamed in host code. Deviations from api-spec.md are
+recorded in its "Deviations recorded by Phase 2 part 3".

@@ -1,0 +1,41 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+import io.goalchemy.runtime.Library;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+/** The reference's TDFObject: the TDF bytes and a handle to its manifest. */
+public final class TDFObject implements AutoCloseable {
+ private final byte[] bytes;
+ private final Generated.TDFObject handle;
+ private final SDK sdk;
+
+ TDFObject(byte[] bytes, Generated.TDFObject handle, SDK sdk) {
+  this.bytes = bytes == null ? new byte[0] : bytes;
+  this.handle = handle;
+  this.sdk = sdk;
+ }
+
+ /** The TDF archive. */
+ public byte[] bytes() { return bytes; }
+
+ /** The manifest keyed by the reference's JSON tags (encryptionInformation.keyAccess[0].url, payload.mimeType, ...). */
+ public Map<String, Object> manifest() { return manifest(null); }
+ public Map<String, Object> manifest(Duration timeout) { return Values.map(Values.await(Values.run(() -> handle.Manifest(sdk.call())), timeout)); }
+ public CompletableFuture<Map<String, Object>> manifestAsync() { return Values.future(Values.run(() -> handle.Manifest(sdk.call())), Values::map); }
+
+ public long size() { return size(null); }
+ public long size(Duration timeout) { return Values.await(Values.run(() -> handle.Size(sdk.call())), timeout); }
+ public CompletableFuture<Long> sizeAsync() { return Values.future(Values.run(() -> handle.Size(sdk.call())), n -> n); }
+
+ @Override public void close() {
+  try {
+   handle.close();
+  } catch (Library.Failure f) {
+   throw new OpenTDFException(f);
+  }
+ }
+ public CompletableFuture<Void> closeAsync() { return Values.future(handle.closeAsync(), v -> null); }
+}

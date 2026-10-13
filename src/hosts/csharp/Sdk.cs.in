@@ -1,0 +1,236 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Generated=Goalchemy.Generated.GoProgram;
+using Rt;
+namespace OpenTDF;
+
+// The handle API of api-spec.md in C# idiom: option records with init setters,
+// Task methods taking a CancellationToken, IAsyncDisposable handles and one
+// OpenTdfException. The adapter maps names, idioms and errors only; the TDF
+// protocol executes in the generated assembly.
+
+/// The shared-source Error record: kind, op, the reference's message and the service fields.
+public sealed class OpenTdfException : Exception
+{
+    public string Kind{get;}public string Op{get;}public long HttpStatus{get;}public string ConnectCode{get;}public string ServiceMessage{get;}public string KasUrl{get;}public string AssertionId{get;}
+    public IReadOnlyList<string> RequiredObligations{get;}
+    internal OpenTdfException(Library.Failure failure):this(failure,failure.Fields){}
+    OpenTdfException(Library.Failure failure,Dictionary<string,object> f):base(IsRecord(failure,f)?Values.Decode((string)f["Message"]):"goalchemy library: "+failure.Kind,failure.InnerException)
+    {
+        bool record=IsRecord(failure,f);
+        Kind=record?Values.Decode((string)f["Kind"]):failure.Kind;Op=record?Values.Field(f,"Op"):"";
+        HttpStatus=record&&f.TryGetValue("HTTPStatus",out var status)&&status is long n?n:0;
+        ConnectCode=record?Values.Field(f,"ConnectCode"):"";ServiceMessage=record?Values.Field(f,"ServiceMessage"):"";KasUrl=record?Values.Field(f,"KASURL"):"";AssertionId=record?Values.Field(f,"AssertionID"):"";
+        RequiredObligations=record&&f.TryGetValue("RequiredObligations",out var raw)&&raw is object[] a?Array.ConvertAll(a,v=>Values.Decode((string)v)):Array.Empty<string>();
+    }
+    static bool IsRecord(Library.Failure failure,Dictionary<string,object> f)=>failure.Kind=="source"&&f.TryGetValue("Kind",out var kind)&&kind is string;
+}
+
+/// The reference's Options (shared-source Options); every unset member is the reference default.
+public sealed record Options
+{
+    public string ClientId{get;init;}public string ClientSecret{get;init;}public IReadOnlyList<string> Scopes{get;init;}public string TokenEndpoint{get;init;}
+    public TokenExchange TokenExchange{get;init;}public CertExchange CertExchange{get;init;}
+    /// A host token source replacing client credentials; the SDK signs rewrap requests with an ephemeral ES256 key unless DpopKeyPem is set.
+    public TDF3.TokenProvider TokenProvider{get;init;}
+    /// WithPlatformConfiguration; non-string members are carried as JSON text.
+    public IReadOnlyDictionary<string,object> PlatformConfiguration{get;init;}
+    public bool ValidateConnection{get;init;}public bool InsecurePlaintext{get;init;}public bool InsecureSkipVerify{get;init;}public TlsOptions Tls{get;init;}public string UnixSocket{get;init;}
+    /// Per-request timeout; null keeps the reference default.
+    public TimeSpan? Timeout{get;init;}
+    public string CoreEndpoint{get;init;}public string PolicyEndpoint{get;init;}public string AuthorizationEndpoint{get;init;}public string EntityResolutionEndpoint{get;init;}public string WellknownEndpoint{get;init;}
+    public string SessionEncryptionRsaPem{get;init;}public string SessionSignerRsaPem{get;init;}
+    /// WithDPoPAlgorithm: ES256, ES384, ES512, RS256, RS384 or RS512.
+    public string DpopAlgorithm{get;init;}public string DpopKeyPem{get;init;}public bool NoKidInKao{get;init;}public IReadOnlyList<string> FulfillableObligationFqns{get;init;}
+    /// WithLogger level: a slog level (-4 debug, 0 info, 4 warn, 8 error); 0 keeps the host sink default.
+    public long LogLevel{get;init;}
+    internal Generated.Options ToGenerated()
+    {
+        var o=new Generated.Options{ClientID=Values.Encode(ClientId),ClientSecret=Values.Encode(ClientSecret),Scopes=Values.Encode(Scopes),TokenEndpoint=Values.Encode(TokenEndpoint),TokenProviderName=TokenProvider==null?"":Sdk.TokenProviderName,
+            ValidateConnection=ValidateConnection,InsecurePlaintext=InsecurePlaintext,InsecureSkipVerify=InsecureSkipVerify,UnixSocket=Values.Encode(UnixSocket),TimeoutMillis=(long)(Timeout?.TotalMilliseconds??0),
+            CoreEndpoint=Values.Encode(CoreEndpoint),PolicyEndpoint=Values.Encode(PolicyEndpoint),AuthorizationEndpoint=Values.Encode(AuthorizationEndpoint),EntityResolutionEndpoint=Values.Encode(EntityResolutionEndpoint),WellknownEndpoint=Values.Encode(WellknownEndpoint),
+            SessionEncryptionRSAPEM=Values.Encode(SessionEncryptionRsaPem),SessionSignerRSAPEM=Values.Encode(SessionSignerRsaPem),DPoPAlgorithm=Values.Encode(DpopAlgorithm),DPoPKeyPEM=Values.Encode(DpopKeyPem),NoKIDInKAO=NoKidInKao,FulfillableObligationFQNs=Values.Encode(FulfillableObligationFqns),LogLevel=LogLevel};
+        if(TokenExchange!=null)o.TokenExchange=new Generated.TokenExchange{SubjectToken=Values.Encode(TokenExchange.SubjectToken),Audience=Values.Encode(TokenExchange.Audience)};
+        if(CertExchange!=null)o.CertExchange=new Generated.CertExchange{ClientCertPEM=Values.Encode(CertExchange.ClientCertPem),ClientKeyPEM=Values.Encode(CertExchange.ClientKeyPem),Audience=Values.Encode(CertExchange.Audience)};
+        if(Tls!=null)o.TLS=new Generated.TLSOptions{ClientCertPEM=Values.Encode(Tls.ClientCertPem),ClientKeyPEM=Values.Encode(Tls.ClientKeyPem),RootCAsPEM=Values.Encode(Tls.RootCasPem),Audience=Values.Encode(Tls.Audience)};
+        if(PlatformConfiguration!=null)o.PlatformConfiguration=new Generated.PlatformConfiguration{Entries=PlatformConfiguration.Select(e=>new Generated.PlatformConfigurationEntry{Key=Values.Encode(e.Key),Value=Values.Encode(e.Value is string s?s:JsonSerializer.Serialize(e.Value))}).ToArray()};
+        return o;
+    }
+}
+public sealed record TokenExchange(string SubjectToken,IReadOnlyList<string> Audience=null);
+public sealed record CertExchange(string ClientCertPem,string ClientKeyPem,IReadOnlyList<string> Audience=null);
+public sealed record TlsOptions{public string ClientCertPem{get;init;}public string ClientKeyPem{get;init;}public string RootCasPem{get;init;}public IReadOnlyList<string> Audience{get;init;}}
+/// The reference's KASInfo: one key access server for the template.
+public sealed record KasInfo(string Url){public string PublicKey{get;init;}public string Kid{get;init;}public string Algorithm{get;init;}public bool Default{get;init;}}
+public sealed record AssertionConfig(string Id,string Type,string Scope,string AppliesToState,string Format,string Schema,string Value);
+public sealed record KasPublicKey(string Pem,string Kid,string Alg);
+
+/// The reference's TDFConfig options (shared-source TDFOptions); every unset member is the reference default.
+public sealed record TdfOptions
+{
+    public IReadOnlyList<string> Attributes{get;init;}public bool DisableAutoconfigure{get;init;}public IReadOnlyList<KasInfo> KasInformation{get;init;}
+    /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
+    public string WrappingKeyAlgorithm{get;init;}public long SegmentSize{get;init;}public long InputSize{get;init;}public string MimeType{get;init;}public string Metadata{get;init;}
+    public IReadOnlyList<AssertionConfig> Assertions{get;init;}public bool SystemMetadataAssertion{get;init;}public string TargetMode{get;init;}
+    internal Generated.TDFOptions ToGenerated()=>new(){Attributes=Values.Encode(Attributes),DisableAutoconfigure=DisableAutoconfigure,
+        KasInformation=KasInformation?.Select(k=>new Generated.KASInfo{URL=Values.Encode(k.Url),PublicKey=Values.Encode(k.PublicKey),KID=Values.Encode(k.Kid),Algorithm=Values.Encode(k.Algorithm),Default=k.Default}).ToArray(),
+        WrappingKeyAlgorithm=Values.Encode(WrappingKeyAlgorithm),SegmentSize=SegmentSize,InputSize=InputSize,MimeType=Values.Encode(MimeType),Metadata=Values.Encode(Metadata),
+        Assertions=Assertions?.Select(a=>new Generated.AssertionConfig{ID=Values.Encode(a.Id),Type=Values.Encode(a.Type),Scope=Values.Encode(a.Scope),AppliesToState=Values.Encode(a.AppliesToState),Statement=new Generated.Statement{Format=Values.Encode(a.Format),Schema=Values.Encode(a.Schema),Value=Values.Encode(a.Value)}}).ToArray(),
+        SystemMetadataAssertion=SystemMetadataAssertion,TargetMode=Values.Encode(TargetMode)};
+}
+/// The reference's TDFReaderConfig options (shared-source ReaderOptions); every unset member is the reference default.
+public sealed record ReaderOptions
+{
+    public bool DisableAssertionVerification{get;init;}
+    /// WithKasAllowlist; null fetches the registry's list.
+    public IReadOnlyList<string> KasAllowlist{get;init;}public bool IgnoreAllowlist{get;init;}public long MaxManifestSize{get;init;}public long SchemaValidation{get;init;}
+    /// WithSessionKeyType: rsa:2048 (default) or ec:secp256r1.
+    public string SessionKeyType{get;init;}public IReadOnlyList<string> FulfillableObligationFqns{get;init;}
+    internal Generated.ReaderOptions ToGenerated()=>new(){DisableAssertionVerification=DisableAssertionVerification,KasAllowlist=Values.Encode(KasAllowlist),IgnoreAllowlist=IgnoreAllowlist,MaxManifestSize=MaxManifestSize,SchemaValidation=SchemaValidation,SessionKeyType=Values.Encode(SessionKeyType),FulfillableObligationFQNs=Values.Encode(FulfillableObligationFqns)};
+}
+
+/// The reference's TDFObject: the TDF bytes and a handle to its manifest.
+public sealed class TdfObject : IAsyncDisposable, IDisposable
+{
+    readonly Generated.TDFObject handle;readonly Sdk sdk;
+    /// The TDF archive.
+    public byte[] Bytes{get;}
+    internal TdfObject(byte[] bytes,Generated.TDFObject handle,Sdk sdk){Bytes=bytes??Array.Empty<byte>();this.handle=handle;this.sdk=sdk;}
+    /// The manifest keyed by the reference's JSON tags (encryptionInformation.keyAccess[0].url, payload.mimeType, ...).
+    public Task<IReadOnlyDictionary<string,object>> ManifestAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Manifest(sdk.Call(ct)),Values.Map);
+    public Task<long> SizeAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Size(sdk.Call(ct)),n=>n);
+    public Task CloseAsync()=>Values.Run(handle.CloseAsync,v=>v);
+    public async ValueTask DisposeAsync()=>await CloseAsync().ConfigureAwait(false);
+    public void Dispose()=>CloseAsync().GetAwaiter().GetResult();
+}
+
+/// The reference's Reader over a loaded TDF; stream methods arrive in Phase 7.
+public sealed class Reader : IAsyncDisposable, IDisposable
+{
+    readonly Generated.Reader handle;readonly Sdk sdk;
+    internal Reader(Generated.Reader handle,Sdk sdk){this.handle=handle;this.sdk=sdk;}
+    /// Fetches and unwraps the payload key now, under this call's token.
+    public Task InitAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Init(sdk.Call(ct)),v=>v);
+    public Task<IReadOnlyDictionary<string,object>> ManifestAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Manifest(sdk.Call(ct)),Values.Map);
+    /// The policy keyed by the reference's JSON tags (uuid, body.dataAttributes, body.dissem).
+    public Task<IReadOnlyDictionary<string,object>> PolicyAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Policy(sdk.Call(ct)),Values.Map);
+    public Task<IReadOnlyList<string>> DataAttributesAsync(CancellationToken ct=default)=>Values.Run(()=>handle.DataAttributes(sdk.Call(ct)),Values.Decode);
+    /// The decrypted metadata; runs Init lazily.
+    public Task<byte[]> UnencryptedMetadataAsync(CancellationToken ct=default)=>Values.Run(()=>handle.UnencryptedMetadata(sdk.Call(ct)),b=>b??Array.Empty<byte>());
+    public Task CloseAsync()=>Values.Run(handle.CloseAsync,v=>v);
+    public async ValueTask DisposeAsync()=>await CloseAsync().ConfigureAwait(false);
+    public void Dispose()=>CloseAsync().GetAwaiter().GetResult();
+}
+
+/// The reference SDK handle; create it with Sdk.CreateAsync.
+public sealed class Sdk : IAsyncDisposable, IDisposable
+{
+    internal const string TokenProviderName="access-token";
+    readonly Generated.SDK handle;readonly Callback.Registration[] callbacks;
+    Sdk(Generated.SDK handle,Callback.Registration[] callbacks){this.handle=handle;this.callbacks=callbacks;}
+    internal Library.Options Call(CancellationToken ct)=>new(){Callbacks=callbacks,Cancellation=ct};
+    static Callback.Registration[] Callbacks(TDF3.TokenProvider provider)=>provider==null?null:new[]{new Callback.Registration(TokenProviderName,request=>provider(new TDF3.ProviderRequest(request)))};
+
+    /// The reference's New: discovers the platform configuration and the token endpoint.
+    public static Task<Sdk> CreateAsync(string platformEndpoint,Options options=null,CancellationToken ct=default)
+    {
+        if(platformEndpoint==null)throw new OpenTdfException(Library.invalid());
+        options??=new Options();var callbacks=Callbacks(options.TokenProvider);
+        return Values.Run(()=>Generated.New(Values.Encode(platformEndpoint),options.ToGenerated(),new Library.Options{Callbacks=callbacks,Cancellation=ct}),h=>new Sdk(h??throw new InvalidOperationException("invalid generated result"),callbacks));
+    }
+    /// The reference's CreateTDF over bytes: the TDF bytes with their TdfObject handle.
+    public Task<TdfObject> CreateTdfAsync(byte[] plaintext,TdfOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.EncryptBytes(Values.Bytes(plaintext),(options??new TdfOptions()).ToGenerated(),Call(ct)),r=>new TdfObject(r.value0,r.value1,this));
+    /// CreateTdf without keeping the handle: the TDF bytes only.
+    public async Task<byte[]> EncryptBytesAsync(byte[] plaintext,TdfOptions options=null,CancellationToken ct=default)
+    {var o=await CreateTdfAsync(plaintext,options,ct).ConfigureAwait(false);await o.CloseAsync().ConfigureAwait(false);return o.Bytes;}
+    public Task<Reader> LoadTdfAsync(byte[] ciphertext,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.LoadTDF(Values.Bytes(ciphertext),(options??new ReaderOptions()).ToGenerated(),Call(ct)),r=>new Reader(r??throw new InvalidOperationException("invalid generated result"),this));
+    public Task<byte[]> DecryptBytesAsync(byte[] ciphertext,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.DecryptBytes(Values.Bytes(ciphertext),(options??new ReaderOptions()).ToGenerated(),Call(ct)),b=>b??Array.Empty<byte>());
+    public Task<bool> IsHealthyAsync(CancellationToken ct=default)=>Values.Run(()=>handle.IsHealthy(Call(ct)),b=>b);
+    /// The platform configuration members as strings (non-string members as compact JSON).
+    public Task<IReadOnlyDictionary<string,string>> PlatformConfigurationAsync(CancellationToken ct=default)=>Values.Run(()=>handle.PlatformConfiguration(Call(ct)),c=>(IReadOnlyDictionary<string,string>)new ReadOnlyDictionary<string,string>((c?.Entries??Array.Empty<Generated.PlatformConfigurationEntry>()).ToDictionary(e=>Values.Decode(e.Key),e=>Values.Decode(e.Value))));
+    /// The reference's GetBaseKey keyed by the reference's JSON tags (kasUri, publicKey{algorithm,kid,pem}, kasId).
+    public Task<IReadOnlyDictionary<string,object>> GetBaseKeyAsync(CancellationToken ct=default)=>Values.Run(()=>handle.GetBaseKey(Call(ct)),Values.Map);
+    public Task StoreKasKeysAsync(string url,IEnumerable<KasPublicKey> keys,CancellationToken ct=default)
+    {var set=new Generated.KasPublicKeySet{Keys=keys.Select(k=>new Generated.KasPublicKey{Pem=Values.Encode(k.Pem),Kid=Values.Encode(k.Kid),Alg=Values.Encode(k.Alg)}).ToArray()};return Values.Run(()=>handle.StoreKASKeys(Values.Encode(url),set,Call(ct)),v=>v);}
+    /// Releases the handle; later calls fail with kind "closed".
+    public Task CloseAsync()=>Values.Run(handle.CloseAsync,v=>v);
+    public async ValueTask DisposeAsync()=>await CloseAsync().ConfigureAwait(false);
+    public void Dispose()=>CloseAsync().GetAwaiter().GetResult();
+
+    // Free functions of the reference, each a library call.
+    public static Task<bool> IsValidTdfAsync(byte[] data,CancellationToken ct=default)=>Values.Run(()=>Generated.IsValidTdf(Values.Bytes(data),new Library.Options{Cancellation=ct}),b=>b);
+    public static Task<string> GetTdfTypeAsync(byte[] data,CancellationToken ct=default)=>Values.Run(()=>Generated.GetTdfType(Values.Bytes(data),new Library.Options{Cancellation=ct}),Values.Decode);
+    public static Task<bool> IsPlatformEndpointMalformedAsync(string endpoint)=>Values.Run(()=>Generated.IsPlatformEndpointMalformed(Values.Encode(endpoint),new Library.Options()),b=>b);
+    public static Task<string> KeyTypeToPolicyAlgorithmAsync(string keyType)=>Values.Run(()=>Generated.KeyTypeToPolicyAlgorithm(Values.Encode(keyType),new Library.Options()),Values.Decode);
+    public static Task<string> PolicyAlgorithmToKeyTypeAsync(string alg)=>Values.Run(()=>Generated.PolicyAlgorithmToKeyType(Values.Encode(alg),new Library.Options()),Values.Decode);
+    public static Task<string> VersionAsync()=>Values.Run(()=>Generated.Version(new Library.Options()),Values.Decode);
+    public static Task<string> TdfSpecVersionAsync()=>Values.Run(()=>Generated.TDFSpecVersion(new Library.Options()),Values.Decode);
+    public static Task<IReadOnlyList<string>> SupportedFeaturesAsync()=>Values.Run(()=>Generated.SupportedFeatures(new Library.Options()),Values.Decode);
+}
+
+/// Value conversion between the generated assembly (binary strings, Go field names) and .NET.
+static class Values
+{
+    static readonly UTF8Encoding UTF8=new(false,true);
+    // Manifests and policies cross keyed by the reference's JSON tags, as in TypeScript and Python.
+    static readonly Dictionary<Type,Dictionary<string,string>> Tags=new()
+    {
+        [typeof(Generated.Manifest)]=new(){["EncryptionInformation"]="encryptionInformation",["Payload"]="payload",["Assertions"]="assertions",["TDFVersion"]="schemaVersion"},
+        [typeof(Generated.EncryptionInformation)]=new(){["KeyAccessType"]="type",["Policy"]="policy",["KeyAccessObjs"]="keyAccess",["Method"]="method",["IntegrityInformation"]="integrityInformation"},
+        [typeof(Generated.KeyAccess)]=new(){["KeyType"]="type",["KasURL"]="url",["Protocol"]="protocol",["WrappedKey"]="wrappedKey",["PolicyBinding"]="policyBinding",["EncryptedMetadata"]="encryptedMetadata",["KID"]="kid",["SplitID"]="sid",["SchemaVersion"]="schemaVersion",["EphemeralPublicKey"]="ephemeralPublicKey"},
+        [typeof(Generated.PolicyBinding)]=new(){["Alg"]="alg",["Hash"]="hash"},
+        [typeof(Generated.Method)]=new(){["Algorithm"]="algorithm",["IV"]="iv",["IsStreamable"]="isStreamable"},
+        [typeof(Generated.IntegrityInformation)]=new(){["RootSignature"]="rootSignature",["SegmentHashAlgorithm"]="segmentHashAlg",["DefaultSegmentSize"]="segmentSizeDefault",["DefaultEncryptedSegSize"]="encryptedSegmentSizeDefault",["Segments"]="segments"},
+        [typeof(Generated.RootSignature)]=new(){["Algorithm"]="alg",["Signature"]="sig"},
+        [typeof(Generated.Segment)]=new(){["Hash"]="hash",["Size"]="segmentSize",["EncryptedSize"]="encryptedSegmentSize"},
+        [typeof(Generated.Payload)]=new(){["Type"]="type",["URL"]="url",["Protocol"]="protocol",["MimeType"]="mimeType",["IsEncrypted"]="isEncrypted"},
+        [typeof(Generated.Assertion)]=new(){["ID"]="id",["Type"]="type",["Scope"]="scope",["AppliesToState"]="appliesToState",["Statement"]="statement",["Binding"]="binding"},
+        [typeof(Generated.Statement)]=new(){["Format"]="format",["Schema"]="schema",["Value"]="value"},
+        [typeof(Generated.Binding)]=new(){["Method"]="method",["Signature"]="signature"},
+        [typeof(Generated.PolicyObject)]=new(){["UUID"]="uuid",["Body"]="body"},
+        [typeof(Generated.PolicyBody)]=new(){["DataAttributes"]="dataAttributes",["Dissem"]="dissem"},
+        [typeof(Generated.AttributeObject)]=new(){["Attribute"]="attribute",["DisplayName"]="displayName",["IsDefault"]="isDefault",["PubKey"]="pubKey",["KasURL"]="kasURL"},
+        [typeof(Generated.SimpleKasKey)]=new(){["KasURI"]="kasUri",["PublicKey"]="publicKey",["KasID"]="kasId"},
+        [typeof(Generated.SimpleKasPublicKey)]=new(){["Algorithm"]="algorithm",["Kid"]="kid",["Pem"]="pem"},
+    };
+    public static string Encode(string value){try{return Encoding.Latin1.GetString(UTF8.GetBytes(value??""));}catch(EncoderFallbackException){throw Library.invalid();}}
+    public static string[] Encode(IReadOnlyList<string> values){if(values==null)return null;Library.length(values.Count);return values.Select(Encode).ToArray();}
+    public static string Decode(string value){if(value==null)return "";foreach(char c in value)if(c>255)throw new InvalidOperationException("invalid source text");return UTF8.GetString(Encoding.Latin1.GetBytes(value));}
+    public static IReadOnlyList<string> Decode(string[] values)=>values==null?Array.Empty<string>():Array.ConvertAll(values,Decode);
+    public static string Field(Dictionary<string,object> fields,string name)=>fields.TryGetValue(name,out var value)&&value is string text?Decode(text):"";
+    public static byte[] Bytes(byte[] value)=>value??throw Library.invalid();
+    /// A generated value tree as read-only collections keyed by JSON tags.
+    public static object FromGenerated(object value)
+    {
+        switch(value)
+        {
+            case null:return null;
+            case string s:return Decode(s);
+            case long or bool:return value;
+            case byte[] b:return (byte[])b.Clone();
+            case Array a:return new ReadOnlyCollection<object>(a.Cast<object>().Select(FromGenerated).ToList());
+        }
+        var tags=Tags.TryGetValue(value.GetType(),out var t)?t:new Dictionary<string,string>();
+        var map=new Dictionary<string,object>();
+        foreach(var field in value.GetType().GetFields(BindingFlags.Public|BindingFlags.Instance))
+        {
+            object converted=FromGenerated(field.GetValue(value));
+            converted??=field.FieldType.IsArray?new ReadOnlyCollection<object>(new List<object>()):"";
+            map[tags.TryGetValue(field.Name,out var tag)?tag:field.Name]=converted;
+        }
+        return new ReadOnlyDictionary<string,object>(map);
+    }
+    public static IReadOnlyDictionary<string,object> Map(object value)=>FromGenerated(value) as IReadOnlyDictionary<string,object>??new ReadOnlyDictionary<string,object>(new Dictionary<string,object>());
+    public static async Task<R> Run<T,R>(Func<Library.Operation<T>> start,Func<T,R> convert)
+    {
+        try{return convert(await start().Completion.ConfigureAwait(false));}
+        catch(Library.Failure failure){throw new OpenTdfException(failure);}
+    }
+}
