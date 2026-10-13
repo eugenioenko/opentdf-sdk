@@ -44,7 +44,7 @@ when its verification items passed and its PRs are on `main`.
 | 9 Obligations and bulk decryption | pending | | |
 | 10 Remaining API parity | pending | | |
 | 11 Packaging, CI, benchmarks, release | pending | | |
-| Goalchemy: `std/net/url` (#71) | in review | goalchemy #81, #82 | v0.6.3; the SDK pins the tag and drops `src/internal/urlutil` |
+| Goalchemy: `std/net/url` (#71) | done | goalchemy #81, #82; #27 | v0.6.3; the SDK pins the tag, uses `net/url` and `net` as the reference does, and drops `src/internal/urlutil` |
 | Goalchemy: emitter fixes found by Phase 2 (#77) | done | goalchemy #77, #78 | v0.6.1 |
 | Goalchemy: Swift reserved public names (GCE007) | done | goalchemy #79, #80 | v0.6.2 |
 | Goalchemy: JSON canonicalisation (#72), `std/os` files (#73), runtime info (#74), schema validator (#75), X.509 keys (#76) | pending | | before the phases that need them |
