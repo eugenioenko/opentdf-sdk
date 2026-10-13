@@ -13,6 +13,7 @@ mkdir -p "$DEST/src/io/opentdf/tdf3" "$DEST/lib" "$DEST/licenses"
 for adapter in "$SDK"/src/hosts/java/*.java.in; do cp "$adapter" "$DEST/src/io/opentdf/tdf3/$(basename "${adapter%.in}")"; done
 cp "$SDK/src/hosts/java/dependencies.lock.json" "$DEST/dependencies.lock.json"
 "$ROOT/targets/java/tests/crypto-dependencies.sh" "$DEST/lib" >/dev/null
+if [[ -z ${JAVA_HOME:-} && -x "$ROOT/.toolchains/jdk-21.0.12.1+1/bin/javac" ]]; then JAVA_HOME="$ROOT/.toolchains/jdk-21.0.12.1+1"; fi
 if [[ -n ${JAVA_HOME:-} ]]; then PATH="$JAVA_HOME/bin:$PATH"; fi
 python3 - "$DEST" <<'PY'
 import json,pathlib,subprocess,sys
