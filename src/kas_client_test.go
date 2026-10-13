@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"net"
+	neturl "net/url"
 	"strings"
 	"testing"
 
@@ -112,6 +115,33 @@ func TestParseBaseUrl(t *testing.T) {
 		result, err := parseBaseURL(tc.input)
 		if tc.expectError != (err != nil) || result != tc.expected {
 			t.Fatalf("parseBaseURL(%q) = %q, %v", tc.input, result, err)
+		}
+	}
+}
+
+// parseBaseURL matches the reference function run on Go's net/url, results
+// and error text included.
+func TestParseBaseURLMatchesNetURL(t *testing.T) {
+	reference := func(rawURL string) (string, error) {
+		u, err := neturl.Parse(rawURL)
+		if err != nil {
+			return "", err
+		}
+		addr := u.Hostname()
+		if u.Port() != "" {
+			addr = net.JoinHostPort(u.Hostname(), u.Port())
+		}
+		return fmt.Sprintf("%s://%s", u.Scheme, addr), nil
+	}
+	for _, input := range []string{
+		"https://example.com:8080/path", "HTTPS://Example.COM/kas", "http://[::1]:8080/kas", "https://[fe80::1%25en0]:443/",
+		"https://example.com:80:", "https://exa mple.com", "http://[::1", "https://example.com:port/", "://missing",
+		"http://exam%zzple.com", "http://localhost\x7f/kas", "kas.example.com:8080", "", "http://user@host/p",
+	} {
+		got, err := parseBaseURL(input)
+		want, wantErr := reference(input)
+		if got != want || (err == nil) != (wantErr == nil) || err != nil && err.Error() != wantErr.Error() {
+			t.Fatalf("parseBaseURL(%q) = %q, %v; reference %q, %v", input, got, err, want, wantErr)
 		}
 	}
 }

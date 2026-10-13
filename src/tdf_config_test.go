@@ -2,6 +2,10 @@ package sdk
 
 import (
 	"errors"
+	"fmt"
+	"net"
+	neturl "net/url"
+	"strings"
 	"testing"
 )
 
@@ -119,6 +123,43 @@ func TestAllowList_IsAllowed(t *testing.T) {
 	var none AllowList
 	if none.IsAllowed("https://example.com") {
 		t.Fatal("nil allowlist allows nothing")
+	}
+}
+
+// getKasAddress matches the reference function run on Go's net/url, results
+// and error text included.
+func TestGetKasAddressMatchesNetURL(t *testing.T) {
+	reference := func(kasURL string) (string, error) {
+		if !strings.Contains(kasURL, "://") {
+			kasURL = "https://" + kasURL
+		}
+		parsedURL, err := neturl.Parse(kasURL)
+		if err != nil {
+			return "", fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
+		}
+		if parsedURL.Hostname() == "" {
+			return "", fmt.Errorf("no host parsed from url: %s", kasURL)
+		}
+		if parsedURL.Port() != "" {
+			parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port())
+		} else if parsedURL.Scheme == "https" {
+			parsedURL.Host = net.JoinHostPort(parsedURL.Hostname(), "443")
+		}
+		parsedURL.Path = ""
+		parsedURL.RawQuery = ""
+		parsedURL.Fragment = ""
+		return parsedURL.String(), nil
+	}
+	for _, input := range []string{
+		"https://example.com:443", "https://example.com/something", "example.com:8080", "example.com", "http://:8080", "",
+		"HTTPS://Example.COM/a%2Fb?x=1#f", "https://[::1]/kas", "http://[::1]:8080/kas", "https://example.com:80:",
+		"https://exa mple.com", "kas.example.com/%zz", "https://example.com:port", "http://user:pw@host:1/p", "[::1]:9000",
+	} {
+		got, err := getKasAddress(input)
+		want, wantErr := reference(input)
+		if got != want || (err == nil) != (wantErr == nil) || err != nil && err.Error() != wantErr.Error() {
+			t.Fatalf("getKasAddress(%q) = %q, %v; reference %q, %v", input, got, err, want, wantErr)
+		}
 	}
 }
 

@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"errors"
+	neturl "net/url"
 	"strings"
 	"testing"
 
@@ -103,6 +104,23 @@ func TestIsPlatformEndpointMalformed(t *testing.T) {
 	} {
 		if got := IsPlatformEndpointMalformed(tc.input); got != tc.expected {
 			t.Fatalf("IsPlatformEndpointMalformed(%q) = %v", tc.input, got)
+		}
+	}
+}
+
+// IsPlatformEndpointMalformed matches the reference function run on Go's
+// net/url.
+func TestIsPlatformEndpointMalformedMatchesNetURL(t *testing.T) {
+	inputs := []string{
+		"https://example.com", "http://localhost:8080", "https://example.com/", "https://example.com/base/", "https://example.com:80:",
+		"https://[::1]:8443", "https://[::1", "localhost:8080", "/relative", "https://example.com/a%2Fb", "https://exa mple.com",
+		"https://example.com/realms/../x", "https://example.com?q=1#f", "https://example.com/%zz", "",
+	}
+	for _, input := range inputs {
+		u, err := neturl.ParseRequestURI(input)
+		want := err != nil || u.Hostname() == "" || strings.Contains(u.Hostname(), ":")
+		if got := IsPlatformEndpointMalformed(input); got != want {
+			t.Fatalf("IsPlatformEndpointMalformed(%q) = %v, reference %v", input, got, want)
 		}
 	}
 }
