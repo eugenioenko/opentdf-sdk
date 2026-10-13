@@ -112,6 +112,10 @@ fn expect_failure<T>(label: &str, result: Result<T, Error>) -> Value {
 }
 /// Polls a future for at most the duration, then drops it (the Rust cancellation idiom).
 fn poll_for<F: Future>(future: F, limit: Duration) -> Option<F::Output> {
+    poll_until(future, limit, || false)
+}
+/// Polls a future until it completes, the duration passes or stop() holds, then drops it.
+fn poll_until<F: Future>(future: F, limit: Duration, stop: impl Fn() -> bool) -> Option<F::Output> {
     struct Noop;
     impl Wake for Noop {
         fn wake(self: Arc<Self>) {}
@@ -124,7 +128,7 @@ fn poll_for<F: Future>(future: F, limit: Duration) -> Option<F::Output> {
         if let Poll::Ready(v) = future.as_mut().poll(&mut cx) {
             return Some(v);
         }
-        if start.elapsed() > limit {
+        if start.elapsed() > limit || stop() {
             return None;
         }
         std::thread::sleep(Duration::from_millis(5));
@@ -166,10 +170,18 @@ fn repeat(sdk: &Sdk, cfg: &Value, name: &str) -> Result<(), Error> {
         Err(ProviderError::Rejected("stopped".into()))
     });
     let holder = Sdk::new(&text(cfg, "PlatformURL"), Options { token_provider: Some(held), ..options_of(cfg, name, false) })?;
+    // Dropping the pending future once the provider has started is the
+    // cancellation; the provider then observes it and releases.
     let pending = holder.decrypt_bytes_async(&archive, &reader_options(cfg));
-    let outcome = poll_for(pending, Duration::from_secs(20));
+    let watch = started.clone();
+    let outcome = poll_until(pending, Duration::from_secs(20), move || watch.load(Ordering::Acquire));
+    check(outcome.is_none(), "held provider returned before cancellation");
     check(started.load(Ordering::Acquire), "provider started");
-    check(outcome.is_some_and(|o| o.is_err()), "held provider rejected");
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while !released.load(Ordering::Acquire) && Instant::now() < deadline {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    check(released.load(Ordering::Acquire), "dropped future cancelled the provider");
     holder.close()?;
     let async_archive = poll_for(sdk.encrypt_bytes_async(b"async\0\xff", &tdf_options(cfg)), Duration::from_secs(60)).expect("async encrypt")?;
     check(poll_for(sdk.decrypt_bytes_async(&async_archive, &reader_options(cfg)), Duration::from_secs(60)).expect("async decrypt")? == b"async\0\xff", "async round trip");
