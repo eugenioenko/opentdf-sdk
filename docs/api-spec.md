@@ -562,3 +562,50 @@ Python packages; each keeps the reference behaviour unless noted.
 - The Python `timeout=` of the sync methods cancels the call on expiry and
   raises `OpenTDFError(kind='deadline_exceeded')`; the reference has no such
   argument (its `context.Context` carries the deadline).
+
+### Deviations recorded by Phase 2 part 3
+
+Found while exposing the handle API through the generated Java, C#, Rust, C
+and Swift packages; part 2's deviations (bytes in and out of `createTdf`,
+manifests keyed by the reference's JSON tags, the platform configuration as
+a string map) apply to these targets too.
+
+- Java: the error type is `OpenTDFException` (this document's table; the
+  plan's mapping says `SDKException`). Manifests, policies and the base key
+  are unmodifiable `Map<String, Object>` trees keyed by the JSON tags rather
+  than typed classes. Blocking methods take an optional `Duration` and
+  every method has an `*Async` twin returning a `CompletableFuture` whose
+  `cancel` cancels the call. Token providers reuse the façade's
+  `TDF3.TokenProvider`.
+- C#: the handle is `Sdk` and the error `OpenTdfException`, as this
+  document's examples write them. `Options.Timeout` is a `TimeSpan?` for the
+  shared `TimeoutMillis`. Manifests are `IReadOnlyDictionary<string, object>`
+  trees keyed by the JSON tags. Methods take `byte[]` until Phase 7's
+  streams.
+- Rust: the error is a struct `Error` whose `kind` is a `Kind` enum
+  (`Kind::Boundary(name)` for the runtime's boundary kinds) carrying the
+  shared fields, rather than an enum carrying them. Methods return
+  `Result` and block; `*_async` twins return futures, and dropping one
+  cancels the call. Manifest types are typed structs whose fields are the
+  JSON tags in snake_case.
+- C: the header is `opentdf.h` beside the façade's `tdf3.h`. Every call
+  fills an optional `otdf_error *` out parameter instead of
+  `otdf_error_get(sdk)`, and cancellation and deadlines travel in an
+  `otdf_call` (an atomic flag and a millisecond deadline) instead of
+  `otdf_cancel(handle)`. Manifests, policies, the platform configuration and
+  the base key are returned as JSON text. `*_close` runs Close and releases
+  the instance; `*_free` disposes of the handle, so a call on a closed handle
+  reports kind 7 as the generated runtime does. The C runtime reports an
+  expired libcurl request timeout as a transport failure, so the
+  per-request timeout surfaces as `transport` rather than
+  `deadline_exceeded` on C (a Goalchemy runtime gap, not worked around).
+- Swift: `Reader.Init` is `initialize()` (`init` is reserved for
+  initializers). The error is a struct `OpenTDFError` whose `kind` is an
+  `ErrorKind` enum, not an enum carrying the fields. The shared source's
+  `Error` record is emitted as `Error_` by the Swift emitter's public-name
+  rule (goalchemy#79); the adapter never exposes it. `SDK.create` is a
+  synchronous twin of `try await SDK(...)`.
+- An interrupted caller deadline reports the target's cancellation idiom:
+  `deadline_exceeded` for a Java `Duration`, `canceled` for a C#
+  `CancellationToken`, a dropped Rust future, a C `otdf_call` flag and a
+  cancelled Swift `Task`.
