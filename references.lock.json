@@ -3,10 +3,9 @@
   "repositories": {
     "goalchemy": {
       "path": "../goalchemy",
-      "revision": "a92873231035c19de57dd6f730382d137f1534ec",
-      "baseline_revision": "9005c419150b8d660bbdfa5b4e429b7094b157eb",
-      "release": "v0.6.1",
-      "release_note": "revision is the head of goalchemy#79 (Swift emitter: rename public names that collide with Swift or runtime names, qualify public struct types, empty error-field dictionaries) on top of v0.6.1; only the Swift emitter differs from the tag. Re-pin to the tag when the next release includes it"
+      "revision": "18cd4b305e023da0832f73c3b61f17254947c758",
+      "baseline_revision": "9ab3baac6ca6b543adedccd29876436d5a5b8907",
+      "release": "v0.6.2"
     },
     "platform": {
       "path": "../platform",

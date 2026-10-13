@@ -45,8 +45,8 @@ when its verification items passed and its PRs are on `main`.
 | 10 Remaining API parity | pending | | |
 | 11 Packaging, CI, benchmarks, release | pending | | |
 | Goalchemy: `std/net/url` (#71) | pending | | after Phase 2 part 3 |
-| Goalchemy: emitter fixes found by Phase 2 (#77) | done | goalchemy #77, #78 | v0.6.1; the SDK pins the fix commit until the v0.6.1 bump PR |
-| Goalchemy: Swift reserved public names (GCE007) | in review | goalchemy #79 | the SDK pins fix commit a9287323 until a v0.6.2 release and bump PR |
+| Goalchemy: emitter fixes found by Phase 2 (#77) | done | goalchemy #77, #78 | v0.6.1 |
+| Goalchemy: Swift reserved public names (GCE007) | done | goalchemy #79, #80 | v0.6.2; the SDK pins the tag |
 | Goalchemy: JSON canonicalisation (#72), `std/os` files (#73), runtime info (#74), schema validator (#75), X.509 keys (#76) | pending | | before the phases that need them |
 
 ## References and pins
