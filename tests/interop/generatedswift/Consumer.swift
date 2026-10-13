@@ -136,7 +136,7 @@ func writeJSON(_ run: URL, _ file: String, _ value: [String: Any]) throws {
 }
 
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
-func repeat(_ sdk: SDK, _ raw: [String: Any], _ name: String) async throws {
+func repeatRounds(_ sdk: SDK, _ raw: [String: Any], _ name: String) async throws {
   let original = Data([0, 255, 128, 1])
   var archive = Data()
   for i in 0..<100 {
@@ -249,7 +249,9 @@ struct Consumer {
         if (name == "metadata" || name.hasSuffix("-metadata")) && name != "empty-metadata" && !name.hasSuffix("-empty-metadata") { options.metadata = "{\"source\":\"independent metadata\",\"count\":7}" }
         if name == "denied" || name.hasSuffix("-denied") { options.attributes = ["https://example.com/attr/attr1/value/value2"] }
         let object = try await sdk.createTDF(try Data(contentsOf: path(".input")), options)
-        try check(try await object.size() == Int64(object.bytes.count) && (try await object.manifest()).encryptionInformation.keyAccess.count == 1, "object")
+        let size = try await object.size()
+        let keyAccess = try await object.manifest().encryptionInformation.keyAccess
+        try check(size == Int64(object.bytes.count) && keyAccess.count == 1, "object")
         try object.close()
         try object.bytes.write(to: path(".generated.tdf"))
       case "decrypt":
@@ -268,7 +270,7 @@ struct Consumer {
       case "negative":
         try writeJSON(run, name + ".error.json", try await expectFailure("negative") { try await sdk.decryptBytes(try Data(contentsOf: path(".tdf")), readerOptions(raw)) })
       case "repeat":
-        try await repeat(sdk, raw, name)
+        try await repeatRounds(sdk, raw, name)
         print("PASS generated native library", mode, name)
         return
       default: fatalError("unknown mode")
