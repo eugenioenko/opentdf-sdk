@@ -96,7 +96,7 @@ func describeNew(_ e: Error, _ host: String) -> String {
   return o.message
 }
 func jsonText(_ value: Any, pretty: Bool) -> String {
-  let options: JSONSerialization.WritingOptions = pretty ? [.prettyPrinted, .withoutEscapingSlashes] : [.withoutEscapingSlashes]
+  let options: JSONSerialization.WritingOptions = pretty ? [.prettyPrinted, .withoutEscapingSlashes, .fragmentsAllowed] : [.withoutEscapingSlashes, .fragmentsAllowed]
   return (try? JSONSerialization.data(withJSONObject: value, options: options)).map { String(decoding: $0, as: UTF8.self) } ?? "null"
 }
 
