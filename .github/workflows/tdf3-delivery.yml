@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: a92873231035c19de57dd6f730382d137f1534ec
+          ref: 18cd4b305e023da0832f73c3b61f17254947c758
           path: goalchemy
       - name: Bootstrap version and diagnostic regressions
         run: python3 -m unittest discover -s sdk/tests/ci -p 'test_*.py' -v
@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: a92873231035c19de57dd6f730382d137f1534ec
+          ref: 18cd4b305e023da0832f73c3b61f17254947c758
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
