@@ -1,11 +1,13 @@
-# Generated Rust TDF3 library
+# Generated Rust library
 
-The `opentdf-tdf3` Cargo library imports as `opentdf_tdf3` and executes the shared
-[value facade](../src/library/library.go). Production calls run generated Rust and
-maintained native dependencies without a compiler, Go process or stock SDK.
-The [packaged README](../src/hosts/rust/README.md.in) documents the public API;
-[compiler ownership](../../goalchemy/docs/rust-library-boundary.md) describes
-source isolation and publication.
+The `opentdf-tdf3` Cargo library imports as `opentdf_tdf3`. It is emitted from
+the two export roots `src/library` (the deprecated `encrypt`/`decrypt`
+façade) and `src` (the handle API of [api-spec.md](api-spec.md)); the
+hand-written [host adapter](../src/hosts/rust/sdk.rs.in) presents that API in
+Rust idiom and maps names, idioms and errors only. Production calls run
+generated Rust and maintained native dependencies without a compiler, Go
+process or stock SDK. [Compiler ownership](../../goalchemy/docs/rust-library-boundary.md)
+describes source isolation and publication.
 
 ## Build and import
 
@@ -26,8 +28,9 @@ bash sdk/scripts/build-generated-rust.sh
 bash sdk/tests/interop/generatedrust/install-consumer.sh
 ```
 
-The first command prepares the compiler; the second emits `src/lib.rs`, the
-facade and native runtime, verifies dependency archives and notices, builds with
+The first command prepares the compiler; the second emits the generated crate
+(`src/generated.rs`), adds `src/lib.rs` (façade) and `src/sdk.rs` (handle API),
+`GOALCHEMY_ROOT` selecting the Goalchemy checkout, verifies dependency archives and notices, builds with
 `--locked --offline`, and creates
 `goalchemy/out/rust-tdf-library/sdk/target/package/opentdf-tdf3-0.1.0.crate`.
 The installer extracts that actual archive and builds a separately importing
@@ -60,71 +63,87 @@ a process-global default. Full native and transitive license texts are packaged.
 `crc32fast` was already present in the transitive inventory and is now also a
 direct dependency of the generated SDK; its checksum and notices remain pinned.
 
-## Owned API
+## Handle API
 
 ```rust,no_run
-use opentdf_tdf3::{Config, EncryptOptions, CallOptions, encrypt, decrypt};
-let config = Config {
-    platform_url: "https://platform.example".into(),
-    kas_url: "https://platform.example/kas".into(),
-    issuer_url: "https://issuer.example".into(),
-    client_id: "server-client".into(),
-    client_secret: "read-from-server-storage".into(),
-    ..Default::default()
-};
-let archive = encrypt(config.clone(), vec![0, 255],
-    EncryptOptions { include_metadata: true, metadata: vec![], ..Default::default() },
-    CallOptions::default()).wait()?;
-let result = decrypt(config, archive, CallOptions::default()).wait()?;
-assert_eq!(result.Payload, vec![0, 255]);
-assert!(result.HasMetadata && result.Metadata.is_empty());
-# Ok::<(), opentdf_tdf3::LibraryError>(())
+use opentdf_tdf3::{Sdk, Options, TdfOptions, ReaderOptions, KasInfo, Kind};
+let sdk = Sdk::new("http://localhost:8080", Options {
+    client_id: "opentdf-sdk".into(), client_secret: "secret".into(),
+    insecure_plaintext: true, ..Default::default()
+})?;
+let object = sdk.create_tdf(&plaintext, &TdfOptions {
+    attributes: vec!["https://example.com/attr/attr1/value/value1".into()],
+    kas_information: vec![KasInfo::new("http://localhost:8080/kas")],
+    mime_type: "text/plain".into(), ..Default::default()
+})?;
+let manifest = object.manifest()?;          // typed, the reference's JSON tags in snake_case
+object.close()?;
+let ciphertext = object.bytes;              // or: sdk.encrypt_bytes(&plaintext, &options)?
+let reading = ReaderOptions { kas_allowlist: Some(vec!["http://localhost:8080".into()]), ..Default::default() };
+let reader = sdk.load_tdf(&ciphertext, &reading)?;
+let attributes = reader.data_attributes()?;
+reader.init()?;                             // fetch and unwrap keys now
+let metadata = reader.unencrypted_metadata()?;
+reader.close()?;
+match sdk.decrypt_bytes(&ciphertext, &reading) {
+    Ok(plain) => {}
+    Err(e) if e.kind == Kind::RewrapForbidden => {}
+    Err(e) => eprintln!("{} {} {}", e.kind.as_str(), e.http_status, e.message),
+}
+let plain = sdk.decrypt_bytes_async(&ciphertext, &reading).await?; // dropping the future cancels
+sdk.close()?;
+# Ok::<(), opentdf_tdf3::Error>(())
 ```
 
-`Config`, `KASRoute`, `EncryptOptions` and `AccessToken` own native Rust Strings,
-vectors and exact-width integers. `Operation<T>` implements native Future and
-provides `wait`, `cancel` and `cancellation`. Recursive owned arguments detach
-at submission. Generic Go strings are byte vectors, preserving arbitrary bytes.
-Decrypted payload, metadata and manifest are owned; `HasMetadata` distinguishes
-absence from encrypted empty metadata. Structured `LibraryError` fields retain
-SDK codes, operations, server diagnostics, obligations and cause category;
-`diagnostic` retains exact source bytes and `message` supplies display text.
-`HostWire` is exported for typed inspection of field values.
+| Adapter symbol | Reference | Notes |
+| --- | --- | --- |
+| `Sdk::new(endpoint, Options)`, `Sdk::new_async` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platform_configuration` is given; `validate_connection` runs the health check first. |
+| `sdk.create_tdf(&[u8], &TdfOptions)` → `TdfObject` (`bytes`, `manifest`, `size`, `close`), `sdk.encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
+| `sdk.load_tdf(&[u8], &ReaderOptions)` → `Reader` (`init`, `manifest`, `policy`, `data_attributes`, `unencrypted_metadata`, `close`), `sdk.decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set, as in the reference. |
+| `sdk.is_healthy`, `platform_configuration`, `get_base_key`, `store_kas_keys`, `close` | same | `platform_configuration()` returns a `BTreeMap<String, String>` (non-string members as compact JSON). |
+| `is_valid_tdf`, `get_tdf_type`, `is_platform_endpoint_malformed`, `key_type_to_policy_algorithm`, `policy_algorithm_to_key_type`, `version`, `tdf_spec_version`, `supported_features` | same | Free functions; each is a library call. |
 
-Every acquired operation initializes fresh source state on a dedicated 16 MiB
-owner. Calls serialize source initialization, execution and retirement. No
-source Rc/RefCell/V/H/frame becomes Send/Sync or crosses native threads. The
-coordinator holds its entry reservation through owner join and TLS teardown;
-owned outputs/errors publish afterward. Library entry does not replace panic
-hooks, change process thread policy or install a global TLS crypto provider.
+Every method returns `Result<_, opentdf_tdf3::Error>`; `create_tdf`,
+`load_tdf`, `decrypt_bytes`, `encrypt_bytes`, `Reader::init` and
+`unencrypted_metadata` and `Sdk::new` have `*_async` twins returning a
+`Future`, and dropping that future cancels the library call. Options are
+structs with `Default` (`Options`, `TdfOptions`, `ReaderOptions`, `KasInfo`,
+`TokenExchange`, `CertExchange`, `TlsOptions`) using the shared field names
+in snake_case; every default is the reference default. Strings are UTF-8
+`String`s, sizes `i64`, payloads `&[u8]`/`Vec<u8>`. `token_provider` takes a
+`Provider` built with `token_provider(|request| ...)` and replaces client
+credentials; the SDK then signs rewrap requests with the reference's
+ephemeral ES256 key unless `dpop_key_pem` is set. Options this build does
+not implement yet (`token_exchange`, `cert_exchange`, `tls`, `unix_socket`,
+service endpoint overrides, assertions, target mode `4.2.2`, schema
+validation, RSA-4096 and P-384/P-521 keys) fail with
+`Kind::UnsupportedFeature` and the message `unsupported in this build:
+<option>`. `Manifest`, `PolicyObject`, `KeyAccess`, `SimpleKasKey` and the
+other manifest types are typed structs whose fields are the reference's JSON
+tags in snake_case (`encryption_information.key_access[0].url`,
+`payload.mime_type`).
 
-Queued cancellation releases queued arguments independently of a held active
-call. Active cancellation and host faults wait for actual native release ACKs.
-Drop requests stop for pending operations; wait/await is required to observe
-cleanup completion. Dropping a completed operation does not cancel a shared
-CallOptions token. Native crypto completes synchronously before its next source
-cancellation boundary. A native token callback receives owned bytes and a stop
-flag outside runtime locks and must return only after releasing resources.
-Reentrant callbacks must not wait for this serialized library. DPoP providers
-supply the token scheme, exact expiry and confirmation thumbprint matching an
-explicit owned authentication private key.
+Every failure is an `Error` with `kind` (a `Kind` enum; `Kind::Boundary`
+carries the runtime's kind for `closed`, `poisoned`, `invalid_argument`,
+`source_panic`, `host_fault`), `op`, `message` (the reference's wording, see
+[error-wording.md](error-wording.md)), `http_status`, `connect_code`,
+`service_message`, `kas_url`, `required_obligations` and `assertion_id`.
 
-Crypto implements RSA2048 OAEP SHA1/MGF1SHA1 and RS256, P256 ECDH32 and ES256
-P1363, AES256GCM, HKDF/HMAC/SHA256, maintained constant-time MAC comparison and
-native randomness. Strict bounded PEM supports SPKI/PKCS8/PKCS1/certificates;
-JWK and base64 encodings are canonical. Key aliases share owner-associated
-Close state and cleanup. OpenSSL's legacy HMAC API rejects an empty native key;
-the adapter supplies the equivalent SHA256 zero-padded block to maintained
-HMAC. Independent native Go verifies the empty-key/empty-message result and
-verification parity along with the ordinary vectors.
+The deprecated façade (`encrypt`, `decrypt`, `Config`, `EncryptOptions`,
+`Decrypted`, `Operation`, `LibraryError`) keeps its previous shape for one
+release, implemented in the shared source as thin wrappers that construct an
+SDK per call; its `Code` field is now the `Error.kind` string and empty
+metadata writes no `encryptedMetadata` entry, as the reference does.
 
-Native HTTP uses verified roots/hostnames, GET/POST, no redirects/retries,
-request/response header and body bounds, monotonic deadlines and active stop.
-Dedicated transport runtime teardown precedes ACK. OS resolver jobs can delay
-settlement until release. Maintained Hyper independently bounds parser buffers;
-accepted header bytes are limited to 64 KiB. Generic crypto inputs are limited
-to 64 MiB, PEM to 64 KiB, and HKDF output to 8160 bytes. Shared TDF segmentation
-and limits remain in the shared implementation.
+`src/hosts/rust/cmd/otdfgc/main.rs` is the native Rust CLI over this crate,
+built by `scripts/build-rust-cli.sh <package> <binary>` and driven by the
+xtest harness as the `gcrs` SDK type (see [xtest.md](xtest.md)); it
+implements the Go `otdfgc` contract (`inspect` loads the manifest through the
+handle API with a provided platform configuration). The consumer in
+`tests/interop/generatedrust/main.rs` drives the real platform and, in
+`controlled` mode, the offline checks of
+`tests/interop/delivery/controlled_platform.py`. The verification evidence
+below predates the handle API and was gathered through the façade.
 
 ## Verification and interoperability
 
