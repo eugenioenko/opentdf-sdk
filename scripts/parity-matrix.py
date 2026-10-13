@@ -554,7 +554,7 @@ lines.append('A row turns `done` in the PR that delivers its symbol in the share
 lines.append('`DONE` set in the script). Phase 2 part 1 delivered the handle API, platform')
 lines.append('discovery and the generated Go package; the symbols the plan lists under Phase 2')
 lines.append('are all `done` in the shared source; part 2 exposes them through the generated')
-lines.append('TypeScript and Python packages and part 3 through the remaining targets.')
+lines.append('TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swift ones.')
 lines.append('`ErrInvalid` moved to phase 4: it is declared in `granter.go`.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
