@@ -81,8 +81,8 @@ as the `gcc` SDK type (see [xtest.md](xtest.md)); it implements the Go
 the real platform and, in `controlled` mode, the offline checks of
 `tests/interop/delivery/controlled_platform.py`. The C runtime reports an
 expired request timeout as a transport failure, so the per-request timeout
-(`timeout_millis`) surfaces as kind `transport` rather than
-`deadline_exceeded`; a cancelled `otdf_call` flag is reported as `canceled`.
+(`timeout_millis`) surfaces as kind `transport` or `deadline_exceeded`,
+whichever of libcurl's timeout and the call deadline fires first; a cancelled `otdf_call` flag is reported as `canceled`.
 
 The deprecated `tdf3.h` façade (`tdf3_encrypt`, `tdf3_decrypt`, the submit,
 drive, wake, cancel, take and destroy operations) keeps its previous shape

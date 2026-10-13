@@ -23,11 +23,11 @@ CASES = ('unreachable', 'wellknown-500', 'redirect', 'content-type', 'malformed-
 # a Java Duration expires as deadline_exceeded; a C# CancellationToken, a
 # dropped Rust future, a C atomic flag and a cancelled Swift Task as canceled.
 CALLER_DEADLINE_KIND = {'java': 'deadline_exceeded', 'csharp': 'canceled', 'rust': 'canceled', 'c': 'canceled', 'swift': 'canceled'}
-# The C runtime's libcurl transport reports an expired request timeout as
-# "http: transport failure" rather than the deadline sentinel, so the SDK's
-# per-request timeout surfaces as transport there (a Goalchemy runtime gap,
-# recorded in docs/progress.md).
-SOURCE_DEADLINE_KIND = {'java': 'deadline_exceeded', 'csharp': 'deadline_exceeded', 'rust': 'deadline_exceeded', 'c': 'transport', 'swift': 'deadline_exceeded'}
+# The C runtime's libcurl transport reports its own expired request timeout
+# as "http: transport failure" rather than the deadline sentinel; whichever of
+# that timeout and the call context's deadline fires first decides the kind
+# (a Goalchemy runtime gap, recorded in docs/progress.md).
+SOURCE_DEADLINE_KIND = {'java': ('deadline_exceeded',), 'csharp': ('deadline_exceeded',), 'rust': ('deadline_exceeded',), 'c': ('deadline_exceeded', 'transport'), 'swift': ('deadline_exceeded',)}
 WANT = {'unreachable': 'transport', 'wellknown-500': 'transport', 'redirect': 'transport', 'content-type': 'transport', 'malformed-response': 'transport', 'untrusted-tls': 'transport', 'source-deadline': 'deadline_exceeded', 'token-401': 'auth'}
 OFFLINE = {'allowlist': 'allowlist_rejected', 'invalid-tdf': 'not_decryptable', 'unsupported-option': 'unsupported_feature', 'closed-handle': 'closed'}
 
@@ -155,8 +155,8 @@ def run(target, consumer_command, base, cases=CASES):
                     rows.append({'case': 'handles', **report['handles']})
                     continue
                 error = json.loads((run_dir / (case + '.error.json')).read_text())
-                want = CALLER_DEADLINE_KIND[target] if case == 'caller-deadline' else SOURCE_DEADLINE_KIND[target] if case == 'source-deadline' else WANT[case]
-                assert error['kind'] == want, 'controlled wrong kind: %s: %s (%s)' % (case, error['kind'], error)
+                want = (CALLER_DEADLINE_KIND[target],) if case == 'caller-deadline' else SOURCE_DEADLINE_KIND[target] if case == 'source-deadline' else (WANT[case],)
+                assert error['kind'] in want, 'controlled wrong kind: %s: %s (%s)' % (case, error['kind'], error)
                 if case == 'unreachable':
                     assert 'platform unreachable or not responding' in error['message'], 'unreachable platform sentinel'
                 if case not in ('unreachable', 'caller-deadline', 'token-401', 'untrusted-tls'):

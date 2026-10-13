@@ -597,8 +597,8 @@ a string map) apply to these targets too.
   the instance; `*_free` disposes of the handle, so a call on a closed handle
   reports kind 7 as the generated runtime does. The C runtime reports an
   expired libcurl request timeout as a transport failure, so the
-  per-request timeout surfaces as `transport` rather than
-  `deadline_exceeded` on C (a Goalchemy runtime gap, not worked around).
+  per-request timeout surfaces as `transport` or `deadline_exceeded` on C,
+  whichever fires first (a Goalchemy runtime gap, not worked around).
 - Swift: `Reader.Init` is `initialize()` (`init` is reserved for
   initializers). The error is a struct `OpenTDFError` whose `kind` is an
   `ErrorKind` enum, not an enum carrying the fields. The shared source's
