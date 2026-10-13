@@ -24,7 +24,7 @@ TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swif
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
-[#71](https://github.com/eugenioenko/goalchemy/issues/71) `std/net/url` (phase 2),
+[#71](https://github.com/eugenioenko/goalchemy/issues/71) `std/net/url` (phase 2; released in v0.6.3 and pinned),
 [#72](https://github.com/eugenioenko/goalchemy/issues/72) RFC 8785 JSON canonicalisation (phase 5),
 [#73](https://github.com/eugenioenko/goalchemy/issues/73) `std/os` file handles, `CreateTemp` and `Rename` (phase 7),
 [#74](https://github.com/eugenioenko/goalchemy/issues/74) `lib/runtime` host OS, architecture and version (phase 5),
