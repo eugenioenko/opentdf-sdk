@@ -242,7 +242,7 @@ public struct IntegrityInformation {
 }
 public struct PolicyBinding { public let alg: String; public let hash: String }
 public struct KeyAccess {
-  public let type: String, url: String, protocol: String, wrappedKey: String
+  public let type: String, url: String, `protocol`: String, wrappedKey: String
   public let policyBinding: PolicyBinding
   public let encryptedMetadata: String, kid: String, sid: String, schemaVersion: String, ephemeralPublicKey: String
 }
@@ -253,7 +253,7 @@ public struct EncryptionInformation {
   public let method: Method
   public let integrityInformation: IntegrityInformation
 }
-public struct Payload { public let type: String, url: String, protocol: String, mimeType: String; public let isEncrypted: Bool }
+public struct Payload { public let type: String, url: String, `protocol`: String, mimeType: String; public let isEncrypted: Bool }
 public struct Statement {
   public var format: String, schema: String, value: String
   public init(format: String = "", schema: String = "", value: String = "") { self.format = format; self.schema = schema; self.value = value }

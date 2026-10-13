@@ -175,7 +175,7 @@ func inspect(_ args: [String]) async -> Int32 {
   let json: [String: Any] = [
     "encryptionInformation": [
       "type": e.type, "policy": e.policy,
-      "keyAccess": e.keyAccess.map { ["type": $0.type, "url": $0.url, "protocol": $0.protocol, "wrappedKey": $0.wrappedKey, "policyBinding": ["alg": $0.policyBinding.alg, "hash": $0.policyBinding.hash], "encryptedMetadata": $0.encryptedMetadata, "kid": $0.kid, "sid": $0.sid, "schemaVersion": $0.schemaVersion, "ephemeralPublicKey": $0.ephemeralPublicKey] as [String: Any] },
+      "keyAccess": e.keyAccess.map { ["type": $0.type, "url": $0.url, "protocol": $0.`protocol`, "wrappedKey": $0.wrappedKey, "policyBinding": ["alg": $0.policyBinding.alg, "hash": $0.policyBinding.hash], "encryptedMetadata": $0.encryptedMetadata, "kid": $0.kid, "sid": $0.sid, "schemaVersion": $0.schemaVersion, "ephemeralPublicKey": $0.ephemeralPublicKey] as [String: Any] },
       "method": ["algorithm": e.method.algorithm, "iv": e.method.iv, "isStreamable": e.method.isStreamable] as [String: Any],
       "integrityInformation": [
         "rootSignature": ["alg": i.rootSignature.alg, "sig": i.rootSignature.sig], "segmentHashAlg": i.segmentHashAlg,
@@ -183,7 +183,7 @@ func inspect(_ args: [String]) async -> Int32 {
         "segments": i.segments.map { ["hash": $0.hash, "segmentSize": $0.segmentSize, "encryptedSegmentSize": $0.encryptedSegmentSize] as [String: Any] },
       ] as [String: Any],
     ] as [String: Any],
-    "payload": ["type": m.payload.type, "url": m.payload.url, "protocol": m.payload.protocol, "mimeType": m.payload.mimeType, "isEncrypted": m.payload.isEncrypted] as [String: Any],
+    "payload": ["type": m.payload.type, "url": m.payload.url, "protocol": m.payload.`protocol`, "mimeType": m.payload.mimeType, "isEncrypted": m.payload.isEncrypted] as [String: Any],
     "assertions": m.assertions.map { ["id": $0.id, "type": $0.type, "scope": $0.scope, "appliesToState": $0.appliesToState, "statement": ["format": $0.statement.format, "schema": $0.statement.schema, "value": $0.statement.value], "binding": ["method": $0.binding.method, "signature": $0.binding.signature]] as [String: Any] },
     "schemaVersion": m.schemaVersion,
   ]
