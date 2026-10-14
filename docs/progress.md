@@ -2217,7 +2217,7 @@ Hosts:
 - Java, C#, Rust, C and Swift transpile unchanged; their adapters are part 2.
 
 Verification (local, throttled, one target at a time, Goalchemy at
-`9219a6a`, platform from `otdf-local` at `4d9e555b`):
+`9219a6a`, which the v0.6.4 tag `73b39456` differs from only in the version string, platform from `otdf-local` at `4d9e555b`):
 
 - `go test ./src/` passes, including the new `TestCall`,
   `TestServiceErrorKinds` and `TestServiceErrorReplies`;
