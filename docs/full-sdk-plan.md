@@ -423,21 +423,39 @@ Reference symbols: `sdkconnect.*` (16 service interfaces), `SDK.Conn`,
 `ValidateAttributes`, `AttributeExists`, `AttributeValueExists`,
 `SDK.Auth`, `AuthClient.AccessToken`.
 
-Tasks:
-1. Add `scripts/generate-protocol.sh`: runs `protoc-gen-goalchemy` on the
-   pinned `../platform/service` protos for the services above into
-   `src/protocol/`; CI checks the output is current.
-2. Route every generated client through the SDK's authenticated transport
-   (token source, DPoP, allowlist, timeouts). The KAS client's `Rewrap` and
-   `PublicKey` move to the generated client with the protobuf JSON codec;
-   remove the hand-written request JSON.
-3. Expose the clients as fields or accessors on the `SDK` handle in each
-   target (Goalchemy handles for the clients; request and response messages
-   as generated message types).
-4. Support `WithCustom*Connection` as per-service endpoint overrides.
+Design (decided with the user; [api-spec.md](api-spec.md#service-clients)):
+messages cross the boundary as protobuf JSON. The shared source generates
+typed messages only for what it reads itself and exposes the generic
+`SDK.Call(ctx, service, method, requestJSON)`; each host types the service
+clients with its own ecosystem's protobuf messages and JSON codec generated
+from the same pinned protos.
+
+Tasks (three PRs: shared source, Go, TypeScript, Python; Java, C#, Rust,
+Swift and C adapters; helpers and endpoint overrides):
+1. Add `scripts/generate-protocol.sh`: runs `protoc-gen-goalchemy` with
+   `include=` on the pinned `../platform/service` protos into
+   `src/protocol/` (KAS `Rewrap`/`PublicKey`, well-known, the KAS registry
+   list and the messages the helpers read), `protoc-gen-es` and `protoc`
+   (Python) on the 16 services into the TypeScript and Python host
+   adapters, and the Go accessors from the reference's `sdkconnect`; CI
+   checks the output is current.
+2. Route every generated client and `SDK.Call` through the SDK's
+   authenticated transport (`connect.Client.HTTPClient`: token source,
+   DPoP, allowlist, timeouts). The KAS client's `Rewrap` and `PublicKey`
+   move to the generated client with the protobuf JSON codec; remove the
+   hand-written request JSON.
+3. Expose the clients as accessors on the `SDK` handle in each target over
+   `SDK.Call`: Go returns the reference's `sdkconnect` interfaces over
+   `protocol/go` types, TypeScript a Connect-ES `Transport` and clients,
+   Python clients over protobuf Python messages; the other targets in the
+   second PR (C as JSON strings).
+4. Port the helpers (`ListAttributes`, `GetEntityAttributes`,
+   `ValidateAttributes`, `AttributeExists`, `AttributeValueExists`,
+   `SDK.Auth`) and support `WithCustom*Connection` as per-service endpoint
+   overrides.
 
 Verification:
-- `test_self.py` equivalents: a per-target consumer lists namespaces, creates an attribute, and reads it back through the generated clients.
+- `test_self.py` equivalents: a per-target consumer lists namespaces, creates an attribute, and reads it back through the service clients, in the focused real-KAS job of each target.
 - The existing Rewrap and PublicKey xtest cells still pass with the generated KAS client.
 - Generated code is byte-identical on regeneration in CI.
 

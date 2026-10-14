@@ -20,7 +20,10 @@ A row turns `done` in the PR that delivers its symbol in the shared source (the
 discovery and the generated Go package; the symbols the plan lists under Phase 2
 are all `done` in the shared source; part 2 exposes them through the generated
 TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swift ones.
-`ErrInvalid` moved to phase 4: it is declared in `granter.go`.
+`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Phase 3 part 1
+delivered the service clients: `SDK.Call` in the shared source, typed accessors in
+the Go, TypeScript and Python packages (the other targets follow in part 2), so the
+`SDK` service fields and every `sdkconnect` symbol are `done`.
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
@@ -35,9 +38,9 @@ Goalchemy issues opened for the gaps the phases depend on, detailed in
 
 | Status | Symbols |
 | --- | --- |
-| `done` | 133 |
+| `done` | 327 |
 | `phase 1` | 2 |
-| `phase 3` | 210 |
+| `phase 3` | 16 |
 | `phase 4` | 80 |
 | `phase 5` | 41 |
 | `phase 6` | 15 |
@@ -403,26 +406,26 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `New` | func | sdk.New(ctx, platformEndpoint, Options) | `done` |
 | `NewDPoPValidationHTTPClient` | func | sdk/auth DPoP transport (host HTTP client validation helper) | `phase 8` |
 | `SDK` | type | sdk.SDK handle (service client fields in phase 3) | `done` |
-| `SDK.Actions` | field | SDK.Actions() accessor returning the generated sdkconnect.ActionServiceClient | `phase 3` |
-| `SDK.Attributes` | field | SDK.Attributes() accessor returning the generated sdkconnect.AttributesServiceClient | `phase 3` |
-| `SDK.Authorization` | field | SDK.Authorization() accessor returning the generated sdkconnect.AuthorizationServiceClient | `phase 3` |
-| `SDK.AuthorizationV2` | field | SDK.AuthorizationV2() accessor returning the generated sdkconnect.AuthorizationServiceClientV2 | `phase 3` |
+| `SDK.Actions` | field | SDK.Call; host accessor Actions() returning sdkconnect.ActionServiceClient | `done` |
+| `SDK.Attributes` | field | SDK.Call; host accessor Attributes() returning sdkconnect.AttributesServiceClient | `done` |
+| `SDK.Authorization` | field | SDK.Call; host accessor Authorization() returning sdkconnect.AuthorizationServiceClient | `done` |
+| `SDK.AuthorizationV2` | field | SDK.Call; host accessor AuthorizationV2() returning sdkconnect.AuthorizationServiceClientV2 | `done` |
 | `SDK.Close` | method | SDK.Close | `done` |
 | `SDK.Conn` | method | no exported connection; service clients share the SDK transport | `phase 3` |
-| `SDK.DynamicValueMapping` | field | SDK.DynamicValueMapping() accessor returning the generated sdkconnect.DynamicValueMappingServiceClient | `phase 3` |
-| `SDK.EntityResolutionV2` | field | SDK.EntityResolutionV2() accessor returning the generated sdkconnect.EntityResolutionServiceClientV2 | `phase 3` |
-| `SDK.EntityResoution` | field | SDK.EntityResoution() accessor returning the generated sdkconnect.EntityResolutionServiceClient | `phase 3` |
+| `SDK.DynamicValueMapping` | field | SDK.Call; host accessor DynamicValueMapping() returning sdkconnect.DynamicValueMappingServiceClient | `done` |
+| `SDK.EntityResolutionV2` | field | SDK.Call; host accessor EntityResolutionV2() returning sdkconnect.EntityResolutionServiceClientV2 | `done` |
+| `SDK.EntityResoution` | field | SDK.Call; host accessor EntityResoution() returning sdkconnect.EntityResolutionServiceClient | `done` |
 | `SDK.IsHealthy` | method | SDK.IsHealthy | `done` |
-| `SDK.KeyAccessServerRegistry` | field | SDK.KeyAccessServerRegistry() accessor returning the generated sdkconnect.KeyAccessServerRegistryServiceClient | `phase 3` |
-| `SDK.KeyManagement` | field | SDK.KeyManagement() accessor returning the generated sdkconnect.KeyManagementServiceClient | `phase 3` |
+| `SDK.KeyAccessServerRegistry` | field | SDK.Call; host accessor KeyAccessServerRegistry() returning sdkconnect.KeyAccessServerRegistryServiceClient | `done` |
+| `SDK.KeyManagement` | field | SDK.Call; host accessor KeyManagement() returning sdkconnect.KeyManagementServiceClient | `done` |
 | `SDK.Logger` | method | SDK.Logger | `done` |
-| `SDK.Namespaces` | field | SDK.Namespaces() accessor returning the generated sdkconnect.NamespaceServiceClient | `phase 3` |
-| `SDK.Obligations` | field | SDK.Obligations() accessor returning the generated sdkconnect.ObligationsServiceClient | `phase 3` |
-| `SDK.RegisteredResources` | field | SDK.RegisteredResources() accessor returning the generated sdkconnect.RegisteredResourcesServiceClient | `phase 3` |
-| `SDK.ResourceMapping` | field | SDK.ResourceMapping() accessor returning the generated sdkconnect.ResourceMappingServiceClient | `phase 3` |
+| `SDK.Namespaces` | field | SDK.Call; host accessor Namespaces() returning sdkconnect.NamespaceServiceClient | `done` |
+| `SDK.Obligations` | field | SDK.Call; host accessor Obligations() returning sdkconnect.ObligationsServiceClient | `done` |
+| `SDK.RegisteredResources` | field | SDK.Call; host accessor RegisteredResources() returning sdkconnect.RegisteredResourcesServiceClient | `done` |
+| `SDK.ResourceMapping` | field | SDK.Call; host accessor ResourceMapping() returning sdkconnect.ResourceMappingServiceClient | `done` |
 | `SDK.StoreKASKeys` | method | SDK.StoreKASKeys | `done` |
-| `SDK.SubjectMapping` | field | SDK.SubjectMapping() accessor returning the generated sdkconnect.SubjectMappingServiceClient | `phase 3` |
-| `SDK.Unsafe` | field | SDK.Unsafe() accessor returning the generated sdkconnect.UnsafeServiceClient | `phase 3` |
+| `SDK.SubjectMapping` | field | SDK.Call; host accessor SubjectMapping() returning sdkconnect.SubjectMappingServiceClient | `done` |
+| `SDK.Unsafe` | field | SDK.Call; host accessor Unsafe() returning sdkconnect.UnsafeServiceClient | `done` |
 | `Standard` | const | sdk.Standard | `done` |
 | `TdfType` | type | sdk.TdfType | `done` |
 | `TdfType.String` | method | sdk/tdf.TdfType.String | `done` |
@@ -779,257 +782,257 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `ActionServiceClient` | type | sdk/protocol generated ActionServiceClient (Connect unary methods) | `phase 3` |
-| `ActionServiceClientConnectWrapper` | type | sdk/protocol generated client handle for ActionServiceClient | `phase 3` |
-| `ActionServiceClientConnectWrapper.CreateAction` | method | sdk/protocol ActionServiceClient.CreateAction | `phase 3` |
-| `ActionServiceClientConnectWrapper.DeleteAction` | method | sdk/protocol ActionServiceClient.DeleteAction | `phase 3` |
-| `ActionServiceClientConnectWrapper.GetAction` | method | sdk/protocol ActionServiceClient.GetAction | `phase 3` |
-| `ActionServiceClientConnectWrapper.ListActions` | method | sdk/protocol ActionServiceClient.ListActions | `phase 3` |
-| `ActionServiceClientConnectWrapper.UpdateAction` | method | sdk/protocol ActionServiceClient.UpdateAction | `phase 3` |
-| `NewActionServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `ActionServiceClient` | type | SDK.Call; the Go adapter declares ActionServiceClient over protocol/go messages | `done` |
+| `ActionServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns ActionServiceClient | `done` |
+| `ActionServiceClientConnectWrapper.CreateAction` | method | SDK.Call(ctx, service, "CreateAction", json); host accessor ActionServiceClient.CreateAction | `done` |
+| `ActionServiceClientConnectWrapper.DeleteAction` | method | SDK.Call(ctx, service, "DeleteAction", json); host accessor ActionServiceClient.DeleteAction | `done` |
+| `ActionServiceClientConnectWrapper.GetAction` | method | SDK.Call(ctx, service, "GetAction", json); host accessor ActionServiceClient.GetAction | `done` |
+| `ActionServiceClientConnectWrapper.ListActions` | method | SDK.Call(ctx, service, "ListActions", json); host accessor ActionServiceClient.ListActions | `done` |
+| `ActionServiceClientConnectWrapper.UpdateAction` | method | SDK.Call(ctx, service, "UpdateAction", json); host accessor ActionServiceClient.UpdateAction | `done` |
+| `NewActionServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `attributes.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AttributesServiceClient` | type | sdk/protocol generated AttributesServiceClient (Connect unary methods) | `phase 3` |
-| `AttributesServiceClientConnectWrapper` | type | sdk/protocol generated client handle for AttributesServiceClient | `phase 3` |
-| `AttributesServiceClientConnectWrapper.AssignKeyAccessServerToAttribute` | method | sdk/protocol AttributesServiceClient.AssignKeyAccessServerToAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.AssignKeyAccessServerToValue` | method | sdk/protocol AttributesServiceClient.AssignKeyAccessServerToValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.AssignPublicKeyToAttribute` | method | sdk/protocol AttributesServiceClient.AssignPublicKeyToAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.AssignPublicKeyToValue` | method | sdk/protocol AttributesServiceClient.AssignPublicKeyToValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.CreateAttribute` | method | sdk/protocol AttributesServiceClient.CreateAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.CreateAttributeValue` | method | sdk/protocol AttributesServiceClient.CreateAttributeValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.DeactivateAttribute` | method | sdk/protocol AttributesServiceClient.DeactivateAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.DeactivateAttributeValue` | method | sdk/protocol AttributesServiceClient.DeactivateAttributeValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.GetAttribute` | method | sdk/protocol AttributesServiceClient.GetAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.GetAttributeValue` | method | sdk/protocol AttributesServiceClient.GetAttributeValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.GetAttributeValuesByFqns` | method | sdk/protocol AttributesServiceClient.GetAttributeValuesByFqns | `phase 3` |
-| `AttributesServiceClientConnectWrapper.GetEntitleableAttributesByFqns` | method | sdk/protocol AttributesServiceClient.GetEntitleableAttributesByFqns | `phase 3` |
-| `AttributesServiceClientConnectWrapper.GetKeyMappingsByFqns` | method | sdk/protocol AttributesServiceClient.GetKeyMappingsByFqns | `phase 3` |
-| `AttributesServiceClientConnectWrapper.ListAttributeValues` | method | sdk/protocol AttributesServiceClient.ListAttributeValues | `phase 3` |
-| `AttributesServiceClientConnectWrapper.ListAttributes` | method | sdk/protocol AttributesServiceClient.ListAttributes | `phase 3` |
-| `AttributesServiceClientConnectWrapper.RemoveKeyAccessServerFromAttribute` | method | sdk/protocol AttributesServiceClient.RemoveKeyAccessServerFromAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.RemoveKeyAccessServerFromValue` | method | sdk/protocol AttributesServiceClient.RemoveKeyAccessServerFromValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.RemovePublicKeyFromAttribute` | method | sdk/protocol AttributesServiceClient.RemovePublicKeyFromAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.RemovePublicKeyFromValue` | method | sdk/protocol AttributesServiceClient.RemovePublicKeyFromValue | `phase 3` |
-| `AttributesServiceClientConnectWrapper.UpdateAttribute` | method | sdk/protocol AttributesServiceClient.UpdateAttribute | `phase 3` |
-| `AttributesServiceClientConnectWrapper.UpdateAttributeValue` | method | sdk/protocol AttributesServiceClient.UpdateAttributeValue | `phase 3` |
-| `NewAttributesServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `AttributesServiceClient` | type | SDK.Call; the Go adapter declares AttributesServiceClient over protocol/go messages | `done` |
+| `AttributesServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns AttributesServiceClient | `done` |
+| `AttributesServiceClientConnectWrapper.AssignKeyAccessServerToAttribute` | method | SDK.Call(ctx, service, "AssignKeyAccessServerToAttribute", json); host accessor AttributesServiceClient.AssignKeyAccessServerToAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.AssignKeyAccessServerToValue` | method | SDK.Call(ctx, service, "AssignKeyAccessServerToValue", json); host accessor AttributesServiceClient.AssignKeyAccessServerToValue | `done` |
+| `AttributesServiceClientConnectWrapper.AssignPublicKeyToAttribute` | method | SDK.Call(ctx, service, "AssignPublicKeyToAttribute", json); host accessor AttributesServiceClient.AssignPublicKeyToAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.AssignPublicKeyToValue` | method | SDK.Call(ctx, service, "AssignPublicKeyToValue", json); host accessor AttributesServiceClient.AssignPublicKeyToValue | `done` |
+| `AttributesServiceClientConnectWrapper.CreateAttribute` | method | SDK.Call(ctx, service, "CreateAttribute", json); host accessor AttributesServiceClient.CreateAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.CreateAttributeValue` | method | SDK.Call(ctx, service, "CreateAttributeValue", json); host accessor AttributesServiceClient.CreateAttributeValue | `done` |
+| `AttributesServiceClientConnectWrapper.DeactivateAttribute` | method | SDK.Call(ctx, service, "DeactivateAttribute", json); host accessor AttributesServiceClient.DeactivateAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.DeactivateAttributeValue` | method | SDK.Call(ctx, service, "DeactivateAttributeValue", json); host accessor AttributesServiceClient.DeactivateAttributeValue | `done` |
+| `AttributesServiceClientConnectWrapper.GetAttribute` | method | SDK.Call(ctx, service, "GetAttribute", json); host accessor AttributesServiceClient.GetAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.GetAttributeValue` | method | SDK.Call(ctx, service, "GetAttributeValue", json); host accessor AttributesServiceClient.GetAttributeValue | `done` |
+| `AttributesServiceClientConnectWrapper.GetAttributeValuesByFqns` | method | SDK.Call(ctx, service, "GetAttributeValuesByFqns", json); host accessor AttributesServiceClient.GetAttributeValuesByFqns | `done` |
+| `AttributesServiceClientConnectWrapper.GetEntitleableAttributesByFqns` | method | SDK.Call(ctx, service, "GetEntitleableAttributesByFqns", json); host accessor AttributesServiceClient.GetEntitleableAttributesByFqns | `done` |
+| `AttributesServiceClientConnectWrapper.GetKeyMappingsByFqns` | method | SDK.Call(ctx, service, "GetKeyMappingsByFqns", json); host accessor AttributesServiceClient.GetKeyMappingsByFqns | `done` |
+| `AttributesServiceClientConnectWrapper.ListAttributeValues` | method | SDK.Call(ctx, service, "ListAttributeValues", json); host accessor AttributesServiceClient.ListAttributeValues | `done` |
+| `AttributesServiceClientConnectWrapper.ListAttributes` | method | SDK.Call(ctx, service, "ListAttributes", json); host accessor AttributesServiceClient.ListAttributes | `done` |
+| `AttributesServiceClientConnectWrapper.RemoveKeyAccessServerFromAttribute` | method | SDK.Call(ctx, service, "RemoveKeyAccessServerFromAttribute", json); host accessor AttributesServiceClient.RemoveKeyAccessServerFromAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.RemoveKeyAccessServerFromValue` | method | SDK.Call(ctx, service, "RemoveKeyAccessServerFromValue", json); host accessor AttributesServiceClient.RemoveKeyAccessServerFromValue | `done` |
+| `AttributesServiceClientConnectWrapper.RemovePublicKeyFromAttribute` | method | SDK.Call(ctx, service, "RemovePublicKeyFromAttribute", json); host accessor AttributesServiceClient.RemovePublicKeyFromAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.RemovePublicKeyFromValue` | method | SDK.Call(ctx, service, "RemovePublicKeyFromValue", json); host accessor AttributesServiceClient.RemovePublicKeyFromValue | `done` |
+| `AttributesServiceClientConnectWrapper.UpdateAttribute` | method | SDK.Call(ctx, service, "UpdateAttribute", json); host accessor AttributesServiceClient.UpdateAttribute | `done` |
+| `AttributesServiceClientConnectWrapper.UpdateAttributeValue` | method | SDK.Call(ctx, service, "UpdateAttributeValue", json); host accessor AttributesServiceClient.UpdateAttributeValue | `done` |
+| `NewAttributesServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `authorization.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AuthorizationServiceClient` | type | sdk/protocol generated AuthorizationServiceClient (Connect unary methods) | `phase 3` |
-| `AuthorizationServiceClientConnectWrapper` | type | sdk/protocol generated client handle for AuthorizationServiceClient | `phase 3` |
-| `AuthorizationServiceClientConnectWrapper.GetDecisions` | method | sdk/protocol AuthorizationServiceClient.GetDecisions | `phase 3` |
-| `AuthorizationServiceClientConnectWrapper.GetDecisionsByToken` | method | sdk/protocol AuthorizationServiceClient.GetDecisionsByToken | `phase 3` |
-| `AuthorizationServiceClientConnectWrapper.GetEntitlements` | method | sdk/protocol AuthorizationServiceClient.GetEntitlements | `phase 3` |
-| `NewAuthorizationServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `AuthorizationServiceClient` | type | SDK.Call; the Go adapter declares AuthorizationServiceClient over protocol/go messages | `done` |
+| `AuthorizationServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns AuthorizationServiceClient | `done` |
+| `AuthorizationServiceClientConnectWrapper.GetDecisions` | method | SDK.Call(ctx, service, "GetDecisions", json); host accessor AuthorizationServiceClient.GetDecisions | `done` |
+| `AuthorizationServiceClientConnectWrapper.GetDecisionsByToken` | method | SDK.Call(ctx, service, "GetDecisionsByToken", json); host accessor AuthorizationServiceClient.GetDecisionsByToken | `done` |
+| `AuthorizationServiceClientConnectWrapper.GetEntitlements` | method | SDK.Call(ctx, service, "GetEntitlements", json); host accessor AuthorizationServiceClient.GetEntitlements | `done` |
+| `NewAuthorizationServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `authorizationv2.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AuthorizationServiceClientV2` | type | sdk/protocol generated AuthorizationServiceClientV2 (Connect unary methods) | `phase 3` |
-| `AuthorizationServiceClientV2ConnectWrapper` | type | sdk/protocol generated client handle for AuthorizationServiceClientV2 | `phase 3` |
-| `AuthorizationServiceClientV2ConnectWrapper.GetDecision` | method | sdk/protocol AuthorizationServiceClientV2.GetDecision | `phase 3` |
-| `AuthorizationServiceClientV2ConnectWrapper.GetDecisionBulk` | method | sdk/protocol AuthorizationServiceClientV2.GetDecisionBulk | `phase 3` |
-| `AuthorizationServiceClientV2ConnectWrapper.GetDecisionMultiResource` | method | sdk/protocol AuthorizationServiceClientV2.GetDecisionMultiResource | `phase 3` |
-| `AuthorizationServiceClientV2ConnectWrapper.GetEntitlements` | method | sdk/protocol AuthorizationServiceClientV2.GetEntitlements | `phase 3` |
-| `NewAuthorizationServiceClientV2ConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `AuthorizationServiceClientV2` | type | SDK.Call; the Go adapter declares AuthorizationServiceClientV2 over protocol/go messages | `done` |
+| `AuthorizationServiceClientV2ConnectWrapper` | type | SDK.Call; the host accessor returns AuthorizationServiceClientV2 | `done` |
+| `AuthorizationServiceClientV2ConnectWrapper.GetDecision` | method | SDK.Call(ctx, service, "GetDecision", json); host accessor AuthorizationServiceClientV2.GetDecision | `done` |
+| `AuthorizationServiceClientV2ConnectWrapper.GetDecisionBulk` | method | SDK.Call(ctx, service, "GetDecisionBulk", json); host accessor AuthorizationServiceClientV2.GetDecisionBulk | `done` |
+| `AuthorizationServiceClientV2ConnectWrapper.GetDecisionMultiResource` | method | SDK.Call(ctx, service, "GetDecisionMultiResource", json); host accessor AuthorizationServiceClientV2.GetDecisionMultiResource | `done` |
+| `AuthorizationServiceClientV2ConnectWrapper.GetEntitlements` | method | SDK.Call(ctx, service, "GetEntitlements", json); host accessor AuthorizationServiceClientV2.GetEntitlements | `done` |
+| `NewAuthorizationServiceClientV2ConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `dynamicvaluemapping.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `DynamicValueMappingServiceClient` | type | sdk/protocol generated DynamicValueMappingServiceClient (Connect unary methods) | `phase 3` |
-| `DynamicValueMappingServiceClientConnectWrapper` | type | sdk/protocol generated client handle for DynamicValueMappingServiceClient | `phase 3` |
-| `DynamicValueMappingServiceClientConnectWrapper.CreateDynamicValueMapping` | method | sdk/protocol DynamicValueMappingServiceClient.CreateDynamicValueMapping | `phase 3` |
-| `DynamicValueMappingServiceClientConnectWrapper.DeleteDynamicValueMapping` | method | sdk/protocol DynamicValueMappingServiceClient.DeleteDynamicValueMapping | `phase 3` |
-| `DynamicValueMappingServiceClientConnectWrapper.GetDynamicValueMapping` | method | sdk/protocol DynamicValueMappingServiceClient.GetDynamicValueMapping | `phase 3` |
-| `DynamicValueMappingServiceClientConnectWrapper.ListDynamicValueMappings` | method | sdk/protocol DynamicValueMappingServiceClient.ListDynamicValueMappings | `phase 3` |
-| `DynamicValueMappingServiceClientConnectWrapper.UpdateDynamicValueMapping` | method | sdk/protocol DynamicValueMappingServiceClient.UpdateDynamicValueMapping | `phase 3` |
-| `NewDynamicValueMappingServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `DynamicValueMappingServiceClient` | type | SDK.Call; the Go adapter declares DynamicValueMappingServiceClient over protocol/go messages | `done` |
+| `DynamicValueMappingServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns DynamicValueMappingServiceClient | `done` |
+| `DynamicValueMappingServiceClientConnectWrapper.CreateDynamicValueMapping` | method | SDK.Call(ctx, service, "CreateDynamicValueMapping", json); host accessor DynamicValueMappingServiceClient.CreateDynamicValueMapping | `done` |
+| `DynamicValueMappingServiceClientConnectWrapper.DeleteDynamicValueMapping` | method | SDK.Call(ctx, service, "DeleteDynamicValueMapping", json); host accessor DynamicValueMappingServiceClient.DeleteDynamicValueMapping | `done` |
+| `DynamicValueMappingServiceClientConnectWrapper.GetDynamicValueMapping` | method | SDK.Call(ctx, service, "GetDynamicValueMapping", json); host accessor DynamicValueMappingServiceClient.GetDynamicValueMapping | `done` |
+| `DynamicValueMappingServiceClientConnectWrapper.ListDynamicValueMappings` | method | SDK.Call(ctx, service, "ListDynamicValueMappings", json); host accessor DynamicValueMappingServiceClient.ListDynamicValueMappings | `done` |
+| `DynamicValueMappingServiceClientConnectWrapper.UpdateDynamicValueMapping` | method | SDK.Call(ctx, service, "UpdateDynamicValueMapping", json); host accessor DynamicValueMappingServiceClient.UpdateDynamicValueMapping | `done` |
+| `NewDynamicValueMappingServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `entityresolution.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `EntityResolutionServiceClient` | type | sdk/protocol generated EntityResolutionServiceClient (Connect unary methods) | `phase 3` |
-| `EntityResolutionServiceClientConnectWrapper` | type | sdk/protocol generated client handle for EntityResolutionServiceClient | `phase 3` |
-| `EntityResolutionServiceClientConnectWrapper.CreateEntityChainFromJwt` | method | sdk/protocol EntityResolutionServiceClient.CreateEntityChainFromJwt | `phase 3` |
-| `EntityResolutionServiceClientConnectWrapper.ResolveEntities` | method | sdk/protocol EntityResolutionServiceClient.ResolveEntities | `phase 3` |
-| `NewEntityResolutionServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `EntityResolutionServiceClient` | type | SDK.Call; the Go adapter declares EntityResolutionServiceClient over protocol/go messages | `done` |
+| `EntityResolutionServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns EntityResolutionServiceClient | `done` |
+| `EntityResolutionServiceClientConnectWrapper.CreateEntityChainFromJwt` | method | SDK.Call(ctx, service, "CreateEntityChainFromJwt", json); host accessor EntityResolutionServiceClient.CreateEntityChainFromJwt | `done` |
+| `EntityResolutionServiceClientConnectWrapper.ResolveEntities` | method | SDK.Call(ctx, service, "ResolveEntities", json); host accessor EntityResolutionServiceClient.ResolveEntities | `done` |
+| `NewEntityResolutionServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `entityresolutionv2.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `EntityResolutionServiceClientV2` | type | sdk/protocol generated EntityResolutionServiceClientV2 (Connect unary methods) | `phase 3` |
-| `EntityResolutionServiceClientV2ConnectWrapper` | type | sdk/protocol generated client handle for EntityResolutionServiceClientV2 | `phase 3` |
-| `EntityResolutionServiceClientV2ConnectWrapper.CreateEntityChainsFromTokens` | method | sdk/protocol EntityResolutionServiceClientV2.CreateEntityChainsFromTokens | `phase 3` |
-| `EntityResolutionServiceClientV2ConnectWrapper.ResolveEntities` | method | sdk/protocol EntityResolutionServiceClientV2.ResolveEntities | `phase 3` |
-| `NewEntityResolutionServiceClientV2ConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `EntityResolutionServiceClientV2` | type | SDK.Call; the Go adapter declares EntityResolutionServiceClientV2 over protocol/go messages | `done` |
+| `EntityResolutionServiceClientV2ConnectWrapper` | type | SDK.Call; the host accessor returns EntityResolutionServiceClientV2 | `done` |
+| `EntityResolutionServiceClientV2ConnectWrapper.CreateEntityChainsFromTokens` | method | SDK.Call(ctx, service, "CreateEntityChainsFromTokens", json); host accessor EntityResolutionServiceClientV2.CreateEntityChainsFromTokens | `done` |
+| `EntityResolutionServiceClientV2ConnectWrapper.ResolveEntities` | method | SDK.Call(ctx, service, "ResolveEntities", json); host accessor EntityResolutionServiceClientV2.ResolveEntities | `done` |
+| `NewEntityResolutionServiceClientV2ConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `kasregistry.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `KeyAccessServerRegistryServiceClient` | type | sdk/protocol generated KeyAccessServerRegistryServiceClient (Connect unary methods) | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper` | type | sdk/protocol generated client handle for KeyAccessServerRegistryServiceClient | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.CreateKey` | method | sdk/protocol KeyAccessServerRegistryServiceClient.CreateKey | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.CreateKeyAccessServer` | method | sdk/protocol KeyAccessServerRegistryServiceClient.CreateKeyAccessServer | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.DeleteKeyAccessServer` | method | sdk/protocol KeyAccessServerRegistryServiceClient.DeleteKeyAccessServer | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.GetBaseKey` | method | sdk/protocol KeyAccessServerRegistryServiceClient.GetBaseKey | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.GetKey` | method | sdk/protocol KeyAccessServerRegistryServiceClient.GetKey | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.GetKeyAccessServer` | method | sdk/protocol KeyAccessServerRegistryServiceClient.GetKeyAccessServer | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeyAccessServerGrants` | method | sdk/protocol KeyAccessServerRegistryServiceClient.ListKeyAccessServerGrants | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeyAccessServers` | method | sdk/protocol KeyAccessServerRegistryServiceClient.ListKeyAccessServers | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeyMappings` | method | sdk/protocol KeyAccessServerRegistryServiceClient.ListKeyMappings | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeys` | method | sdk/protocol KeyAccessServerRegistryServiceClient.ListKeys | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.RotateKey` | method | sdk/protocol KeyAccessServerRegistryServiceClient.RotateKey | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.SetBaseKey` | method | sdk/protocol KeyAccessServerRegistryServiceClient.SetBaseKey | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.UpdateKey` | method | sdk/protocol KeyAccessServerRegistryServiceClient.UpdateKey | `phase 3` |
-| `KeyAccessServerRegistryServiceClientConnectWrapper.UpdateKeyAccessServer` | method | sdk/protocol KeyAccessServerRegistryServiceClient.UpdateKeyAccessServer | `phase 3` |
-| `NewKeyAccessServerRegistryServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `KeyAccessServerRegistryServiceClient` | type | SDK.Call; the Go adapter declares KeyAccessServerRegistryServiceClient over protocol/go messages | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns KeyAccessServerRegistryServiceClient | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.CreateKey` | method | SDK.Call(ctx, service, "CreateKey", json); host accessor KeyAccessServerRegistryServiceClient.CreateKey | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.CreateKeyAccessServer` | method | SDK.Call(ctx, service, "CreateKeyAccessServer", json); host accessor KeyAccessServerRegistryServiceClient.CreateKeyAccessServer | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.DeleteKeyAccessServer` | method | SDK.Call(ctx, service, "DeleteKeyAccessServer", json); host accessor KeyAccessServerRegistryServiceClient.DeleteKeyAccessServer | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.GetBaseKey` | method | SDK.Call(ctx, service, "GetBaseKey", json); host accessor KeyAccessServerRegistryServiceClient.GetBaseKey | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.GetKey` | method | SDK.Call(ctx, service, "GetKey", json); host accessor KeyAccessServerRegistryServiceClient.GetKey | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.GetKeyAccessServer` | method | SDK.Call(ctx, service, "GetKeyAccessServer", json); host accessor KeyAccessServerRegistryServiceClient.GetKeyAccessServer | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeyAccessServerGrants` | method | SDK.Call(ctx, service, "ListKeyAccessServerGrants", json); host accessor KeyAccessServerRegistryServiceClient.ListKeyAccessServerGrants | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeyAccessServers` | method | SDK.Call(ctx, service, "ListKeyAccessServers", json); host accessor KeyAccessServerRegistryServiceClient.ListKeyAccessServers | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeyMappings` | method | SDK.Call(ctx, service, "ListKeyMappings", json); host accessor KeyAccessServerRegistryServiceClient.ListKeyMappings | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.ListKeys` | method | SDK.Call(ctx, service, "ListKeys", json); host accessor KeyAccessServerRegistryServiceClient.ListKeys | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.RotateKey` | method | SDK.Call(ctx, service, "RotateKey", json); host accessor KeyAccessServerRegistryServiceClient.RotateKey | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.SetBaseKey` | method | SDK.Call(ctx, service, "SetBaseKey", json); host accessor KeyAccessServerRegistryServiceClient.SetBaseKey | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.UpdateKey` | method | SDK.Call(ctx, service, "UpdateKey", json); host accessor KeyAccessServerRegistryServiceClient.UpdateKey | `done` |
+| `KeyAccessServerRegistryServiceClientConnectWrapper.UpdateKeyAccessServer` | method | SDK.Call(ctx, service, "UpdateKeyAccessServer", json); host accessor KeyAccessServerRegistryServiceClient.UpdateKeyAccessServer | `done` |
+| `NewKeyAccessServerRegistryServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `keymanagement.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `KeyManagementServiceClient` | type | sdk/protocol generated KeyManagementServiceClient (Connect unary methods) | `phase 3` |
-| `KeyManagementServiceClientConnectWrapper` | type | sdk/protocol generated client handle for KeyManagementServiceClient | `phase 3` |
-| `KeyManagementServiceClientConnectWrapper.CreateProviderConfig` | method | sdk/protocol KeyManagementServiceClient.CreateProviderConfig | `phase 3` |
-| `KeyManagementServiceClientConnectWrapper.DeleteProviderConfig` | method | sdk/protocol KeyManagementServiceClient.DeleteProviderConfig | `phase 3` |
-| `KeyManagementServiceClientConnectWrapper.GetProviderConfig` | method | sdk/protocol KeyManagementServiceClient.GetProviderConfig | `phase 3` |
-| `KeyManagementServiceClientConnectWrapper.ListProviderConfigs` | method | sdk/protocol KeyManagementServiceClient.ListProviderConfigs | `phase 3` |
-| `KeyManagementServiceClientConnectWrapper.UpdateProviderConfig` | method | sdk/protocol KeyManagementServiceClient.UpdateProviderConfig | `phase 3` |
-| `NewKeyManagementServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `KeyManagementServiceClient` | type | SDK.Call; the Go adapter declares KeyManagementServiceClient over protocol/go messages | `done` |
+| `KeyManagementServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns KeyManagementServiceClient | `done` |
+| `KeyManagementServiceClientConnectWrapper.CreateProviderConfig` | method | SDK.Call(ctx, service, "CreateProviderConfig", json); host accessor KeyManagementServiceClient.CreateProviderConfig | `done` |
+| `KeyManagementServiceClientConnectWrapper.DeleteProviderConfig` | method | SDK.Call(ctx, service, "DeleteProviderConfig", json); host accessor KeyManagementServiceClient.DeleteProviderConfig | `done` |
+| `KeyManagementServiceClientConnectWrapper.GetProviderConfig` | method | SDK.Call(ctx, service, "GetProviderConfig", json); host accessor KeyManagementServiceClient.GetProviderConfig | `done` |
+| `KeyManagementServiceClientConnectWrapper.ListProviderConfigs` | method | SDK.Call(ctx, service, "ListProviderConfigs", json); host accessor KeyManagementServiceClient.ListProviderConfigs | `done` |
+| `KeyManagementServiceClientConnectWrapper.UpdateProviderConfig` | method | SDK.Call(ctx, service, "UpdateProviderConfig", json); host accessor KeyManagementServiceClient.UpdateProviderConfig | `done` |
+| `NewKeyManagementServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `namespaces.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NamespaceServiceClient` | type | sdk/protocol generated NamespaceServiceClient (Connect unary methods) | `phase 3` |
-| `NamespaceServiceClientConnectWrapper` | type | sdk/protocol generated client handle for NamespaceServiceClient | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.AssignKeyAccessServerToNamespace` | method | sdk/protocol NamespaceServiceClient.AssignKeyAccessServerToNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.AssignPublicKeyToNamespace` | method | sdk/protocol NamespaceServiceClient.AssignPublicKeyToNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.CreateNamespace` | method | sdk/protocol NamespaceServiceClient.CreateNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.DeactivateNamespace` | method | sdk/protocol NamespaceServiceClient.DeactivateNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.GetNamespace` | method | sdk/protocol NamespaceServiceClient.GetNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.ListNamespaces` | method | sdk/protocol NamespaceServiceClient.ListNamespaces | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.RemoveKeyAccessServerFromNamespace` | method | sdk/protocol NamespaceServiceClient.RemoveKeyAccessServerFromNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.RemovePublicKeyFromNamespace` | method | sdk/protocol NamespaceServiceClient.RemovePublicKeyFromNamespace | `phase 3` |
-| `NamespaceServiceClientConnectWrapper.UpdateNamespace` | method | sdk/protocol NamespaceServiceClient.UpdateNamespace | `phase 3` |
-| `NewNamespaceServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
+| `NamespaceServiceClient` | type | SDK.Call; the Go adapter declares NamespaceServiceClient over protocol/go messages | `done` |
+| `NamespaceServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns NamespaceServiceClient | `done` |
+| `NamespaceServiceClientConnectWrapper.AssignKeyAccessServerToNamespace` | method | SDK.Call(ctx, service, "AssignKeyAccessServerToNamespace", json); host accessor NamespaceServiceClient.AssignKeyAccessServerToNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.AssignPublicKeyToNamespace` | method | SDK.Call(ctx, service, "AssignPublicKeyToNamespace", json); host accessor NamespaceServiceClient.AssignPublicKeyToNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.CreateNamespace` | method | SDK.Call(ctx, service, "CreateNamespace", json); host accessor NamespaceServiceClient.CreateNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.DeactivateNamespace` | method | SDK.Call(ctx, service, "DeactivateNamespace", json); host accessor NamespaceServiceClient.DeactivateNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.GetNamespace` | method | SDK.Call(ctx, service, "GetNamespace", json); host accessor NamespaceServiceClient.GetNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.ListNamespaces` | method | SDK.Call(ctx, service, "ListNamespaces", json); host accessor NamespaceServiceClient.ListNamespaces | `done` |
+| `NamespaceServiceClientConnectWrapper.RemoveKeyAccessServerFromNamespace` | method | SDK.Call(ctx, service, "RemoveKeyAccessServerFromNamespace", json); host accessor NamespaceServiceClient.RemoveKeyAccessServerFromNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.RemovePublicKeyFromNamespace` | method | SDK.Call(ctx, service, "RemovePublicKeyFromNamespace", json); host accessor NamespaceServiceClient.RemovePublicKeyFromNamespace | `done` |
+| `NamespaceServiceClientConnectWrapper.UpdateNamespace` | method | SDK.Call(ctx, service, "UpdateNamespace", json); host accessor NamespaceServiceClient.UpdateNamespace | `done` |
+| `NewNamespaceServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
 
 ### `obligations.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewObligationsServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
-| `ObligationsServiceClient` | type | sdk/protocol generated ObligationsServiceClient (Connect unary methods) | `phase 3` |
-| `ObligationsServiceClientConnectWrapper` | type | sdk/protocol generated client handle for ObligationsServiceClient | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.AddObligationTrigger` | method | sdk/protocol ObligationsServiceClient.AddObligationTrigger | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.CreateObligation` | method | sdk/protocol ObligationsServiceClient.CreateObligation | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.CreateObligationValue` | method | sdk/protocol ObligationsServiceClient.CreateObligationValue | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.DeleteObligation` | method | sdk/protocol ObligationsServiceClient.DeleteObligation | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.DeleteObligationValue` | method | sdk/protocol ObligationsServiceClient.DeleteObligationValue | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.GetObligation` | method | sdk/protocol ObligationsServiceClient.GetObligation | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.GetObligationTrigger` | method | sdk/protocol ObligationsServiceClient.GetObligationTrigger | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.GetObligationValue` | method | sdk/protocol ObligationsServiceClient.GetObligationValue | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.GetObligationValuesByFQNs` | method | sdk/protocol ObligationsServiceClient.GetObligationValuesByFQNs | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.GetObligationsByFQNs` | method | sdk/protocol ObligationsServiceClient.GetObligationsByFQNs | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.ListObligationTriggers` | method | sdk/protocol ObligationsServiceClient.ListObligationTriggers | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.ListObligations` | method | sdk/protocol ObligationsServiceClient.ListObligations | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.RemoveObligationTrigger` | method | sdk/protocol ObligationsServiceClient.RemoveObligationTrigger | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.UpdateObligation` | method | sdk/protocol ObligationsServiceClient.UpdateObligation | `phase 3` |
-| `ObligationsServiceClientConnectWrapper.UpdateObligationValue` | method | sdk/protocol ObligationsServiceClient.UpdateObligationValue | `phase 3` |
+| `NewObligationsServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
+| `ObligationsServiceClient` | type | SDK.Call; the Go adapter declares ObligationsServiceClient over protocol/go messages | `done` |
+| `ObligationsServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns ObligationsServiceClient | `done` |
+| `ObligationsServiceClientConnectWrapper.AddObligationTrigger` | method | SDK.Call(ctx, service, "AddObligationTrigger", json); host accessor ObligationsServiceClient.AddObligationTrigger | `done` |
+| `ObligationsServiceClientConnectWrapper.CreateObligation` | method | SDK.Call(ctx, service, "CreateObligation", json); host accessor ObligationsServiceClient.CreateObligation | `done` |
+| `ObligationsServiceClientConnectWrapper.CreateObligationValue` | method | SDK.Call(ctx, service, "CreateObligationValue", json); host accessor ObligationsServiceClient.CreateObligationValue | `done` |
+| `ObligationsServiceClientConnectWrapper.DeleteObligation` | method | SDK.Call(ctx, service, "DeleteObligation", json); host accessor ObligationsServiceClient.DeleteObligation | `done` |
+| `ObligationsServiceClientConnectWrapper.DeleteObligationValue` | method | SDK.Call(ctx, service, "DeleteObligationValue", json); host accessor ObligationsServiceClient.DeleteObligationValue | `done` |
+| `ObligationsServiceClientConnectWrapper.GetObligation` | method | SDK.Call(ctx, service, "GetObligation", json); host accessor ObligationsServiceClient.GetObligation | `done` |
+| `ObligationsServiceClientConnectWrapper.GetObligationTrigger` | method | SDK.Call(ctx, service, "GetObligationTrigger", json); host accessor ObligationsServiceClient.GetObligationTrigger | `done` |
+| `ObligationsServiceClientConnectWrapper.GetObligationValue` | method | SDK.Call(ctx, service, "GetObligationValue", json); host accessor ObligationsServiceClient.GetObligationValue | `done` |
+| `ObligationsServiceClientConnectWrapper.GetObligationValuesByFQNs` | method | SDK.Call(ctx, service, "GetObligationValuesByFQNs", json); host accessor ObligationsServiceClient.GetObligationValuesByFQNs | `done` |
+| `ObligationsServiceClientConnectWrapper.GetObligationsByFQNs` | method | SDK.Call(ctx, service, "GetObligationsByFQNs", json); host accessor ObligationsServiceClient.GetObligationsByFQNs | `done` |
+| `ObligationsServiceClientConnectWrapper.ListObligationTriggers` | method | SDK.Call(ctx, service, "ListObligationTriggers", json); host accessor ObligationsServiceClient.ListObligationTriggers | `done` |
+| `ObligationsServiceClientConnectWrapper.ListObligations` | method | SDK.Call(ctx, service, "ListObligations", json); host accessor ObligationsServiceClient.ListObligations | `done` |
+| `ObligationsServiceClientConnectWrapper.RemoveObligationTrigger` | method | SDK.Call(ctx, service, "RemoveObligationTrigger", json); host accessor ObligationsServiceClient.RemoveObligationTrigger | `done` |
+| `ObligationsServiceClientConnectWrapper.UpdateObligation` | method | SDK.Call(ctx, service, "UpdateObligation", json); host accessor ObligationsServiceClient.UpdateObligation | `done` |
+| `ObligationsServiceClientConnectWrapper.UpdateObligationValue` | method | SDK.Call(ctx, service, "UpdateObligationValue", json); host accessor ObligationsServiceClient.UpdateObligationValue | `done` |
 
 ### `registeredresources.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewRegisteredResourcesServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
-| `RegisteredResourcesServiceClient` | type | sdk/protocol generated RegisteredResourcesServiceClient (Connect unary methods) | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper` | type | sdk/protocol generated client handle for RegisteredResourcesServiceClient | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.CreateRegisteredResource` | method | sdk/protocol RegisteredResourcesServiceClient.CreateRegisteredResource | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.CreateRegisteredResourceValue` | method | sdk/protocol RegisteredResourcesServiceClient.CreateRegisteredResourceValue | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.DeleteRegisteredResource` | method | sdk/protocol RegisteredResourcesServiceClient.DeleteRegisteredResource | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.DeleteRegisteredResourceValue` | method | sdk/protocol RegisteredResourcesServiceClient.DeleteRegisteredResourceValue | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.GetRegisteredResource` | method | sdk/protocol RegisteredResourcesServiceClient.GetRegisteredResource | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.GetRegisteredResourceValue` | method | sdk/protocol RegisteredResourcesServiceClient.GetRegisteredResourceValue | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.GetRegisteredResourceValuesByFQNs` | method | sdk/protocol RegisteredResourcesServiceClient.GetRegisteredResourceValuesByFQNs | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.ListRegisteredResourceValues` | method | sdk/protocol RegisteredResourcesServiceClient.ListRegisteredResourceValues | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.ListRegisteredResources` | method | sdk/protocol RegisteredResourcesServiceClient.ListRegisteredResources | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.UpdateRegisteredResource` | method | sdk/protocol RegisteredResourcesServiceClient.UpdateRegisteredResource | `phase 3` |
-| `RegisteredResourcesServiceClientConnectWrapper.UpdateRegisteredResourceValue` | method | sdk/protocol RegisteredResourcesServiceClient.UpdateRegisteredResourceValue | `phase 3` |
+| `NewRegisteredResourcesServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
+| `RegisteredResourcesServiceClient` | type | SDK.Call; the Go adapter declares RegisteredResourcesServiceClient over protocol/go messages | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns RegisteredResourcesServiceClient | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.CreateRegisteredResource` | method | SDK.Call(ctx, service, "CreateRegisteredResource", json); host accessor RegisteredResourcesServiceClient.CreateRegisteredResource | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.CreateRegisteredResourceValue` | method | SDK.Call(ctx, service, "CreateRegisteredResourceValue", json); host accessor RegisteredResourcesServiceClient.CreateRegisteredResourceValue | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.DeleteRegisteredResource` | method | SDK.Call(ctx, service, "DeleteRegisteredResource", json); host accessor RegisteredResourcesServiceClient.DeleteRegisteredResource | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.DeleteRegisteredResourceValue` | method | SDK.Call(ctx, service, "DeleteRegisteredResourceValue", json); host accessor RegisteredResourcesServiceClient.DeleteRegisteredResourceValue | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.GetRegisteredResource` | method | SDK.Call(ctx, service, "GetRegisteredResource", json); host accessor RegisteredResourcesServiceClient.GetRegisteredResource | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.GetRegisteredResourceValue` | method | SDK.Call(ctx, service, "GetRegisteredResourceValue", json); host accessor RegisteredResourcesServiceClient.GetRegisteredResourceValue | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.GetRegisteredResourceValuesByFQNs` | method | SDK.Call(ctx, service, "GetRegisteredResourceValuesByFQNs", json); host accessor RegisteredResourcesServiceClient.GetRegisteredResourceValuesByFQNs | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.ListRegisteredResourceValues` | method | SDK.Call(ctx, service, "ListRegisteredResourceValues", json); host accessor RegisteredResourcesServiceClient.ListRegisteredResourceValues | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.ListRegisteredResources` | method | SDK.Call(ctx, service, "ListRegisteredResources", json); host accessor RegisteredResourcesServiceClient.ListRegisteredResources | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.UpdateRegisteredResource` | method | SDK.Call(ctx, service, "UpdateRegisteredResource", json); host accessor RegisteredResourcesServiceClient.UpdateRegisteredResource | `done` |
+| `RegisteredResourcesServiceClientConnectWrapper.UpdateRegisteredResourceValue` | method | SDK.Call(ctx, service, "UpdateRegisteredResourceValue", json); host accessor RegisteredResourcesServiceClient.UpdateRegisteredResourceValue | `done` |
 
 ### `resourcemapping.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewResourceMappingServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
-| `ResourceMappingServiceClient` | type | sdk/protocol generated ResourceMappingServiceClient (Connect unary methods) | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper` | type | sdk/protocol generated client handle for ResourceMappingServiceClient | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.CreateResourceMapping` | method | sdk/protocol ResourceMappingServiceClient.CreateResourceMapping | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.CreateResourceMappingGroup` | method | sdk/protocol ResourceMappingServiceClient.CreateResourceMappingGroup | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.DeleteResourceMapping` | method | sdk/protocol ResourceMappingServiceClient.DeleteResourceMapping | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.DeleteResourceMappingGroup` | method | sdk/protocol ResourceMappingServiceClient.DeleteResourceMappingGroup | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.GetResourceMapping` | method | sdk/protocol ResourceMappingServiceClient.GetResourceMapping | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.GetResourceMappingGroup` | method | sdk/protocol ResourceMappingServiceClient.GetResourceMappingGroup | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.ListResourceMappingGroups` | method | sdk/protocol ResourceMappingServiceClient.ListResourceMappingGroups | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.ListResourceMappings` | method | sdk/protocol ResourceMappingServiceClient.ListResourceMappings | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.ListResourceMappingsByGroupFqns` | method | sdk/protocol ResourceMappingServiceClient.ListResourceMappingsByGroupFqns | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.UpdateResourceMapping` | method | sdk/protocol ResourceMappingServiceClient.UpdateResourceMapping | `phase 3` |
-| `ResourceMappingServiceClientConnectWrapper.UpdateResourceMappingGroup` | method | sdk/protocol ResourceMappingServiceClient.UpdateResourceMappingGroup | `phase 3` |
+| `NewResourceMappingServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
+| `ResourceMappingServiceClient` | type | SDK.Call; the Go adapter declares ResourceMappingServiceClient over protocol/go messages | `done` |
+| `ResourceMappingServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns ResourceMappingServiceClient | `done` |
+| `ResourceMappingServiceClientConnectWrapper.CreateResourceMapping` | method | SDK.Call(ctx, service, "CreateResourceMapping", json); host accessor ResourceMappingServiceClient.CreateResourceMapping | `done` |
+| `ResourceMappingServiceClientConnectWrapper.CreateResourceMappingGroup` | method | SDK.Call(ctx, service, "CreateResourceMappingGroup", json); host accessor ResourceMappingServiceClient.CreateResourceMappingGroup | `done` |
+| `ResourceMappingServiceClientConnectWrapper.DeleteResourceMapping` | method | SDK.Call(ctx, service, "DeleteResourceMapping", json); host accessor ResourceMappingServiceClient.DeleteResourceMapping | `done` |
+| `ResourceMappingServiceClientConnectWrapper.DeleteResourceMappingGroup` | method | SDK.Call(ctx, service, "DeleteResourceMappingGroup", json); host accessor ResourceMappingServiceClient.DeleteResourceMappingGroup | `done` |
+| `ResourceMappingServiceClientConnectWrapper.GetResourceMapping` | method | SDK.Call(ctx, service, "GetResourceMapping", json); host accessor ResourceMappingServiceClient.GetResourceMapping | `done` |
+| `ResourceMappingServiceClientConnectWrapper.GetResourceMappingGroup` | method | SDK.Call(ctx, service, "GetResourceMappingGroup", json); host accessor ResourceMappingServiceClient.GetResourceMappingGroup | `done` |
+| `ResourceMappingServiceClientConnectWrapper.ListResourceMappingGroups` | method | SDK.Call(ctx, service, "ListResourceMappingGroups", json); host accessor ResourceMappingServiceClient.ListResourceMappingGroups | `done` |
+| `ResourceMappingServiceClientConnectWrapper.ListResourceMappings` | method | SDK.Call(ctx, service, "ListResourceMappings", json); host accessor ResourceMappingServiceClient.ListResourceMappings | `done` |
+| `ResourceMappingServiceClientConnectWrapper.ListResourceMappingsByGroupFqns` | method | SDK.Call(ctx, service, "ListResourceMappingsByGroupFqns", json); host accessor ResourceMappingServiceClient.ListResourceMappingsByGroupFqns | `done` |
+| `ResourceMappingServiceClientConnectWrapper.UpdateResourceMapping` | method | SDK.Call(ctx, service, "UpdateResourceMapping", json); host accessor ResourceMappingServiceClient.UpdateResourceMapping | `done` |
+| `ResourceMappingServiceClientConnectWrapper.UpdateResourceMappingGroup` | method | SDK.Call(ctx, service, "UpdateResourceMappingGroup", json); host accessor ResourceMappingServiceClient.UpdateResourceMappingGroup | `done` |
 
 ### `subjectmapping.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewSubjectMappingServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
-| `SubjectMappingServiceClient` | type | sdk/protocol generated SubjectMappingServiceClient (Connect unary methods) | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper` | type | sdk/protocol generated client handle for SubjectMappingServiceClient | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.CreateSubjectConditionSet` | method | sdk/protocol SubjectMappingServiceClient.CreateSubjectConditionSet | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.CreateSubjectMapping` | method | sdk/protocol SubjectMappingServiceClient.CreateSubjectMapping | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.DeleteAllUnmappedSubjectConditionSets` | method | sdk/protocol SubjectMappingServiceClient.DeleteAllUnmappedSubjectConditionSets | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.DeleteSubjectConditionSet` | method | sdk/protocol SubjectMappingServiceClient.DeleteSubjectConditionSet | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.DeleteSubjectMapping` | method | sdk/protocol SubjectMappingServiceClient.DeleteSubjectMapping | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.GetSubjectConditionSet` | method | sdk/protocol SubjectMappingServiceClient.GetSubjectConditionSet | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.GetSubjectMapping` | method | sdk/protocol SubjectMappingServiceClient.GetSubjectMapping | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.ListSubjectConditionSets` | method | sdk/protocol SubjectMappingServiceClient.ListSubjectConditionSets | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.ListSubjectMappings` | method | sdk/protocol SubjectMappingServiceClient.ListSubjectMappings | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.MatchSubjectMappings` | method | sdk/protocol SubjectMappingServiceClient.MatchSubjectMappings | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.UpdateSubjectConditionSet` | method | sdk/protocol SubjectMappingServiceClient.UpdateSubjectConditionSet | `phase 3` |
-| `SubjectMappingServiceClientConnectWrapper.UpdateSubjectMapping` | method | sdk/protocol SubjectMappingServiceClient.UpdateSubjectMapping | `phase 3` |
+| `NewSubjectMappingServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
+| `SubjectMappingServiceClient` | type | SDK.Call; the Go adapter declares SubjectMappingServiceClient over protocol/go messages | `done` |
+| `SubjectMappingServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns SubjectMappingServiceClient | `done` |
+| `SubjectMappingServiceClientConnectWrapper.CreateSubjectConditionSet` | method | SDK.Call(ctx, service, "CreateSubjectConditionSet", json); host accessor SubjectMappingServiceClient.CreateSubjectConditionSet | `done` |
+| `SubjectMappingServiceClientConnectWrapper.CreateSubjectMapping` | method | SDK.Call(ctx, service, "CreateSubjectMapping", json); host accessor SubjectMappingServiceClient.CreateSubjectMapping | `done` |
+| `SubjectMappingServiceClientConnectWrapper.DeleteAllUnmappedSubjectConditionSets` | method | SDK.Call(ctx, service, "DeleteAllUnmappedSubjectConditionSets", json); host accessor SubjectMappingServiceClient.DeleteAllUnmappedSubjectConditionSets | `done` |
+| `SubjectMappingServiceClientConnectWrapper.DeleteSubjectConditionSet` | method | SDK.Call(ctx, service, "DeleteSubjectConditionSet", json); host accessor SubjectMappingServiceClient.DeleteSubjectConditionSet | `done` |
+| `SubjectMappingServiceClientConnectWrapper.DeleteSubjectMapping` | method | SDK.Call(ctx, service, "DeleteSubjectMapping", json); host accessor SubjectMappingServiceClient.DeleteSubjectMapping | `done` |
+| `SubjectMappingServiceClientConnectWrapper.GetSubjectConditionSet` | method | SDK.Call(ctx, service, "GetSubjectConditionSet", json); host accessor SubjectMappingServiceClient.GetSubjectConditionSet | `done` |
+| `SubjectMappingServiceClientConnectWrapper.GetSubjectMapping` | method | SDK.Call(ctx, service, "GetSubjectMapping", json); host accessor SubjectMappingServiceClient.GetSubjectMapping | `done` |
+| `SubjectMappingServiceClientConnectWrapper.ListSubjectConditionSets` | method | SDK.Call(ctx, service, "ListSubjectConditionSets", json); host accessor SubjectMappingServiceClient.ListSubjectConditionSets | `done` |
+| `SubjectMappingServiceClientConnectWrapper.ListSubjectMappings` | method | SDK.Call(ctx, service, "ListSubjectMappings", json); host accessor SubjectMappingServiceClient.ListSubjectMappings | `done` |
+| `SubjectMappingServiceClientConnectWrapper.MatchSubjectMappings` | method | SDK.Call(ctx, service, "MatchSubjectMappings", json); host accessor SubjectMappingServiceClient.MatchSubjectMappings | `done` |
+| `SubjectMappingServiceClientConnectWrapper.UpdateSubjectConditionSet` | method | SDK.Call(ctx, service, "UpdateSubjectConditionSet", json); host accessor SubjectMappingServiceClient.UpdateSubjectConditionSet | `done` |
+| `SubjectMappingServiceClientConnectWrapper.UpdateSubjectMapping` | method | SDK.Call(ctx, service, "UpdateSubjectMapping", json); host accessor SubjectMappingServiceClient.UpdateSubjectMapping | `done` |
 
 ### `unsafe.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewUnsafeServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
-| `UnsafeServiceClient` | type | sdk/protocol generated UnsafeServiceClient (Connect unary methods) | `phase 3` |
-| `UnsafeServiceClientConnectWrapper` | type | sdk/protocol generated client handle for UnsafeServiceClient | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeDeleteAttribute` | method | sdk/protocol UnsafeServiceClient.UnsafeDeleteAttribute | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeDeleteAttributeValue` | method | sdk/protocol UnsafeServiceClient.UnsafeDeleteAttributeValue | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeDeleteKasKey` | method | sdk/protocol UnsafeServiceClient.UnsafeDeleteKasKey | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeDeleteNamespace` | method | sdk/protocol UnsafeServiceClient.UnsafeDeleteNamespace | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeReactivateAttribute` | method | sdk/protocol UnsafeServiceClient.UnsafeReactivateAttribute | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeReactivateAttributeValue` | method | sdk/protocol UnsafeServiceClient.UnsafeReactivateAttributeValue | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeReactivateNamespace` | method | sdk/protocol UnsafeServiceClient.UnsafeReactivateNamespace | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeUpdateAttribute` | method | sdk/protocol UnsafeServiceClient.UnsafeUpdateAttribute | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeUpdateAttributeValue` | method | sdk/protocol UnsafeServiceClient.UnsafeUpdateAttributeValue | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeUpdateKey` | method | sdk/protocol UnsafeServiceClient.UnsafeUpdateKey | `phase 3` |
-| `UnsafeServiceClientConnectWrapper.UnsafeUpdateNamespace` | method | sdk/protocol UnsafeServiceClient.UnsafeUpdateNamespace | `phase 3` |
+| `NewUnsafeServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
+| `UnsafeServiceClient` | type | SDK.Call; the Go adapter declares UnsafeServiceClient over protocol/go messages | `done` |
+| `UnsafeServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns UnsafeServiceClient | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeDeleteAttribute` | method | SDK.Call(ctx, service, "UnsafeDeleteAttribute", json); host accessor UnsafeServiceClient.UnsafeDeleteAttribute | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeDeleteAttributeValue` | method | SDK.Call(ctx, service, "UnsafeDeleteAttributeValue", json); host accessor UnsafeServiceClient.UnsafeDeleteAttributeValue | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeDeleteKasKey` | method | SDK.Call(ctx, service, "UnsafeDeleteKasKey", json); host accessor UnsafeServiceClient.UnsafeDeleteKasKey | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeDeleteNamespace` | method | SDK.Call(ctx, service, "UnsafeDeleteNamespace", json); host accessor UnsafeServiceClient.UnsafeDeleteNamespace | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeReactivateAttribute` | method | SDK.Call(ctx, service, "UnsafeReactivateAttribute", json); host accessor UnsafeServiceClient.UnsafeReactivateAttribute | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeReactivateAttributeValue` | method | SDK.Call(ctx, service, "UnsafeReactivateAttributeValue", json); host accessor UnsafeServiceClient.UnsafeReactivateAttributeValue | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeReactivateNamespace` | method | SDK.Call(ctx, service, "UnsafeReactivateNamespace", json); host accessor UnsafeServiceClient.UnsafeReactivateNamespace | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeUpdateAttribute` | method | SDK.Call(ctx, service, "UnsafeUpdateAttribute", json); host accessor UnsafeServiceClient.UnsafeUpdateAttribute | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeUpdateAttributeValue` | method | SDK.Call(ctx, service, "UnsafeUpdateAttributeValue", json); host accessor UnsafeServiceClient.UnsafeUpdateAttributeValue | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeUpdateKey` | method | SDK.Call(ctx, service, "UnsafeUpdateKey", json); host accessor UnsafeServiceClient.UnsafeUpdateKey | `done` |
+| `UnsafeServiceClientConnectWrapper.UnsafeUpdateNamespace` | method | SDK.Call(ctx, service, "UnsafeUpdateNamespace", json); host accessor UnsafeServiceClient.UnsafeUpdateNamespace | `done` |
 
 ### `wellknownconfiguration.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewWellKnownServiceClientConnectWrapper` | func | sdk/protocol constructor; clients are created by New and reached through SDK | `phase 3` |
-| `WellKnownServiceClient` | type | sdk/protocol generated WellKnownServiceClient (Connect unary methods) | `phase 3` |
-| `WellKnownServiceClientConnectWrapper` | type | sdk/protocol generated client handle for WellKnownServiceClient | `phase 3` |
-| `WellKnownServiceClientConnectWrapper.GetWellKnownConfiguration` | method | sdk/protocol WellKnownServiceClient.GetWellKnownConfiguration | `phase 3` |
+| `NewWellKnownServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
+| `WellKnownServiceClient` | type | SDK.Call; the Go adapter declares WellKnownServiceClient over protocol/go messages | `done` |
+| `WellKnownServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns WellKnownServiceClient | `done` |
+| `WellKnownServiceClientConnectWrapper.GetWellKnownConfiguration` | method | SDK.Call(ctx, service, "GetWellKnownConfiguration", json); host accessor WellKnownServiceClient.GetWellKnownConfiguration | `done` |
