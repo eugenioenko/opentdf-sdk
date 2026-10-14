@@ -3,7 +3,7 @@ module opentdf-local/engine-interop
 go 1.25.0
 
 require (
-	github.com/eugenioenko/goalchemy v0.6.4
+	github.com/eugenioenko/goalchemy v0.6.5
 	github.com/opentdf/platform/sdk v0.0.0
 	opentdf-local/sdk v0.0.0
 )

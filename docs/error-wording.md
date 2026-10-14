@@ -116,8 +116,11 @@ reports it:
 
 `HTTPStatus`, `ConnectCode` and `ServiceMessage` are filled as before; a
 failure of the SDK's own transport (token source, DPoP, connection) keeps
-its text and kind. Requests now carry `Connect-Timeout-Ms` and no `Accept`
-header. The unsigned rewrap request is `protojson` of the generated
+its text and kind. Requests carry no `Accept` header and, as connect-go without a deadline
+and as browsers' CORS preflights against the platform's default allow-list
+need, no `Connect-Timeout-Ms` (`std/connect` v0.6.5 sends it only with
+`Client.SendTimeout`, which the SDK leaves off; `TimeoutMillis` still
+bounds each call). The unsigned rewrap request is `protojson` of the generated
 `kas.UnsignedRewrapRequest`: fields in proto declaration order and an empty
 `policyBinding.alg` omitted, as the reference's `protojson.Marshal` writes
 it (whitespace aside).

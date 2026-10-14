@@ -2142,9 +2142,13 @@ source only; its package build is left to CI.
 
 ## Full SDK plan, Phase 3 part 1: service clients with JSON at the boundary
 
-Branch `feat/phase3-part1-clients`. Goalchemy v0.6.4 (goalchemy#84: fieldless
+Branch `feat/phase3-part1-clients`. Goalchemy v0.6.5 (`bed10114`) is pinned.
+v0.6.4 (goalchemy#84: fieldless
 messages compile, `connect.Client.HTTPClient`, proto3 `optional`) unblocked
-the part; the four blockers recorded on this branch earlier are resolved,
+the part, and v0.6.5 (goalchemy#87) stops `std/connect` from always
+sending `Connect-Timeout-Ms`, which the platform's default CORS allow-list
+does not include, so every browser call failed its preflight (found by the
+focused TypeScript browser job); the four blockers recorded on this branch earlier are resolved,
 the fourth by the user's design decision: messages cross the boundary as
 protobuf JSON ([api-spec.md](api-spec.md#service-clients)).
 
@@ -2217,7 +2221,7 @@ Hosts:
 - Java, C#, Rust, C and Swift transpile unchanged; their adapters are part 2.
 
 Verification (local, throttled, one target at a time, Goalchemy at
-`9219a6a`, which the v0.6.4 tag `73b39456` differs from only in the version string, platform from `otdf-local` at `4d9e555b`):
+`9219a6a` and, for the browser check, v0.6.5, platform from `otdf-local` at `4d9e555b`):
 
 - `go test ./src/` passes, including the new `TestCall`,
   `TestServiceErrorKinds` and `TestServiceErrorReplies`;
