@@ -7,9 +7,9 @@ import (
 )
 
 // Client is the public composition point: the method set of *SDK that this
-// phase implements. Wrappers and test doubles implement it; the service
-// clients join it in Phase 3 and the streaming and bulk methods in Phases 7
-// and 9.
+// phase implements. Wrappers and test doubles implement it; Call carries
+// every platform service client, and the streaming and bulk methods join it
+// in Phases 7 and 9.
 type Client interface {
 	Close() error
 	IsHealthy(ctx context.Context) (bool, error)
@@ -21,6 +21,7 @@ type Client interface {
 	DecryptBytes(ctx context.Context, ciphertext []byte, opts ReaderOptions) ([]byte, error)
 	GetBaseKey(ctx context.Context) (SimpleKasKey, error)
 	StoreKASKeys(url string, keys KasPublicKeySet) error
+	Call(ctx context.Context, service, method, request string) (string, error)
 }
 
 // TDFReader is the method set of *Reader that this phase implements; the
