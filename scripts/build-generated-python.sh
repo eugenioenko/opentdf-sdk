@@ -20,6 +20,8 @@ if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 rm -rf "$DEST/opentdf_tdf3" "$DEST/build" "$DEST/opentdf_tdf3.egg-info"
 (cd "$SDK"; "$COMPILER" compile -gate cooperative -target python -out "$DEST/opentdf_tdf3/_generated" ./src/library ./src)
 cp "$SDK/src/hosts/python/__init__.py.in" "$DEST/opentdf_tdf3/__init__.py"
+cp "$SDK/src/hosts/python/services.py.in" "$DEST/opentdf_tdf3/services.py"
+cp -r "$SDK/src/hosts/python/protocol" "$DEST/opentdf_tdf3/protocol"
 cp "$SDK/src/hosts/python/dependencies.lock.json" "$DEST/dependencies.lock.json"
 cat > "$DEST/pyproject.toml" <<'TOML'
 [build-system]
@@ -30,7 +32,7 @@ name = "opentdf-tdf3"
 version = "0.1.0"
 description = "Shared-source generated OpenTDF TDF3 byte SDK"
 requires-python = ">=3.10"
-dependencies = ["cryptography==50.0.2", "cffi==2.1.1", "pycparser==3.0", "typing-extensions==4.16.0"]
+dependencies = ["cryptography==50.0.2", "cffi==2.1.1", "pycparser==3.0", "typing-extensions==4.16.0", "protobuf==6.33.6"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["opentdf_tdf3*"]
