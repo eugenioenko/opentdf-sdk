@@ -11,4 +11,5 @@ BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-build"}
 rm -rf "$BUILD"
 mkdir -p "$BUILD" "$(dirname "$OUT")"
 cp "$SDK"/src/hosts/go/cmd/otdfgc/*.go "$SDK/src/hosts/go/cmd/otdfgc/go.mod" "$BUILD/"
-(cd "$BUILD"; GOTOOLCHAIN=go1.25.14 go mod edit -replace "goalchemyout=$GENERATED"; GOTOOLCHAIN=go1.25.14 go build -o "$OUT" .)
+cp "$GENERATED/go.sum" "$BUILD/go.sum"
+(cd "$BUILD"; GOTOOLCHAIN=go1.25.14 go mod edit -replace "goalchemyout=$GENERATED"; GOTOOLCHAIN=go1.25.14 go mod tidy; GOTOOLCHAIN=go1.25.14 go build -o "$OUT" .)
