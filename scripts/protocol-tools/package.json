@@ -1,0 +1,10 @@
+{
+  "name": "opentdf-sdk-protocol-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pinned protoc-gen-es for scripts/generate-protocol.sh, with its own protobuf-es runtime",
+  "dependencies": {
+    "@bufbuild/protobuf": "2.2.5",
+    "@bufbuild/protoc-gen-es": "2.2.5"
+  }
+}
