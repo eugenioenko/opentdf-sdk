@@ -43,7 +43,7 @@ Shared source, `src/` (module `opentdf-local/sdk`, imported as
 | `sdk/tdf/chunked` | out-of-order segment writer | `chunked_writer.go`, `chunked_options.go` |
 | `sdk/bulk` | bulk decryption | `bulk.go` |
 | `sdk/auth` | token sources, DPoP proofs, signed request tokens | `auth/`, `auth/oauth/`, `dpop_key.go`, `idp_*.go` |
-| `sdk/protocol/...` | generated messages and Connect clients from `../platform/protocol` | `sdkconnect/`, `protocol/go` |
+| `sdk/protocol/...` | generated messages and Connect clients from the `../platform/service` protos | `sdkconnect/`, `protocol/go` |
 | `sdk/experimental/tdf` | experimental writer and reader | `experimental/tdf/` |
 
 The export root for Goalchemy is `src/library`, which re-exports the public
@@ -338,7 +338,7 @@ sources are supplied as PEM.
 
 ## Service clients
 
-Generated from `../platform/protocol` by `protoc-gen-goalchemy` into
+Generated from the `../platform/service` protos by `protoc-gen-goalchemy` into
 `src/protocol/<service>` and wired to the SDK's authenticated transport:
 Bearer or DPoP header, nonce retry, timeout, endpoint overrides.
 

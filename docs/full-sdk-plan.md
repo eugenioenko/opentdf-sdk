@@ -119,7 +119,9 @@ them.
    `EncryptBytes`) stay for convenience and are implemented over the streams.
 4. **Platform services are generated.** Policy, authorization, well-known,
    KAS registry, entity resolution and KAS service clients are generated from
-   `../platform/protocol` with `protoc-gen-goalchemy` and `std/connect`,
+   the `.proto` files in `../platform/service` (the buf module whose Go
+   output is `../platform/protocol/go`) with `protoc-gen-goalchemy` and
+   `std/connect`,
    exactly like the reference's `sdkconnect` wrappers. No hand-written JSON
    for service calls remains after Phase 3.
 5. **Gaps are fixed in Goalchemy, not worked around.** The reference imports
@@ -409,8 +411,8 @@ Verification:
 
 ### Phase 3: Generated platform service clients
 
-Goal: every service client the reference exposes, generated from
-`../platform/protocol`.
+Goal: every service client the reference exposes, generated from the
+`.proto` files in `../platform/service`.
 
 Reference symbols: `sdkconnect.*` (16 service interfaces), `SDK.Conn`,
 `ConnectRPCConnection`, `WithCustom*Connection`, `SDK.Attributes`,
@@ -423,7 +425,7 @@ Reference symbols: `sdkconnect.*` (16 service interfaces), `SDK.Conn`,
 
 Tasks:
 1. Add `scripts/generate-protocol.sh`: runs `protoc-gen-goalchemy` on the
-   pinned `../platform/protocol` for the services above into
+   pinned `../platform/service` protos for the services above into
    `src/protocol/`; CI checks the output is current.
 2. Route every generated client through the SDK's authenticated transport
    (token source, DPoP, allowlist, timeouts). The KAS client's `Rewrap` and

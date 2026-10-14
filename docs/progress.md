@@ -2139,3 +2139,49 @@ above plus the DPoP, discovery, allowlist and SDK construction tests;
 for all eight targets; and the `scripts/build-generated-<target>.sh` package
 builds for Go, TypeScript, Python, Java, C#, Rust and C. Swift was compiled to
 source only; its package build is left to CI.
+
+## Full SDK plan, Phase 3 part 1: blocked on Goalchemy
+
+Branch `feat/phase3-part1-clients`. `scripts/generate-protocol.sh` runs
+`protoc-gen-goalchemy` (built from the pinned Goalchemy checkout) through buf
+v1.70.0 (the platform Makefile's `REQUIRED_BUF_VERSION`) on the `.proto` files
+in `../platform/service` at the pinned revision, with the platform's managed
+`go_package_prefix`, for the 17 service files behind the reference's 16
+`sdkconnect` clients plus `kas.AccessService`, and the four files they import
+(`common`, `entity`, `policy/objects`, `policy/selectors`). It refuses a
+platform or Goalchemy checkout off the lock and has a `--check` mode that
+diffs a fresh generation against `src/protocol`; two runs are byte-identical.
+The plan's `../platform/protocol` path is corrected: the protos live in the
+buf module `../platform/service`, and `../platform/protocol/go` is their Go
+output.
+
+Size of the full set (no `include=`): 38 files, 39,174 lines, 905 KB of
+subset Go, 470 struct types. Compiled with the probe program that calls one
+method of each client, the protocol packages emit 8.0 MB of Go, 5.2 MB of
+TypeScript and 5.2 MB of Python, against 4.9, 3.7 and 3.6 MB for the whole
+current SDK (`./src/library ./src`).
+
+Goalchemy v0.6.3 blocks the rest of the part; nothing is worked around here:
+
+1. `protoc-gen-goalchemy` emits invalid Go for messages without fields:
+   `DecodeProtoJSON` declares `f := v.Get(k)` before an empty `switch`
+   (`declared and not used: f`). It hits `kas.InfoRequest`,
+   `wellknownconfiguration.GetWellKnownConfigurationRequest` and one message
+   each in `policy/selectors`, `namespaces`, `kasregistry` and
+   `subjectmapping`. With those six lines changed by hand (in a scratch copy
+   only), the generated packages pass `goalchemy check -gate cooperative`
+   and compile to Go, TypeScript and Python, and the Go probe runs.
+2. `std/connect.Client` sends every call through `lib/http.DoWith` with
+   static headers. There is no transport or interceptor hook (connect-go's
+   `HTTPClient` and interceptors), so the generated clients cannot run over
+   the SDK's `Transport`, token source, DPoP proofs with nonce retry or
+   per-call tokens.
+3. `protoc-gen-goalchemy` does not declare `FEATURE_PROTO3_OPTIONAL`; buf
+   warns for the three files with `optional` fields, and `protoc` would
+   refuse them.
+4. Generated messages hold pointers to non-root structs, maps and oneof
+   interfaces, which the library boundary does not carry, and the Go target
+   emits them as lowered IR rather than importable types. The api-spec's
+   "cross the boundary as generated value types" needs a design decision
+   (protojson text at the boundary with per-host message types, or Goalchemy
+   support for crossing generated messages).
