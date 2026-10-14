@@ -1,15 +1,17 @@
 // Independent native importing consumer of the installed package; no shared
 // SDK, compiler or reference import. It drives the handle API: one SDK per
-// run, createTdf/decryptBytes, loadTdf readers, and offline controlled checks.
+// run, createTdf/decryptBytes, loadTdf readers, the platform service clients,
+// and offline controlled checks.
 import {readFile,writeFile} from 'node:fs/promises';
-import {resolve} from 'node:path';
+import {dirname,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {acquireToken} from './token-provider.mjs';
 import {controlledNegatives} from './controlled-negatives.mjs';
 
 const [sdkRoot,run,mode,name]=process.argv.slice(2);
 if(!name)throw new Error('consumer sdk run mode case');
-const g=await import(pathToFileURL(resolve(process.env.TDF_TS_NODE_PACKAGE??process.env.TDF_TS_PACKAGE??resolve(sdkRoot,'../goalchemy/out/typescript-tdf-library/sdk/dist/node-index.js'))).href);
+const entry=resolve(process.env.TDF_TS_NODE_PACKAGE??process.env.TDF_TS_PACKAGE??resolve(sdkRoot,'../goalchemy/out/typescript-tdf-library/sdk/dist/node-index.js'));
+const g=await import(pathToFileURL(entry).href);
 const read=n=>readFile(resolve(run,n));
 const write=(n,b)=>writeFile(resolve(run,n),b??new Uint8Array(),{mode:0o600});
 function assert(ok,label){if(!ok)throw new Error(label);}
@@ -81,6 +83,8 @@ try{
    assert(rejected,'negative returned output');
   }else if(mode==='repeat'){
    await repeat(sdk,cfg);
+  }else if(mode==='services'){
+   await services(sdk);
   }else throw new Error('unknown mode');
   console.log('PASS generated native library',mode,name);
  }
@@ -121,4 +125,32 @@ async function repeat(sdk,cfg){
  let closed=false;
  try{await sdk.decryptBytes(original,readerOptions(cfg));}catch(e){closed=e instanceof g.OpenTDFError&&e.kind==='closed';}
  assert(closed,'closed handle accepted a call');
+}
+
+// services is xtest's test_self.py through the Connect-ES service clients:
+// list namespaces, create a namespace and an attribute, read the attribute
+// back by id, through the namespace's list and through the raw JSON call, and
+// check a missing attribute's ConnectError.
+async function services(sdk){
+ const {AttributeRuleTypeEnum}=await import(pathToFileURL(resolve(dirname(entry),'protocol/policy/objects_pb.js')).href);
+ const name='gcts'+Date.now().toString(36)+'.com';
+ const before=await sdk.namespaces.listNamespaces({});
+ const {namespace}=await sdk.namespaces.createNamespace({name});
+ assert(namespace?.id&&namespace.name===name,'created namespace');
+ const after=await sdk.namespaces.listNamespaces({});
+ assert(after.namespaces.some(n=>n.id===namespace.id)&&after.namespaces.length===before.namespaces.length+1,'namespace listed');
+ const created=await sdk.attributes.createAttribute({namespaceId:namespace.id,name:'free',rule:AttributeRuleTypeEnum.ANY_OF,values:['1','2','3']});
+ const {attribute}=await sdk.attributes.getAttribute({identifier:{case:'attributeId',value:created.attribute.id}});
+ const values=attribute.values.map(v=>v.value);
+ assert(attribute.fqn==='https://'+name+'/attr/free'&&attribute.rule===AttributeRuleTypeEnum.ANY_OF&&values.join()==='1,2,3'&&attribute.namespace?.name===name,'attribute read back');
+ const listed=await sdk.attributes.listAttributes({namespace:name});
+ assert(listed.attributes.length===1&&listed.attributes[0].id===attribute.id,'attribute listed');
+ const raw=JSON.parse(await sdk.call('policy.attributes.AttributesService','GetAttribute',JSON.stringify({attributeId:attribute.id})));
+ assert(raw.attribute.fqn===attribute.fqn,'raw JSON call');
+ let missing;
+ try{await sdk.attributes.getAttribute({identifier:{case:'attributeId',value:'00000000-0000-0000-0000-000000000000'}});}catch(e){missing=e;}
+ const cause=missing?.cause;
+ assert(missing?.name==='ConnectError'&&missing.code===5&&cause instanceof g.OpenTDFError&&cause.connectCode==='not_found'&&cause.httpStatus===404,'missing attribute ConnectError');
+ await write('services.json',JSON.stringify({namespace:name,namespaces_before:before.namespaces.length,namespaces_after:after.namespaces.length,attribute_fqn:attribute.fqn,values,
+  not_found:{connectError:missing.code,rawMessage:missing.rawMessage,kind:cause.kind,connectCode:cause.connectCode,httpStatus:cause.httpStatus,message:cause.message}}));
 }
