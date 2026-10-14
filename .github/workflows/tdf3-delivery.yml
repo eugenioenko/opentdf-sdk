@@ -16,7 +16,7 @@ permissions:
 jobs:
   offline-format-protocol:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -26,9 +26,18 @@ jobs:
           repository: eugenioenko/goalchemy
           ref: 9219a6a6a375b844b331ebc39aa95117942afb29
           path: goalchemy
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: opentdf/platform
+          ref: 4d9e555bddf0c850190680807118fbac1851a9aa
+          path: platform
       - name: Bootstrap version and diagnostic regressions
         run: python3 -m unittest discover -s sdk/tests/ci -p 'test_*.py' -v
       - run: bash sdk/scripts/delivery-offline.sh
+      - name: Generated protocol code is current
+        env:
+          GOTOOLCHAIN: go1.25.14
+        run: bash sdk/scripts/generate-protocol.sh --check
 
   real-kas-native-packages:
     name: ${{ matrix.target }} - Real KAS (${{ inputs.coverage || 'focused' }})

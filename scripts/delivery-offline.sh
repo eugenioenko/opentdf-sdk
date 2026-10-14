@@ -7,7 +7,7 @@ mkdir -p "$OUT"
 export GOTOOLCHAIN=go1.25.14
 cd "$SDK"
 timeout 180 go test -json ./src/tdf/... > "$OUT/format.jsonl"
-timeout 180 go test -json -run '^(Test_TDFReaderFail|Test_TDF_KAS_Allowlist|TestDiscovery|TestDPoPProofs|TestIsValidTdf|TestNormalizeURI|TestGetOrigin|TestParseBaseURLMatchesNetURL|TestGetKasAddressMatchesNetURL|TestIsPlatformEndpointMalformedMatchesNetURL)$' ./src > "$OUT/protocol.jsonl"
+timeout 180 go test -json -run '^(Test_TDFReaderFail|Test_TDF_KAS_Allowlist|TestDiscovery|TestDPoPProofs|TestIsValidTdf|TestNormalizeURI|TestGetOrigin|TestParseBaseURLMatchesNetURL|TestGetKasAddressMatchesNetURL|TestIsPlatformEndpointMalformedMatchesNetURL|TestCall|TestServiceErrorKinds|TestServiceErrorReplies|TestCreatingRequest|TestRetrieveObligationsFromMetadata)$' ./src > "$OUT/protocol.jsonl"
 python3 - "$SDK" "$OUT" <<'PY'
 import hashlib,json,pathlib,sys
 sdk,out=map(pathlib.Path,sys.argv[1:]);tests=[]

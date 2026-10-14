@@ -38,7 +38,12 @@ def install(target, base):
             shutil.copyfile(build/name, path)
         for path in source.glob('*.go'):
             shutil.copyfile(path, destination/path.name)
-        (destination/'go.mod').write_text('module delivery-native-go\n\ngo 1.25\n\nrequire goalchemyout v0.0.0\nreplace goalchemyout => ./package\n')
+        # The package's own requirements (the reference's protocol/go messages)
+        # and checksums, as a consumer module importing it would resolve them.
+        requirements = (package/'go.mod').read_text().split('\n', 1)[1]
+        (destination/'go.mod').write_text('module delivery-native-go\n'+requirements+'\nrequire goalchemyout v0.0.0\n\nreplace goalchemyout => ./package\n')
+        shutil.copyfile(package/'go.sum', destination/'go.sum')
+        run(['go', 'mod', 'tidy'])
         run(['go', 'build', '-trimpath', '-o', destination/'consumer', '.'])
         command = [str(destination/'consumer')]
     elif target == 'typescript':
@@ -53,6 +58,11 @@ def install(target, base):
         scope = destination/'node_modules/@opentdf-local'
         scope.mkdir(parents=True)
         (scope/'tdf3').symlink_to(package, target_is_directory=True)
+        # The package's dependencies, installed from the pinned delivery lock.
+        tooling = Path(env['TDF_BROWSER_TOOLING'])
+        for dependency in json.loads((package/'package.json').read_text())['dependencies']:
+            (destination/'node_modules'/dependency).parent.mkdir(parents=True, exist_ok=True)
+            (destination/'node_modules'/dependency).symlink_to(tooling/dependency, target_is_directory=True)
         # Type declarations must be usable through the package's public export.
         (destination/'type-consumer.ts').write_text("import {SDK, OpenTDFError, isValidTdf, encrypt, decrypt, type Options, type TDFOptions, type Manifest, type Config} from '@opentdf-local/tdf3';\nconst options:Options={clientId:'id',clientSecret:'secret',timeoutMillis:1000};\nconst tdfOptions:TDFOptions={attributes:['https://platform.invalid/attr/a/value/b'],segmentSize:16384};\nasync function use():Promise<void>{await using sdk=await SDK.create('https://platform.invalid',options);const object=await sdk.createTdf(new Uint8Array(),tdfOptions);const manifest:Manifest=await object.manifest();await object.close();const reader=await sdk.loadTdf(object.bytes,{kasAllowlist:[manifest.encryptionInformation.keyAccess[0].url]});try{await reader.init();}catch(e){if(e instanceof OpenTDFError)console.log(e.kind,e.httpStatus,e.requiredObligations);}await reader.close();void isValidTdf(object.bytes);}\nvoid use;\nconst cfg:Config={PlatformURL:'https://platform.invalid'};\nvoid encrypt(cfg,new Uint8Array());void decrypt(cfg,new Uint8Array());\n")
         (destination/'package.json').write_text('{"type":"module"}\n')
