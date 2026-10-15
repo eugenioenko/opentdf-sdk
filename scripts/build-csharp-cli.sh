@@ -19,7 +19,7 @@ cp "$SDK/src/hosts/csharp/cmd/otdfgc/Program.cs" "$BUILD/Program.cs"
 python3 - "$BUILD/otdfgc.csproj" "$GENERATED/lib" <<'PY'
 import pathlib,sys,html
 lib=pathlib.Path(sys.argv[2])
-pathlib.Path(sys.argv[1]).write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable><AssemblyName>otdfgc</AssemblyName><RootNamespace>otdfgc</RootNamespace><InvariantGlobalization>true</InvariantGlobalization></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>'+html.escape(str(lib/'OpenTDF.TDF3.dll'))+'</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>'+html.escape(str(lib/'System.IO.Hashing.dll'))+'</HintPath></Reference></ItemGroup></Project>\n')
+pathlib.Path(sys.argv[1]).write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable><AssemblyName>otdfgc</AssemblyName><RootNamespace>otdfgc</RootNamespace><InvariantGlobalization>true</InvariantGlobalization></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>'+html.escape(str(lib/'OpenTDF.TDF3.dll'))+'</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>'+html.escape(str(lib/'System.IO.Hashing.dll'))+'</HintPath></Reference><Reference Include="Google.Protobuf"><HintPath>'+html.escape(str(lib/'Google.Protobuf.dll'))+'</HintPath></Reference></ItemGroup></Project>\n')
 PY
 "$DOTNET" build "$BUILD/otdfgc.csproj" -c Release -o "$BUILD/bin" --nologo >&2
 cat > "$OUT" <<LAUNCHER

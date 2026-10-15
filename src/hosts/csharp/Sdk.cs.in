@@ -7,14 +7,18 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf;
+using Google.Protobuf.Reflection;
 using Generated=Goalchemy.Generated.GoProgram;
 using Rt;
 namespace OpenTDF;
 
 // The handle API of api-spec.md in C# idiom: option records with init setters,
 // Task methods taking a CancellationToken, IAsyncDisposable handles and one
-// OpenTdfException. The adapter maps names, idioms and errors only; the TDF
-// protocol executes in the generated assembly.
+// OpenTdfException. The platform service clients (Attributes, Namespaces, ...)
+// take and return the Google.Protobuf messages of OpenTDF.Protocol, which cross
+// to the generated assembly as protobuf JSON. The adapter maps names, idioms and
+// errors only; the TDF protocol executes in the generated assembly.
 
 /// The shared-source Error record: kind, op, the reference's message and the service fields.
 public sealed class OpenTdfException : Exception
@@ -30,6 +34,8 @@ public sealed class OpenTdfException : Exception
         ConnectCode=record?Values.Field(f,"ConnectCode"):"";ServiceMessage=record?Values.Field(f,"ServiceMessage"):"";KasUrl=record?Values.Field(f,"KASURL"):"";AssertionId=record?Values.Field(f,"AssertionID"):"";
         RequiredObligations=record&&f.TryGetValue("RequiredObligations",out var raw)&&raw is object[] a?Array.ConvertAll(a,v=>Values.Decode((string)v)):Array.Empty<string>();
     }
+    internal OpenTdfException(string kind,string message):base(message)
+    {Kind=kind;Op="";ConnectCode="";ServiceMessage="";KasUrl="";AssertionId="";RequiredObligations=Array.Empty<string>();}
     static bool IsRecord(Library.Failure failure,Dictionary<string,object> f)=>failure.Kind=="source"&&f.TryGetValue("Kind",out var kind)&&kind is string;
 }
 
@@ -129,12 +135,19 @@ public sealed class Reader : IAsyncDisposable, IDisposable
     public void Dispose()=>CloseAsync().GetAwaiter().GetResult();
 }
 
-/// The reference SDK handle; create it with Sdk.CreateAsync.
-public sealed class Sdk : IAsyncDisposable, IDisposable
+/// The reference SDK handle; create it with Sdk.CreateAsync. The platform
+/// service clients are the PlatformServices accessors.
+public sealed class Sdk : PlatformServices, IAsyncDisposable, IDisposable
 {
     internal const string TokenProviderName="access-token";
-    readonly Generated.SDK handle;readonly Callback.Registration[] callbacks;
-    Sdk(Generated.SDK handle,Callback.Registration[] callbacks){this.handle=handle;this.callbacks=callbacks;}
+    readonly Generated.SDK handle;readonly Callback.Registration[] callbacks;readonly JsonFormatter formatter;readonly JsonParser parser;
+    Sdk(Generated.SDK handle,Callback.Registration[] callbacks)
+    {
+        this.handle=handle;this.callbacks=callbacks;
+        var types=TypeRegistry.FromFiles(Files().ToArray());
+        formatter=new JsonFormatter(JsonFormatter.Settings.Default.WithTypeRegistry(types));
+        parser=new JsonParser(JsonParser.Settings.Default.WithTypeRegistry(types).WithIgnoreUnknownFields(true));
+    }
     internal Library.Options Call(CancellationToken ct)=>new(){Callbacks=callbacks,Cancellation=ct};
     static Callback.Registration[] Callbacks(TDF3.TokenProvider provider)=>provider==null?null:new[]{new Callback.Registration(TokenProviderName,request=>provider(new TDF3.ProviderRequest(request)))};
 
@@ -159,6 +172,18 @@ public sealed class Sdk : IAsyncDisposable, IDisposable
     public Task<IReadOnlyDictionary<string,object>> GetBaseKeyAsync(CancellationToken ct=default)=>Values.Run(()=>handle.GetBaseKey(Call(ct)),Values.Map);
     public Task StoreKasKeysAsync(string url,IEnumerable<KasPublicKey> keys,CancellationToken ct=default)
     {var set=new Generated.KasPublicKeySet{Keys=keys.Select(k=>new Generated.KasPublicKey{Pem=Values.Encode(k.Pem),Kid=Values.Encode(k.Kid),Alg=Values.Encode(k.Alg)}).ToArray()};return Values.Run(()=>handle.StoreKASKeys(Values.Encode(url),set,Call(ct)),v=>v);}
+    /// Sends one unary request to a platform service method, such as
+    /// ("policy.attributes.AttributesService", "ListAttributes"), with the request
+    /// and reply in protobuf JSON: the shared source's SDK.Call.
+    public Task<string> CallAsync(string service,string method,string request,CancellationToken ct=default)=>Values.Run(()=>handle.Call(Values.Encode(service??throw Library.invalid()),Values.Encode(method??throw Library.invalid()),Values.Encode(request??throw Library.invalid()),Call(ct)),Values.Decode);
+    private protected override async Task<T> ServiceCallAsync<T>(string service,string method,IMessage request,MessageDescriptor response,CancellationToken ct)
+    {
+        if(request==null)throw new OpenTdfException(Library.invalid());
+        string body;
+        try{body=formatter.Format(request);}catch(InvalidOperationException e){throw new OpenTdfException("invalid_input","marshal message: "+e.Message);}
+        var reply=await CallAsync(service,method,body,ct).ConfigureAwait(false);
+        try{return (T)parser.Parse(reply,response);}catch(Exception e)when(e is InvalidProtocolBufferException or InvalidJsonException or FormatException){throw new OpenTdfException("transport","unmarshal message: "+e.Message);}
+    }
     /// Releases the handle; later calls fail with kind "closed".
     public Task CloseAsync()=>Values.Run(handle.CloseAsync,v=>v);
     public async ValueTask DisposeAsync()=>await CloseAsync().ConfigureAwait(false);

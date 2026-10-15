@@ -11,12 +11,23 @@
       "nuget_content_hash": "ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA==",
       "license": "MIT",
       "role": "IEEE CRC32; official Microsoft NuGet API; runtime controls acceleration"
+    },
+    {
+      "name": "Google.Protobuf",
+      "version": "3.33.6",
+      "artifact": "google.protobuf.3.33.6.nupkg",
+      "url": "https://api.nuget.org/v3-flatcontainer/google.protobuf/3.33.6/google.protobuf.3.33.6.nupkg",
+      "sha256": "c592a57e56603821eb20098765b5b52152e861d7bf89820f79b1d3426decc790",
+      "nuget_content_hash": "K4u2j+rpxmeSbMbxOexIP8GR/k34PfcsI1LJUz8LbgJm2QaDJ1EjUHei/vii1GKDVVqF8oFApQ0wqW47Yb7wnQ==",
+      "license": "BSD-3-Clause",
+      "role": "protobuf messages and JSON codec of the platform service clients (OpenTDF.Protocol, PlatformServices)"
     }
   ],
   "licenses": [
     ".NET MIT",
     "Goalchemy Apache-2.0",
-    "System.IO.Hashing MIT"
+    "System.IO.Hashing MIT",
+    "Google.Protobuf BSD-3-Clause"
   ],
   "nativeCrypto": "System.Security.Cryptography (.NET8, OpenSSL on Linux)",
   "nativeHTTP": "System.Net.Http.HttpClient (.NET8)"
