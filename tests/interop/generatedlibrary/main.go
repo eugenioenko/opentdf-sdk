@@ -1,6 +1,8 @@
-// Independent stdlib-only native consumer of the actual generated package.
-// This module imports no shared SDK or compiler code. It drives the handle
-// API: one SDK per run, EncryptBytes/DecryptBytes, LoadTDF readers.
+// Independent native consumer of the actual generated package. This module
+// imports no shared SDK or compiler code; besides the standard library it
+// uses only the reference's protocol/go messages for the service clients. It
+// drives the handle API: one SDK per run, EncryptBytes/DecryptBytes, LoadTDF
+// readers and the platform service clients.
 package main
 
 import (
@@ -18,6 +20,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opentdf/platform/protocol/go/policy"
+	"github.com/opentdf/platform/protocol/go/policy/attributes"
+	"github.com/opentdf/platform/protocol/go/policy/namespaces"
 	g "goalchemyout"
 )
 
@@ -203,6 +208,8 @@ func main() {
 		write(filepath.Join(run, name+".presence"), []byte(strconv.FormatBool(hasMetadata)))
 	case "repeat":
 		repeat(ctx, client, cfg, callbacks)
+	case "services":
+		services(ctx, client, callbacks, run)
 	case "negative":
 		payload, e := client.DecryptBytes(ctx, read(filepath.Join(run, name+".tdf")), readerOptions(cfg), callbacks)
 		if e == nil || payload != nil {
@@ -269,4 +276,64 @@ func repeat(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks g.
 	if _, e := client.DecryptBytes(ctx, original, readerOptions(cfg), callbacks); e == nil {
 		panic("closed handle accepted a call")
 	}
+}
+
+// services is xtest's test_self.py through the generated service clients:
+// list namespaces, create a namespace and an attribute, read the attribute
+// back by id and in the namespace's list, and report a missing attribute's
+// Connect error.
+func services(ctx context.Context, client *g.SDK, callbacks g.Callbacks, run string) {
+	name := "gcgo" + strconv.FormatInt(time.Now().UnixNano(), 36) + ".com"
+	before, e := client.Namespaces(callbacks).ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
+	fail("list namespaces", e)
+	created, e := client.Namespaces(callbacks).CreateNamespace(ctx, &namespaces.CreateNamespaceRequest{Name: name})
+	fail("create namespace", e)
+	ns := created.GetNamespace()
+	if ns.GetId() == "" || ns.GetName() != name {
+		panic("created namespace")
+	}
+	after, e := client.Namespaces(callbacks).ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
+	fail("list namespaces again", e)
+	listed := false
+	for _, n := range after.GetNamespaces() {
+		listed = listed || n.GetId() == ns.GetId()
+	}
+	if !listed || len(after.GetNamespaces()) != len(before.GetNamespaces())+1 {
+		panic("namespace not listed")
+	}
+	attr, e := client.Attributes(callbacks).CreateAttribute(ctx, &attributes.CreateAttributeRequest{
+		NamespaceId: ns.GetId(), Name: "free", Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF, Values: []string{"1", "2", "3"},
+	})
+	fail("create attribute", e)
+	got, e := client.Attributes(callbacks).GetAttribute(ctx, &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_AttributeId{AttributeId: attr.GetAttribute().GetId()},
+	})
+	fail("get attribute", e)
+	a := got.GetAttribute()
+	var values []string
+	for _, v := range a.GetValues() {
+		values = append(values, v.GetValue())
+	}
+	if a.GetFqn() != "https://"+name+"/attr/free" || a.GetRule() != policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF || strings.Join(values, ",") != "1,2,3" || a.GetNamespace().GetName() != name {
+		panic("attribute read back: " + a.GetFqn())
+	}
+	inNamespace, e := client.Attributes(callbacks).ListAttributes(ctx, &attributes.ListAttributesRequest{Namespace: name})
+	fail("list attributes", e)
+	if len(inNamespace.GetAttributes()) != 1 || inNamespace.GetAttributes()[0].GetId() != a.GetId() {
+		panic("attribute not listed")
+	}
+	_, e = client.Attributes(callbacks).GetAttribute(ctx, &attributes.GetAttributeRequest{
+		Identifier: &attributes.GetAttributeRequest_AttributeId{AttributeId: "00000000-0000-0000-0000-000000000000"},
+	})
+	var missing *g.Error
+	if !errors.As(e, &missing) || missing.ConnectCode != "not_found" || missing.HTTPStatus != 404 {
+		panic(fmt.Sprintf("missing attribute error: %v", e))
+	}
+	report, e := json.Marshal(map[string]any{
+		"namespace": name, "namespaces_before": len(before.GetNamespaces()), "namespaces_after": len(after.GetNamespaces()),
+		"attribute_fqn": a.GetFqn(), "values": values,
+		"not_found": map[string]any{"kind": missing.Kind, "connectCode": missing.ConnectCode, "httpStatus": missing.HTTPStatus, "message": missing.Message},
+	})
+	fail("report", e)
+	write(filepath.Join(run, "services.json"), report)
 }

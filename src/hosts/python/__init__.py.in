@@ -1,16 +1,22 @@
 """OpenTDF SDK: the handle API of api-spec.md in Python idiom (snake_case
 keyword options, str/bytes, int sizes, one OpenTDFError, sync methods with
 async twins) plus the deprecated per-call encrypt/decrypt façade. The adapter
-maps names and errors only; the TDF protocol executes in the generated code."""
+maps names and errors only; the TDF protocol executes in the generated code.
+The platform service clients take and return the protobuf messages of
+opentdf_tdf3.protocol, which cross to the generated code as protobuf JSON."""
 from dataclasses import dataclass, fields
 import asyncio
+import importlib
 import json
+import re
+from google.protobuf import json_format, message_factory
 from concurrent.futures import Future, TimeoutError as _FutureTimeout
 from typing import Any, Generic, TypeVar, Callable, Awaitable
 T = TypeVar('T')
 from . import _generated
 from ._generated import rt
 from ._generated.rt.runtime.lib_callback_request import ProviderRejected, ProviderRequest
+from .services import SERVICES
 
 TOKEN_PROVIDER_NAME = 'access-token'
 
@@ -313,12 +319,62 @@ class SDK:
         except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
     def store_kas_keys(self, url, keys, timeout=None): return _wait(self._store(url, keys), timeout)
     async def store_kas_keys_async(self, url, keys): return await _await(self._store(url, keys))
+    def _service_call(self, service, method, request):
+        try: return self._handle.Call(_text(service), _text(method), _text(request), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def call(self, service, method, request, timeout=None):
+        """Sends one unary request to a platform service method, such as
+        ('policy.attributes.AttributesService', 'ListAttributes'), with the
+        request and reply in protobuf JSON: the shared source's SDK.Call."""
+        return _wait(self._service_call(service, method, request), timeout, _decode)
+    async def call_async(self, service, method, request): return await _await(self._service_call(service, method, request), _decode)
     def close(self, timeout=None): return _wait(self._handle.close(), timeout)
     async def close_async(self): return await _await(self._handle.close())
     def __enter__(self): return self
     def __exit__(self, *exc): self.close(); return False
     async def __aenter__(self): return self
     async def __aexit__(self, *exc): await self.close_async(); return False
+
+
+def _snake(name):
+    return '_'.join(w.lower() for w in re.findall(r'[A-Z]{2,}s?(?=[A-Z]|$)|[A-Z][a-z0-9]*', name))
+
+
+def _service_method(service, method):
+    response_class = message_factory.GetMessageClass(method.output_type)
+    request_class = message_factory.GetMessageClass(method.input_type)
+    def encode(request):
+        if request is None: request = request_class()
+        if getattr(getattr(request, 'DESCRIPTOR', None), 'full_name', None) != method.input_type.full_name:
+            raise TypeError(method.name + ' takes a ' + method.input_type.full_name + ' message')
+        return json.dumps(json_format.MessageToDict(request), separators=(',', ':'))
+    def decode(text):
+        response = response_class()
+        json_format.Parse(_decode(text), response, ignore_unknown_fields=True)
+        return response
+    def call(self, request=None, *, timeout=None):
+        return _wait(self._sdk._service_call(service, method.name, encode(request)), timeout, decode)
+    async def call_async(self, request=None):
+        return await _await(self._sdk._service_call(service, method.name, encode(request)), decode)
+    call.__doc__ = 'The reference\'s ' + method.name + ' of ' + service + ': ' + method.input_type.name + ' in, ' + method.output_type.name + ' out.'
+    call_async.__doc__ = 'The coroutine twin of ' + _snake(method.name) + '.'
+    return call, call_async
+
+
+def _service_client(accessor, module, service):
+    descriptor = importlib.import_module(module).DESCRIPTOR.services_by_name[service.rsplit('.', 1)[1]]
+    members = {'__doc__': 'The ' + service + ' client: one method per unary RPC taking and returning its protobuf messages, with *_async twins.',
+               '__init__': lambda self, sdk: setattr(self, '_sdk', sdk), 'descriptor': descriptor}
+    for method in descriptor.methods:
+        call, call_async = _service_method(service, method)
+        members[_snake(method.name)] = call
+        members[_snake(method.name) + '_async'] = call_async
+    return type(''.join(w.capitalize() for w in accessor.split('_')) + 'Client', (), members)
+
+
+for _accessor, _module, _service in SERVICES:
+    setattr(SDK, _accessor, property((lambda client: lambda self: client(self))(_service_client(_accessor, _module, _service)),
+                                    doc='The ' + _service + ' client of this SDK.'))
 
 
 def _free(call, convert=lambda v: v, timeout=None):

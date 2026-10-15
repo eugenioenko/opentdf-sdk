@@ -56,6 +56,7 @@ type fakePlatform struct {
 	lastRewrap     map[string]any
 	lastDPoP       string
 	lastAuth       string
+	lastBody       string
 }
 
 func newFakePlatform(t *testing.T) *fakePlatform {
@@ -243,6 +244,10 @@ func (f *fakePlatform) handle(w http.ResponseWriter, r *http.Request) {
 		f.rewrap(w, body, mode)
 	case r.URL.Path == "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers":
 		f.registryCalls.Add(1)
+		f.mu.Lock()
+		f.lastAuth = r.Header.Get("Authorization")
+		f.lastBody = string(body)
+		f.mu.Unlock()
 		if mode == "registry-error" {
 			writeJSON(w, 500, map[string]any{"code": "internal", "message": "registry down"})
 			return

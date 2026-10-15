@@ -43,7 +43,7 @@ Shared source, `src/` (module `opentdf-local/sdk`, imported as
 | `sdk/tdf/chunked` | out-of-order segment writer | `chunked_writer.go`, `chunked_options.go` |
 | `sdk/bulk` | bulk decryption | `bulk.go` |
 | `sdk/auth` | token sources, DPoP proofs, signed request tokens | `auth/`, `auth/oauth/`, `dpop_key.go`, `idp_*.go` |
-| `sdk/protocol/...` | generated messages and Connect clients from `../platform/protocol` | `sdkconnect/`, `protocol/go` |
+| `sdk/protocol/...` | generated messages and Connect clients from the `../platform/service` protos | `sdkconnect/`, `protocol/go` |
 | `sdk/experimental/tdf` | experimental writer and reader | `experimental/tdf/` |
 
 The export root for Goalchemy is `src/library`, which re-exports the public
@@ -145,23 +145,9 @@ func (s *SDK) AttributeExists(ctx context.Context, fqn string) (bool, error)
 func (s *SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error)
 func (s *SDK) Auth() *AuthClient // AccessToken(ctx) (AccessToken, error)
 
-// Service clients (generated; see Service clients).
-func (s *SDK) Actions() *actions.ActionServiceClient
-func (s *SDK) Attributes() *attributes.AttributesServiceClient
-func (s *SDK) Authorization() *authorization.AuthorizationServiceClient
-func (s *SDK) AuthorizationV2() *authorizationv2.AuthorizationServiceClient
-func (s *SDK) EntityResolution() *entityresolution.EntityResolutionServiceClient
-func (s *SDK) EntityResolutionV2() *entityresolutionv2.EntityResolutionServiceClient
-func (s *SDK) KeyAccessServerRegistry() *kasregistry.KeyAccessServerRegistryServiceClient
-func (s *SDK) KeyManagement() *keymanagement.KeyManagementServiceClient
-func (s *SDK) Namespaces() *namespaces.NamespaceServiceClient
-func (s *SDK) Obligations() *obligations.ObligationsServiceClient
-func (s *SDK) RegisteredResources() *registeredresources.RegisteredResourcesServiceClient
-func (s *SDK) ResourceMapping() *resourcemapping.ResourceMappingServiceClient
-func (s *SDK) SubjectMapping() *subjectmapping.SubjectMappingServiceClient
-func (s *SDK) DynamicValueMapping() *dynamicvaluemapping.DynamicValueMappingServiceClient
-func (s *SDK) Unsafe() *unsafe.UnsafeServiceClient
-func (s *SDK) WellKnown() *wellknown.WellKnownServiceClient
+// Service clients: one generic JSON call in the shared source; the hosts'
+// typed clients are built on it (see Service clients).
+func (s *SDK) Call(ctx context.Context, service, method, request string) (string, error)
 ```
 
 `Client` is the interface with exactly this method set; `*SDK` implements
@@ -338,35 +324,89 @@ sources are supplied as PEM.
 
 ## Service clients
 
-Generated from `../platform/protocol` by `protoc-gen-goalchemy` into
-`src/protocol/<service>` and wired to the SDK's authenticated transport:
-Bearer or DPoP header, nonce retry, timeout, endpoint overrides.
+Messages cross the Goalchemy boundary as protobuf JSON. The shared source
+types only what it reads itself; each host types the rest with its own
+ecosystem's protobuf messages and JSON codec, generated from the same pinned
+protos.
 
-Shared source shape (reference `sdkconnect` plus `protocol/go`):
+Shared source (`src/connect.go`, `src/protocol/`):
+
+- `scripts/generate-protocol.sh` runs `protoc-gen-goalchemy` with `include=`
+  on the `../platform/service` protos for `kas.AccessService` `Rewrap` and
+  `PublicKey` (and `UnsignedRewrapRequest`), `GetWellKnownConfiguration`,
+  `ListKeyAccessServers`, and the messages the Phase 3 helpers read
+  (`ListAttributes`, `GetAttribute`, `GetAttributeValuesByFqns`,
+  `GetEntitlements`). The KAS client, discovery and the registry allowlist
+  call these generated clients, as the reference calls `kasconnect` and
+  `sdkconnect`.
+- Every generated client is a `connect.Client` whose `HTTPClient` is the
+  SDK's authenticated transport (`httpClient.Do`): the reference's token
+  interceptor and DPoP transport (Bearer or DPoP header, proof with `ath`,
+  nonce retry), the per-request timeout and the response bound. Nothing is
+  package-level; each call builds its `connect.Client` from the SDK
+  instance, as the reference builds its KAS clients per request.
+- The generic boundary call reaches every other method:
+
+  ```go
+  func (s *SDK) Call(ctx context.Context, service, method, request string) (string, error)
+  ```
+
+  `service` is one of the 16 services behind the reference's `sdkconnect`
+  clients, by protobuf name (`policy.attributes.AttributesService`, ...,
+  `policy.obligations.Service`, `wellknownconfiguration.WellKnownService`);
+  `method` is the RPC name; `request` and the result are protobuf JSON
+  objects. It POSTs Connect unary JSON through the same transport. The two
+  entity resolution services are routed through the entity resolution
+  connection (the platform endpoint until `WithCustomEntityResolutionConnection`
+  lands). `Call` is part of `Client`.
+- A failure the service reports is an `Error` with `ConnectCode` (the Connect
+  code name), `ServiceMessage`, `HTTPStatus`, and `Message` worded as
+  connect-go's `Error()` (`not_found: attribute not found`). `Kind` is
+  `KindAuth` for `unauthenticated` and `permission_denied`, `KindInvalidInput`
+  for `invalid_argument`, `not_found`, `already_exists`,
+  `failed_precondition` and `out_of_range`, `KindCanceled` and
+  `KindDeadlineExceeded` for those codes and `KindTransport` otherwise; the
+  KAS calls keep `KindRewrapForbidden` and `KindKASRequest`. A reply the
+  client cannot read (wrong content type, malformed JSON) is
+  `KindTransport`; a failure of the SDK's own transport (token source, DPoP,
+  connection) keeps its `Error`.
+- Streaming RPCs are not callable (none of the 16 services has one).
+
+Per-target type sources:
+
+| Target | Message types | JSON codec | Service clients | Errors |
+| --- | --- | --- | --- | --- |
+| Go | the reference's `github.com/opentdf/platform/protocol/go` v0.41.0 (identical to the pinned platform revision) | `protojson`, `DiscardUnknown` | `s.Attributes()` etc. returning the reference's `sdkconnect` interfaces (`AttributesServiceClient`, ...), generated from `sdkconnect` by `scripts/generate-service-clients.py`; each method `(ctx, *Req) (*Resp, error)` | `*Error` with `ConnectCode` (no connect-go dependency) |
+| TypeScript | protobuf-es v2 (`protoc-gen-es` 2.2.5, as the web SDK; runtime `@bufbuild/protobuf` 2.15.0) under `@opentdf-local/tdf3/protocol/*` | `toJsonString`/`fromJsonString` with `ignoreUnknownFields` | `sdk.transport` is a Connect-ES (`@connectrpc/connect` 2.0.2) `Transport`, so `createClient(AnyService, sdk.transport)` works; `sdk.attributes` etc. are pre-made clients | `ConnectError` from the Transport (code from `connectCode`, or from the kind; the `OpenTDFError` is its `cause`); `sdk.call` throws `OpenTDFError` |
+| Python | protobuf Python (`protoc` 33.6) under `opentdf_tdf3.protocol`, runtime `protobuf` 6.33.6 | `json_format`, `ignore_unknown_fields=True` | `sdk.attributes.list_attributes(ListAttributesRequest(...))`, snake_case methods with `*_async` twins, built from the service descriptors | `OpenTDFError` with `connect_code` |
+| Java, C#, Rust, Swift | part 2 | | | |
+| C | part 2: JSON strings through the generic call (typed C later, #29) | | | |
+
+Generated host code is committed and `scripts/generate-protocol.sh --check`
+proves it current in CI. Per-call headers and deadlines come from the
+caller's context (Go), `AbortSignal`/`timeoutMs` (TypeScript) or `timeout=`
+(Python); Connect-ES request headers are not forwarded.
+
+Go:
 
 ```go
-resp, err := s.Attributes().GetAttributeValuesByFqns(ctx, &attributes.GetAttributeValuesByFqnsRequest{
-	Fqns:      fqns,
-	WithValue: &attributes.AttributeValueSelector{WithKeyAccessGrants: true},
-})
-if connect.CodeOf(err) == connect.CodeNotFound { ... }
+attrs, err := s.Attributes().ListAttributes(ctx, &attributes.ListAttributesRequest{Namespace: "example.com"})
+var e *opentdf.Error
+if errors.As(err, &e) && e.ConnectCode == "not_found" { ... }
 ```
 
-Rules:
+TypeScript:
 
-- Message types are the generated structs with protojson field names; they
-  cross the boundary as generated value types per target (the same
-  machinery as `protoc-gen-goalchemy` uses for the `proto_platform`
-  fixture).
-- Each client is a handle on the SDK instance; it has one method per unary
-  RPC taking the request message and returning the response message or an
-  error. Streaming RPCs are not generated (none of the policy services need
-  them).
-- Service errors are `*connect.Error` in shared source and surface as
-  `Error{Kind: KindTransport | KindAuth | ..., ConnectCode: "not_found"}`
-  with `Message` equal to the Connect message.
-- Per-call headers and deadlines come from `ctx`; there is no per-client
-  configuration beyond the endpoint overrides in `Options`.
+```ts
+const { attributes } = await sdk.attributes.listAttributes({ namespace: 'example.com' });
+const kas = createClient(KeyAccessServerRegistryService, sdk.transport);
+```
+
+Python:
+
+```python
+attrs = sdk.attributes.list_attributes(ListAttributesRequest(namespace='example.com'))
+```
 
 ## Target idioms
 
@@ -382,7 +422,7 @@ rule; the examples show `New`, one encrypt, one decrypt and one service call.
 | Options | struct plus `With*` | object literal | keyword arguments | builder | record with `init` setters | struct with `Default` | struct, zero-initialised | struct with defaults |
 | Errors | `*Error`, sentinels | `OpenTDFError` with `kind`, `message`, `httpStatus`, `requiredObligations` | `OpenTDFError` exception | `OpenTDFException` | `OpenTdfException` | `Error` enum carrying the fields | status code + `otdf_error_get(sdk)` | `OpenTDFError` enum |
 | Reader | `*Reader` (`io.Reader` etc.) | `Reader` with `stream()`, `readAt`, `seek`, async iteration | file-like `Reader` | `Reader` with `asInputStream()` | `Reader : Stream` | `Reader: Read + Seek` | `otdf_reader_*` | `Reader: AsyncSequence` |
-| Service clients | `s.Attributes()` returning generated client | `sdk.attributes.getAttribute(req)` | `sdk.attributes.get_attribute(req)` | `sdk.attributes().getAttribute(req)` | `sdk.Attributes.GetAttributeAsync(req)` | `sdk.attributes().get_attribute(req)` | `otdf_attributes_get_attribute(sdk, req_json, &resp_json)` | `sdk.attributes.getAttribute(req)` |
+| Service clients | `s.Attributes().GetAttribute(ctx, req)` over `protocol/go` types | `sdk.attributes.getAttribute(req)` (Connect-ES client) | `sdk.attributes.get_attribute(req)` (protobuf messages) | `sdk.attributes().getAttribute(req)` | `sdk.Attributes.GetAttributeAsync(req)` | `sdk.attributes().get_attribute(req)` | `otdf_attributes_get_attribute(sdk, req_json, &resp_json)` | `sdk.attributes.getAttribute(req)` |
 | Release | `Close()` | `await sdk.close()`, `await using` | `close()`, `with` | `close()`, try-with-resources | `DisposeAsync` | `close()`, drop warns | `otdf_sdk_close` | `close()`, deinit warns |
 
 Go:
@@ -609,3 +649,28 @@ a string map) apply to these targets too.
   `deadline_exceeded` for a Java `Duration`, `canceled` for a C#
   `CancellationToken`, a dropped Rust future, a C `otdf_call` flag and a
   cancelled Swift `Task`.
+
+### Deviations recorded by Phase 3 part 1
+
+Decided with the user: messages cross the boundary as protobuf JSON, not as
+generated value types (generated messages hold pointers, maps and oneof
+interfaces the value boundary does not carry, and generating every message
+on every target would dominate Swift and Rust build times).
+
+- The shared source exposes one `SDK.Call(ctx, service, method, request)`
+  instead of a handle per service client; the Go, TypeScript and Python
+  accessors are built over it in the host adapters with each ecosystem's
+  protobuf types (table above). `Client` gains `Call`.
+- Go accessors are methods, `s.Attributes(callbacks...)`, rather than the
+  reference's struct fields (a generated handle cannot gain fields); they
+  return the reference's `sdkconnect` interfaces. `EntityResoution` (the
+  reference's spelling) and `EntityResolution` both exist; the reference's
+  unexported `wellknownConfiguration` is `WellKnown`.
+- Go service errors are `*Error` with `ConnectCode`, not `*connect.Error`:
+  the generated package does not depend on connect-go.
+- The TypeScript Transport rejects with `ConnectError` (Connect-ES clients
+  and interceptors expect it) whose `cause` is the `OpenTDFError`; `sdk.call`
+  and every other method throw `OpenTDFError`.
+- The health check (`grpc.health.v1.Health/Check`, not in the platform
+  protos) is sent as JSON through the same Connect client as `Call`.
+

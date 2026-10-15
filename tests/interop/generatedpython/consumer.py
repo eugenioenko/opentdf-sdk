@@ -1,11 +1,15 @@
 """Independent installed-package consumer of the handle API: one SDK per run,
-create_tdf/decrypt_bytes, load_tdf readers, 100 round trips, and the offline
-controlled checks the Go consumer runs. Stock references are test runners only."""
+create_tdf/decrypt_bytes, load_tdf readers, 100 round trips, the platform
+service clients, and the offline controlled checks the Go consumer runs. Stock
+references are test runners only."""
 import json,sys,time,urllib.request,urllib.parse,hashlib,base64,secrets,threading,asyncio,http.server,ssl,subprocess,tempfile
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization,hashes
 from cryptography.hazmat.primitives.asymmetric import rsa,ec,padding,utils
 from opentdf_tdf3 import SDK,AccessToken,OpenTDFError,ProviderRejected,is_valid_tdf,version,supported_features
+from opentdf_tdf3.protocol.policy import objects_pb2
+from opentdf_tdf3.protocol.policy.attributes import attributes_pb2
+from opentdf_tdf3.protocol.policy.namespaces import namespaces_pb2
 run=Path(sys.argv[2]);mode,name=sys.argv[3:5]
 ATTRIBUTE='https://example.com/attr/attr1/value/value1'
 def b64(v):return base64.urlsafe_b64encode(v).rstrip(b'=').decode()
@@ -207,6 +211,34 @@ def controlled():
  assert is_valid_tdf(archive) and version() and 'hexless' in supported_features()
  (run/'controlled-negatives.json').write_text(json.dumps({'scope':'controlled discovery, transport, allowlist, option and handle checks through actual generated exports; no mock positive KAS','negatives':rows},indent=2)+'\n')
 
+# services is xtest's test_self.py through the service clients: list
+# namespaces, create a namespace and an attribute, read the attribute back by
+# id, through the namespace's list and through the raw JSON call, and check a
+# missing attribute's error.
+def services(sdk):
+ ns_name='gcpy'+secrets.token_hex(6)+'.com'
+ before=sdk.namespaces.list_namespaces(namespaces_pb2.ListNamespacesRequest())
+ namespace=sdk.namespaces.create_namespace(namespaces_pb2.CreateNamespaceRequest(name=ns_name)).namespace
+ assert namespace.id and namespace.name==ns_name,'created namespace'
+ after=sdk.namespaces.list_namespaces()
+ assert any(n.id==namespace.id for n in after.namespaces) and len(after.namespaces)==len(before.namespaces)+1,'namespace listed'
+ created=sdk.attributes.create_attribute(attributes_pb2.CreateAttributeRequest(namespace_id=namespace.id,name='free',rule=objects_pb2.ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,values=['1','2','3']))
+ attribute=sdk.attributes.get_attribute(attributes_pb2.GetAttributeRequest(attribute_id=created.attribute.id)).attribute
+ values=[v.value for v in attribute.values]
+ assert attribute.fqn=='https://'+ns_name+'/attr/free' and attribute.rule==objects_pb2.ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF and values==['1','2','3'] and attribute.namespace.name==ns_name,'attribute read back'
+ listed=sdk.attributes.list_attributes(attributes_pb2.ListAttributesRequest(namespace=ns_name))
+ assert len(listed.attributes)==1 and listed.attributes[0].id==attribute.id,'attribute listed'
+ raw=json.loads(sdk.call('policy.attributes.AttributesService','GetAttribute',json.dumps({'attributeId':attribute.id})))
+ assert raw['attribute']['fqn']==attribute.fqn,'raw JSON call'
+ assert asyncio.run(sdk.attributes.get_attribute_async(attributes_pb2.GetAttributeRequest(attribute_id=attribute.id))).attribute.fqn==attribute.fqn,'async client'
+ try:sdk.attributes.get_attribute(attributes_pb2.GetAttributeRequest(attribute_id='00000000-0000-0000-0000-000000000000'));raise AssertionError('missing attribute')
+ except OpenTDFError as e:missing=e
+ assert missing.connect_code=='not_found' and missing.http_status==404,'missing attribute error'
+ try:sdk.attributes.get_attribute(namespaces_pb2.ListNamespacesRequest());raise AssertionError('wrong request type')
+ except TypeError:pass
+ (run/'services.json').write_text(json.dumps({'namespace':ns_name,'namespaces_before':len(before.namespaces),'namespaces_after':len(after.namespaces),'attribute_fqn':attribute.fqn,'values':values,
+  'not_found':report(missing)}))
+
 try:
  if mode=='controlled':
   run.mkdir(parents=True,exist_ok=True);controlled()
@@ -233,6 +265,7 @@ try:
     try:sdk.decrypt_bytes((run/(name+'.tdf')).read_bytes(),**reader_options(cfg));raise AssertionError('negative plaintext')
     except OpenTDFError as e:(run/(name+'.error.json')).write_text(json.dumps(report(e)))
    elif mode=='repeat':repeat(sdk,cfg)
+   elif mode=='services':services(sdk)
    else:raise AssertionError('unknown mode')
  print('PASS generated native library',mode,name)
 except OpenTDFError as e:

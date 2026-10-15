@@ -89,6 +89,25 @@ Manifests and policies are returned keyed by the reference's JSON tags
 Strings are UTF-8 `string`s and payloads `Uint8Array`s; the raw generated
 `dist/main.js` keeps binary Go strings and bigint sizes.
 
+## Service clients
+
+`sdk.transport` is a Connect-ES `Transport` over the SDK's authenticated
+transport (protobuf JSON through `sdk.call`), and `sdk.attributes`,
+`sdk.namespaces` and the other services are `createClient` clients over it.
+The messages are protobuf-es v2, exported as
+`@opentdf-local/tdf3/protocol/<path>_pb.js`. Failures are `ConnectError`
+whose `cause` is the `OpenTDFError`. The package depends on
+`@bufbuild/protobuf` and `@connectrpc/connect`.
+
+```ts
+import { createClient } from '@connectrpc/connect';
+import { KeyAccessServerRegistryService } from '@opentdf-local/tdf3/protocol/policy/kasregistry/key_access_server_registry_pb.js';
+
+const { attributes } = await sdk.attributes.listAttributes({ namespace: 'example.com' });
+const registry = createClient(KeyAccessServerRegistryService, sdk.transport);
+const json = await sdk.call('policy.namespaces.NamespaceService', 'ListNamespaces', '{}');
+```
+
 ## Errors
 
 Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the

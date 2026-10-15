@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	"github.com/eugenioenko/goalchemy/lib/crypto"
+	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
+	"opentdf-local/sdk/src/protocol/kas"
 )
 
 // Ported from TestCreatingRequest: the signed request token carries the
@@ -26,21 +28,15 @@ func TestCreatingRequest(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := newKASClient(nil, signer, &fakeClock{now: 1700000000}, []string{"https://example.com/obl/a/value/b"})
-	request := []*rewrapPolicyRequest{{
-		Policy: rewrapPolicy{ID: "policy", Body: "cG9saWN5"},
-		KeyAccessObjects: []*rewrapKeyAccessObject{{KeyAccessObjectID: "kao-0", KeyAccessObject: rewrapKeyAccess{
-			KeyType: "type1", KasURL: "https://kas.example.org", Protocol: "protocol one", WrappedKey: []byte("wrapped"),
-			PolicyBinding: PolicyBinding{Alg: "HS256", Hash: "somehash"}, EncryptedMetadata: "encrypted",
+	request := []*kas.UnsignedRewrapRequest_WithPolicyRequest{{
+		Policy: &kas.UnsignedRewrapRequest_WithPolicy{Id: "policy", Body: "cG9saWN5"},
+		KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{{KeyAccessObjectId: "kao-0", KeyAccessObject: &kas.KeyAccess{
+			KeyType: "type1", KasUrl: "https://kas.example.org", Protocol: "protocol one", WrappedKey: []byte("wrapped"),
+			PolicyBinding: &kas.PolicyBinding{Algorithm: "HS256", Hash: "somehash"}, EncryptedMetadata: "encrypted",
 		}}},
 	}}
-	body, err := client.getRewrapRequest(request, "-----BEGIN PUBLIC KEY-----\nx\n-----END PUBLIC KEY-----")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var req struct {
-		SignedRequestToken string `json:"signedRequestToken"`
-	}
-	if err := json.Unmarshal(body, &req); err != nil || req.SignedRequestToken == "" {
+	req, err := client.getRewrapRequest(request, "-----BEGIN PUBLIC KEY-----\nx\n-----END PUBLIC KEY-----")
+	if err != nil || req.GetSignedRequestToken() == "" {
 		t.Fatal("didn't produce a signed request token", err)
 	}
 	parts := strings.Split(req.SignedRequestToken, ".")
@@ -87,7 +83,7 @@ func TestCreatingRequest(t *testing.T) {
 	if unsigned.KeyAccess["url"] != "https://kas.example.org" || unsigned.Policy != "cG9saWN5" {
 		t.Fatal("legacy fields", c.RequestBody)
 	}
-	headers, err := client.rewrapContextHeaders()
+	headers, err := client.newConnectRewrapRequestHeaders()
 	if err != nil || headers[0] != additionalRewrapContextHeader {
 		t.Fatal(err)
 	}
@@ -234,7 +230,11 @@ func TestRetrieveObligationsFromMetadata(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return k.retrieveObligationsFromMetadata(v)
+		metadata := map[string]jsonvalue.Value{}
+		for _, key := range v.Keys() {
+			metadata[key] = v.Get(key)
+		}
+		return k.retrieveObligationsFromMetadata(metadata)
 	}
 	if got := parse(`{"X-Required-Obligations":["a","b"]}`); len(got) != 2 || got[0] != "a" || got[1] != "b" {
 		t.Fatal(got)
@@ -246,6 +246,9 @@ func TestRetrieveObligationsFromMetadata(t *testing.T) {
 		t.Fatal(got)
 	}
 	if got := parse(`{"X-Required-Obligations":[]}`); len(got) != 0 {
+		t.Fatal(got)
+	}
+	if got := k.retrieveObligationsFromMetadata(nil); len(got) != 0 {
 		t.Fatal(got)
 	}
 }

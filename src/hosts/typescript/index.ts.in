@@ -3,7 +3,11 @@
 // OpenTDFError) plus the deprecated encrypt/decrypt façade. It maps names and
 // errors only; the TDF protocol executes in the compiler output.
 import * as generated from './main.js';
+import { fromJsonString, toJsonString, create, type DescMessage, type DescMethodStreaming, type DescMethodUnary, type MessageInitShape } from '@bufbuild/protobuf';
+import { Code, ConnectError, type ContextValues, type StreamResponse, type Transport, type UnaryResponse } from '@connectrpc/connect';
+import { platformServices, type PlatformServices } from './services.js';
 export type { Config, KASRoute, EncryptOptions, Failure } from './main.js';
+export type { PlatformServices } from './services.js';
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 function decode(s: unknown): string {
@@ -321,14 +325,83 @@ export class Reader {
   [Symbol.asyncDispose](): Promise<void> { return this.close(); }
 }
 
-/** The reference's SDK handle; create it with SDK.create. */
+const connectCodes: Record<string, Code> = {
+  canceled: Code.Canceled, unknown: Code.Unknown, invalid_argument: Code.InvalidArgument, deadline_exceeded: Code.DeadlineExceeded,
+  not_found: Code.NotFound, already_exists: Code.AlreadyExists, permission_denied: Code.PermissionDenied, resource_exhausted: Code.ResourceExhausted,
+  failed_precondition: Code.FailedPrecondition, aborted: Code.Aborted, out_of_range: Code.OutOfRange, unimplemented: Code.Unimplemented,
+  internal: Code.Internal, unavailable: Code.Unavailable, data_loss: Code.DataLoss, unauthenticated: Code.Unauthenticated,
+};
+const kindCodes: Record<string, Code> = { canceled: Code.Canceled, deadline_exceeded: Code.DeadlineExceeded, auth: Code.Unauthenticated, invalid_input: Code.InvalidArgument };
+
+/**
+ * The ConnectError a Connect-ES client sees for a failed call: the service's
+ * code and message when the service answered, otherwise a code for the SDK
+ * error's kind. The OpenTDFError is the cause.
+ */
+function connectError(e: unknown): ConnectError {
+  if (!(e instanceof OpenTDFError)) return ConnectError.from(e);
+  const code = connectCodes[e.connectCode] ?? kindCodes[e.kind] ?? Code.Unavailable;
+  return new ConnectError(e.connectCode ? e.serviceMessage : e.message, code, undefined, undefined, e);
+}
+
+function callSignal(signal: AbortSignal | undefined, timeoutMs: number | undefined): AbortSignal | undefined {
+  if (timeoutMs === undefined || timeoutMs <= 0) return signal;
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
+
+/**
+ * A Connect-ES Transport whose unary calls go through SDK.call, the SDK's
+ * authenticated transport: messages cross as protobuf JSON, unknown fields
+ * in replies are ignored. Request headers are not forwarded; streaming
+ * methods are unimplemented, as the platform services have none.
+ */
+function sdkTransport(sdk: SDK): Transport {
+  return {
+    async unary<I extends DescMessage, O extends DescMessage>(method: DescMethodUnary<I, O>, signal: AbortSignal | undefined, timeoutMs: number | undefined, _header: HeadersInit | undefined, input: MessageInitShape<I>, _contextValues?: ContextValues): Promise<UnaryResponse<I, O>> {
+      try {
+        const request = toJsonString(method.input, create(method.input, input));
+        const response = await sdk.call(method.parent.typeName, method.name, request, { signal: callSignal(signal, timeoutMs) });
+        const message = fromJsonString(method.output, response, { ignoreUnknownFields: true });
+        return { stream: false, service: method.parent, method, header: new Headers(), message, trailer: new Headers() };
+      } catch (e) {
+        throw connectError(e);
+      }
+    },
+    async stream<I extends DescMessage, O extends DescMessage>(method: DescMethodStreaming<I, O>): Promise<StreamResponse<I, O>> {
+      throw new ConnectError(method.parent.typeName + '/' + method.name + ': streaming methods are not supported', Code.Unimplemented);
+    },
+  };
+}
+
+/**
+ * The reference's SDK handle; create it with SDK.create. The platform service
+ * clients (attributes, namespaces, ...) are Connect-ES clients over
+ * sdk.transport.
+ */
+export interface SDK extends PlatformServices {}
 export class SDK {
   readonly #handle: generated.SDK;
   readonly #calls: Callbacks | undefined;
+  /** A Connect-ES Transport over the SDK's authenticated transport: createClient(Service, sdk.transport). */
+  readonly transport: Transport;
   /** @internal */
   constructor(handle: generated.SDK, calls: Callbacks | undefined) {
     this.#handle = handle;
     this.#calls = calls;
+    this.transport = sdkTransport(this);
+    Object.assign(this, platformServices(this.transport));
+  }
+  /**
+   * Sends one unary request to a platform service method, such as
+   * ('policy.attributes.AttributesService', 'ListAttributes'), with the
+   * request and reply in protobuf JSON: the shared source's SDK.Call.
+   */
+  call(service: string, method: string, request: string, call: CallOptions = {}): Promise<string> {
+    return guard(async () => {
+      for (const v of [service, method, request]) if (typeof v !== 'string') throw new generated.LibraryError('invalid_argument');
+      return decode(await this.#handle.Call(encode(service), encode(method), encode(request), this.#options(call)));
+    });
   }
   /** The reference's New: discovers the platform configuration and the token endpoint. */
   static create(platformEndpoint: string, options: Options = {}, call: CallOptions = {}): Promise<SDK> {

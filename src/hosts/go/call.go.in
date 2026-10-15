@@ -1,0 +1,32 @@
+// The JSON boundary of the platform service clients: a request is encoded
+// with the reference's own protocol/go messages, sent through SDK.Call, and
+// the reply decoded as connect-go's JSON codec does (unknown fields
+// discarded).
+package generated
+
+import (
+	"context"
+
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+)
+
+type serviceCaller struct {
+	sdk       *SDK
+	callbacks []Callbacks
+}
+
+func (c serviceCaller) call(ctx context.Context, service, method string, req, resp proto.Message) error {
+	body, err := protojson.Marshal(req)
+	if err != nil {
+		return &Error{Kind: KindInvalidInput, Op: "Call", Message: "marshal message: " + err.Error()}
+	}
+	out, err := c.sdk.Call(ctx, service, method, string(body), c.callbacks...)
+	if err != nil {
+		return err
+	}
+	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal([]byte(out), resp); err != nil {
+		return &Error{Kind: KindTransport, Op: "Call", Message: "unmarshal message: " + err.Error()}
+	}
+	return nil
+}

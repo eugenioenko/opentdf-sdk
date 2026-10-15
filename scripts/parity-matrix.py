@@ -441,16 +441,18 @@ def root_status_planned(kind, sym):
     raise SystemExit('no status for %s %s' % (kind, sym))
 
 
+# Phase 3 part 1 delivers every sdkconnect client as SDK.Call in the shared
+# source with typed host accessors (Go, TypeScript, Python).
 def sdkconnect_equiv(kind, sym):
     if kind == 'type':
         base = sym.replace('ConnectWrapper', '')
         if sym.endswith('ConnectWrapper'):
-            return 'sdk/protocol generated client handle for %s' % base
-        return 'sdk/protocol generated %s (Connect unary methods)' % base
+            return 'SDK.Call; the host accessor returns %s' % base
+        return 'SDK.Call; the Go adapter declares %s over protocol/go messages' % base
     recv, _, name = sym.partition('.')
     if name:
-        return 'sdk/protocol %s.%s' % (recv.replace('ConnectWrapper', ''), name)
-    return 'sdk/protocol constructor; clients are created by New and reached through SDK'
+        return 'SDK.Call(ctx, service, "%s", json); host accessor %s.%s' % (name, recv.replace('ConnectWrapper', ''), name)
+    return 'SDK accessors create the clients over the SDK transport'
 
 
 rows = []  # (package, file, kind, symbol, status, equivalent)
@@ -469,8 +471,8 @@ for block in api['values']:
         status, equiv = root_status(block['kind'], sym)
         rows.append(('sdk', file, block['kind'], sym, status, equiv))
 for client in api['service_clients']:
-    rows.append(('sdk', 'sdk.go', 'field', 'SDK.' + client['field'], 'phase 3',
-                 'SDK.%s() accessor returning the generated %s' % (client['field'], client['go_type'])))
+    rows.append(('sdk', 'sdk.go', 'field', 'SDK.' + client['field'], 'done',
+                 'SDK.Call; host accessor %s() returning %s' % (client['field'], client['go_type'])))
 
 for pkg in subs['packages']:
     rel = pkg['source_directory']
@@ -489,7 +491,7 @@ for pkg in subs['packages']:
             sym = (m.group(1).split()[-1].lstrip('*') + '.' + m.group(2)) if m else f.group(1)
             kind = 'method' if m else 'func'
             override = SUBPACKAGE_OVERRIDES.get(short, {}).get(sym)
-            status, equiv = override or ('phase %d' % phase,
+            status, equiv = override or ('done' if short == 'sdkconnect' else 'phase %d' % phase,
                                          sdkconnect_equiv('func', sym) if short == 'sdkconnect'
                                          else SUBPACKAGE_EQUIV[short] + ': ' + sym)
             rows.append((short, declaring_file(rel, 'func', sym), kind, sym, status, equiv))
@@ -497,7 +499,7 @@ for pkg in subs['packages']:
         if t:
             sym = t.group(1)
             override = SUBPACKAGE_OVERRIDES.get(short, {}).get(sym)
-            status, equiv = override or ('phase %d' % phase,
+            status, equiv = override or ('done' if short == 'sdkconnect' else 'phase %d' % phase,
                                          sdkconnect_equiv('type', sym) if short == 'sdkconnect'
                                          else SUBPACKAGE_EQUIV[short] + ': ' + sym)
             rows.append((short, declaring_file(rel, 'type', sym), 'type', sym, status, equiv))
@@ -555,7 +557,10 @@ lines.append('`DONE` set in the script). Phase 2 part 1 delivered the handle API
 lines.append('discovery and the generated Go package; the symbols the plan lists under Phase 2')
 lines.append('are all `done` in the shared source; part 2 exposes them through the generated')
 lines.append('TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swift ones.')
-lines.append('`ErrInvalid` moved to phase 4: it is declared in `granter.go`.')
+lines.append('`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Phase 3 part 1')
+lines.append('delivered the service clients: `SDK.Call` in the shared source, typed accessors in')
+lines.append('the Go, TypeScript and Python packages (the other targets follow in part 2), so the')
+lines.append('`SDK` service fields and every `sdkconnect` symbol are `done`.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
 lines.append('[goalchemy-gaps.md](goalchemy-gaps.md):')

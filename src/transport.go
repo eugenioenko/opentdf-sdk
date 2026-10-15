@@ -4,7 +4,6 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/clock"
 	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/lib/http"
-	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
 	"github.com/eugenioenko/goalchemy/std/fmt"
 	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strings"
@@ -13,7 +12,7 @@ import (
 const (
 	defaultTimeoutMillis = 30000
 	maxResponseBytes     = 16 << 20
-	connectProtocol      = "application/json"
+	jsonContentType      = "application/json"
 )
 
 // Transport is one bounded HTTP exchange: the reference's *http.Client. The
@@ -70,15 +69,19 @@ func isJSONContentType(headers []string) bool {
 	if i := strings.Index(typ, ";"); i >= 0 {
 		typ = typ[:i]
 	}
-	return strings.TrimSpace(typ) == connectProtocol
+	return strings.TrimSpace(typ) == jsonContentType
 }
 
-// do sends one request, adding a DPoP proof (and a nonce retry) when the
-// client has a signing key. token is the access token bound by ath, or empty
-// for token-endpoint requests.
+// do sends one request with the client's bounds, adding a DPoP proof (and a
+// nonce retry) when the client has a signing key. token is the access token
+// bound by ath, or empty for token-endpoint requests.
 func (c *httpClient) do(ctx context.Context, method, rawURL string, headers []string, body []byte, token string, proof bool) (int, []string, []byte, error) {
+	return c.exchange(ctx, method, rawURL, headers, body, maxResponseBytes, c.timeoutMillis, token, proof)
+}
+
+func (c *httpClient) exchange(ctx context.Context, method, rawURL string, headers []string, body []byte, maxBytes int, timeoutMillis int64, token string, proof bool) (int, []string, []byte, error) {
 	if !proof || c.dpop == nil {
-		return c.transport.Do(ctx, method, rawURL, headers, body, maxResponseBytes, c.timeoutMillis)
+		return c.transport.Do(ctx, method, rawURL, headers, body, maxBytes, timeoutMillis)
 	}
 	u, err := url.Parse(rawURL)
 	if err != nil {
@@ -95,7 +98,7 @@ func (c *httpClient) do(ctx context.Context, method, rawURL string, headers []st
 		outgoing := make([]string, len(headers), len(headers)+2)
 		copy(outgoing, headers)
 		outgoing = append(outgoing, "DPoP", jwt)
-		status, responseHeaders, data, err := c.transport.Do(ctx, method, rawURL, outgoing, body, maxResponseBytes, c.timeoutMillis)
+		status, responseHeaders, data, err := c.transport.Do(ctx, method, rawURL, outgoing, body, maxBytes, timeoutMillis)
 		if err != nil {
 			return 0, nil, nil, err
 		}
@@ -115,8 +118,10 @@ func (c *httpClient) do(ctx context.Context, method, rawURL string, headers []st
 	return 0, nil, nil, newError(KindTransport, "dpop", "dpop nonce retry limit reached")
 }
 
-// resource sends an authenticated request to a platform or KAS service.
-func (c *httpClient) resource(ctx context.Context, method, url string, headers []string, body []byte) (int, []string, []byte, error) {
+// Do sends an authenticated request to a platform or KAS service: the
+// reference's token-adding interceptor and DPoP transport. It is the
+// connect.HTTPClient every generated service client of the SDK uses.
+func (c *httpClient) Do(ctx context.Context, method, url string, headers []string, body []byte, maxBytes int, timeoutMillis int64) (int, []string, []byte, error) {
 	token := ""
 	proof := false
 	if c.tokenSource != nil {
@@ -132,96 +137,7 @@ func (c *httpClient) resource(ctx context.Context, method, url string, headers [
 			headers = append(append([]string(nil), headers...), "Authorization", "Bearer "+t.Value)
 		}
 	}
-	return c.do(ctx, method, url, headers, body, token, proof)
-}
-
-// connectCall is a Connect unary call with the JSON codec: a POST of the
-// request message to baseURL+procedure. A non-2xx reply becomes an Error
-// carrying the Connect code and message, worded like connect-go's Error.
-func (c *httpClient) connectCall(ctx context.Context, baseURL, procedure string, request []byte, extraHeaders []string, op string) (jsonvalue.Value, error) {
-	headers := []string{"Content-Type", connectProtocol, "Connect-Protocol-Version", "1", "Accept", connectProtocol}
-	headers = append(headers, extraHeaders...)
-	url := strings.TrimSuffix(baseURL, "/") + procedure
-	status, responseHeaders, data, err := c.resource(ctx, "POST", url, headers, request)
-	if err != nil {
-		if e, ok := err.(*Error); ok {
-			return jsonvalue.Value{}, e
-		}
-		return jsonvalue.Value{}, wrapError(KindTransport, op, "", err)
-	}
-	if status < 200 || status >= 300 {
-		return jsonvalue.Value{}, connectError(status, data, op)
-	}
-	if !isJSONContentType(responseHeaders) {
-		return jsonvalue.Value{}, newError(KindTransport, op, "unexpected content type: "+headerValue(responseHeaders, "content-type"))
-	}
-	v, err := jsonvalue.Parse(data)
-	if err != nil || v.Kind() != jsonvalue.KindObject {
-		return jsonvalue.Value{}, newError(KindTransport, op, "invalid JSON response")
-	}
-	return v, nil
-}
-
-// connectError maps an HTTP status and a Connect error body to an Error. The
-// message is connect-go's "<code>: <message>" so that KAS error text reads
-// as it does in the reference.
-func connectError(status int, data []byte, op string) *Error {
-	code := connectCodeForHTTPStatus(status)
-	message := ""
-	if v, err := jsonvalue.Parse(data); err == nil && v.Kind() == jsonvalue.KindObject {
-		if c, ok := v.Get("code").AsString(); ok && c != "" {
-			code = c
-		}
-		message, _ = v.Get("message").AsString()
-	}
-	kind := KindTransport
-	switch code {
-	case "unauthenticated":
-		kind = KindAuth
-	case "permission_denied":
-		kind = KindRewrapForbidden
-	case "invalid_argument":
-		kind = KindKASRequest
-	case "canceled":
-		kind = KindCanceled
-	case "deadline_exceeded":
-		kind = KindDeadlineExceeded
-	}
-	text := code
-	if message != "" {
-		text += ": " + message
-	}
-	return &Error{Kind: kind, Op: op, Message: text, HTTPStatus: status, ConnectCode: code, ServiceMessage: message}
-}
-
-func connectCodeForHTTPStatus(status int) string {
-	switch status {
-	case 400:
-		return "invalid_argument"
-	case 401:
-		return "unauthenticated"
-	case 403:
-		return "permission_denied"
-	case 404:
-		return "unimplemented"
-	case 408:
-		return "deadline_exceeded"
-	case 409:
-		return "aborted"
-	case 412:
-		return "failed_precondition"
-	case 413:
-		return "resource_exhausted"
-	case 415:
-		return "internal"
-	case 429:
-		return "unavailable"
-	case 431:
-		return "resource_exhausted"
-	case 502, 503, 504:
-		return "unavailable"
-	}
-	return "unknown"
+	return c.exchange(ctx, method, url, headers, body, maxBytes, timeoutMillis, token, proof)
 }
 
 // normalizedHostPort returns the URL host lowercased with the scheme's default

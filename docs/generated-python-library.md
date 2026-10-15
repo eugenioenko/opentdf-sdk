@@ -99,6 +99,21 @@ Manifests and policies are dicts keyed by the reference's JSON tags
 `manifest['payload']['mimeType']`, `policy['body']['dataAttributes']`), so
 they read like `manifest.json`.
 
+## Service clients
+
+`sdk.attributes`, `sdk.namespaces` and the other services take and return
+the protobuf messages of `opentdf_tdf3.protocol` (the `protobuf` package):
+one snake_case method per RPC with an `*_async` twin. Calls are protobuf
+JSON through `sdk.call` and the SDK's authenticated transport; failures are
+`OpenTDFError` with `connect_code`.
+
+```python
+from opentdf_tdf3.protocol.policy.attributes.attributes_pb2 import ListAttributesRequest
+
+resp = sdk.attributes.list_attributes(ListAttributesRequest(namespace='example.com'))
+text = sdk.call('policy.namespaces.NamespaceService', 'ListNamespaces', '{}')
+```
+
 ## Errors
 
 Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the

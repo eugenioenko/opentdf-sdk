@@ -2139,3 +2139,105 @@ above plus the DPoP, discovery, allowlist and SDK construction tests;
 for all eight targets; and the `scripts/build-generated-<target>.sh` package
 builds for Go, TypeScript, Python, Java, C#, Rust and C. Swift was compiled to
 source only; its package build is left to CI.
+
+## Full SDK plan, Phase 3 part 1: service clients with JSON at the boundary
+
+Branch `feat/phase3-part1-clients`. Goalchemy v0.6.5 (`bed10114`) is pinned.
+v0.6.4 (goalchemy#84: fieldless
+messages compile, `connect.Client.HTTPClient`, proto3 `optional`) unblocked
+the part, and v0.6.5 (goalchemy#87) stops `std/connect` from always
+sending `Connect-Timeout-Ms`, which the platform's default CORS allow-list
+does not include, so every browser call failed its preflight (found by the
+focused TypeScript browser job); the four blockers recorded on this branch earlier are resolved,
+the fourth by the user's design decision: messages cross the boundary as
+protobuf JSON ([api-spec.md](api-spec.md#service-clients)).
+
+Generation (`scripts/generate-protocol.sh`, `--check` in the offline CI job,
+two runs byte-identical):
+
+- `src/protocol`: `protoc-gen-goalchemy` with `include=` for KAS `Rewrap`,
+  `PublicKey` and `UnsignedRewrapRequest`, `GetWellKnownConfiguration`,
+  `ListKeyAccessServers`, and `ListAttributes`, `GetAttribute`,
+  `GetAttributeValuesByFqns`, `GetEntitlements` for the part-3 helpers:
+  13 files, 7,213 lines (208 KB) instead of 39,174 lines for every message.
+  Only the packages the shared source imports reach the targets (kas,
+  wellknownconfiguration, kasregistry, policy, common).
+- `src/hosts/typescript/protocol`: `protoc-gen-es` 2.2.5 (isolated with its
+  own `@bufbuild/protobuf` 2.2.5 in `scripts/protocol-tools`, as the hoisted
+  2.15.0 crashes it) on the 16 services and their imports: 21 files, 896 KB,
+  byte-identical to the web SDK's `src/platform`.
+- `src/hosts/python/protocol`: `protoc` 33.6 (pinned zip and SHA-256),
+  imports rewritten under `opentdf_tdf3.protocol`: 624 KB.
+- `src/hosts/{go,typescript,python}/services.*.in`: the 16 service accessors
+  and 131 methods, generated from the reference's `sdkconnect` and `sdk.go`
+  by `scripts/generate-service-clients.py`.
+
+Generated source per target, this branch against `main`, both compiled with
+the v0.6.4 compiler (`./src/library ./src`, target-language files only):
+
+| Target | main | branch | delta |
+| --- | --- | --- | --- |
+| Go | 4,661 KB | 6,016 KB | +1,355 KB |
+| TypeScript | 3,352 KB | 4,359 KB | +1,006 KB |
+| Python | 3,482 KB | 4,552 KB | +1,069 KB |
+| Java | 4,556 KB | 5,860 KB | +1,304 KB |
+| C# | 4,588 KB | 5,851 KB | +1,262 KB |
+| Rust | 5,827 KB | 7,520 KB | +1,693 KB |
+| C | 4,875 KB | 6,178 KB | +1,302 KB |
+| Swift | 8,512 KB | 12,303 KB | +3,790 KB |
+
+About 40% of the delta is the part-3 helper messages: without the four
+helper includes the `policy` package shrinks from 3,326 to 783 lines and the
+delta is +844 KB for Go and +2,517 KB for Swift. They are kept as planned;
+part 3 uses them.
+
+Shared source: `src/connect.go` builds every Connect client per call with
+`HTTPClient` set to the SDK's authenticated transport (`httpClient.Do`:
+token source, DPoP proof with `ath` and nonce retry, timeouts), recording
+the HTTP status and the transport's own failure for the `Error`. The KAS
+client's `Rewrap` and `PublicKey`, discovery, the registry allowlist and the
+health check run on it; `kas_client.go` follows the reference with the
+generated `kas` messages (the hand-written request JSON, Connect error
+parsing and content-type checks are gone). `SDK.Call(ctx, service, method,
+request)` reaches the 16 `sdkconnect` services with JSON. Wording changes
+are in [error-wording.md](error-wording.md#service-calls-phase-3-part-1).
+
+Hosts:
+
+- Go: `s.Attributes()` and the other accessors return the reference's
+  `sdkconnect` interfaces over `github.com/opentdf/platform/protocol/go`
+  v0.41.0 (the pinned platform's protocol, identical to its tag), with
+  `protojson` and `DiscardUnknown`; the generated package carries a pinned
+  `go.mod`/`go.sum` (`src/hosts/go/go.{mod,sum}.in`).
+- TypeScript: `sdk.transport` is a Connect-ES `Transport`; `sdk.attributes`
+  etc. are `createClient` clients; failures are `ConnectError` with the
+  `OpenTDFError` as cause. Runtime `@bufbuild/protobuf` 2.15.0 and
+  `@connectrpc/connect` 2.0.2 (the web SDK's) in the delivery lock;
+  messages exported as `@opentdf-local/tdf3/protocol/*`.
+- Python: clients built from the service descriptors,
+  `sdk.attributes.list_attributes(ListAttributesRequest(...))` with
+  `*_async` twins, `json_format` with `ignore_unknown_fields`; runtime
+  `protobuf` 6.33.6 added to the wheel lock.
+- Java, C#, Rust, C and Swift transpile unchanged; their adapters are part 2.
+
+Verification (local, throttled, one target at a time, Goalchemy at
+`9219a6a` and, for the browser check, v0.6.5, platform from `otdf-local` at `4d9e555b`):
+
+- `go test ./src/` passes, including the new `TestCall`,
+  `TestServiceErrorKinds` and `TestServiceErrorReplies`;
+  `goalchemy check -gate cooperative` passes; every target transpiles.
+- Consumers' `services` mode (xtest's `test_self.py`: list namespaces,
+  create a namespace and an attribute, read it back by id, in the
+  namespace's list and through the raw call, and a missing attribute's
+  `not_found`/404) passes for Go, TypeScript and Python against the local
+  platform; the focused real-KAS CI jobs run it.
+- xtest, `--sdks "go js gcgo gcts gcpy"`, `test_tdf_roundtrip` and
+  `test_manifest_validity`: 30 passed (`out/xtest/phase3a-roundtrip.xml`);
+  the seven tamper cells and `test_policytypes.py` for `--sdks "go gcgo gcts
+  gcpy"`: 160 passed (`out/xtest/phase3a-tamper.xml`). Every rewrap and
+  public-key request in these ran on the generated KAS client. The
+  scoreboard keeps Phase 2 part 3's Java, C#, Rust, C and Swift columns;
+  `gcgo`'s policy-type cells now pass (they were skipped before `ecwrap`).
+- [parity-matrix.md](parity-matrix.md): the 15 `SDK` service fields and the
+  179 `sdkconnect` symbols are `done`; 16 Phase 3 rows remain (helpers,
+  `SDK.Conn`, `WithCustom*Connection`, `SDK.Auth`).

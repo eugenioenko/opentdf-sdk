@@ -36,6 +36,20 @@
     "role": "runtime"
   },
   {
+    "artifact": "protobuf-6.33.6-cp39-abi3-manylinux2014_x86_64.whl",
+    "sha256": "e9db7e292e0ab79dd108d7f1a94fe31601ce1ee3f7b79e0692043423020b0593",
+    "metadata": [
+      "Name: protobuf",
+      "Version: 6.33.6",
+      "License: 3-Clause BSD License",
+      "Requires-Python: >=3.9"
+    ],
+    "licenses": {
+      "protobuf-6.33.6.dist-info/LICENSE": "6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d"
+    },
+    "role": "runtime"
+  },
+  {
     "artifact": "pycparser-3.0-py3-none-any.whl",
     "sha256": "b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992",
     "metadata": [

@@ -84,6 +84,24 @@ IdP issued a DPoP token, `Bearer` otherwise. A host token provider is
 registered with `TokenCallbacks` and selected with `WithTokenProvider()` (or
 `Options.TokenProviderName = TokenProviderName`).
 
+## Service clients
+
+`s.Attributes()`, `s.Namespaces()` and the other accessors return the
+reference's `sdkconnect` interfaces over the reference's own messages from
+`github.com/opentdf/platform/protocol/go` (v0.41.0, required by the
+package's `go.mod`). Each call is protobuf JSON through `SDK.Call` and the
+SDK's authenticated transport. Pass the token provider's callbacks to the
+accessor when the SDK uses one.
+
+```go
+import "github.com/opentdf/platform/protocol/go/policy/attributes"
+
+resp, err := s.Attributes().ListAttributes(ctx, &attributes.ListAttributesRequest{Namespace: "example.com"})
+var e *opentdf.Error
+if errors.As(err, &e) && e.ConnectCode == "not_found" { /* ... */ }
+out, err := s.Call(ctx, "policy.namespaces.NamespaceService", "ListNamespaces", "{}")
+```
+
 ## Errors
 
 SDK failures are `*sdk.Error` values with `Kind`, `Op`, `Message`,

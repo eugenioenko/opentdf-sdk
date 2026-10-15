@@ -21,7 +21,7 @@ def sha(path):
 def members(root, target):
     root = Path(root)
     if target == 'go':
-        files = [p for p in root.rglob('*') if p.is_file() and (p.suffix == '.go' or p.name == 'go.mod' or 'licenses' in p.parts)]
+        files = [p for p in root.rglob('*') if p.is_file() and (p.suffix == '.go' or p.name in ('go.mod', 'go.sum') or 'licenses' in p.parts)]
     elif target == 'typescript':
         files = [p for p in root.rglob('*') if p.is_file() and ('dist' in p.parts or 'licenses' in p.parts or p.name == 'package.json')]
     elif target == 'java':

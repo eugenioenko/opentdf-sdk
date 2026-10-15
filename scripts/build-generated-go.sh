@@ -8,10 +8,18 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; "$COMPILER" compile -gate cooperative -target go -out "$DEST" ./src/library ./src)
-for adapter in token options errors; do
+for adapter in token options errors call services; do
   cp "$SDK/src/hosts/go/$adapter.go.in" "$DEST/$adapter.go"
   GOTOOLCHAIN=go1.25.14 gofmt -w "$DEST/$adapter.go"
 done
+# The service clients use the reference's protocol/go messages; the module
+# requirements and checksums are pinned in the host adapter.
+if [[ "$(cat "$DEST/go.mod")" != "$(printf 'module goalchemyout\n\ngo 1.25')" ]]; then
+  echo "unexpected generated go.mod" >&2
+  exit 1
+fi
+cp "$SDK/src/hosts/go/go.mod.in" "$DEST/go.mod"
+cp "$SDK/src/hosts/go/go.sum.in" "$DEST/go.sum"
 (cd "$DEST"; GOTOOLCHAIN=go1.25.14 go build ./...)
 mkdir -p "$DEST/licenses"
 cp "$GOALCHEMY/LICENSE" "$DEST/licenses/Goalchemy-LICENSE"

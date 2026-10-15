@@ -2,8 +2,10 @@
   "name": "tdf3-delivery-tooling",
   "version": "0.1.0",
   "private": true,
-  "description": "Pinned build and actual-browser tooling; no production SDK dependency",
+  "description": "Pinned build and actual-browser tooling, and the TypeScript SDK runtime dependencies",
   "dependencies": {
+    "@bufbuild/protobuf": "2.15.0",
+    "@connectrpc/connect": "2.0.2",
     "esbuild": "0.25.12",
     "playwright": "1.58.2",
     "typescript": "6.0.3"

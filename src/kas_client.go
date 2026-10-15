@@ -6,10 +6,12 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/encoding"
 	"github.com/eugenioenko/goalchemy/lib/sync"
 	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
+	"github.com/eugenioenko/goalchemy/std/encoding/protojson"
 	"github.com/eugenioenko/goalchemy/std/errors"
 	"github.com/eugenioenko/goalchemy/std/fmt"
 	"github.com/eugenioenko/goalchemy/std/net"
 	"github.com/eugenioenko/goalchemy/std/net/url"
+	"opentdf-local/sdk/src/protocol/kas"
 )
 
 const (
@@ -18,18 +20,16 @@ const (
 	statusPermit                  = "permit"
 	additionalRewrapContextHeader = "X-Rewrap-Additional-Context"
 	triggeredObligationsHeader    = "X-Required-Obligations"
-	kasRewrapProcedure            = "/kas.AccessService/Rewrap"
-	kasPublicKeyProcedure         = "/kas.AccessService/PublicKey"
 )
 
 // Rewrapper unwraps key access objects at a KAS: the reference's KASClient.
 // New wires KASClient; tests supply a fake KAS.
 type Rewrapper interface {
-	Unwrap(ctx context.Context, sessionKey *crypto.Key, sessionKeyType KeyType, requests []*rewrapPolicyRequest) (map[string][]kaoResult, error)
+	Unwrap(ctx context.Context, sessionKey *crypto.Key, sessionKeyType KeyType, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error)
 }
 
-// KASClient is the default Rewrapper: hand-written Connect JSON over the
-// SDK's authenticated transport until Phase 3 generates the service client.
+// KASClient is the default Rewrapper: the generated kas.AccessService
+// client over the SDK's authenticated transport.
 type KASClient struct {
 	client *httpClient
 	signer *dpopSigner
@@ -47,35 +47,6 @@ type kaoResult struct {
 	RequiredObligations []string
 }
 
-// The kas.UnsignedRewrapRequest message tree, with its protojson names.
-type rewrapKeyAccess struct {
-	KeyType            string
-	KasURL             string
-	KID                string
-	Protocol           string
-	PolicyBinding      PolicyBinding
-	SplitID            string
-	WrappedKey         []byte
-	EphemeralPublicKey string
-	EncryptedMetadata  string
-}
-
-type rewrapKeyAccessObject struct {
-	KeyAccessObjectID string
-	KeyAccessObject   rewrapKeyAccess
-}
-
-type rewrapPolicy struct {
-	ID   string
-	Body string
-}
-
-type rewrapPolicyRequest struct {
-	Policy           rewrapPolicy
-	KeyAccessObjects []*rewrapKeyAccessObject
-	Algorithm        string
-}
-
 func newKASClient(client *httpClient, signer *dpopSigner, clock Clock, fulfillableObligations []string) *KASClient {
 	return &KASClient{
 		client:                      client,
@@ -86,53 +57,38 @@ func newKASClient(client *httpClient, signer *dpopSigner, clock Clock, fulfillab
 	}
 }
 
-func keyAccessJSON(k rewrapKeyAccess) (jsonvalue.Value, error) {
-	wrapped, err := encoding.Base64Encode(k.WrappedKey)
-	if err != nil {
-		return jsonvalue.Value{}, err
-	}
-	v := jsonvalue.Object("type", jsonvalue.String(k.KeyType), "url", jsonvalue.String(k.KasURL), "protocol", jsonvalue.String(k.Protocol), "wrappedKey", jsonvalue.String(wrapped),
-		"policyBinding", jsonvalue.Object("alg", jsonvalue.String(k.PolicyBinding.Alg), "hash", jsonvalue.String(k.PolicyBinding.Hash)))
-	if k.KID != "" {
-		v = v.Set("kid", jsonvalue.String(k.KID))
-	}
-	if k.SplitID != "" {
-		v = v.Set("sid", jsonvalue.String(k.SplitID))
-	}
-	if k.EphemeralPublicKey != "" {
-		v = v.Set("ephemeralPublicKey", jsonvalue.String(k.EphemeralPublicKey))
-	}
-	if k.EncryptedMetadata != "" {
-		v = v.Set("encryptedMetadata", jsonvalue.String(k.EncryptedMetadata))
-	}
-	return v, nil
-}
-
 // there is no connection caching as of now
-func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*rewrapPolicyRequest, pubKey string) (jsonvalue.Value, error) {
+func (k *KASClient) makeRewrapRequest(ctx context.Context, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapResponse, error) {
 	rewrapRequest, err := k.getRewrapRequest(requests, pubKey)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return nil, err
 	}
-	kasURL := requests[0].KeyAccessObjects[0].KeyAccessObject.KasURL
+	kasURL := requests[0].GetKeyAccessObjects()[0].GetKeyAccessObject().GetKasUrl()
 	parsedURL, err := parseBaseURL(kasURL)
 	if err != nil {
-		return jsonvalue.Value{}, fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
+		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasURL, err)
 	}
-	headers, err := k.rewrapContextHeaders()
+
+	headers, err := k.newConnectRewrapRequestHeaders()
 	if err != nil {
-		return jsonvalue.Value{}, fmt.Errorf("error creating rewrap request: %w", err)
+		return nil, fmt.Errorf("error creating rewrap request: %w", err)
 	}
-	response, err := k.client.connectCall(ctx, parsedURL, kasRewrapProcedure, rewrapRequest, headers, "Rewrap")
+	conn, call := k.client.newServiceClient(parsedURL, headers)
+	serviceClient := kas.NewAccessServiceClient(conn)
+
+	response, err := serviceClient.Rewrap(ctx, rewrapRequest)
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return nil, call.serviceError("Rewrap", err)
 	}
-	return upgradeRewrapResponseV1(response, requests), nil
+
+	upgradeRewrapResponseV1(response, requests)
+
+	return response, nil
 }
 
-// rewrapContextHeaders carries the fulfillable obligation FQNs, base64 JSON,
-// as the reference's newConnectRewrapRequest does.
-func (k *KASClient) rewrapContextHeaders() ([]string, error) {
+// newConnectRewrapRequestHeaders carries the fulfillable obligation FQNs,
+// base64 JSON, as the reference's newConnectRewrapRequest does.
+func (k *KASClient) newConnectRewrapRequestHeaders() ([]string, error) {
 	fqns := jsonvalue.Array()
 	for _, f := range k.fulfillableObligations {
 		fqns = fqns.Append(jsonvalue.String(f))
@@ -150,31 +106,44 @@ func (k *KASClient) rewrapContextHeaders() ([]string, error) {
 }
 
 // convert v1 responses to v2
-func upgradeRewrapResponseV1(response jsonvalue.Value, requests []*rewrapPolicyRequest) jsonvalue.Value {
-	if response.Get("responses").Len() > 0 {
-		return response
+func upgradeRewrapResponseV1(response *kas.RewrapResponse, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) {
+	if len(response.GetResponses()) > 0 {
+		return
 	}
-	wrapped := response.Get("entityWrappedKey").String()
-	if wrapped == "" || len(requests) == 0 {
-		return response
+	if len(response.GetEntityWrappedKey()) == 0 {
+		return
 	}
-	result := jsonvalue.Object("keyAccessObjectId", jsonvalue.String(requests[0].KeyAccessObjects[0].KeyAccessObjectID), "status", jsonvalue.String(statusPermit), "kasWrappedKey", jsonvalue.String(wrapped))
-	policyResult := jsonvalue.Object("policyId", jsonvalue.String(requests[0].Policy.ID), "results", jsonvalue.Array(result))
-	return response.Set("responses", jsonvalue.Array(policyResult))
+	if len(requests) == 0 {
+		return
+	}
+	response.Responses = []*kas.PolicyRewrapResult{
+		{
+			PolicyId: requests[0].GetPolicy().GetId(),
+			Results: []*kas.KeyAccessRewrapResult{
+				{
+					KeyAccessObjectId: requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId(),
+					Status:            statusPermit,
+					Result: &kas.KeyAccessRewrapResult_KasWrappedKey{
+						KasWrappedKey: response.GetEntityWrappedKey(),
+					},
+				},
+			},
+		},
+	}
 }
 
 // convert v1 errors to v2 responses: a failed request becomes a failed
 // result for the single request's first KAO, keeping the typed error so its
 // kind and service fields survive.
-func upgradeRewrapErrorV1(err error, requests []*rewrapPolicyRequest) (map[string][]kaoResult, error) {
+func upgradeRewrapErrorV1(err error, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	if len(requests) != 1 {
 		return nil, fmt.Errorf("error making rewrap request: %w", err)
 	}
-	return map[string][]kaoResult{requests[0].Policy.ID: {{KeyAccessObjectID: requests[0].KeyAccessObjects[0].KeyAccessObjectID, Error: err}}}, nil
+	return map[string][]kaoResult{requests[0].GetPolicy().GetId(): {{KeyAccessObjectID: requests[0].GetKeyAccessObjects()[0].GetKeyAccessObjectId(), Error: err}}}, nil
 }
 
 // Unwrap sends the rewrap requests and returns the unwrapped keys per policy.
-func (k *KASClient) Unwrap(ctx context.Context, sessionKey *crypto.Key, sessionKeyType KeyType, requests []*rewrapPolicyRequest) (map[string][]kaoResult, error) {
+func (k *KASClient) Unwrap(ctx context.Context, sessionKey *crypto.Key, sessionKeyType KeyType, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error) {
 	if sessionKey == nil {
 		return nil, errors.New("session key is nil")
 	}
@@ -195,15 +164,15 @@ func (k *KASClient) Unwrap(ctx context.Context, sessionKey *crypto.Key, sessionK
 
 // handleKeyResponse unwraps a rewrap response with the handler matching the
 // session key type.
-func (k *KASClient) handleKeyResponse(response jsonvalue.Value, sessionKey *crypto.Key, sessionKeyType KeyType) (map[string][]kaoResult, error) {
+func (k *KASClient) handleKeyResponse(response *kas.RewrapResponse, sessionKey *crypto.Key, sessionKeyType KeyType) (map[string][]kaoResult, error) {
 	if IsECKeyType(sessionKeyType) {
 		return k.handleECKeyResponse(response, sessionKey)
 	}
 	return k.handleRSAKeyResponse(response, sessionKey)
 }
 
-func (k *KASClient) handleECKeyResponse(response jsonvalue.Value, sessionKey *crypto.Key) (map[string][]kaoResult, error) {
-	kasEphemeralPublicKey := response.Get("sessionPublicKey").String()
+func (k *KASClient) handleECKeyResponse(response *kas.RewrapResponse, sessionKey *crypto.Key) (map[string][]kaoResult, error) {
+	kasEphemeralPublicKey := response.GetSessionPublicKey()
 	kasKey, err := crypto.ImportPEM(kasEphemeralPublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("ocrypto.ComputeECDHKey failed: %w", err)
@@ -241,25 +210,29 @@ Metadata will be in the following form, per kao:
 	   }
 	}
 */
-func (k *KASClient) retrieveObligationsFromMetadata(metadata jsonvalue.Value) []string {
+func (k *KASClient) retrieveObligationsFromMetadata(metadata map[string]jsonvalue.Value) []string {
 	var requiredObligations []string
-	if metadata.Kind() != jsonvalue.KindObject {
+
+	if metadata == nil {
 		return requiredObligations
 	}
-	triggerOblsValue, ok := metadata.Lookup(triggeredObligationsHeader)
+
+	triggerOblsValue, ok := metadata[triggeredObligationsHeader]
 	if !ok {
 		return requiredObligations
 	}
+
 	for i := 0; i < triggerOblsValue.Len(); i++ {
 		v := triggerOblsValue.Index(i)
 		if v.Kind() == jsonvalue.KindString {
 			requiredObligations = append(requiredObligations, v.String())
 		}
 	}
+
 	return requiredObligations
 }
 
-func (k *KASClient) handleRSAKeyResponse(response jsonvalue.Value, sessionKey *crypto.Key) (map[string][]kaoResult, error) {
+func (k *KASClient) handleRSAKeyResponse(response *kas.RewrapResponse, sessionKey *crypto.Key) (map[string][]kaoResult, error) {
 	return k.processResponse(response, func(wrapped []byte) ([]byte, error) {
 		return crypto.RSAOAEPDecrypt(sessionKey, wrapped)
 	})
@@ -267,33 +240,24 @@ func (k *KASClient) handleRSAKeyResponse(response jsonvalue.Value, sessionKey *c
 
 // processResponse unwraps each permitted KAO's key with decrypt, which is
 // specific to the session key type (RSA or EC-derived AES-GCM).
-func (k *KASClient) processResponse(response jsonvalue.Value, decrypt func([]byte) ([]byte, error)) (map[string][]kaoResult, error) {
+func (k *KASClient) processResponse(response *kas.RewrapResponse, decrypt func([]byte) ([]byte, error)) (map[string][]kaoResult, error) {
 	policyResults := make(map[string][]kaoResult)
-	responses := response.Get("responses")
-	for i := 0; i < responses.Len(); i++ {
-		results := responses.Index(i)
+	for _, results := range response.GetResponses() {
 		var kaoKeys []kaoResult
-		kaos := results.Get("results")
-		for j := 0; j < kaos.Len(); j++ {
-			kao := kaos.Index(j)
-			kaoID := kao.Get("keyAccessObjectId").String()
-			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.Get("metadata"))
-			if kao.Get("status").String() == statusPermit {
-				wrapped, err := encoding.Base64Decode(kao.Get("kasWrappedKey").String())
-				if err == nil {
-					var key []byte
-					key, err = decrypt(wrapped)
-					if err == nil {
-						kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kaoID, SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
-						continue
-					}
+		for _, kao := range results.GetResults() {
+			requiredObligationsForKAO := k.retrieveObligationsFromMetadata(kao.GetMetadata())
+			if kao.GetStatus() == statusPermit {
+				key, err := decrypt(kao.GetKasWrappedKey())
+				if err != nil {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: err, RequiredObligations: requiredObligationsForKAO})
+				} else {
+					kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), SymmetricKey: key, RequiredObligations: requiredObligationsForKAO})
 				}
-				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kaoID, Error: err, RequiredObligations: requiredObligationsForKAO})
 			} else {
-				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kaoID, Error: errors.New(kao.Get("error").String()), RequiredObligations: requiredObligationsForKAO})
+				kaoKeys = append(kaoKeys, kaoResult{KeyAccessObjectID: kao.GetKeyAccessObjectId(), Error: errors.New(kao.GetError()), RequiredObligations: requiredObligationsForKAO})
 			}
 		}
-		policyResults[results.Get("policyId").String()] = kaoKeys
+		policyResults[results.GetPolicyId()] = kaoKeys
 	}
 	return policyResults, nil
 }
@@ -318,41 +282,24 @@ func parseBaseURL(rawURL string) (string, error) {
 
 // getRewrapRequest builds the signed request token over the protojson
 // UnsignedRewrapRequest, signed with the DPoP key as the reference does.
-func (k *KASClient) getRewrapRequest(reqs []*rewrapPolicyRequest, pubKey string) ([]byte, error) {
+func (k *KASClient) getRewrapRequest(reqs []*kas.UnsignedRewrapRequest_WithPolicyRequest, pubKey string) (*kas.RewrapRequest, error) {
 	if len(reqs) == 0 {
 		return nil, errors.New("no requests provided")
 	}
 	if k.signer == nil {
 		return nil, ErrNoAccessTokenSource
 	}
-	requests := jsonvalue.Array()
-	for _, req := range reqs {
-		kaos := jsonvalue.Array()
-		for _, kao := range req.KeyAccessObjects {
-			ka, err := keyAccessJSON(kao.KeyAccessObject)
-			if err != nil {
-				return nil, err
-			}
-			kaos = kaos.Append(jsonvalue.Object("keyAccessObjectId", jsonvalue.String(kao.KeyAccessObjectID), "keyAccessObject", ka))
-		}
-		entry := jsonvalue.Object("keyAccessObjects", kaos, "policy", jsonvalue.Object("id", jsonvalue.String(req.Policy.ID), "body", jsonvalue.String(req.Policy.Body)))
-		if req.Algorithm != "" {
-			entry = entry.Set("algorithm", jsonvalue.String(req.Algorithm))
-		}
-		requests = requests.Append(entry)
+	requestBody := &kas.UnsignedRewrapRequest{
+		ClientPublicKey: pubKey,
+		Requests:        reqs,
 	}
-	requestBody := jsonvalue.Object("clientPublicKey", jsonvalue.String(pubKey), "requests", requests)
-	if len(reqs) == 1 && len(reqs[0].KeyAccessObjects) == 1 && k.supportSingleRewrapEndpoint {
-		ka, err := keyAccessJSON(reqs[0].KeyAccessObjects[0].KeyAccessObject)
-		if err != nil {
-			return nil, err
-		}
-		requestBody = requestBody.Set("keyAccess", ka).Set("policy", jsonvalue.String(reqs[0].Policy.Body))
-		if reqs[0].Algorithm != "" {
-			requestBody = requestBody.Set("algorithm", jsonvalue.String(reqs[0].Algorithm))
-		}
+	if len(reqs) == 1 && len(reqs[0].GetKeyAccessObjects()) == 1 && k.supportSingleRewrapEndpoint {
+		requestBody.KeyAccess = reqs[0].GetKeyAccessObjects()[0].GetKeyAccessObject()
+		requestBody.Policy = reqs[0].GetPolicy().GetBody()
+		requestBody.Algorithm = reqs[0].GetAlgorithm()
 	}
-	requestBodyJSON, err := jsonvalue.Encode(requestBody)
+
+	requestBodyJSON, err := protojson.Marshal(requestBody)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling request body: %w", err)
 	}
@@ -364,7 +311,11 @@ func (k *KASClient) getRewrapRequest(reqs []*rewrapPolicyRequest, pubKey string)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign the token: %w", err)
 	}
-	return jsonvalue.Encode(jsonvalue.Object("signedRequestToken", jsonvalue.String(signedToken)))
+
+	rewrapRequest := kas.RewrapRequest{
+		SignedRequestToken: signedToken,
+	}
+	return &rewrapRequest, nil
 }
 
 type kasKeyRequest struct {
@@ -465,23 +416,21 @@ func (s *SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind str
 		return nil, fmt.Errorf("cannot parse kas url(%s): %w", kasurl, err)
 	}
 
-	req := jsonvalue.Object()
-	if algorithm != "" {
-		req = req.Set("algorithm", jsonvalue.String(algorithm))
+	conn, call := s.client.newServiceClient(parsedURL, nil)
+	serviceClient := kas.NewAccessServiceClient(conn)
+
+	req := kas.PublicKeyRequest{
+		Algorithm: algorithm,
 	}
 	if s.cfg.tdfFeatures.noKID {
-		req = req.Set("v", jsonvalue.String("1"))
+		req.V = "1"
 	}
-	body, err := jsonvalue.Encode(req)
+	resp, err := serviceClient.PublicKey(ctx, &req)
 	if err != nil {
-		return nil, err
-	}
-	resp, err := s.client.connectCall(ctx, parsedURL, kasPublicKeyProcedure, body, nil, "PublicKey")
-	if err != nil {
-		return nil, fmt.Errorf("error making request to KAS: %w", err)
+		return nil, fmt.Errorf("error making request to KAS: %w", call.serviceError("PublicKey", err))
 	}
 
-	kid := resp.Get("kid").String()
+	kid := resp.GetKid()
 	if s.cfg.tdfFeatures.noKID {
 		kid = ""
 	}
@@ -490,7 +439,7 @@ func (s *SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind str
 		URL:       kasurl,
 		Algorithm: algorithm,
 		KID:       kid,
-		PublicKey: resp.Get("publicKey").String(),
+		PublicKey: resp.GetPublicKey(),
 	}
 	if s.kasKeyCache != nil {
 		s.kasKeyCache.store(ki)

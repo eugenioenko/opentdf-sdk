@@ -95,6 +95,36 @@ bracketed host must be an IPv6 address, so `https://[zz]/` fails with
 `invalid IP-literal`, where the interim parser accepted both. A host with
 several colons (`https://example.com:80:`) is still accepted.
 
+## Service calls (Phase 3 part 1)
+
+KAS `Rewrap` and `PublicKey`, the well-known configuration, the registry
+allowlist, the health check and `SDK.Call` now run on the generated Connect
+clients (Goalchemy `std/connect`, which follows connect-go) over the SDK's
+transport. A Connect error the service sends reads as before,
+`<code>: <message>` (`permission_denied: rpc error: code = PermissionDenied
+desc = forbidden`), so the KAS classifier (`getKasErrorToReturn`) and every
+xtest pattern above match unchanged. What changed, all now as connect-go
+reports it:
+
+| Case | Before | Now |
+| --- | --- | --- |
+| Error status without a Connect body | code from a local table (`400` → `invalid_argument`), message the code alone | connect-go's mapping (`400` → `internal`, `404` → `unimplemented`, `502` → `unavailable`, other → `unknown`), message `<code>: <status line>` (`unavailable: 502 Bad Gateway`) |
+| 2xx reply that is not JSON | `unexpected content type: text/html` | `unknown: invalid content-type: "text/html"; expecting "application/json"` |
+| 2xx reply that is not valid JSON | `invalid JSON response` | `invalid_argument: unmarshal message: ...`, kind `transport` |
+| Context already cancelled or expired | `context canceled` | `canceled: context canceled` (`deadline_exceeded: ...`) |
+| `permission_denied` / `invalid_argument` from a non-KAS service | kinds `rewrap_forbidden` / `kas_request` | kinds `auth` / `invalid_input`; KAS calls keep the old kinds |
+
+`HTTPStatus`, `ConnectCode` and `ServiceMessage` are filled as before; a
+failure of the SDK's own transport (token source, DPoP, connection) keeps
+its text and kind. Requests carry no `Accept` header and, as connect-go without a deadline
+and as browsers' CORS preflights against the platform's default allow-list
+need, no `Connect-Timeout-Ms` (`std/connect` v0.6.5 sends it only with
+`Client.SendTimeout`, which the SDK leaves off; `TimeoutMillis` still
+bounds each call). The unsigned rewrap request is `protojson` of the generated
+`kas.UnsignedRewrapRequest`: fields in proto declaration order and an empty
+`policyBinding.alg` omitted, as the reference's `protojson.Marshal` writes
+it (whitespace aside).
+
 ## Shim and CLI contract strings
 
 Strings the shims themselves assert or emit, which the generated `cli.sh`

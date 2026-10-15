@@ -13,6 +13,7 @@ import (
 	"github.com/eugenioenko/goalchemy/std/log/slog"
 	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strings"
+	"opentdf-local/sdk/src/protocol/wellknownconfiguration"
 	"opentdf-local/sdk/src/tdf"
 )
 
@@ -35,12 +36,6 @@ var (
 	ErrNoAccessTokenSource           = errors.New("no access token source configured; SDK was created without credentials")
 	ErrWellKnowConfigEmpty           = errors.New("well-known configuration is empty")
 	ErrAttributeNotFound             = errors.New("attribute not found")
-)
-
-const (
-	wellKnownProcedure = "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration"
-	healthProcedure    = "/grpc.health.v1.Health/Check"
-	kasRegistryList    = "/policy.kasregistry.KeyAccessServerRegistryService/ListKeyAccessServers"
 )
 
 // SDK is the persistent client handle. Every collaborator hangs off it:
@@ -404,7 +399,7 @@ func checkPlatformHealth(ctx context.Context, endpoint string, client *httpClien
 		return false, err
 	}
 	base := strings.TrimSuffix(checkURL, healthProcedure)
-	res, err := client.connectCall(ctx, base, healthProcedure, []byte("{}"), nil, "IsHealthy")
+	res, err := callJSON(ctx, client, base, healthProcedure, jsonvalue.Object(), "IsHealthy")
 	if err != nil {
 		return false, err
 	}
@@ -426,18 +421,16 @@ func validateHealthyPlatformConnection(ctx context.Context, platformEndpoint str
 	return nil
 }
 
-// fetchWellKnownConfiguration calls the well-known service as the reference's
-// Connect client does. The reply wraps the document in "configuration"; the
-// platform's HTTP GET route serves the document itself, so both are accepted.
+// fetchWellKnownConfiguration calls the well-known service with the
+// generated client, as the reference's getPlatformConfiguration does.
 func (s *SDK) fetchWellKnownConfiguration(ctx context.Context, client *httpClient) (jsonvalue.Value, error) {
-	response, err := client.connectCall(ctx, s.platformEndpoint, wellKnownProcedure, []byte("{}"), nil, "GetWellKnownConfiguration")
+	conn, call := client.newServiceClient(s.platformEndpoint, nil)
+	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
+	response, err := wellKnownConfig.GetWellKnownConfiguration(ctx, &wellknownconfiguration.GetWellKnownConfigurationRequest{})
 	if err != nil {
-		return jsonvalue.Value{}, err
+		return jsonvalue.Value{}, call.serviceError("GetWellKnownConfiguration", err)
 	}
-	if configuration, ok := response.Lookup("configuration"); ok && configuration.Kind() == jsonvalue.KindObject {
-		return configuration, nil
-	}
-	return response, nil
+	return response.GetConfiguration(), nil
 }
 
 func (s *SDK) getPlatformConfiguration(ctx context.Context, client *httpClient) (PlatformConfiguration, error) {

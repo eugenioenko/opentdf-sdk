@@ -13,6 +13,8 @@ import (
 	"github.com/eugenioenko/goalchemy/std/sort"
 	"github.com/eugenioenko/goalchemy/std/strconv"
 	"github.com/eugenioenko/goalchemy/std/strings"
+	"opentdf-local/sdk/src/protocol/kas"
+	"opentdf-local/sdk/src/protocol/policy/kasregistry"
 	"opentdf-local/sdk/src/tdf"
 )
 
@@ -781,15 +783,14 @@ func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string) (
 	return kaos, nil
 }
 
-func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, client *httpClient, platformEndpoint, platformURL string) (AllowList, error) {
-	kases, err := client.connectCall(ctx, platformEndpoint, kasRegistryList, []byte("{}"), nil, "LoadTDF")
+func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegistryClient *kasregistry.KeyAccessServerRegistryServiceClient, call *serviceCall, platformURL string) (AllowList, error) {
+	kases, err := kasRegistryClient.ListKeyAccessServers(ctx, &kasregistry.ListKeyAccessServersRequest{})
 	if err != nil {
-		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", err)
+		return nil, fmt.Errorf("kasregistry.ListKeyAccessServers failed: %w", call.serviceError("LoadTDF", err))
 	}
 	kasAllowlist := AllowList{}
-	servers := kases.Get("keyAccessServers")
-	for i := 0; i < servers.Len(); i++ {
-		err = kasAllowlist.Add(servers.Index(i).Get("uri").String())
+	for _, kas := range kases.GetKeyAccessServers() {
+		err = kasAllowlist.Add(kas.GetUri())
 		if err != nil {
 			return nil, fmt.Errorf("kasAllowlist.Add failed: %w", err)
 		}
@@ -1011,11 +1012,11 @@ func (r *Reader) DataAttributes() ([]string, error) {
 // KAS URL, with insertion order kept for deterministic requests.
 type rewrapRequests struct {
 	urls     []string
-	requests map[string]*rewrapPolicyRequest
+	requests map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest
 }
 
 func createRewrapRequest(_ context.Context, r *Reader) (*rewrapRequests, error) {
-	kasReqs := &rewrapRequests{requests: make(map[string]*rewrapPolicyRequest)}
+	kasReqs := &rewrapRequests{requests: make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)}
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
 
@@ -1027,15 +1028,18 @@ func createRewrapRequest(_ context.Context, r *Reader) (*rewrapRequests, error) 
 		if err != nil {
 			return nil, err
 		}
-		kaoReq := &rewrapKeyAccessObject{
-			KeyAccessObjectID: kaoID,
-			KeyAccessObject: rewrapKeyAccess{
-				KeyType:            kao.KeyType,
-				KasURL:             kao.KasURL,
-				KID:                kao.KID,
-				Protocol:           kao.Protocol,
-				PolicyBinding:      binding,
-				SplitID:            kao.SplitID,
+		kaoReq := &kas.UnsignedRewrapRequest_WithKeyAccessObject{
+			KeyAccessObjectId: kaoID,
+			KeyAccessObject: &kas.KeyAccess{
+				KeyType:  kao.KeyType,
+				KasUrl:   kao.KasURL,
+				Kid:      kao.KID,
+				Protocol: kao.Protocol,
+				PolicyBinding: &kas.PolicyBinding{
+					Hash:      binding.Hash,
+					Algorithm: binding.Alg,
+				},
+				SplitId:            kao.SplitID,
 				WrappedKey:         key,
 				EphemeralPublicKey: kao.EphemeralPublicKey,
 			},
@@ -1043,14 +1047,14 @@ func createRewrapRequest(_ context.Context, r *Reader) (*rewrapRequests, error) 
 		if req, ok := kasReqs.requests[kao.KasURL]; ok {
 			req.KeyAccessObjects = append(req.KeyAccessObjects, kaoReq)
 		} else {
-			rewrapReq := &rewrapPolicyRequest{
-				Policy: rewrapPolicy{
+			rewrapReq := kas.UnsignedRewrapRequest_WithPolicyRequest{
+				Policy: &kas.UnsignedRewrapRequest_WithPolicy{
 					Body: r.manifest.EncryptionInformation.Policy,
-					ID:   "policy",
+					Id:   "policy",
 				},
-				KeyAccessObjects: []*rewrapKeyAccessObject{kaoReq},
+				KeyAccessObjects: []*kas.UnsignedRewrapRequest_WithKeyAccessObject{kaoReq},
 			}
-			kasReqs.requests[kao.KasURL] = rewrapReq
+			kasReqs.requests[kao.KasURL] = &rewrapReq
 			kasReqs.urls = append(kasReqs.urls, kao.KasURL)
 		}
 	}
@@ -1198,10 +1202,10 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 // Unwraps the payload key, if possible, using the access service
 func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error {
 	var kaoResults []kaoResult
-	reqFail := func(err error, req *rewrapPolicyRequest) {
-		for _, kao := range req.KeyAccessObjects {
+	reqFail := func(err error, req *kas.UnsignedRewrapRequest_WithPolicyRequest) {
+		for _, kao := range req.GetKeyAccessObjects() {
 			kaoResults = append(kaoResults, kaoResult{
-				KeyAccessObjectID: kao.KeyAccessObjectID,
+				KeyAccessObjectID: kao.GetKeyAccessObjectId(),
 				Error:             err,
 			})
 		}
@@ -1223,7 +1227,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error {
 		}
 
 		// if allowed then unwrap
-		policyRes, err := r.rewrapper.Unwrap(ctx, r.kasSessionKey, r.kasSessionKeyType, []*rewrapPolicyRequest{req})
+		policyRes, err := r.rewrapper.Unwrap(ctx, r.kasSessionKey, r.kasSessionKeyType, []*kas.UnsignedRewrapRequest_WithPolicyRequest{req})
 		if err != nil {
 			reqFail(err, req)
 		} else {
@@ -1392,7 +1396,8 @@ func getKasAllowList(ctx context.Context, kasAllowList AllowList, s *SDK, ignore
 		if err != nil {
 			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 		}
-		allowList, err = allowListFromKASRegistry(ctx, s.cfg.logger, s.client, s.platformEndpoint, platformEndpoint)
+		conn, call := s.client.newServiceClient(s.serviceEndpoint(false), nil)
+		allowList, err = allowListFromKASRegistry(ctx, s.cfg.logger, kasregistry.NewKeyAccessServerRegistryServiceClient(conn), call, platformEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)
 		}
