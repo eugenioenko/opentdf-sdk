@@ -379,13 +379,21 @@ Per-target type sources:
 | Go | the reference's `github.com/opentdf/platform/protocol/go` v0.41.0 (identical to the pinned platform revision) | `protojson`, `DiscardUnknown` | `s.Attributes()` etc. returning the reference's `sdkconnect` interfaces (`AttributesServiceClient`, ...), generated from `sdkconnect` by `scripts/generate-service-clients.py`; each method `(ctx, *Req) (*Resp, error)` | `*Error` with `ConnectCode` (no connect-go dependency) |
 | TypeScript | protobuf-es v2 (`protoc-gen-es` 2.2.5, as the web SDK; runtime `@bufbuild/protobuf` 2.15.0) under `@opentdf-local/tdf3/protocol/*` | `toJsonString`/`fromJsonString` with `ignoreUnknownFields` | `sdk.transport` is a Connect-ES (`@connectrpc/connect` 2.0.2) `Transport`, so `createClient(AnyService, sdk.transport)` works; `sdk.attributes` etc. are pre-made clients | `ConnectError` from the Transport (code from `connectCode`, or from the kind; the `OpenTDFError` is its `cause`); `sdk.call` throws `OpenTDFError` |
 | Python | protobuf Python (`protoc` 33.6) under `opentdf_tdf3.protocol`, runtime `protobuf` 6.33.6 | `json_format`, `ignore_unknown_fields=True` | `sdk.attributes.list_attributes(ListAttributesRequest(...))`, snake_case methods with `*_async` twins, built from the service descriptors | `OpenTDFError` with `connect_code` |
-| Java, C#, Rust, Swift | part 2 | | | |
-| C | part 2: JSON strings through the generic call (typed C later, #29) | | | |
+| Java | protobuf-java (`protoc` 33.6, `optimize_for = CODE_SIZE`) under `io.opentdf.tdf3.protocol`, runtime `protobuf-java` and `protobuf-java-util` 4.33.6 with `gson` 2.8.9 | `JsonFormat` printer and parser (`ignoringUnknownFields`) with a type registry of every service file | `SDK extends PlatformServices`: `sdk.attributes()` etc. return the reference's `sdkconnect` interfaces (`AttributesServiceClient`, ...); each method blocking with an optional `Duration`, plus an `*Async` twin; `sdk.call` / `callAsync` for raw JSON | `OpenTDFException` with `connectCode()` |
+| C# | Google.Protobuf (`protoc` 33.6) under `OpenTDF.Protocol`, runtime `Google.Protobuf` 3.33.6 | `JsonFormatter`, `JsonParser` (`WithIgnoreUnknownFields`) with a type registry of every service file | `Sdk : PlatformServices`: `sdk.Attributes` etc. are `IAttributesServiceClient`, ... with `Task<Resp> XAsync(Req, CancellationToken)`; `sdk.CallAsync` for raw JSON | `OpenTdfException` with `ConnectCode` |
+| Rust | prost 0.14.4 (`protoc-gen-prost` 0.5.0) under `opentdf_tdf3::protocol`, serde impls by `protoc-gen-prost-serde` 0.4.0 (pbjson 0.8.0, well-known types from `pbjson-types`) | `serde_json` over the pbjson impls, unknown fields ignored | `sdk.attributes()` etc. return `AttributesServiceClient`, ... with `fn x(&self, &Req) -> Result<Resp>` and `x_async`; `sdk.r#unsafe()`; `sdk.call` / `call_async` for raw JSON | `Error` with `connect_code` |
+| Swift | SwiftProtobuf (`protoc-gen-swift` 1.38.1) in the `OpenTDFTDF3` module (`Policy_Attributes_ListAttributesRequest`), runtime `swift-protobuf` 1.38.1 | `jsonString()` and `init(jsonString:options:)` with `ignoreUnknownFields` | `sdk.attributes` etc. return `AttributesServiceClient`, ... with `async throws` methods whose request defaults to the empty message; `sdk.call` for raw JSON | `OpenTDFError` with `connectCode` |
+| C | none: protobuf JSON text (typed C is #29) | | `opentdf_services.h`: `otdf_<service>_<method>(sdk, request_json, call, &response_json, &error)` for the 131 methods, over `otdf_sdk_call(sdk, service, method, ...)` | `otdf_error.connect_code` |
 
 Generated host code is committed and `scripts/generate-protocol.sh --check`
-proves it current in CI. Per-call headers and deadlines come from the
-caller's context (Go), `AbortSignal`/`timeoutMs` (TypeScript) or `timeout=`
-(Python); Connect-ES request headers are not forwarded.
+proves it current in CI; it pins buf, `protoc`, `protoc-gen-es`,
+`protoc-gen-prost`/`protoc-gen-prost-serde` and `protoc-gen-swift` (built from
+its tagged commit). Per-call headers and deadlines come from the caller's
+context (Go), `AbortSignal`/`timeoutMs` (TypeScript), `timeout=` (Python), a
+`Duration` or `CompletableFuture.cancel` (Java), a `CancellationToken` (C#),
+dropping the `*_async` future (Rust), `Task` cancellation (Swift) or the
+`otdf_call` flag and deadline (C); Connect-ES request headers are not
+forwarded.
 
 Go:
 
@@ -408,6 +416,39 @@ Python:
 attrs = sdk.attributes.list_attributes(ListAttributesRequest(namespace='example.com'))
 ```
 
+Java:
+
+```java
+var attrs = sdk.attributes().listAttributes(ListAttributesRequest.newBuilder().setNamespace("example.com").build());
+```
+
+C#:
+
+```csharp
+var attrs = await sdk.Attributes.ListAttributesAsync(new ListAttributesRequest { Namespace = "example.com" }, ct);
+```
+
+Rust:
+
+```rust
+let attrs = sdk.attributes().list_attributes(&ListAttributesRequest { namespace: "example.com".into(), ..Default::default() })?;
+```
+
+Swift:
+
+```swift
+var request = Policy_Attributes_ListAttributesRequest()
+request.namespace = "example.com"
+let attrs = try await sdk.attributes.listAttributes(request)
+```
+
+C:
+
+```c
+char *attrs;
+OTDF_CHECK(otdf_attributes_list_attributes(sdk, "{\"namespace\":\"example.com\"}", NULL, &attrs, &e));
+```
+
 ## Target idioms
 
 Each generated package exposes the same surface. The table is the binding
@@ -422,7 +463,7 @@ rule; the examples show `New`, one encrypt, one decrypt and one service call.
 | Options | struct plus `With*` | object literal | keyword arguments | builder | record with `init` setters | struct with `Default` | struct, zero-initialised | struct with defaults |
 | Errors | `*Error`, sentinels | `OpenTDFError` with `kind`, `message`, `httpStatus`, `requiredObligations` | `OpenTDFError` exception | `OpenTDFException` | `OpenTdfException` | `Error` enum carrying the fields | status code + `otdf_error_get(sdk)` | `OpenTDFError` enum |
 | Reader | `*Reader` (`io.Reader` etc.) | `Reader` with `stream()`, `readAt`, `seek`, async iteration | file-like `Reader` | `Reader` with `asInputStream()` | `Reader : Stream` | `Reader: Read + Seek` | `otdf_reader_*` | `Reader: AsyncSequence` |
-| Service clients | `s.Attributes().GetAttribute(ctx, req)` over `protocol/go` types | `sdk.attributes.getAttribute(req)` (Connect-ES client) | `sdk.attributes.get_attribute(req)` (protobuf messages) | `sdk.attributes().getAttribute(req)` | `sdk.Attributes.GetAttributeAsync(req)` | `sdk.attributes().get_attribute(req)` | `otdf_attributes_get_attribute(sdk, req_json, &resp_json)` | `sdk.attributes.getAttribute(req)` |
+| Service clients | `s.Attributes().GetAttribute(ctx, req)` over `protocol/go` types | `sdk.attributes.getAttribute(req)` (Connect-ES client) | `sdk.attributes.get_attribute(req)` (protobuf messages) | `sdk.attributes().getAttribute(req)` | `sdk.Attributes.GetAttributeAsync(req, ct)` | `sdk.attributes().get_attribute(&req)` | `otdf_attributes_get_attribute(sdk, req_json, call, &resp_json, &error)` | `sdk.attributes.getAttribute(req)` |
 | Release | `Close()` | `await sdk.close()`, `await using` | `close()`, `with` | `close()`, try-with-resources | `DisposeAsync` | `close()`, drop warns | `otdf_sdk_close` | `close()`, deinit warns |
 
 Go:
@@ -461,7 +502,7 @@ Java:
 try (SDK sdk = SDK.builder("https://platform.example").clientCredentials(id, secret).build()) {
     TDFObject obj = sdk.createTDF(out, in, TDFOptions.builder().attributes(List.of(fqn)).build());
     try (Reader r = sdk.loadTDF(channel)) { r.asInputStream().transferTo(plain); }
-    Attribute a = sdk.attributes().getAttribute(GetAttributeRequest.newBuilder().setFqn(fqn).build());
+    Attribute a = sdk.attributes().getAttribute(GetAttributeRequest.newBuilder().setFqn(fqn).build()).getAttribute();
 }
 ```
 
@@ -482,7 +523,7 @@ let sdk = Sdk::new("https://platform.example", Options { client_id: id, client_s
 let obj = sdk.create_tdf(&mut out, &mut input, TdfOptions { attributes: vec![fqn], ..Default::default() })?;
 let mut r = sdk.load_tdf(file, ReaderOptions::default())?;
 std::io::copy(&mut r, &mut plain)?;
-let attr = sdk.attributes().get_attribute(&GetAttributeRequest { fqn, ..Default::default() })?;
+let attr = sdk.attributes().get_attribute(&GetAttributeRequest { identifier: Some(Identifier::Fqn(fqn)), ..Default::default() })?;
 ```
 
 C:
@@ -494,7 +535,7 @@ otdf_tdf_options t = OTDF_TDF_OPTIONS_INIT; t.attributes = &fqn; t.attribute_cou
 OTDF_CHECK(otdf_create_tdf(sdk, &out_stream, &in_stream, &t, &obj));
 OTDF_CHECK(otdf_load_tdf(sdk, &in_stream, NULL, &reader));
 while ((n = otdf_reader_read(reader, buf, sizeof buf)) > 0) { ... }
-OTDF_CHECK(otdf_attributes_get_attribute(sdk, "{\"fqn\":\"...\"}", &resp_json));
+OTDF_CHECK(otdf_attributes_get_attribute(sdk, "{\"fqn\":\"...\"}", NULL, &resp_json, &e));
 ```
 
 Swift:
@@ -504,7 +545,7 @@ let sdk = try await SDK("https://platform.example", Options(clientId: id, client
 let obj = try await sdk.createTDF(to: out, from: input, options: TDFOptions(attributes: [fqn]))
 let reader = try await sdk.loadTDF(file)
 for try await chunk in reader { ... }
-let attr = try await sdk.attributes.getAttribute(GetAttributeRequest(fqn: fqn))
+let attr = try await sdk.attributes.getAttribute(.with { $0.fqn = fqn })
 ```
 
 ## Versioning and features
@@ -674,3 +715,27 @@ on every target would dominate Swift and Rust build times).
 - The health check (`grpc.health.v1.Health/Check`, not in the platform
   protos) is sent as JSON through the same Connect client as `Call`.
 
+### Deviations recorded by Phase 3 part 2
+
+- Java and C# accessors live on a generated abstract base class,
+  `PlatformServices`, that the hand-written `SDK`/`Sdk` extends, as the
+  TypeScript `SDK` merges the generated `PlatformServices` interface: the
+  generated client code stays out of the hand-written adapter. The Java
+  interfaces keep the reference names (`AttributesServiceClient`); C# adds the
+  `I` prefix (`IAttributesServiceClient`).
+- Java messages are generated with `optimize_for = CODE_SIZE` (buf managed
+  mode): the JSON codec works through descriptors and reflection either way,
+  and the generated sources shrink by a fifth. Java and C# carry
+  `buf/validate` under the SDK's own package and namespace, as Python and
+  TypeScript do; the Rust and Swift messages do not reference it and omit it.
+- Rust and Swift clients are concrete types named after the reference's
+  interfaces (`AttributesServiceClient`), not traits or protocols. Rust spells
+  the unsafe service's accessor `r#unsafe()`; Swift `` `unsafe` ``.
+- `google.protobuf.Any` (entity claims, entity resolution error details,
+  `authorization` request extensions): Java and C# resolve it through the
+  type registry of every service file; Swift resolves only types registered
+  with SwiftProtobuf; Rust's `pbjson-types` reads and writes it as
+  `{"typeUrl","value"}` rather than protobuf JSON's embedded form, so a Rust
+  caller passes such messages through `sdk.call` with JSON.
+- C has no typed messages (#29): `otdf_sdk_call` and the 131 generated
+  `otdf_<service>_<method>` functions take and return protobuf JSON text.

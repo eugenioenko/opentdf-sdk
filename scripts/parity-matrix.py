@@ -441,14 +441,15 @@ def root_status_planned(kind, sym):
     raise SystemExit('no status for %s %s' % (kind, sym))
 
 
-# Phase 3 part 1 delivers every sdkconnect client as SDK.Call in the shared
-# source with typed host accessors (Go, TypeScript, Python).
+# Phase 3 delivers every sdkconnect client as SDK.Call in the shared source
+# with typed host accessors (part 1: Go, TypeScript, Python; part 2: Java, C#,
+# Rust, Swift, and C as JSON functions).
 def sdkconnect_equiv(kind, sym):
     if kind == 'type':
         base = sym.replace('ConnectWrapper', '')
         if sym.endswith('ConnectWrapper'):
             return 'SDK.Call; the host accessor returns %s' % base
-        return 'SDK.Call; the Go adapter declares %s over protocol/go messages' % base
+        return 'SDK.Call; each host adapter declares %s over its protobuf messages (C: JSON functions)' % base
     recv, _, name = sym.partition('.')
     if name:
         return 'SDK.Call(ctx, service, "%s", json); host accessor %s.%s' % (name, recv.replace('ConnectWrapper', ''), name)
@@ -557,10 +558,11 @@ lines.append('`DONE` set in the script). Phase 2 part 1 delivered the handle API
 lines.append('discovery and the generated Go package; the symbols the plan lists under Phase 2')
 lines.append('are all `done` in the shared source; part 2 exposes them through the generated')
 lines.append('TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swift ones.')
-lines.append('`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Phase 3 part 1')
+lines.append('`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Phase 3')
 lines.append('delivered the service clients: `SDK.Call` in the shared source, typed accessors in')
-lines.append('the Go, TypeScript and Python packages (the other targets follow in part 2), so the')
-lines.append('`SDK` service fields and every `sdkconnect` symbol are `done`.')
+lines.append('the Go, TypeScript and Python packages (part 1) and the Java, C#, Rust and Swift')
+lines.append('packages, with one JSON function per method in C (part 2), so the `SDK` service')
+lines.append('fields and every `sdkconnect` symbol are `done`.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
 lines.append('[goalchemy-gaps.md](goalchemy-gaps.md):')
