@@ -115,7 +115,7 @@ if [[ ! -x "$SWIFT_PLUGIN" ]]; then
   fi
   SWIFT=swift
   if [[ -x "$ROOT/.toolchains/swift-6.4.0/usr/bin/swift" ]]; then SWIFT="$ROOT/.toolchains/swift-6.4.0/usr/bin/swift"; fi
-  "$SWIFT" build --package-path "$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION" -c release --product protoc-gen-swift --static-swift-stdlib
+  "$SWIFT" build --package-path "$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION" -c release --product protoc-gen-swift
 fi
 
 WORK=$(mktemp -d)
