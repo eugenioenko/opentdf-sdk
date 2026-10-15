@@ -95,8 +95,7 @@ def check(target, profile, mode, output):
         assert 'not_decryptable' in (malformed.get('kind'), malformed.get('code')), malformed
         if target == 'c':
             assert 'public-no-preinit-real-kas' in labels
-        if target in ('go','typescript','python'):
-            assert 'services-self' in labels and result['services']['not_found']['connectCode'] == 'not_found'
+        assert 'services-self' in labels and result['services']['not_found']['connectCode'] == 'not_found'
     if mode == 'full' and not browser:
         if profile == 'basic':
             assert {'grouped-denial','integrity','archive','unauthenticated401','expired-token','provider-rejection','untrusted-route','root-tampering','unsupported-root','unsupported-assertion'} <= set(result['typed_negatives'])

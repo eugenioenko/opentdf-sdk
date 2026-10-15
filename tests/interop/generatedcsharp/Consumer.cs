@@ -1,7 +1,8 @@
 using System;using System.IO;using System.Text;using System.Text.Json;using System.Collections.Generic;using System.Linq;using System.Threading;using System.Threading.Tasks;using System.Security.Cryptography;using System.Net.Http;using OpenTDF;
+using Attributes=OpenTDF.Protocol.Policy.Attributes;using Namespaces=OpenTDF.Protocol.Policy.Namespaces;using Policy=OpenTDF.Protocol.Policy;
 namespace Consumer;
 
-/// Independent assembly consumer of the handle API: one SDK per run, CreateTdfAsync/DecryptBytesAsync, LoadTdfAsync readers, 100 round trips, and the controlled checks of tests/interop/delivery/controlled_platform.py. Host OAuth/DPoP is native .NET.
+/// Independent assembly consumer of the handle API: one SDK per run, CreateTdfAsync/DecryptBytesAsync, LoadTdfAsync readers, 100 round trips, the platform service clients, and the controlled checks of tests/interop/delivery/controlled_platform.py. Host OAuth/DPoP is native .NET.
 static class Entry
 {
  static string run,name;static JsonElement raw;static readonly HttpClient HTTP=new(new SocketsHttpHandler{AllowAutoRedirect=false}){Timeout=TimeSpan.FromSeconds(15)};
@@ -63,6 +64,27 @@ static class Entry
  static IReadOnlyList<object> KeyAccess(IReadOnlyDictionary<string,object> manifest)=>(IReadOnlyList<object>)((IReadOnlyDictionary<string,object>)manifest["encryptionInformation"])["keyAccess"];
 
  /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
+ /// xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error.
+ static async Task Services(Sdk sdk)
+ {
+  string ns="gccs"+Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant()+".com";
+  var before=await sdk.Namespaces.ListNamespacesAsync(new Namespaces.ListNamespacesRequest());
+  var created=(await sdk.Namespaces.CreateNamespaceAsync(new Namespaces.CreateNamespaceRequest{Name=ns})).Namespace;
+  Check(created.Id!=""&&created.Name==ns,"created namespace");
+  var after=await sdk.Namespaces.ListNamespacesAsync(new Namespaces.ListNamespacesRequest());
+  Check(after.Namespaces.Any(n=>n.Id==created.Id)&&after.Namespaces.Count==before.Namespaces.Count+1,"namespace listed");
+  var request=new Attributes.CreateAttributeRequest{NamespaceId=created.Id,Name="free",Rule=Policy.AttributeRuleTypeEnum.AnyOf};request.Values.Add(new[]{"1","2","3"});
+  var attribute=(await sdk.Attributes.GetAttributeAsync(new Attributes.GetAttributeRequest{AttributeId=(await sdk.Attributes.CreateAttributeAsync(request)).Attribute.Id})).Attribute;
+  var values=attribute.Values.Select(v=>v.Value_).ToArray();
+  Check(attribute.Fqn=="https://"+ns+"/attr/free"&&attribute.Rule==Policy.AttributeRuleTypeEnum.AnyOf&&values.SequenceEqual(new[]{"1","2","3"})&&attribute.Namespace.Name==ns,"attribute read back");
+  var listed=await sdk.Attributes.ListAttributesAsync(new Attributes.ListAttributesRequest{Namespace=ns});
+  Check(listed.Attributes.Count==1&&listed.Attributes[0].Id==attribute.Id,"attribute listed");
+  var raw=JsonDocument.Parse(await sdk.CallAsync("policy.attributes.AttributesService","GetAttribute",JsonSerializer.Serialize(new Dictionary<string,string>{["attributeId"]=attribute.Id}))).RootElement;
+  Check(raw.GetProperty("attribute").GetProperty("fqn").GetString()==attribute.Fqn,"raw JSON call");
+  var missing=await ExpectFailure("missing attribute",()=>sdk.Attributes.GetAttributeAsync(new Attributes.GetAttributeRequest{AttributeId="00000000-0000-0000-0000-000000000000"}));
+  Check((string)missing["connectCode"]=="not_found"&&(long)missing["httpStatus"]==404,"missing attribute error: "+JsonSerializer.Serialize(missing));
+  Write("services.json",JsonSerializer.Serialize(new Dictionary<string,object>{["namespace"]=ns,["namespaces_before"]=before.Namespaces.Count,["namespaces_after"]=after.Namespaces.Count,["attribute_fqn"]=attribute.Fqn,["values"]=values,["not_found"]=missing}));
+ }
  static async Task Repeat(Sdk sdk,JsonElement cfg)
  {
   byte[] original={0,255,128,1};byte[] archive=null;
@@ -170,6 +192,7 @@ static class Entry
     }
     case "negative":Write(name+".error.json",JsonSerializer.Serialize(await ExpectFailure("negative",()=>sdk.DecryptBytesAsync(Read(name+".tdf"),ReaderOptionsOf(raw)))));break;
     case "repeat":await Repeat(sdk,raw);break;
+    case "services":await Services(sdk);break;
     default:throw new ArgumentException("unknown mode");
    }
    Console.WriteLine("PASS generated native library "+mode+" "+name);

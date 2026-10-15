@@ -1,6 +1,6 @@
 /* Independent native consumer of the installed package's handle API: one SDK
  * per run, otdf_create_tdf/otdf_decrypt_bytes, otdf_load_tdf readers, 100
- * round trips, and the controlled checks of
+ * round trips, the platform service clients as JSON, and the controlled checks of
  * tests/interop/delivery/controlled_platform.py. Host OAuth/DPoP is native
  * libcurl/OpenSSL through the gxc_provider callback. */
 #define _POSIX_C_SOURCE 200809L
@@ -72,6 +72,40 @@ static void fail(const char *label,otdf_error *e){fprintf(stderr,"consumer failu
 #define EXPECT(label,call) ({otdf_error e_={0};int rc_=(call);if(!rc_){fprintf(stderr,"%s returned successful output\n",label);exit(1);}J *r_=report(&e_);otdf_error_free(&e_);r_;})
 static bool same_kind(J *r,const char *kind){return !strcmp(text(r,"kind"),kind);}
 static void write_json(const char *run,const char *file,J *j){char path[4096];snprintf(path,sizeof path,"%s/%s",run,file);char *out=jsontext(j);writefile(path,out,strlen(out));}
+
+/* xtest's test_self.py through the service clients: list namespaces, create a
+ * namespace and an attribute, read the attribute back by id, through the
+ * namespace's list and through the raw call, and check a missing attribute's error. */
+static J *reply(const char *label,int rc,otdf_error *e,char **json){if(rc)fail(label,e);const char *err=NULL;J *j=j_parse(*json,&err);check(j&&!err,label);otdf_string_free(*json);*json=NULL;return j;}
+static size_t count(J *j,const char *k){J *v=j_get(j,k);return v&&v->t==J_ARR?v->len:0;}
+static void services(otdf_sdk *sdk,const char *run){
+ char ns[64],request[512];otdf_error e={0};char *out=NULL;uint8_t rand[6];assert(RAND_bytes(rand,6)>0);snprintf(ns,sizeof ns,"gcc%02x%02x%02x%02x%02x%02x.com",rand[0],rand[1],rand[2],rand[3],rand[4],rand[5]);
+ J *before=reply("list namespaces",otdf_namespaces_list_namespaces(sdk,NULL,NULL,&out,&e),&e,&out);
+ snprintf(request,sizeof request,"{\"name\":\"%s\"}",ns);
+ J *namespace=j_get(reply("create namespace",otdf_namespaces_create_namespace(sdk,request,NULL,&out,&e),&e,&out),"namespace");
+ check(namespace&&*text(namespace,"id")&&!strcmp(text(namespace,"name"),ns),"created namespace");
+ J *after=reply("list namespaces again",otdf_namespaces_list_namespaces(sdk,"{}",NULL,&out,&e),&e,&out);bool listed=false;
+ for(size_t i=0;i<count(after,"namespaces");i++)listed=listed||!strcmp(text(j_get(after,"namespaces")->items[i],"id"),text(namespace,"id"));
+ check(listed&&count(after,"namespaces")==count(before,"namespaces")+1,"namespace listed");
+ snprintf(request,sizeof request,"{\"namespaceId\":\"%s\",\"name\":\"free\",\"rule\":\"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF\",\"values\":[\"1\",\"2\",\"3\"]}",text(namespace,"id"));
+ J *created=j_get(reply("create attribute",otdf_attributes_create_attribute(sdk,request,NULL,&out,&e),&e,&out),"attribute");check(created!=NULL,"created attribute");
+ snprintf(request,sizeof request,"{\"attributeId\":\"%s\"}",text(created,"id"));
+ J *attribute=j_get(reply("get attribute",otdf_attributes_get_attribute(sdk,request,NULL,&out,&e),&e,&out),"attribute");check(attribute!=NULL,"attribute");
+ char fqn[256];snprintf(fqn,sizeof fqn,"https://%s/attr/free",ns);J *values=j_new(J_ARR),*listed_values=j_get(attribute,"values");
+ for(size_t i=0;listed_values&&i<listed_values->len;i++)j_push(values,j_cstr(text(listed_values->items[i],"value")));
+ check(!strcmp(text(attribute,"fqn"),fqn)&&!strcmp(text(attribute,"rule"),"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF")&&!strcmp(jsontext(values),"[\"1\",\"2\",\"3\"]")&&!strcmp(text(j_get(attribute,"namespace"),"name"),ns),"attribute read back");
+ snprintf(request,sizeof request,"{\"namespace\":\"%s\"}",ns);
+ J *in_namespace=reply("list attributes",otdf_attributes_list_attributes(sdk,request,NULL,&out,&e),&e,&out);
+ check(count(in_namespace,"attributes")==1&&!strcmp(text(j_get(in_namespace,"attributes")->items[0],"id"),text(attribute,"id")),"attribute listed");
+ snprintf(request,sizeof request,"{\"attributeId\":\"%s\"}",text(attribute,"id"));
+ J *raw=reply("raw call",otdf_sdk_call(sdk,"policy.attributes.AttributesService","GetAttribute",request,NULL,&out,&e),&e,&out);check(!strcmp(text(j_get(raw,"attribute"),"fqn"),fqn),"raw call");
+ J *missing=EXPECT("missing attribute",otdf_attributes_get_attribute(sdk,"{\"attributeId\":\"00000000-0000-0000-0000-000000000000\"}",NULL,&out,&e_));
+ check(!strcmp(text(missing,"connectCode"),"not_found")&&number(missing,"httpStatus")==404,"missing attribute error");
+ J *report_=j_new(J_OBJ);char n[32];j_set(report_,"namespace",j_cstr(ns));
+ J *before_n=j_new(J_NUM);snprintf(n,sizeof n,"%zu",count(before,"namespaces"));before_n->s=GC_strdup(n);before_n->n=strlen(n);j_set(report_,"namespaces_before",before_n);
+ J *after_n=j_new(J_NUM);snprintf(n,sizeof n,"%zu",count(after,"namespaces"));after_n->s=GC_strdup(n);after_n->n=strlen(n);j_set(report_,"namespaces_after",after_n);
+ j_set(report_,"attribute_fqn",j_cstr(fqn));j_set(report_,"values",values);j_set(report_,"not_found",missing);write_json(run,"services.json",report_);
+}
 
 /* 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail. */
 static void repeat(otdf_sdk *sdk,J *cfg,const char *name){
@@ -176,6 +210,7 @@ int main(int argc,char **argv){assert(argc==5);GC_INIT();GC_allow_register_threa
   snprintf(path,sizeof path,"%s/%s.tdf",run,name);uint8_t *input=readfile(path,&n);assert(input);otdf_owned_bytes out={0};otdf_reader_options ro=reader_options(cfg);
   J *error=EXPECT("negative",otdf_decrypt_bytes(sdk,(otdf_bytes){input,n},&ro,NULL,&out,&e_));char file[256];snprintf(file,sizeof file,"%s.error.json",name);write_json(run,file,error);free(input);
  }else if(!strcmp(mode,"repeat")){repeat(sdk,cfg,name);sdk=NULL;}
+ else if(!strcmp(mode,"services"))services(sdk,run);
  else{fprintf(stderr,"unknown mode\n");return 1;}
  if(sdk){otdf_sdk_close(sdk,NULL);otdf_sdk_free(sdk);}
  printf("PASS generated native library %s %s\n",mode,name);return 0;

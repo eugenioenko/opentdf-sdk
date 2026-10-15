@@ -1,8 +1,10 @@
 //! Independent native consumer of the installed crate's handle API: one SDK
-//! per run, create_tdf/decrypt_bytes, load_tdf readers, 100 round trips, and
-//! the controlled checks of tests/interop/delivery/controlled_platform.py.
+//! per run, create_tdf/decrypt_bytes, load_tdf readers, 100 round trips, the
+//! platform service clients, and the controlled checks of
+//! tests/interop/delivery/controlled_platform.py.
 //! Host OAuth/DPoP is native Rust.
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use opentdf_tdf3::protocol::policy::{attributes, namespaces, AttributeRuleTypeEnum};
 use opentdf_tdf3::{self as tdf, AccessToken, Error, KasInfo, Options, ProviderError, ProviderRequest, ReaderOptions, Sdk, TdfOptions};
 use serde_json::{json, Value};
 use std::{
@@ -133,6 +135,42 @@ fn poll_until<F: Future>(future: F, limit: Duration, stop: impl Fn() -> bool) ->
         }
         std::thread::sleep(Duration::from_millis(5));
     }
+}
+
+/// xtest's test_self.py through the service clients: list namespaces, create a
+/// namespace and an attribute, read the attribute back by id, through the
+/// namespace's list and through the raw JSON call, and check a missing
+/// attribute's error.
+fn services(sdk: &Sdk, run: &Path) -> Result<(), Error> {
+    let ns = format!("gcrs{}.com", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos());
+    let before = sdk.namespaces().list_namespaces(&namespaces::ListNamespacesRequest::default())?;
+    let namespace = sdk.namespaces().create_namespace(&namespaces::CreateNamespaceRequest { name: ns.clone(), ..Default::default() })?.namespace.unwrap_or_default();
+    check(!namespace.id.is_empty() && namespace.name == ns, "created namespace");
+    let after = poll_for(sdk.namespaces().list_namespaces_async(&namespaces::ListNamespacesRequest::default()), Duration::from_secs(60)).expect("async list namespaces")?;
+    check(after.namespaces.iter().any(|n| n.id == namespace.id) && after.namespaces.len() == before.namespaces.len() + 1, "namespace listed");
+    let created = sdk.attributes().create_attribute(&attributes::CreateAttributeRequest {
+        namespace_id: namespace.id.clone(),
+        name: "free".into(),
+        rule: AttributeRuleTypeEnum::AnyOf as i32,
+        values: vec!["1".into(), "2".into(), "3".into()],
+        ..Default::default()
+    })?;
+    let by_id = |id: String| attributes::GetAttributeRequest { identifier: Some(attributes::get_attribute_request::Identifier::AttributeId(id)), ..Default::default() };
+    let attribute = sdk.attributes().get_attribute(&by_id(created.attribute.unwrap_or_default().id))?.attribute.unwrap_or_default();
+    let values: Vec<String> = attribute.values.iter().map(|v| v.value.clone()).collect();
+    check(
+        attribute.fqn == format!("https://{ns}/attr/free") && attribute.rule == AttributeRuleTypeEnum::AnyOf as i32 && values == ["1", "2", "3"] && attribute.namespace.as_ref().is_some_and(|n| n.name == ns),
+        "attribute read back",
+    );
+    let listed = sdk.attributes().list_attributes(&attributes::ListAttributesRequest { namespace: ns.clone(), ..Default::default() })?;
+    check(listed.attributes.len() == 1 && listed.attributes[0].id == attribute.id, "attribute listed");
+    let raw: Value = serde_json::from_str(&sdk.call("policy.attributes.AttributesService", "GetAttribute", &json!({"attributeId": attribute.id}).to_string())?).unwrap();
+    check(raw["attribute"]["fqn"] == attribute.fqn.as_str(), "raw JSON call");
+    let missing = expect_failure("missing attribute", sdk.attributes().get_attribute(&by_id("00000000-0000-0000-0000-000000000000".into())));
+    check(missing["connectCode"] == "not_found" && missing["httpStatus"] == 404, &format!("missing attribute error: {missing}"));
+    let report = json!({"namespace": ns, "namespaces_before": before.namespaces.len(), "namespaces_after": after.namespaces.len(), "attribute_fqn": attribute.fqn, "values": values, "not_found": missing});
+    fs::write(run.join("services.json"), report.to_string()).unwrap();
+    Ok(())
 }
 
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
@@ -290,6 +328,7 @@ fn main() {
                     repeat(&sdk, &cfg, name)?;
                     return Ok(());
                 }
+                "services" => services(&sdk, run)?,
                 _ => panic!("unknown mode"),
             }
             sdk.close()
