@@ -25,7 +25,7 @@ def members(root, target):
     elif target == 'typescript':
         files = [p for p in root.rglob('*') if p.is_file() and ('dist' in p.parts or 'licenses' in p.parts or p.name == 'package.json')]
     elif target == 'java':
-        files = [root/'tdf3-java.jar', root/'dependencies.lock.json', *list((root/'lib').glob('*.jar')), *list((root/'licenses').rglob('*'))]
+        files = [root/'tdf3-java.jar', root/'dependencies.lock.json', root/'protocol-dependencies.lock.json', *list((root/'lib').glob('*.jar')), *list((root/'licenses').rglob('*'))]
     elif target == 'csharp':
         files = [p for p in (root/'lib').iterdir() if p.suffix in ('.dll', '.json')] + [root/'dependencies.lock.json', root/'packages.lock.json', *list((root/'licenses').rglob('*'))]
     elif target == 'python':

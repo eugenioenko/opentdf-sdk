@@ -12,7 +12,7 @@ GENERATED=$(cd "$GENERATED" && pwd)
 if [[ "$OUT" != /* ]]; then OUT="$(pwd)/$OUT"; fi
 BUILD=${OTDFGC_BUILD_DIR:-"$(dirname "$GENERATED")/otdfgc-java-build"}
 JDK=${JAVA_HOME:-"$ROOT/.toolchains/jdk-21.0.12.1+1"}
-CP="$GENERATED/tdf3-java.jar:$GENERATED/lib/bcprov-jdk18on-1.86.jar"
+CP="$GENERATED/tdf3-java.jar:$GENERATED/lib/*"
 [[ -f "$GENERATED/tdf3-java.jar" ]] || { echo "generated package has no tdf3-java.jar: $GENERATED" >&2; exit 1; }
 rm -rf "$BUILD"
 mkdir -p "$BUILD/classes" "$(dirname "$OUT")"
