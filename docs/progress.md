@@ -2241,3 +2241,73 @@ Verification (local, throttled, one target at a time, Goalchemy at
 - [parity-matrix.md](parity-matrix.md): the 15 `SDK` service fields and the
   179 `sdkconnect` symbols are `done`; 16 Phase 3 rows remain (helpers,
   `SDK.Conn`, `WithCustom*Connection`, `SDK.Auth`).
+
+## Full SDK plan, Phase 3 part 2: Java, C#, Rust, Swift and C service clients
+
+Branch `feat/phase3-part2-adapters` (PR #31), on the part 1 design: each host
+types the 16 `sdkconnect` services (131 methods) with its own ecosystem's
+protobuf messages and JSON codec over the shared `SDK.Call`; C exposes JSON
+text (typed C is #29). No shared-source or Goalchemy change was needed.
+
+Generation (`scripts/generate-protocol.sh`, `--check` in the offline job):
+
+| Host | Messages | Generator | Files | Lines | Size |
+| --- | --- | --- | --- | --- | --- |
+| Java | `src/hosts/java/protocol`, `io.opentdf.tdf3.protocol`, `optimize_for = CODE_SIZE` | `protoc` 33.6 | 848 | 387,863 | 14,316 KB |
+| C# | `src/hosts/csharp/protocol`, `OpenTDF.Protocol` | `protoc` 33.6 | 21 | 128,241 | 4,942 KB |
+| Rust | `src/hosts/rust/protocol`, `opentdf_tdf3::protocol` | `protoc-gen-prost` 0.5.0, `protoc-gen-prost-serde` 0.4.0 | 39 | 53,755 | 2,121 KB |
+| Swift | `src/hosts/swift/protocol`, `OpenTDFTDF3` module | `protoc-gen-swift` 1.38.1 (tag commit `55d7a1cc`, `--static-swift-stdlib`) | 20 | 28,558 | 1,241 KB |
+
+`scripts/generate-service-clients.py` adds `PlatformServices.java.in` (841
+lines), `Services.cs.in` (443), `services.rs.in` (975), `Services.swift.in`
+(253) and `opentdf_services.{h,c}` (131 functions), with request and response
+types read from the services' `rpc` declarations. Java with the default
+`SPEED` would be 466,395 lines (19 MB); Rust and Swift leave out
+`buf/validate`, which their messages do not reference.
+
+Runtime dependencies, each pinned and checked:
+
+- Java: `protobuf-java` and `protobuf-java-util` 4.33.6, `gson` 2.8.9
+  (`src/hosts/java/protocol-dependencies.lock.json`, SHA-256 verified,
+  licenses under `src/hosts/java/licenses`); `src/hosts/java/dependencies.lock.json`
+  stays identical to Goalchemy's.
+- C#: `Google.Protobuf` 3.33.6, restored in locked mode against its NuGet
+  content hash, added to `src/hosts/csharp/dependencies.lock.json`.
+- Rust: `prost` 0.14.4, `pbjson`/`pbjson-types` 0.8.0, `serde` 1.0.229,
+  `serde_json` 1.0.151; `Cargo.lock` only gains packages (168 → 202 external),
+  the inventory 307 → 369 notices. `pbjson-types` builds from its bundled
+  descriptors, without `protoc`.
+- Swift: `swift-protobuf` 1.38.1 by exact version and `Package.resolved`
+  revision.
+
+Verification:
+
+- Locally (throttled, one target at a time): the Java, C#, Rust and C packages
+  build with `scripts/build-generated-<target>.sh`. The Java and C# CLIs build
+  and answer `--version --json`. Each consumer's new `services` mode passes
+  against a scratch Connect fake that returns unknown fields and timestamps:
+  it lists namespaces, creates a namespace and an attribute, reads the
+  attribute back by id, in the namespace and through the raw call, and checks
+  the `not_found`/404 error. The C consumer's first run found an
+  argument-evaluation-order bug in the consumer itself, which is fixed.
+  `generate-protocol.sh --check` passes; `tests/ci` passes.
+- `run-focused.py` runs `services` for every target in the focused real-KAS
+  jobs, and `delivery-coverage.py` requires it.
+- Swift: the generated messages and `Services.swift` compile against
+  SwiftProtobuf 1.38.1 with a stub `SDK`. The full package build
+  (GoalchemyGenerated, which this part does not change) was OOM-killed under
+  the local 6 GB limit; the Swift CI job builds it but times out on the hosted
+  runner, as before, and is not required.
+- CI run 38681868819 (`4c7c7a3`): `offline-format-protocol` (including
+  `generate-protocol.sh --check` with every new output) and the focused
+  real-KAS jobs for go, typescript, java, csharp, python, rust and c pass. The
+  coverage gate requires the `services-self` run with its `not_found`
+  report. These jobs also exercise the part 1 generated KAS client on Java,
+  C#, Rust and C. The xtest scoreboard is unchanged: the shared source is
+  unchanged since part 1.
+- The first offline run failed because `protoc-gen-swift` built with
+  `--static-swift-stdlib` does not link on Linux (static Foundation lacks
+  CoreFoundation). The plugin now links the pinned Swift 6.4.0 runtime, which
+  the offline job installs from a cached archive.
+- [parity-matrix.md](parity-matrix.md): no status changes; the `sdkconnect`
+  equivalents now name every host.
