@@ -5,7 +5,12 @@
 #                                   what the shared source reads (protoc-gen-goalchemy)
 #   src/hosts/typescript/protocol   protobuf-es messages and services (protoc-gen-es)
 #   src/hosts/python/protocol       protobuf Python messages (protoc)
-#   src/hosts/*/services.*.in       the hosts' service accessors, from the reference
+#   src/hosts/java/protocol         protobuf-java messages (protoc)
+#   src/hosts/csharp/protocol       Google.Protobuf messages (protoc)
+#   src/hosts/rust/protocol         prost messages with pbjson serde (protoc-gen-prost,
+#                                   protoc-gen-prost-serde)
+#   src/hosts/swift/protocol        SwiftProtobuf messages (protoc-gen-swift)
+#   src/hosts/*/services.*          the hosts' service accessors, from the reference
 #                                   sdkconnect (scripts/generate-service-clients.py)
 # --check regenerates into a temporary directory and fails when any output differs.
 set -euo pipefail
@@ -16,6 +21,10 @@ TOOLS=${PROTOCOL_TOOLS_DIR:-"$SDK/.local/protocol-tools"}
 BUF_VERSION=v1.70.0
 PROTOC_VERSION=33.6
 PROTOC_SHA256=9c49962391ff8b5754342509efc3885db91dfe11a358e1e98c9a71518f0ad199
+PROTOC_GEN_PROST_VERSION=0.5.0
+PROTOC_GEN_PROST_SERDE_VERSION=0.4.0
+SWIFT_PROTOBUF_VERSION=1.38.1
+SWIFT_PROTOBUF_COMMIT=55d7a1cc5666b85c13464aea1c4b4a90feccb4c8
 export GOTOOLCHAIN=go1.25.14
 
 # The services behind the reference's sdkconnect clients, plus kas.AccessService
@@ -38,6 +47,10 @@ SERVICES=(
   policy/unsafe/unsafe.proto
   wellknownconfiguration/wellknown_configuration.proto
 )
+# The services' imports other than buf/validate, which the Rust and Swift
+# messages do not reference. Java and C# descriptors do, so those generators
+# include every import.
+IMPORTS=(common/common.proto entity/entity.proto policy/objects.proto policy/selectors.proto)
 SHARED=(common/common.proto entity/entity.proto policy/objects.proto policy/selectors.proto kas/kas.proto
   wellknownconfiguration/wellknown_configuration.proto policy/kasregistry/key_access_server_registry.proto
   policy/attributes/attributes.proto authorization/authorization.proto)
@@ -91,6 +104,19 @@ if [[ ! -x "$TOOLS/protoc-$PROTOC_VERSION/bin/protoc" ]]; then
   python3 -c 'import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])' "$archive" "$TOOLS/protoc-$PROTOC_VERSION"
   chmod +x "$TOOLS/protoc-$PROTOC_VERSION/bin/protoc"
 fi
+cargo install --quiet --locked --root "$TOOLS/cargo" "protoc-gen-prost@$PROTOC_GEN_PROST_VERSION" "protoc-gen-prost-serde@$PROTOC_GEN_PROST_SERDE_VERSION"
+SWIFT_PLUGIN="$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION/.build/release/protoc-gen-swift"
+if [[ ! -x "$SWIFT_PLUGIN" ]]; then
+  rm -rf "$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION"
+  git clone --quiet --depth 1 --branch "$SWIFT_PROTOBUF_VERSION" https://github.com/apple/swift-protobuf.git "$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION"
+  if [[ "$(git -C "$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION" rev-parse HEAD)" != "$SWIFT_PROTOBUF_COMMIT" ]]; then
+    echo "swift-protobuf $SWIFT_PROTOBUF_VERSION is not $SWIFT_PROTOBUF_COMMIT" >&2
+    exit 1
+  fi
+  SWIFT=swift
+  if [[ -x "$ROOT/.toolchains/swift-6.4.0/usr/bin/swift" ]]; then SWIFT="$ROOT/.toolchains/swift-6.4.0/usr/bin/swift"; fi
+  "$SWIFT" build --package-path "$TOOLS/swift-protobuf-$SWIFT_PROTOBUF_VERSION" -c release --product protoc-gen-swift --static-swift-stdlib
+fi
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
@@ -126,9 +152,90 @@ plugins:
     out: $WORK/python
     include_imports: true
 EOF
+# Java and C# messages live under the SDK's own package and namespace, with
+# buf/validate among them, as the Python and TypeScript ones do.
+cat > "$WORK/java.yaml" <<EOF
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: java_package_prefix
+      value: io.opentdf.tdf3.protocol
+    - file_option: optimize_for
+      value: CODE_SIZE
+plugins:
+  - protoc_builtin: java
+    protoc_path: $TOOLS/protoc-$PROTOC_VERSION/bin/protoc
+    out: $WORK/java
+    include_imports: true
+EOF
+cat > "$WORK/csharp.yaml" <<EOF
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: csharp_namespace_prefix
+      value: OpenTDF.Protocol
+plugins:
+  - protoc_builtin: csharp
+    protoc_path: $TOOLS/protoc-$PROTOC_VERSION/bin/protoc
+    out: $WORK/csharp
+    include_imports: true
+    opt:
+      - base_namespace=OpenTDF.Protocol
+EOF
+cat > "$WORK/native.yaml" <<EOF
+version: v2
+plugins:
+  - local: $SWIFT_PLUGIN
+    out: $WORK/swift
+    opt:
+      - Visibility=Public
+      - FileNaming=PathToUnderscores
+  - local: $TOOLS/cargo/bin/protoc-gen-prost
+    out: $WORK/rust
+    strategy: all
+    opt:
+      - compile_well_known_types
+      - extern_path=.google.protobuf=::pbjson_types
+      - flat_output_dir
+  - local: $TOOLS/cargo/bin/protoc-gen-prost-serde
+    out: $WORK/rust
+    strategy: all
+    opt:
+      - extern_path=.google.protobuf=::pbjson_types
+      - flat_output_dir
+      - ignore_unknown_fields
+EOF
 paths() { for f in "$@"; do printf -- '--path\0service/%s\0' "$f"; done; }
 (cd "$PLATFORM"; paths "${SHARED[@]}" | xargs -0 "$BUF" generate --template "$WORK/goalchemy.yaml")
 (cd "$PLATFORM"; paths "${SERVICES[@]}" | xargs -0 "$BUF" generate --template "$WORK/hosts.yaml")
+(cd "$PLATFORM"; paths "${SERVICES[@]}" | xargs -0 "$BUF" generate --template "$WORK/java.yaml")
+(cd "$PLATFORM"; paths "${SERVICES[@]}" | xargs -0 "$BUF" generate --template "$WORK/csharp.yaml")
+(cd "$PLATFORM"; paths "${SERVICES[@]}" "${IMPORTS[@]}" | xargs -0 "$BUF" generate --template "$WORK/native.yaml")
+
+# prost writes one file per package; the crate's protocol module nests them as
+# the packages nest, which the messages' super:: paths expect.
+python3 - "$WORK/rust" <<'PY'
+import pathlib,sys
+root=pathlib.Path(sys.argv[1])
+tree={}
+for f in sorted(root.glob('*.rs')):
+    if not f.name.endswith('.serde.rs'):
+        node=tree
+        for part in f.name[:-3].split('.'):
+            node=node.setdefault(part,{})
+        node['']=f.name
+def emit(node,depth):
+    out=[]
+    if '' in node:
+        out.append('    '*depth+'include!("'+node['']+'");')
+    for name in sorted(k for k in node if k):
+        ident='r#'+name if name in ('unsafe','type','mod','use') else name
+        out+=['    '*depth+'pub mod '+ident+' {',*emit(node[name],depth+1),'    '*depth+'}']
+    return out
+(root/'mod.rs').write_text('// Code generated by scripts/generate-protocol.sh from the prost output. DO NOT EDIT.\n'+'\n'.join(emit(tree,0))+'\n')
+PY
 
 # protoc's Python imports are absolute from the proto root; the package ships
 # them under opentdf_tdf3.protocol.
@@ -154,6 +261,16 @@ OUTPUTS=(
   "services/go/services.go.in:src/hosts/go/services.go.in"
   "services/typescript/services.ts.in:src/hosts/typescript/services.ts.in"
   "services/python/services.py.in:src/hosts/python/services.py.in"
+  "java:src/hosts/java/protocol"
+  "csharp:src/hosts/csharp/protocol"
+  "rust:src/hosts/rust/protocol"
+  "swift:src/hosts/swift/protocol"
+  "services/java/PlatformServices.java.in:src/hosts/java/PlatformServices.java.in"
+  "services/csharp/Services.cs.in:src/hosts/csharp/Services.cs.in"
+  "services/rust/services.rs.in:src/hosts/rust/services.rs.in"
+  "services/swift/Services.swift.in:src/hosts/swift/Services.swift.in"
+  "services/c/opentdf_services.h:src/hosts/c/opentdf_services.h"
+  "services/c/opentdf_services.c:src/hosts/c/opentdf_services.c"
 )
 if [[ "${1:-}" == --check ]]; then
   status=0
