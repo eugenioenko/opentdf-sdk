@@ -423,6 +423,14 @@ int otdf_store_kas_keys(otdf_sdk *sdk, const char *url, const otdf_kas_public_ke
     return rc;
 }
 
+int otdf_sdk_call(otdf_sdk *sdk, const char *service, const char *method, const char *request_json, const otdf_call *call, char **response_json, otdf_error *error) {
+    if (!sdk || !service || !method || !response_json) return invalid(error);
+    gxc_value args[] = {handle(sdk->h), str(service), str(method), str(request_json)}, result = {0};
+    int rc = invoke("SDK.Call", args, 4, call, sdk, &result, error);
+    if (!rc) { *response_json = dup_text(&result); gxc_value_free(&result); }
+    return rc;
+}
+
 /* Free functions: a bytes stream for the reader parameters, text results. */
 typedef struct { otdf_bytes data; size_t position; } cursor;
 static int64_t cursor_read(void *state, uint8_t *buffer_, size_t length, char *message) {
