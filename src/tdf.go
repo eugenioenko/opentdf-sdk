@@ -1396,7 +1396,7 @@ func getKasAllowList(ctx context.Context, kasAllowList AllowList, s *SDK, ignore
 		if err != nil {
 			return nil, fmt.Errorf("retrieving platformEndpoint failed: %w", err)
 		}
-		conn, call := s.client.newServiceClient(s.serviceEndpoint(false), nil)
+		conn, call := s.client.newServiceClient(s.serviceEndpoint(policyServices), nil)
 		allowList, err = allowListFromKASRegistry(ctx, s.cfg.logger, kasregistry.NewKeyAccessServerRegistryServiceClient(conn), call, platformEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("allowListFromKASRegistry failed: %w", err)

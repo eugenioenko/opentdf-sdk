@@ -76,6 +76,8 @@ type Options struct {
 	TLS                 *TLSOptions // WithTLSCredentials: ClientCertPEM, ClientKeyPEM, RootCAsPEM, Audience
 	UnixSocket          string   // WithIPC equivalent on targets with Unix sockets
 	TimeoutMillis       int64    // per request; 0 = reference default
+	// Service endpoints through the SDK's transport: CoreEndpoint for every
+	// service, the others for their own services (see Service clients).
 	CoreEndpoint             string // WithCustomCoreConnection
 	PolicyEndpoint           string // WithCustomPolicyConnection
 	AuthorizationEndpoint    string // WithCustomAuthorizationConnection
@@ -138,12 +140,17 @@ func (s *SDK) NewChunkedWriter(ctx context.Context, opts ChunkedWriterOptions) (
 // Keys and policy helpers.
 func (s *SDK) GetBaseKey(ctx context.Context) (*SimpleKasKey, error)
 func (s *SDK) StoreKASKeys(url string, keys *KasPublicKeySet) error
-func (s *SDK) ListAttributes(ctx context.Context, namespaces []string) ([]*policy.Attribute, error)
+func (s *SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*policy.Attribute, error)
 func (s *SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Entity) ([]string, error)
 func (s *SDK) ValidateAttributes(ctx context.Context, fqns []string) error
 func (s *SDK) AttributeExists(ctx context.Context, fqn string) (bool, error)
 func (s *SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error)
 func (s *SDK) Auth() *AuthClient // AccessToken(ctx) (AccessToken, error)
+func (s *SDK) Conn() ConnectRPCConnection // {Endpoint}: the core services' endpoint
+
+// The typed helpers across the Goalchemy boundary (see Service clients).
+func (s *SDK) ListAttributesJSON(ctx context.Context, namespace []string) ([]string, error)
+func (s *SDK) GetEntityAttributesJSON(ctx context.Context, entity string) ([]string, error)
 
 // Service clients: one generic JSON call in the shared source; the hosts'
 // typed clients are built on it (see Service clients).
@@ -355,10 +362,8 @@ Shared source (`src/connect.go`, `src/protocol/`):
   clients, by protobuf name (`policy.attributes.AttributesService`, ...,
   `policy.obligations.Service`, `wellknownconfiguration.WellKnownService`);
   `method` is the RPC name; `request` and the result are protobuf JSON
-  objects. It POSTs Connect unary JSON through the same transport. The two
-  entity resolution services are routed through the entity resolution
-  connection (the platform endpoint until `WithCustomEntityResolutionConnection`
-  lands). `Call` is part of `Client`.
+  objects. It POSTs Connect unary JSON through the same transport, to the
+  service's connection (below). `Call` is part of `Client`.
 - A failure the service reports is an `Error` with `ConnectCode` (the Connect
   code name), `ServiceMessage`, `HTTPStatus`, and `Message` worded as
   connect-go's `Error()` (`not_found: attribute not found`). `Kind` is
@@ -447,6 +452,69 @@ C:
 ```c
 char *attrs;
 OTDF_CHECK(otdf_attributes_list_attributes(sdk, "{\"namespace\":\"example.com\"}", NULL, &attrs, &e));
+```
+
+### Helpers, Auth and endpoint overrides (Phase 3 part 3)
+
+The shared source ports the reference's `discovery.go` and `auth_client.go`:
+`ListAttributes` (every page until `next_offset` is 0, at most 1000 pages,
+at most one namespace filter), `AttributeExists` and `AttributeValueExists`
+(`not_found` is `false`, not an error), `ValidateAttributes` (at most 250
+value FQNs, each checked locally, missing ones reported as
+`attribute not found: <fqn>, ...`), `GetEntityAttributes` (the entitlement
+whose entity id matches) and `SDK.Auth().AccessToken`. They call the
+generated `policy.attributes` and `authorization` clients (`include=` in
+`scripts/generate-protocol.sh`) over the SDK's authenticated transport,
+through the SDK's `attributesService` and `authorizationService`
+collaborators. The FQN checks are the reference's regular expressions as
+parsers (`granter.go`, differentially tested against Go's `regexp`).
+`ListAttributesJSON` and `GetEntityAttributesJSON` carry the typed results
+across the boundary as protobuf JSON; every host decodes them with its own
+`policy.Attribute` and encodes its own `authorization.Entity`.
+
+Connections, as the reference's `platformConn` and `ersConn`, all over the
+SDK's transport (token source, DPoP, timeouts):
+
+| Services | Endpoint |
+| --- | --- |
+| `policy.*` (attributes, namespaces, KAS registry, ...), including the registry allowlist and the helpers | `PolicyEndpoint`, else `CoreEndpoint`, else the platform endpoint |
+| `authorization`, `authorization.v2`, including `GetEntityAttributes` | `AuthorizationEndpoint`, else core, else platform |
+| `entityresolution`, `entityresolution.v2` | `EntityResolutionEndpoint`, else core, else platform |
+| `wellknownconfiguration`, including the configuration `New` fetches | `WellknownEndpoint`, else core, else platform |
+| health (`IsHealthy`, `ValidateConnection`), `SDK.Conn` | `CoreEndpoint`, else platform |
+
+The platform endpoint stays the configuration's `platform_endpoint` and the
+allowlist's platform entry; KAS calls go to the KAS URL. A malformed override
+fails `New` with `platform endpoint is malformed [<endpoint>]`.
+
+Per target:
+
+| Target | Helpers | Auth | Conn and overrides |
+| --- | --- | --- | --- |
+| Go | `s.ListAttributes(ctx, []string{ns})` (`[]*policy.Attribute` of `protocol/go`), `s.GetEntityAttributes(ctx, *authorization.Entity)`, `s.ValidateAttributes(ctx, fqns)`, `s.AttributeExists(ctx, fqn)`, `s.AttributeValueExists(ctx, fqn)`, each with trailing `callbacks...` | `a, _ := s.Auth(ctx); a.AccessToken(ctx)`; `a.Close()` | `s.Conn(ctx)`; `WithCustomCoreConnection(&ConnectRPCConnection{Endpoint: ...})` and the policy, authorization, entity resolution and well-known variants |
+| TypeScript | `sdk.listAttributes(namespace?)` (`Attribute[]`), `getEntityAttributes(EntityInit)`, `validateAttributes(fqns)`, `attributeExists(fqn)`, `attributeValueExists(fqn)`, each `Promise` with optional `{signal}` | `sdk.auth().accessToken()` | `sdk.conn()`; `coreEndpoint`, `policyEndpoint`, `authorizationEndpoint`, `entityResolutionEndpoint`, `wellknownEndpoint` options |
+| Python | `sdk.list_attributes(namespace=None)`, `get_entity_attributes(Entity)`, `validate_attributes(fqns)`, `attribute_exists(fqn)`, `attribute_value_exists(fqn)`, with `timeout=` and `*_async` twins | `sdk.auth().access_token()` / `access_token_async()` | `sdk.conn()`; `core_endpoint=` and the other keyword options |
+| Java | `sdk.listAttributes(ns)` (`List<Attribute>`), `getEntityAttributes(Entity)`, `validateAttributes(List)`, `attributeExists(fqn)`, `attributeValueExists(fqn)`, with `Duration` overloads and `*Async` twins | `sdk.auth().accessToken()` (`TDF3.AccessToken`) / `accessTokenAsync()` | `sdk.conn()` (`SDK.ConnectRPCConnection`); `Builder.coreEndpoint(...)` and the others |
+| C# | `ListAttributesAsync(ns)`, `GetEntityAttributesAsync(Entity)`, `ValidateAttributesAsync(fqns)`, `AttributeExistsAsync(fqn)`, `AttributeValueExistsAsync(fqn)`, each with a `CancellationToken` | `sdk.Auth().AccessTokenAsync()` | `ConnAsync()`; `Options.CoreEndpoint` and the others |
+| Rust | `list_attributes(Option<&str>)` (`Vec<protocol::policy::Attribute>`), `get_entity_attributes(Option<&Entity>)`, `validate_attributes(&[String])`, `attribute_exists(&str)`, `attribute_value_exists(&str)`, with `*_async` twins | `sdk.auth().access_token()` / `access_token_async()` | `sdk.conn()` (`ConnectRpcConnection`); `Options { core_endpoint, .. }` and the others |
+| Swift | `listAttributes(_:)` (`[Policy_Attribute]`), `getEntityAttributes(_: Authorization_Entity?)`, `validateAttributes(_:)`, `attributeExists(_:)`, `attributeValueExists(_:)`, `async throws` | `sdk.auth().accessToken()` | `sdk.conn()`; `Options.coreEndpoint` and the others |
+| C | `otdf_list_attributes(sdk, namespace_name, call, &attributes_json, &e)` (a JSON array of `policy.Attribute`), `otdf_get_entity_attributes(sdk, entity_json, call, &fqns, &count, &e)`, `otdf_validate_attributes`, `otdf_attribute_exists`, `otdf_attribute_value_exists` | `otdf_auth_access_token(sdk, call, &token, &e)` (`otdf_access_token`, `otdf_access_token_free`) | `otdf_sdk_conn(sdk, call, &endpoint, &e)`; `otdf_options.core_endpoint` and the others |
+
+Go:
+
+```go
+attrs, err := s.ListAttributes(ctx, []string{"example.com"})
+err = s.ValidateAttributes(ctx, []string{"https://example.com/attr/level/value/high"})
+fqns, err := s.GetEntityAttributes(ctx, &authorization.Entity{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "my-service"}})
+s, err := sdk.NewWithOptions(ctx, platform, sdk.WithCustomCoreConnection(&sdk.ConnectRPCConnection{Endpoint: "https://core.example.com"}))
+```
+
+TypeScript:
+
+```ts
+const exists = await sdk.attributeValueExists('https://example.com/attr/level/value/high');
+const fqns = await sdk.getEntityAttributes({ id: 'e1', entityType: { case: 'clientId', value: 'my-service' } });
+const token = await sdk.auth().accessToken();
 ```
 
 ## Target idioms
@@ -739,3 +807,40 @@ on every target would dominate Swift and Rust build times).
   caller passes such messages through `sdk.call` with JSON.
 - C has no typed messages (#29): `otdf_sdk_call` and the 131 generated
   `otdf_<service>_<method>` functions take and return protobuf JSON text.
+
+### Deviations recorded by Phase 3 part 3
+
+- `ListAttributes` and `GetEntityAttributes` keep the reference's typed
+  signatures in the shared source; the hosts reach them through
+  `ListAttributesJSON` and `GetEntityAttributesJSON` (protobuf JSON, as
+  `SDK.Call`), so every host returns its own `policy.Attribute`. C returns
+  the JSON array.
+- `ValidateAttributes` takes a slice: a variadic parameter does not cross the
+  boundary, and in Go the generated method's trailing variadic is the host
+  callbacks. The Go adapter's `ListAttributes` takes `[]string` for the same
+  reason; more than one namespace still fails with the reference's
+  `ListAttributes accepts at most one namespace filter, got N`.
+- `AuthClient.AccessToken` returns the SDK's `AccessToken` (value, scheme,
+  expiry, DPoP thumbprint) rather than the reference's string. In Go,
+  `SDK.Auth`, `SDK.Conn` and `AuthClient.AccessToken` take `ctx` and return
+  an error, as every generated method; the `AuthClient` handle has `Close`.
+  The other hosts' `auth()` is local and each `accessToken()` opens and
+  closes the shared source's `AuthClient` handle.
+- `ConnectRPCConnection` is the endpoint only: every connection uses the
+  SDK's authenticated transport, so the reference's `Client` and connect
+  `Options` have no equivalent (`WithExtraClientOptions` is not planned).
+  `SDK.Conn` returns the core endpoint.
+- The reference's deprecated `WithCustomPolicyConnection`,
+  `WithCustomAuthorizationConnection` and `WithCustomWellknownConnection`
+  set its single core connection; here they are per-service overrides with
+  the core endpoint as their fallback, as the plan specifies. With only
+  `WithCustomCoreConnection` the routing is the reference's. An override is
+  validated as the platform endpoint is.
+- The reference's `ErrAttributeNotFound` is reported only when the service
+  answers without a requested FQN; the platform at the pinned revision
+  answers `not_found` for any missing value, so `ValidateAttributes` there
+  fails with `validating attributes: not_found: resource not found`, as the
+  reference does.
+- `NewAttributeNameFQN` and `NewAttributeValueFQN` stay unexported
+  (`newAttributeNameFQN`) until Phase 4 exports the FQN types with the
+  granter; `ErrInvalid` is exported now.

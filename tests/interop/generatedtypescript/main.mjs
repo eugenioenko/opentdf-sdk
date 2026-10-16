@@ -84,7 +84,7 @@ try{
   }else if(mode==='repeat'){
    await repeat(sdk,cfg);
   }else if(mode==='services'){
-   await services(sdk);
+   await services(sdk,cfg);
   }else throw new Error('unknown mode');
   console.log('PASS generated native library',mode,name);
  }
@@ -131,7 +131,7 @@ async function repeat(sdk,cfg){
 // list namespaces, create a namespace and an attribute, read the attribute
 // back by id, through the namespace's list and through the raw JSON call, and
 // check a missing attribute's ConnectError.
-async function services(sdk){
+async function services(sdk,cfg){
  const {AttributeRuleTypeEnum}=await import(pathToFileURL(resolve(dirname(entry),'protocol/policy/objects_pb.js')).href);
  const name='gcts'+Date.now().toString(36)+'.com';
  const before=await sdk.namespaces.listNamespaces({});
@@ -152,5 +152,28 @@ async function services(sdk){
  const cause=missing?.cause;
  assert(missing?.name==='ConnectError'&&missing.code===5&&cause instanceof g.OpenTDFError&&cause.connectCode==='not_found'&&cause.httpStatus===404,'missing attribute ConnectError');
  await write('services.json',JSON.stringify({namespace:name,namespaces_before:before.namespaces.length,namespaces_after:after.namespaces.length,attribute_fqn:attribute.fqn,values,
-  not_found:{connectError:missing.code,rawMessage:missing.rawMessage,kind:cause.kind,connectCode:cause.connectCode,httpStatus:cause.httpStatus,message:cause.message}}));
+  not_found:{connectError:missing.code,rawMessage:missing.rawMessage,kind:cause.kind,connectCode:cause.connectCode,httpStatus:cause.httpStatus,message:cause.message},
+  helpers:await helpers(sdk,cfg,name,attribute.fqn)}));
+}
+
+// The reference's attribute helpers on the attribute services created,
+// SDK.auth, and an SDK whose platform endpoint is unreachable but whose core
+// connection is the platform.
+async function helpers(sdk,cfg,namespace,fqn){
+ const report={};
+ report.attribute_exists=await sdk.attributeExists(fqn);
+ report.attribute_missing=await sdk.attributeExists(fqn+'-missing');
+ report.value_exists=await sdk.attributeValueExists(fqn+'/value/1');
+ report.value_missing=await sdk.attributeValueExists(fqn+'/value/9');
+ report.listed=(await sdk.listAttributes(namespace)).map(a=>a.fqn);
+ await sdk.validateAttributes([fqn+'/value/1',fqn+'/value/2']);
+ report.validate_ok=true;
+ try{await sdk.validateAttributes([fqn+'/value/1',fqn+'/value/9']);}catch(e){assert(e instanceof g.OpenTDFError,'typed validate error');report.validate_missing={kind:e.kind,connectCode:e.connectCode,message:e.message};}
+ assert(report.validate_missing,'validate missing');
+ report.entity_attributes=await sdk.getEntityAttributes({id:'e1',entityType:{case:'clientId',value:'opentdf-sdk'}});
+ const token=await sdk.auth().accessToken();
+ report.access_token={present:token.value!=='',scheme:token.scheme};
+ await using override=await g.SDK.create('http://127.0.0.1:9',{...optionsOf(cfg),coreEndpoint:cfg.PlatformURL});
+ report.override={endpoint:(await override.conn()).endpoint,attribute_exists:await override.attributeExists(fqn)};
+ return report;
 }

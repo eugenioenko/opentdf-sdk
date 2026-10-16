@@ -71,6 +71,22 @@ if (otdf_attributes_list_attributes(sdk, "{\"namespace\":\"example.com\"}", NULL
 else if (!strcmp(e.connect_code, "not_found")) { ... }
 ```
 
+The helpers are `otdf_list_attributes(sdk, namespace_name, call, &json, &e)`
+(a JSON array of `policy.Attribute`; NULL lists every namespace),
+`otdf_get_entity_attributes(sdk, entity_json, call, &fqns, &count, &e)`,
+`otdf_validate_attributes(sdk, fqns, count, call, &e)`,
+`otdf_attribute_exists` and `otdf_attribute_value_exists` (a `bool` out);
+`otdf_auth_access_token` fills an `otdf_access_token` (release with
+`otdf_access_token_free`) and `otdf_sdk_conn` returns the core endpoint.
+`otdf_options.core_endpoint`, `policy_endpoint`, `authorization_endpoint`,
+`entity_resolution_endpoint` and `wellknown_endpoint` route those services
+through the SDK's transport.
+
+```c
+bool exists;
+if (otdf_attribute_value_exists(sdk, "https://example.com/attr/level/value/high", NULL, &exists, &e) == 0 && exists) { ... }
+```
+
 Every call returns 0 or the generated library's error kind (1 an SDK error,
 2 source panic, 3 host fault, 4 fatal, 5 invalid argument, 6 canceled, 7
 closed handle, 8 poisoned, 9 handles of different instances) and fills the

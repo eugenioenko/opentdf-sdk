@@ -96,6 +96,7 @@ def check(target, profile, mode, output):
         if target == 'c':
             assert 'public-no-preinit-real-kas' in labels
         assert 'services-self' in labels and result['services']['not_found']['connectCode'] == 'not_found'
+        assert result['services']['helpers']['override']['attribute_exists'] is True
     if mode == 'full' and not browser:
         if profile == 'basic':
             assert {'grouped-denial','integrity','archive','unauthenticated401','expired-token','provider-rejection','untrusted-route','root-tampering','unsupported-root','unsupported-assertion'} <= set(result['typed_negatives'])

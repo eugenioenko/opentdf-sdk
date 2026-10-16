@@ -145,6 +145,19 @@ let attrs = try await sdk.attributes.listAttributes(request)
 let json = try await sdk.call("policy.namespaces.NamespaceService", "ListNamespaces", "{}")
 ```
 
+The helpers are `sdk.listAttributes(_:)` (`[Policy_Attribute]`),
+`getEntityAttributes(_: Authorization_Entity?)`, `validateAttributes(_:)`,
+`attributeExists(_:)` and `attributeValueExists(_:)`, all `async throws`;
+`sdk.auth().accessToken()` returns the SDK's `AccessToken` and `sdk.conn()`
+the core endpoint. `Options.coreEndpoint`, `policyEndpoint`,
+`authorizationEndpoint`, `entityResolutionEndpoint` and `wellknownEndpoint`
+route those services through the SDK's transport.
+
+```swift
+let exists = try await sdk.attributeValueExists("https://example.com/attr/level/value/high")
+let token = try await sdk.auth().accessToken()
+```
+
 `src/hosts/swift/cmd/otdfgc/main.swift` is the native Swift CLI over this
 package, built by `scripts/build-swift-cli.sh <package> <binary>` and
 registered with the xtest harness as the `gcswift` SDK type (see

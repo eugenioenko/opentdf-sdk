@@ -8,7 +8,7 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 (cd "$SDK"; "$COMPILER" compile -gate cooperative -target go -out "$DEST" ./src/library ./src)
-for adapter in token options errors call services; do
+for adapter in token options errors call services discovery; do
   cp "$SDK/src/hosts/go/$adapter.go.in" "$DEST/$adapter.go"
   GOTOOLCHAIN=go1.25.14 gofmt -w "$DEST/$adapter.go"
 done

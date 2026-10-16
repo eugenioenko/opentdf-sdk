@@ -137,7 +137,7 @@ func writeJSON(_ run: URL, _ file: String, _ value: [String: Any]) throws {
 }
 
 /// xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error.
-func services(_ sdk: SDK, _ run: URL) async throws {
+func services(_ sdk: SDK, _ raw: [String: Any], _ name: String, _ run: URL) async throws {
   let ns = "gcswift" + String(UInt64(Date().timeIntervalSince1970 * 1_000_000), radix: 36) + ".com"
   let before = try await sdk.namespaces.listNamespaces()
   var create = Policy_Namespaces_CreateNamespaceRequest()
@@ -167,7 +167,35 @@ func services(_ sdk: SDK, _ run: URL) async throws {
   missingRequest.attributeID = "00000000-0000-0000-0000-000000000000"
   let missing = try await expectFailure("missing attribute") { try await sdk.attributes.getAttribute(missingRequest) }
   try check(missing["connectCode"] as? String == "not_found" && missing["httpStatus"] as? Int64 == 404, "missing attribute error: \(missing)")
-  try writeJSON(run, "services.json", ["namespace": ns, "namespaces_before": before.namespaces.count, "namespaces_after": after.namespaces.count, "attribute_fqn": attribute.fqn, "values": values, "not_found": missing])
+  let helperReport = try await helpers(sdk, raw, name, ns, attribute.fqn)
+  try writeJSON(run, "services.json", ["namespace": ns, "namespaces_before": before.namespaces.count, "namespaces_after": after.namespaces.count, "attribute_fqn": attribute.fqn, "values": values, "not_found": missing, "helpers": helperReport])
+}
+
+/// The reference's attribute helpers on the attribute services created, SDK.auth, and an SDK whose platform endpoint is unreachable but whose core connection is the platform.
+func helpers(_ sdk: SDK, _ raw: [String: Any], _ name: String, _ ns: String, _ fqn: String) async throws -> [String: Any] {
+  var h: [String: Any] = [:]
+  h["attribute_exists"] = try await sdk.attributeExists(fqn)
+  h["attribute_missing"] = try await sdk.attributeExists(fqn + "-missing")
+  h["value_exists"] = try await sdk.attributeValueExists(fqn + "/value/1")
+  h["value_missing"] = try await sdk.attributeValueExists(fqn + "/value/9")
+  h["listed"] = try await sdk.listAttributes(ns).map { $0.fqn }
+  try await sdk.validateAttributes([fqn + "/value/1", fqn + "/value/2"])
+  h["validate_ok"] = true
+  h["validate_missing"] = try await expectFailure("validate missing") { try await sdk.validateAttributes([fqn + "/value/1", fqn + "/value/9"]) }
+  var entity = Authorization_Entity()
+  entity.id = "e1"
+  entity.clientID = "opentdf-sdk"
+  h["entity_attributes"] = try await sdk.getEntityAttributes(entity)
+  let token = try await sdk.auth().accessToken()
+  h["access_token"] = ["present": !token.value.isEmpty, "scheme": token.scheme] as [String: Any]
+  var options = optionsOf(raw, name)
+  options.coreEndpoint = raw["PlatformURL"] as? String ?? ""
+  let over = try await SDK("http://127.0.0.1:9", options)
+  let endpoint = try await over.conn().endpoint
+  let exists = try await over.attributeExists(fqn)
+  h["override"] = ["endpoint": endpoint, "attribute_exists": exists] as [String: Any]
+  try over.close()
+  return h
 }
 
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
@@ -309,7 +337,7 @@ struct Consumer {
         print("PASS generated native library", mode, name)
         return
       case "services":
-        try await services(sdk, run)
+        try await services(sdk, raw, name, run)
       default: fatalError("unknown mode")
       }
       try sdk.close()

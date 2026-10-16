@@ -141,7 +141,7 @@ fn poll_until<F: Future>(future: F, limit: Duration, stop: impl Fn() -> bool) ->
 /// namespace and an attribute, read the attribute back by id, through the
 /// namespace's list and through the raw JSON call, and check a missing
 /// attribute's error.
-fn services(sdk: &Sdk, run: &Path) -> Result<(), Error> {
+fn services(sdk: &Sdk, cfg: &Value, name: &str, run: &Path) -> Result<(), Error> {
     let ns = format!("gcrs{}.com", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos());
     let before = sdk.namespaces().list_namespaces(&namespaces::ListNamespacesRequest::default())?;
     let namespace = sdk.namespaces().create_namespace(&namespaces::CreateNamespaceRequest { name: ns.clone(), ..Default::default() })?.namespace.unwrap_or_default();
@@ -168,9 +168,38 @@ fn services(sdk: &Sdk, run: &Path) -> Result<(), Error> {
     check(raw["attribute"]["fqn"] == attribute.fqn.as_str(), "raw JSON call");
     let missing = expect_failure("missing attribute", sdk.attributes().get_attribute(&by_id("00000000-0000-0000-0000-000000000000".into())));
     check(missing["connectCode"] == "not_found" && missing["httpStatus"] == 404, &format!("missing attribute error: {missing}"));
-    let report = json!({"namespace": ns, "namespaces_before": before.namespaces.len(), "namespaces_after": after.namespaces.len(), "attribute_fqn": attribute.fqn, "values": values, "not_found": missing});
+    let helpers = helpers(sdk, cfg, name, &ns, &attribute.fqn)?;
+    let report = json!({"namespace": ns, "namespaces_before": before.namespaces.len(), "namespaces_after": after.namespaces.len(), "attribute_fqn": attribute.fqn, "values": values, "not_found": missing, "helpers": helpers});
     fs::write(run.join("services.json"), report.to_string()).unwrap();
     Ok(())
+}
+
+/// The reference's attribute helpers on the attribute services created, Sdk::auth, and an Sdk whose platform endpoint is unreachable but whose core connection is the platform.
+fn helpers(sdk: &Sdk, cfg: &Value, name: &str, ns: &str, fqn: &str) -> Result<Value, Error> {
+    let listed: Vec<String> = sdk.list_attributes(Some(ns))?.into_iter().map(|a| a.fqn).collect();
+    sdk.validate_attributes(&[format!("{fqn}/value/1"), format!("{fqn}/value/2")])?;
+    let validate_missing = expect_failure("validate missing", sdk.validate_attributes(&[format!("{fqn}/value/1"), format!("{fqn}/value/9")]));
+    let entity = opentdf_tdf3::protocol::authorization::Entity {
+        id: "e1".into(),
+        entity_type: Some(opentdf_tdf3::protocol::authorization::entity::EntityType::ClientId("opentdf-sdk".into())),
+        ..Default::default()
+    };
+    let token = sdk.auth().access_token()?;
+    let over = Sdk::new("http://127.0.0.1:9", Options { core_endpoint: text(cfg, "PlatformURL"), ..options_of(cfg, name, true) })?;
+    let override_report = json!({"endpoint": over.conn()?.endpoint, "attribute_exists": over.attribute_exists(fqn)?});
+    over.close()?;
+    Ok(json!({
+        "attribute_exists": sdk.attribute_exists(fqn)?,
+        "attribute_missing": sdk.attribute_exists(&format!("{fqn}-missing"))?,
+        "value_exists": sdk.attribute_value_exists(&format!("{fqn}/value/1"))?,
+        "value_missing": poll_for(sdk.attribute_value_exists_async(&format!("{fqn}/value/9")), Duration::from_secs(60)).expect("async value exists")?,
+        "listed": listed,
+        "validate_ok": true,
+        "validate_missing": validate_missing,
+        "entity_attributes": sdk.get_entity_attributes(Some(&entity))?,
+        "access_token": {"present": !token.value.is_empty(), "scheme": token.scheme},
+        "override": override_report,
+    }))
 }
 
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
@@ -328,7 +357,7 @@ fn main() {
                     repeat(&sdk, &cfg, name)?;
                     return Ok(());
                 }
-                "services" => services(&sdk, run)?,
+                "services" => services(&sdk, &cfg, name, run)?,
                 _ => panic!("unknown mode"),
             }
             sdk.close()

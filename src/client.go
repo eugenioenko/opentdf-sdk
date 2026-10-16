@@ -4,6 +4,8 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/std/io"
 	"github.com/eugenioenko/goalchemy/std/log/slog"
+	"opentdf-local/sdk/src/protocol/authorization"
+	"opentdf-local/sdk/src/protocol/policy"
 )
 
 // Client is the public composition point: the method set of *SDK that this
@@ -22,6 +24,13 @@ type Client interface {
 	GetBaseKey(ctx context.Context) (SimpleKasKey, error)
 	StoreKASKeys(url string, keys KasPublicKeySet) error
 	Call(ctx context.Context, service, method, request string) (string, error)
+	Conn() ConnectRPCConnection
+	Auth() *AuthClient
+	ListAttributes(ctx context.Context, namespace ...string) ([]*policy.Attribute, error)
+	GetEntityAttributes(ctx context.Context, entity *authorization.Entity) ([]string, error)
+	ValidateAttributes(ctx context.Context, fqns []string) error
+	AttributeExists(ctx context.Context, attributeFqn string) (bool, error)
+	AttributeValueExists(ctx context.Context, fqn string) (bool, error)
 }
 
 // TDFReader is the method set of *Reader that this phase implements; the

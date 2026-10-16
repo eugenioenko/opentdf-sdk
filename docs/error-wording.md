@@ -125,6 +125,39 @@ bounds each call). The unsigned rewrap request is `protojson` of the generated
 `policyBinding.alg` omitted, as the reference's `protojson.Marshal` writes
 it (whitespace aside).
 
+## Attribute helpers, AccessToken and endpoint overrides (Phase 3 part 3)
+
+No xtest pattern matches these; they are the reference's wording, in the
+`Error.Message` of the kind shown. A service failure keeps its own kind and
+Connect fields after the prefix (`listing attributes: not_found: ...` is
+`invalid_input` with `ConnectCode` `not_found`); any other failure under a
+prefix is `transport`. `Op` is the helper's name.
+
+| Text | Reference | Kind |
+| --- | --- | --- |
+| `ListAttributes accepts at most one namespace filter, got <n>` | `sdk/discovery.go:38` | `invalid_input` |
+| `listing attributes: <cause>` | `sdk/discovery.go:49` | the cause's, else `transport` |
+| `listing attributes: exceeded maximum page limit (1000)` | `sdk/discovery.go:64` | `transport` |
+| `invalid attribute FQN "<fqn>": <ErrInvalid reason>` | `sdk/discovery.go:78` | `invalid_input` |
+| `checking attribute existence: <cause>` (`not_found` is `false` instead) | `sdk/discovery.go:88` | the cause's, else `transport` |
+| `invalid attribute value FQN "<fqn>": <ErrInvalid reason>` | `sdk/discovery.go:103`, `:151` | `invalid_input` |
+| `checking attribute value existence: <cause>` (`not_found` is `false` instead) | `sdk/discovery.go:113` | the cause's, else `transport` |
+| `too many attribute FQNs: <n> exceeds maximum of 250` | `sdk/discovery.go:146` | `invalid_input` |
+| `validating attributes: <cause>` | `sdk/discovery.go:159` | the cause's, else `transport` |
+| `attribute not found: <fqn>, <fqn>` (`ErrAttributeNotFound`) | `sdk/discovery.go:170` | `invalid_input` |
+| `entity must not be nil` | `sdk/discovery.go:196` | `invalid_input` |
+| `getting entity attributes: <cause>` | `sdk/discovery.go:203` | the cause's, else `transport` |
+| `invalid type: attribute regex fail`, `invalid type: attribute regex fail for [<fqn>]`, `invalid type: error in attribute name [<name>]`, `invalid type: error in attribute value [<value>]`, `invalid type: empty url path parts are not allowed`, `invalid type: slash not allowed in name or values` (`ErrInvalid` reasons) | `sdk/granter.go:60-141` | (inside the FQN errors above) |
+| `no access token source configured; SDK was created without credentials` (`ErrNoAccessTokenSource`) | `sdk/auth_client.go:24` | `auth` |
+| `access token is invalid` (`ErrAccessTokenInvalid`, an empty token) | `sdk/auth_client.go:31` | `auth` |
+| `platform endpoint is malformed [<endpoint>]` for a malformed `WithCustom*Connection` endpoint | `sdk/sdk.go:151` (the platform endpoint's check) | `invalid_input` |
+
+At the pinned platform revision `GetAttributeValuesByFqns` answers
+`not_found: resource not found` when any requested value is missing, so
+`ValidateAttributes` reports `validating attributes: not_found: resource not
+found` there and `attribute not found: ...` only against a service that
+omits missing values; both are the reference's behaviour.
+
 ## Shim and CLI contract strings
 
 Strings the shims themselves assert or emit, which the generated `cli.sh`

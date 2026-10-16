@@ -102,6 +102,21 @@ if errors.As(err, &e) && e.ConnectCode == "not_found" { /* ... */ }
 out, err := s.Call(ctx, "policy.namespaces.NamespaceService", "ListNamespaces", "{}")
 ```
 
+The reference's helpers are methods of the handle: `s.ListAttributes(ctx,
+[]string{ns})` returns `[]*policy.Attribute` of `protocol/go`,
+`s.GetEntityAttributes(ctx, *authorization.Entity)`, `s.ValidateAttributes`,
+`s.AttributeExists` and `s.AttributeValueExists`. `s.Auth(ctx)` returns an
+`*AuthClient` whose `AccessToken(ctx)` is the SDK's token (close it after
+use), `s.Conn(ctx)` the core endpoint. `WithCustomCoreConnection` and the
+policy, authorization, entity resolution and well-known variants take a
+`*ConnectRPCConnection{Endpoint}` and route those services there through the
+SDK's transport (see [api-spec.md](api-spec.md#helpers-auth-and-endpoint-overrides-phase-3-part-3)).
+
+```go
+exists, err := s.AttributeValueExists(ctx, "https://example.com/attr/level/value/high")
+s2, err := sdk.NewWithOptions(ctx, platform, sdk.WithCustomCoreConnection(&sdk.ConnectRPCConnection{Endpoint: "https://core.example.com"}))
+```
+
 ## Errors
 
 SDK failures are `*sdk.Error` values with `Kind`, `Op`, `Message`,

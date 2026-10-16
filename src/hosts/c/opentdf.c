@@ -431,6 +431,88 @@ int otdf_sdk_call(otdf_sdk *sdk, const char *service, const char *method, const 
     return rc;
 }
 
+static int fqn_check(otdf_sdk *sdk, const char *name, const char *fqn, const otdf_call *call, bool *exists, otdf_error *error) {
+    if (!sdk || !fqn || !exists) return invalid(error);
+    gxc_value args[] = {handle(sdk->h), str(fqn)}, result = {0};
+    int rc = invoke(name, args, 2, call, sdk, &result, error);
+    if (!rc) { *exists = result.integer != 0; gxc_value_free(&result); }
+    return rc;
+}
+int otdf_attribute_exists(otdf_sdk *sdk, const char *attribute_fqn, const otdf_call *call, bool *exists, otdf_error *error) {
+    return fqn_check(sdk, "SDK.AttributeExists", attribute_fqn, call, exists, error);
+}
+int otdf_attribute_value_exists(otdf_sdk *sdk, const char *value_fqn, const otdf_call *call, bool *exists, otdf_error *error) {
+    return fqn_check(sdk, "SDK.AttributeValueExists", value_fqn, call, exists, error);
+}
+int otdf_validate_attributes(otdf_sdk *sdk, const char *const *fqns, size_t count, const otdf_call *call, otdf_error *error) {
+    if (!sdk || (count && !fqns)) return invalid(error);
+    arena a = {0};
+    static const char *none[1];
+    gxc_value args[] = {handle(sdk->h), strs(&a, fqns ? fqns : none, count)};
+    int rc = invoke("SDK.ValidateAttributes", args, 2, call, sdk, NULL, error);
+    release(&a);
+    return rc;
+}
+int otdf_list_attributes(otdf_sdk *sdk, const char *namespace_name, const otdf_call *call, char **attributes_json, otdf_error *error) {
+    if (!sdk || !attributes_json) return invalid(error);
+    arena a = {0};
+    const char *filter[] = {namespace_name};
+    gxc_value args[] = {handle(sdk->h), strs(&a, filter, namespace_name ? 1 : 0)}, result = {0};
+    int rc = invoke("SDK.ListAttributesJSON", args, 2, call, sdk, &result, error);
+    release(&a);
+    if (rc) return rc;
+    buffer b = {0};
+    put(&b, "[", 1);
+    for (size_t i = 0; result.kind == GXC_LIST && i < result.length; i++) {
+        if (i) put(&b, ",", 1);
+        put(&b, (const char *)result.items[i].bytes, result.items[i].length);
+    }
+    put(&b, "]", 1);
+    gxc_value_free(&result);
+    *attributes_json = b.data;
+    return 0;
+}
+int otdf_get_entity_attributes(otdf_sdk *sdk, const char *entity_json, const otdf_call *call, char ***fqns, size_t *count, otdf_error *error) {
+    if (!sdk || !fqns || !count) return invalid(error);
+    gxc_value args[] = {handle(sdk->h), str(entity_json)}, result = {0};
+    int rc = invoke("SDK.GetEntityAttributesJSON", args, 2, call, sdk, &result, error);
+    if (!rc) { *fqns = dup_texts(&result, count); gxc_value_free(&result); }
+    return rc;
+}
+void otdf_access_token_free(otdf_access_token *t) {
+    if (!t) return;
+    free(t->value); free(t->scheme); free(t->confirmation_jkt);
+    memset(t, 0, sizeof(*t));
+}
+int otdf_auth_access_token(otdf_sdk *sdk, const otdf_call *call, otdf_access_token *token, otdf_error *error) {
+    if (!sdk || !token) return invalid(error);
+    gxc_value args[] = {handle(sdk->h)}, client = {0}, result = {0};
+    int rc = invoke("SDK.Auth", args, 1, call, sdk, &client, error);
+    if (rc) return rc;
+    gxc_handle *h = client.handle;
+    gxc_value auth[] = {handle(h)};
+    rc = invoke("AuthClient.AccessToken", auth, 1, call, sdk, &result, error);
+    gxc_error ignored = {0};
+    gxc_handle_close(h, &ignored);
+    gxc_error_free(&ignored);
+    gxc_handle_free(h);
+    if (rc) return rc;
+    otdf_access_token_free(token);
+    token->value = dup_text(gxc_field(&result, "Value"));
+    token->scheme = dup_text(gxc_field(&result, "Scheme"));
+    token->expires_at = gxc_field(&result, "ExpiresAt")->integer;
+    token->confirmation_jkt = dup_text(gxc_field(&result, "ConfirmationJKT"));
+    gxc_value_free(&result);
+    return 0;
+}
+int otdf_sdk_conn(otdf_sdk *sdk, const otdf_call *call, char **endpoint, otdf_error *error) {
+    if (!sdk || !endpoint) return invalid(error);
+    gxc_value args[] = {handle(sdk->h)}, result = {0};
+    int rc = invoke("SDK.Conn", args, 1, call, sdk, &result, error);
+    if (!rc) { *endpoint = dup_text(gxc_field(&result, "Endpoint")); gxc_value_free(&result); }
+    return rc;
+}
+
 /* Free functions: a bytes stream for the reader parameters, text results. */
 typedef struct { otdf_bytes data; size_t position; } cursor;
 static int64_t cursor_read(void *state, uint8_t *buffer_, size_t length, char *message) {

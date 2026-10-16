@@ -40,6 +40,8 @@ typedef struct {
     const char *tls_client_cert_pem, *tls_client_key_pem, *tls_root_cas_pem; const char *const *tls_audience; size_t tls_audience_count;
     const char *unix_socket;
     int64_t timeout_millis;
+    /* WithCustom*Connection: core_endpoint for every service, the others for
+     * their own services, all through the SDK's transport. */
     const char *core_endpoint, *policy_endpoint, *authorization_endpoint, *entity_resolution_endpoint, *wellknown_endpoint;
     const char *session_encryption_rsa_pem, *session_signer_rsa_pem;
     /* WithDPoPAlgorithm: ES256, ES384, ES512, RS256, RS384 or RS512. */
@@ -150,6 +152,26 @@ int otdf_store_kas_keys(otdf_sdk *sdk, const char *url, const otdf_kas_public_ke
  * source's SDK.Call. A failure the service reports sets error->connect_code,
  * service_message and http_status. Release *response_json with otdf_string_free. */
 int otdf_sdk_call(otdf_sdk *sdk, const char *service, const char *method, const char *request_json, const otdf_call *call, char **response_json, otdf_error *error);
+
+/* The reference's attribute helpers. otdf_list_attributes sets
+ * *attributes_json to a JSON array of policy.Attribute in protobuf JSON;
+ * namespace_name NULL lists every namespace. entity_json is an
+ * authorization.Entity in protobuf JSON (NULL is the reference's nil). */
+int otdf_list_attributes(otdf_sdk *sdk, const char *namespace_name, const otdf_call *call, char **attributes_json, otdf_error *error);
+int otdf_get_entity_attributes(otdf_sdk *sdk, const char *entity_json, const otdf_call *call, char ***fqns, size_t *count, otdf_error *error);
+int otdf_validate_attributes(otdf_sdk *sdk, const char *const *fqns, size_t count, const otdf_call *call, otdf_error *error);
+int otdf_attribute_exists(otdf_sdk *sdk, const char *attribute_fqn, const otdf_call *call, bool *exists, otdf_error *error);
+int otdf_attribute_value_exists(otdf_sdk *sdk, const char *value_fqn, const otdf_call *call, bool *exists, otdf_error *error);
+
+/* SDK.Auth().AccessToken: the SDK's access token with its scheme ("Bearer"
+ * or "DPoP"), expiry in UTC Unix seconds and DPoP thumbprint. Zero-initialise
+ * and release with otdf_access_token_free. */
+typedef struct { char *value, *scheme; int64_t expires_at; char *confirmation_jkt; } otdf_access_token;
+void otdf_access_token_free(otdf_access_token *token);
+int otdf_auth_access_token(otdf_sdk *sdk, const otdf_call *call, otdf_access_token *token, otdf_error *error);
+/* SDK.Conn: the endpoint of the core services (core_endpoint, else the
+ * platform endpoint). Release *endpoint with otdf_string_free. */
+int otdf_sdk_conn(otdf_sdk *sdk, const otdf_call *call, char **endpoint, otdf_error *error);
 
 /* Free functions of the reference, each a library call. */
 int otdf_is_valid_tdf(otdf_bytes data, const otdf_call *call, bool *valid, otdf_error *error);

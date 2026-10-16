@@ -7,6 +7,7 @@ import io.opentdf.tdf3.SDK;
 import io.opentdf.tdf3.TDF3;
 import io.opentdf.tdf3.TDFObject;
 import io.opentdf.tdf3.TDFOptions;
+import io.opentdf.tdf3.protocol.authorization.Entity;
 import io.opentdf.tdf3.protocol.policy.AttributeRuleTypeEnum;
 import io.opentdf.tdf3.protocol.policy.attributes.CreateAttributeRequest;
 import io.opentdf.tdf3.protocol.policy.attributes.GetAttributeRequest;
@@ -62,8 +63,9 @@ public final class Consumer {
   throw new IllegalArgumentException("provider nonce retries");
  }
  // config.json carries the façade Config fields the delivery scripts write; they map onto the handle API's options as the Go consumer maps them.
- static SDK.Builder builder(Map<String,Object> cfg){
-  SDK.Builder b=SDK.builder(text(cfg,"PlatformURL")).insecurePlaintext(bool(cfg,"AllowHTTP"));
+ static SDK.Builder builder(Map<String,Object> cfg){return builder(cfg,text(cfg,"PlatformURL"));}
+ static SDK.Builder builder(Map<String,Object> cfg,String endpoint){
+  SDK.Builder b=SDK.builder(endpoint).insecurePlaintext(bool(cfg,"AllowHTTP"));
   if(!text(cfg,"TokenURL").isEmpty())b.tokenEndpoint(text(cfg,"TokenURL"));
   if(!text(cfg,"ClientID").isEmpty())b.clientCredentials(text(cfg,"ClientID"),text(cfg,"ClientSecret"));
   if(!text(cfg,"TokenProviderName").isEmpty())b.tokenProvider(request->{request.retain();Thread.ofVirtual().start(()->{try{request.resolve(token(cfg,request));}catch(Exception e){request.reject("provider: rejected");}});});
@@ -123,7 +125,7 @@ public final class Consumer {
  }
 
  /** xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error. */
- @SuppressWarnings("unchecked")static void services(SDK sdk)throws Exception{
+ @SuppressWarnings("unchecked")static void services(SDK sdk,Map<String,Object> cfg)throws Exception{
   String ns="gcjava"+Long.toString(System.nanoTime(),36)+".com";
   var before=sdk.namespaces().listNamespaces(ListNamespacesRequest.getDefaultInstance());
   var namespace=sdk.namespaces().createNamespace(CreateNamespaceRequest.newBuilder().setName(ns).build()).getNamespace();
@@ -143,7 +145,25 @@ public final class Consumer {
   Map<String,Object> report=new LinkedHashMap<>();
   report.put("namespace",ns);report.put("namespaces_before",before.getNamespacesCount());report.put("namespaces_after",after.getNamespacesCount());
   report.put("attribute_fqn",attribute.getFqn());report.put("values",values);report.put("not_found",missing);
+  report.put("helpers",helpers(sdk,cfg,ns,attribute.getFqn()));
   write("services.json",Json.write(report));
+ }
+
+ /** The reference's attribute helpers on the attribute services created, SDK.auth, and an SDK whose platform endpoint is unreachable but whose core connection is the platform. */
+ static Map<String,Object> helpers(SDK sdk,Map<String,Object> cfg,String ns,String fqn)throws Exception{
+  Map<String,Object> h=new LinkedHashMap<>();
+  h.put("attribute_exists",sdk.attributeExists(fqn));h.put("attribute_missing",sdk.attributeExists(fqn+"-missing"));
+  h.put("value_exists",sdk.attributeValueExists(fqn+"/value/1"));h.put("value_missing",sdk.attributeValueExistsAsync(fqn+"/value/9").get(60,TimeUnit.SECONDS));
+  h.put("listed",sdk.listAttributes(ns).stream().map(a->a.getFqn()).toList());
+  sdk.validateAttributes(List.of(fqn+"/value/1",fqn+"/value/2"));h.put("validate_ok",true);
+  h.put("validate_missing",expectFailure("validate missing",()->{sdk.validateAttributes(List.of(fqn+"/value/1",fqn+"/value/9"));return null;}));
+  h.put("entity_attributes",sdk.getEntityAttributes(Entity.newBuilder().setId("e1").setClientId("opentdf-sdk").build()));
+  TDF3.AccessToken token=sdk.auth().accessToken();
+  h.put("access_token",Map.of("present",!token.value().isEmpty(),"scheme",token.scheme()));
+  try(SDK override=builder(cfg,"http://127.0.0.1:9").coreEndpoint(text(cfg,"PlatformURL")).build()){
+   Map<String,Object> o=new LinkedHashMap<>();o.put("endpoint",override.conn().endpoint());o.put("attribute_exists",override.attributeExists(fqn));h.put("override",o);
+  }
+  return h;
  }
 
  /** One controlled case against the harness fixture (tests/interop/delivery/controlled_platform.py). */
@@ -209,7 +229,7 @@ public final class Consumer {
      }
      case "negative"->write(name+".error.json",Json.write(expectFailure("negative",()->sdk.decryptBytes(read(name+".tdf"),readerOptions(raw)))));
      case "repeat"->repeat(sdk,raw);
-     case "services"->services(sdk);
+     case "services"->services(sdk,raw);
      default->throw new IllegalArgumentException("unknown mode");
     }
    }

@@ -145,6 +145,15 @@ def run(target, profile, packages_base, output_base):
         assert services['attribute_fqn'] == 'https://'+services['namespace']+'/attr/free' and services['values'] == ['1', '2', '3'], services
         assert services['namespaces_after'] == services['namespaces_before']+1, services
         assert services['not_found']['connectCode'] == 'not_found' and services['not_found']['httpStatus'] == 404, services
+        # The reference's attribute helpers, SDK.Auth and a core endpoint override.
+        helpers, fqn = services['helpers'], services['attribute_fqn']
+        assert (helpers['attribute_exists'], helpers['attribute_missing'], helpers['value_exists'], helpers['value_missing']) == (True, False, True, False), helpers
+        assert helpers['listed'] == [fqn] and helpers['validate_ok'] is True, helpers
+        missing = helpers['validate_missing']
+        assert missing['message'] in ('attribute not found: '+fqn+'/value/9', 'validating attributes: not_found: resource not found') and missing['kind'] == 'invalid_input', helpers
+        assert 'https://example.com/attr/attr1/value/value1' in helpers['entity_attributes'], helpers
+        assert helpers['access_token']['present'] is True and helpers['access_token']['scheme'] in ('Bearer', 'DPoP'), helpers
+        assert helpers['override'] == {'endpoint': config['PlatformURL'], 'attribute_exists': True}, helpers
     receipt = {'target':target,'profile':profile,'scope':'actual focused final installed native package execution; historical full matrices remain separately attributed',
                'pairs':rows,'services':services,'payload_sha256':digest(payload),'metadata_sha256':digest(b''),'status':0,
                'consumer_receipt_sha256':digest(consumer_receipt.read_bytes()),

@@ -734,6 +734,59 @@ impl Reader {
     }
 }
 
+/// The reference's ConnectRPCConnection: the endpoint a connection reaches.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ConnectRpcConnection {
+    pub endpoint: String,
+}
+
+/// The reference's AuthClient: authentication operations of an [`Sdk`].
+pub struct AuthClient<'a> {
+    sdk: &'a Sdk,
+}
+impl AuthClient<'_> {
+    /// A valid access token for the SDK's credentials; fails with the
+    /// reference's ErrNoAccessTokenSource without credentials.
+    pub fn access_token(&self) -> Result<crate::AccessToken> {
+        let client = wait(self.sdk.handle.Auth(self.sdk.calls.options()), |c| c.expect("invalid generated result"))?;
+        let token = wait(client.AccessToken(self.sdk.calls.options()), access_token);
+        let _ = client.close().wait();
+        token
+    }
+    pub fn access_token_async(&self) -> impl Future<Output = Result<crate::AccessToken>> {
+        let start = self.sdk.handle.Auth(self.sdk.calls.options());
+        let calls = self.sdk.calls.clone();
+        async move {
+            let client = start.await.map_err(Error::from)?.expect("invalid generated result");
+            let token = client.AccessToken(calls.options()).await.map(access_token).map_err(Error::from);
+            let _ = client.close().await;
+            token
+        }
+    }
+}
+fn access_token(t: generated::AccessToken) -> crate::AccessToken {
+    crate::AccessToken { value: text(t.Value), scheme: text(t.Scheme), expires_at: t.ExpiresAt, confirmation_jkt: text(t.ConfirmationJKT) }
+}
+fn attributes(json: Vec<Vec<u8>>) -> Result<Vec<crate::protocol::policy::Attribute>> {
+    json.into_iter()
+        .map(|a| {
+            decode(text(a)).map_err(|mut e| {
+                e.op = "ListAttributes".to_owned();
+                e
+            })
+        })
+        .collect()
+}
+fn entity(entity: Option<&crate::protocol::authorization::Entity>) -> Result<Vec<u8>> {
+    match entity {
+        None => Ok(vec![]),
+        Some(e) => encode(e).map(|json| json.into_bytes()).map_err(|mut e| {
+            e.op = "GetEntityAttributes".to_owned();
+            e
+        }),
+    }
+}
+
 #[derive(Clone, Default)]
 struct Calls {
     provider: Option<Provider>,
@@ -834,6 +887,54 @@ impl Sdk {
     pub(crate) fn service_call_async<Q: serde::Serialize, R: serde::de::DeserializeOwned>(&self, service: &str, method: &str, request: &Q) -> impl Future<Output = Result<R>> {
         let call = encode(request).map(|body| self.call_async(service, method, &body));
         async move { decode(call?.await?) }
+    }
+    /// The reference's Auth: the SDK's authentication operations.
+    pub fn auth(&self) -> AuthClient<'_> {
+        AuthClient { sdk: self }
+    }
+    /// The reference's Conn: the endpoint of the core services.
+    pub fn conn(&self) -> Result<ConnectRpcConnection> {
+        wait(self.handle.Conn(self.calls.options()), |c| ConnectRpcConnection { endpoint: text(c.Endpoint) })
+    }
+    /// The reference's ListAttributes: every active attribute, following the
+    /// pages, optionally in one namespace (name or id).
+    pub fn list_attributes(&self, namespace: Option<&str>) -> Result<Vec<crate::protocol::policy::Attribute>> {
+        wait(self.handle.ListAttributesJSON(namespace.map(bytes).into_iter().collect(), self.calls.options()), attributes)?
+    }
+    pub fn list_attributes_async(&self, namespace: Option<&str>) -> impl Future<Output = Result<Vec<crate::protocol::policy::Attribute>>> {
+        let op = future(self.handle.ListAttributesJSON(namespace.map(bytes).into_iter().collect(), self.calls.options()), attributes);
+        async move { op.await? }
+    }
+    /// The reference's GetEntityAttributes: the attribute value FQNs entitled
+    /// to an entity; `None` is the reference's nil.
+    pub fn get_entity_attributes(&self, entity: Option<&crate::protocol::authorization::Entity>) -> Result<Vec<String>> {
+        wait(self.handle.GetEntityAttributesJSON(self::entity(entity)?, self.calls.options()), texts)
+    }
+    pub fn get_entity_attributes_async(&self, entity: Option<&crate::protocol::authorization::Entity>) -> impl Future<Output = Result<Vec<String>>> {
+        let op = self::entity(entity).map(|e| future(self.handle.GetEntityAttributesJSON(e, self.calls.options()), texts));
+        async move { op?.await }
+    }
+    /// The reference's ValidateAttributes: fails with ErrAttributeNotFound
+    /// naming the missing value FQNs.
+    pub fn validate_attributes(&self, fqns: &[String]) -> Result<()> {
+        wait(self.handle.ValidateAttributes(list(fqns), self.calls.options()), |v| v)
+    }
+    pub fn validate_attributes_async(&self, fqns: &[String]) -> impl Future<Output = Result<()>> {
+        future(self.handle.ValidateAttributes(list(fqns), self.calls.options()), |v| v)
+    }
+    /// The reference's AttributeExists for an attribute FQN (`https://<namespace>/attr/<name>`).
+    pub fn attribute_exists(&self, fqn: &str) -> Result<bool> {
+        wait(self.handle.AttributeExists(bytes(fqn), self.calls.options()), |b| b)
+    }
+    pub fn attribute_exists_async(&self, fqn: &str) -> impl Future<Output = Result<bool>> {
+        future(self.handle.AttributeExists(bytes(fqn), self.calls.options()), |b| b)
+    }
+    /// The reference's AttributeValueExists for a value FQN (`.../attr/<name>/value/<value>`).
+    pub fn attribute_value_exists(&self, fqn: &str) -> Result<bool> {
+        wait(self.handle.AttributeValueExists(bytes(fqn), self.calls.options()), |b| b)
+    }
+    pub fn attribute_value_exists_async(&self, fqn: &str) -> impl Future<Output = Result<bool>> {
+        future(self.handle.AttributeValueExists(bytes(fqn), self.calls.options()), |b| b)
     }
     /// Releases the handle; later calls fail with `Kind::Boundary("closed")`.
     pub fn close(&self) -> Result<()> {

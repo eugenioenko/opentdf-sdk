@@ -53,6 +53,7 @@ var (
 	ErrWellKnowConfigEmpty           = errors.New("well-known configuration is empty")
 	ErrAttributeNotFound             = errors.New("attribute not found")
 	ErrInvalidPerSchema              = errors.New("manifest was not valid")
+	ErrInvalid                       = errors.New("invalid type")
 
 	ErrAESGCMExhausted         = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
 	ErrTampered                = errors.New("tamper detected")

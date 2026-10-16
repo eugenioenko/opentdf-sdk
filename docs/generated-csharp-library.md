@@ -118,6 +118,19 @@ var attrs = await sdk.Attributes.ListAttributesAsync(new ListAttributesRequest {
 string json = await sdk.CallAsync("policy.namespaces.NamespaceService", "ListNamespaces", "{}", ct);
 ```
 
+The helpers are `ListAttributesAsync(ns)`, `GetEntityAttributesAsync(Entity)`,
+`ValidateAttributesAsync(fqns)`, `AttributeExistsAsync(fqn)` and
+`AttributeValueExistsAsync(fqn)`, each with a `CancellationToken`;
+`sdk.Auth().AccessTokenAsync()` returns a `TDF3.AccessToken` and
+`ConnAsync()` the core endpoint. `Options.CoreEndpoint`, `PolicyEndpoint`,
+`AuthorizationEndpoint`, `EntityResolutionEndpoint` and `WellknownEndpoint`
+route those services through the SDK's transport.
+
+```csharp
+var fqns = await sdk.GetEntityAttributesAsync(new OpenTDF.Protocol.Authorization.Entity { Id = "e1", ClientId = "my-service" }, ct);
+await sdk.ValidateAttributesAsync(new[] { "https://example.com/attr/level/value/high" }, ct);
+```
+
 ## Errors
 
 Every failure is an `OpenTdfException` with `Kind`, `Op`, `Message` (the

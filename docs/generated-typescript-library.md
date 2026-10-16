@@ -108,6 +108,19 @@ const registry = createClient(KeyAccessServerRegistryService, sdk.transport);
 const json = await sdk.call('policy.namespaces.NamespaceService', 'ListNamespaces', '{}');
 ```
 
+The helpers are `sdk.listAttributes(namespace?)` (protobuf-es `Attribute`s),
+`sdk.getEntityAttributes(entity)`, `sdk.validateAttributes(fqns)`,
+`sdk.attributeExists(fqn)` and `sdk.attributeValueExists(fqn)`;
+`sdk.auth().accessToken()` returns the SDK's token and `sdk.conn()` the core
+endpoint. The `coreEndpoint`, `policyEndpoint`, `authorizationEndpoint`,
+`entityResolutionEndpoint` and `wellknownEndpoint` options route those
+services through the SDK's transport.
+
+```ts
+const fqns = await sdk.getEntityAttributes({ id: 'e1', entityType: { case: 'clientId', value: 'my-service' } });
+const core = await SDK.create(platform, { clientId, clientSecret, coreEndpoint: 'https://core.example.com' });
+```
+
 ## Errors
 
 Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the

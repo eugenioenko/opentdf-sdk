@@ -3,6 +3,8 @@ package io.opentdf.tdf3;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
+import io.opentdf.tdf3.protocol.authorization.Entity;
+import io.opentdf.tdf3.protocol.policy.Attribute;
 import io.goalchemy.generated.Generated;
 import io.goalchemy.runtime.Callback;
 import io.goalchemy.runtime.Library;
@@ -25,6 +27,32 @@ import java.util.concurrent.CompletableFuture;
 public final class SDK extends PlatformServices implements AutoCloseable {
  /** A KAS public key for storeKASKeys (reference KasPublicKey). */
  public record KasPublicKey(String pem, String kid, String alg) {}
+ /** The reference's ConnectRPCConnection: the endpoint a connection reaches. */
+ public record ConnectRPCConnection(String endpoint) {}
+
+ /** The reference's AuthClient: authentication operations of an SDK. */
+ public static final class AuthClient {
+  private final SDK sdk;
+  private AuthClient(SDK sdk) { this.sdk = sdk; }
+  /** A valid access token for the SDK's credentials; fails with the reference's ErrNoAccessTokenSource without credentials. */
+  public TDF3.AccessToken accessToken() { return accessToken(null); }
+  public TDF3.AccessToken accessToken(Duration timeout) {
+   Generated.AuthClient client = Values.await(Values.run(() -> sdk.handle.Auth(sdk.call())), timeout);
+   try {
+    return token(Values.await(Values.run(() -> client.AccessToken(sdk.call())), timeout));
+   } finally {
+    Values.await(client.closeAsync(), null);
+   }
+  }
+  public CompletableFuture<TDF3.AccessToken> accessTokenAsync() {
+   return Values.future(Values.run(() -> sdk.handle.Auth(sdk.call())), c -> c).thenCompose(client ->
+    Values.future(Values.run(() -> client.AccessToken(sdk.call())), AuthClient::token)
+     .whenComplete((t, e) -> client.closeAsync()));
+  }
+  private static TDF3.AccessToken token(Generated.AccessToken t) {
+   return new TDF3.AccessToken(Values.decode(t.Value), Values.decode(t.Scheme), t.ExpiresAt, Values.decode(t.ConfirmationJKT));
+  }
+ }
 
  static final String TOKEN_PROVIDER = "access-token";
  private final Generated.SDK handle;
@@ -246,6 +274,65 @@ public final class SDK extends PlatformServices implements AutoCloseable {
   }
   return (T) builder.build();
  }
+
+ /** The reference's Auth: the SDK's authentication operations. */
+ public AuthClient auth() { return new AuthClient(this); }
+
+ /** The reference's Conn: the endpoint of the core services. */
+ public ConnectRPCConnection conn() { return conn(null); }
+ public ConnectRPCConnection conn(Duration timeout) { return connection(Values.await(Values.run(() -> handle.Conn(call())), timeout)); }
+ public CompletableFuture<ConnectRPCConnection> connAsync() { return Values.future(Values.run(() -> handle.Conn(call())), SDK::connection); }
+ private static ConnectRPCConnection connection(Generated.ConnectRPCConnection c) { return new ConnectRPCConnection(Values.decode(c.Endpoint)); }
+
+ /** The reference's ListAttributes: every active attribute, following the pages; namespace (name or id) null lists all. */
+ public List<Attribute> listAttributes() { return listAttributes(null, null); }
+ public List<Attribute> listAttributes(String namespace) { return listAttributes(namespace, null); }
+ public List<Attribute> listAttributes(String namespace, Duration timeout) { return attributes(Values.await(startList(namespace), timeout)); }
+ public CompletableFuture<List<Attribute>> listAttributesAsync(String namespace) { return Values.future(startList(namespace), this::attributes); }
+ private Library.Operation<String[]> startList(String namespace) {
+  return Values.run(() -> handle.ListAttributesJSON(namespace == null ? new String[0] : new String[]{Values.encode(namespace)}, call()));
+ }
+ private List<Attribute> attributes(String[] json) {
+  List<Attribute> out = new ArrayList<>();
+  if (json != null) for (String text : json) out.add(decode(Values.decode(text), Attribute.getDefaultInstance()));
+  return java.util.Collections.unmodifiableList(out);
+ }
+
+ /** The reference's GetEntityAttributes: the attribute value FQNs entitled to an entity. */
+ public List<String> getEntityAttributes(Entity entity) { return getEntityAttributes(entity, null); }
+ public List<String> getEntityAttributes(Entity entity, Duration timeout) { return Values.decode(Values.await(startEntitlements(entity), timeout)); }
+ public CompletableFuture<List<String>> getEntityAttributesAsync(Entity entity) {
+  try {
+   return Values.future(startEntitlements(entity), Values::decode);
+  } catch (RuntimeException e) {
+   return CompletableFuture.failedFuture(e);
+  }
+ }
+ private Library.Operation<String[]> startEntitlements(Entity entity) {
+  String request = entity == null ? "" : encode(entity);
+  return Values.run(() -> handle.GetEntityAttributesJSON(Values.encode(request), call()));
+ }
+
+ /** The reference's ValidateAttributes: fails with ErrAttributeNotFound naming the missing value FQNs. */
+ public void validateAttributes(List<String> fqns) { validateAttributes(fqns, null); }
+ public void validateAttributes(List<String> fqns, Duration timeout) { Values.await(startValidate(fqns), timeout); }
+ public CompletableFuture<Void> validateAttributesAsync(List<String> fqns) { return Values.future(startValidate(fqns), v -> null); }
+ private Library.Operation<Void> startValidate(List<String> fqns) {
+  return Values.run(() -> {
+   if (fqns == null) throw Library.invalid();
+   return handle.ValidateAttributes(Values.encode(fqns), call());
+  });
+ }
+
+ /** The reference's AttributeExists for an attribute FQN (https://<namespace>/attr/<name>). */
+ public boolean attributeExists(String fqn) { return attributeExists(fqn, null); }
+ public boolean attributeExists(String fqn, Duration timeout) { return Values.await(Values.run(() -> handle.AttributeExists(Values.encode(fqn), call())), timeout); }
+ public CompletableFuture<Boolean> attributeExistsAsync(String fqn) { return Values.future(Values.run(() -> handle.AttributeExists(Values.encode(fqn), call())), b -> b); }
+
+ /** The reference's AttributeValueExists for a value FQN (.../attr/<name>/value/<value>). */
+ public boolean attributeValueExists(String fqn) { return attributeValueExists(fqn, null); }
+ public boolean attributeValueExists(String fqn, Duration timeout) { return Values.await(Values.run(() -> handle.AttributeValueExists(Values.encode(fqn), call())), timeout); }
+ public CompletableFuture<Boolean> attributeValueExistsAsync(String fqn) { return Values.future(Values.run(() -> handle.AttributeValueExists(Values.encode(fqn), call())), b -> b); }
 
  /** Releases the handle; later calls fail with kind "closed". */
  @Override public void close() {

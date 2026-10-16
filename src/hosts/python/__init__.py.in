@@ -175,6 +175,52 @@ def _token(token):
     return json.dumps({'value': token.value, 'scheme': token.scheme, 'expiresAt': str(token.expires_at), 'confirmationJKT': token.confirmation_jkt}, ensure_ascii=False, separators=(',', ':')).encode('utf-8')
 
 
+@dataclass(frozen=True)
+class ConnectRPCConnection:
+    """The reference's ConnectRPCConnection: the endpoint a connection reaches."""
+    endpoint: str
+
+
+def _access_token(v):
+    v = v or {}
+    return AccessToken(_decode(v.get('Value')), _decode(v.get('Scheme')), v.get('ExpiresAt') if type(v.get('ExpiresAt')) is int else 0, _decode(v.get('ConfirmationJKT')))
+
+
+class AuthClient:
+    """The reference's AuthClient: authentication operations of an SDK."""
+    def __init__(self, sdk): self._sdk = sdk
+    def access_token(self, timeout=None):
+        """A valid access token for the SDK's credentials; raises the
+        reference's ErrNoAccessTokenSource without credentials."""
+        client = _wait(self._sdk._run(lambda: self._sdk._handle.Auth(self._sdk._calls)), timeout)
+        try: return _wait(self._sdk._run(lambda: client.AccessToken(self._sdk._calls)), timeout, _access_token)
+        finally: _wait(client.close(), None)
+    async def access_token_async(self):
+        client = await _await(self._sdk._run(lambda: self._sdk._handle.Auth(self._sdk._calls)))
+        try: return await _await(self._sdk._run(lambda: client.AccessToken(self._sdk._calls)), _access_token)
+        finally: await _await(client.close())
+
+
+def _message(module, name):
+    return getattr(importlib.import_module(module, __package__), name)
+
+
+def _attributes(values):
+    attribute = _message('.protocol.policy.objects_pb2', 'Attribute')
+    out = []
+    for text in values or ():
+        try: out.append(json_format.Parse(_decode(text), attribute(), ignore_unknown_fields=True))
+        except json_format.ParseError as e: raise OpenTDFError(rt.LibraryFailure('source', {'Kind': b'transport', 'Op': b'ListAttributes', 'Message': ('unmarshal message: ' + str(e)).encode('utf-8')})) from None
+    return out
+
+
+def _entity(entity):
+    if entity is None: return b''
+    if getattr(getattr(entity, 'DESCRIPTOR', None), 'full_name', None) != 'authorization.Entity':
+        raise TypeError('get_entity_attributes takes an authorization.Entity message')
+    return json.dumps(json_format.MessageToDict(entity), separators=(',', ':')).encode('utf-8')
+
+
 def _provider(provider):
     def call(request):
         value = provider(request)
@@ -328,6 +374,40 @@ class SDK:
         request and reply in protobuf JSON: the shared source's SDK.Call."""
         return _wait(self._service_call(service, method, request), timeout, _decode)
     async def call_async(self, service, method, request): return await _await(self._service_call(service, method, request), _decode)
+    def _run(self, start):
+        try: return start()
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def auth(self):
+        """The reference's Auth: the SDK's authentication operations."""
+        return AuthClient(self)
+    def conn(self, timeout=None):
+        """The reference's Conn: the endpoint of the core services."""
+        return _wait(self._run(lambda: self._handle.Conn(self._calls)), timeout, lambda v: ConnectRPCConnection(_decode((v or {}).get('Endpoint'))))
+    async def conn_async(self): return await _await(self._run(lambda: self._handle.Conn(self._calls)), lambda v: ConnectRPCConnection(_decode((v or {}).get('Endpoint'))))
+    def _list(self, namespace): return self._run(lambda: self._handle.ListAttributesJSON([] if namespace is None else [_text(namespace)], self._calls))
+    def list_attributes(self, namespace=None, *, timeout=None):
+        """The reference's ListAttributes: every active attribute (policy.Attribute),
+        following the pages, optionally in one namespace (name or id)."""
+        return _wait(self._list(namespace), timeout, _attributes)
+    async def list_attributes_async(self, namespace=None): return await _await(self._list(namespace), _attributes)
+    def _entitlements(self, entity): return self._run(lambda: self._handle.GetEntityAttributesJSON(_entity(entity), self._calls))
+    def get_entity_attributes(self, entity, *, timeout=None):
+        """The reference's GetEntityAttributes: the attribute value FQNs entitled to an authorization.Entity."""
+        return _wait(self._entitlements(entity), timeout, lambda v: _out_value('ss', v))
+    async def get_entity_attributes_async(self, entity): return await _await(self._entitlements(entity), lambda v: _out_value('ss', v))
+    def _validate(self, fqns): return self._run(lambda: self._handle.ValidateAttributes(_in_value('ss', fqns), self._calls))
+    def validate_attributes(self, fqns, *, timeout=None):
+        """The reference's ValidateAttributes: raises ErrAttributeNotFound naming the missing value FQNs."""
+        return _wait(self._validate(fqns), timeout)
+    async def validate_attributes_async(self, fqns): return await _await(self._validate(fqns))
+    def attribute_exists(self, fqn, *, timeout=None):
+        """The reference's AttributeExists for an attribute FQN (https://<namespace>/attr/<name>)."""
+        return _wait(self._run(lambda: self._handle.AttributeExists(_text(fqn), self._calls)), timeout)
+    async def attribute_exists_async(self, fqn): return await _await(self._run(lambda: self._handle.AttributeExists(_text(fqn), self._calls)))
+    def attribute_value_exists(self, fqn, *, timeout=None):
+        """The reference's AttributeValueExists for a value FQN (.../attr/<name>/value/<value>)."""
+        return _wait(self._run(lambda: self._handle.AttributeValueExists(_text(fqn), self._calls)), timeout)
+    async def attribute_value_exists_async(self, fqn): return await _await(self._run(lambda: self._handle.AttributeValueExists(_text(fqn), self._calls)))
     def close(self, timeout=None): return _wait(self._handle.close(), timeout)
     async def close_async(self): return await _await(self._handle.close())
     def __enter__(self): return self
