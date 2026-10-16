@@ -571,3 +571,152 @@ func TestPolicyBindingJSON(t *testing.T) {
 		t.Fatal("object statement", st, err)
 	}
 }
+
+// fakeValue is a policy.Value in protobuf JSON, with its definition and
+// namespace, as GetAttributeValuesByFqns returns it. at holds the grants or
+// kasKeys of the value, the definition and the namespace.
+func fakeValue(ns, name, rule, value string, at map[string]map[string]any) map[string]any {
+	namespace := map[string]any{"name": ns, "fqn": "https://" + ns}
+	attr := map[string]any{"name": name, "rule": "ATTRIBUTE_RULE_TYPE_ENUM_" + rule, "fqn": "https://" + ns + "/attr/" + name, "namespace": namespace}
+	v := map[string]any{"value": value, "fqn": "https://" + ns + "/attr/" + name + "/value/" + value, "attribute": attr}
+	for k, x := range at["value"] {
+		v[k] = x
+	}
+	for k, x := range at["attr"] {
+		attr[k] = x
+	}
+	for k, x := range at["ns"] {
+		namespace[k] = x
+	}
+	return v
+}
+
+func grants(urls ...string) map[string]any {
+	g := []any{}
+	for _, u := range urls {
+		g = append(g, map[string]any{"uri": u})
+	}
+	return map[string]any{"grants": g}
+}
+
+func kasKeys(keys ...map[string]any) map[string]any {
+	k := []any{}
+	for _, key := range keys {
+		k = append(k, key)
+	}
+	return map[string]any{"kasKeys": k}
+}
+
+func (f *fakePlatform) simpleKey(url, kid string) map[string]any {
+	alg, pem := "ALGORITHM_RSA_2048", publicPEM(f.t, &f.kasRSA.PublicKey)
+	if strings.HasPrefix(kid, "e") {
+		alg, pem = "ALGORITHM_EC_P256", publicPEM(f.t, &f.kasEC.PublicKey)
+	}
+	return map[string]any{"kasUri": url, "publicKey": map[string]any{"algorithm": alg, "kid": kid, "pem": pem}}
+}
+
+func (f *fakePlatform) defineAttributes(values ...map[string]any) []string {
+	defs := map[string]map[string]any{}
+	fqns := []string{}
+	for _, v := range values {
+		fqn := v["fqn"].(string)
+		defs[strings.ToLower(fqn)] = v
+		fqns = append(fqns, fqn)
+	}
+	f.attributes.Store(defs)
+	return fqns
+}
+
+// Test_Autoconfigure, over the fake platform: the granter's plan decides the
+// key access objects (KAS, split and kid), and the reader rebuilds the DEK
+// from them, as the reference's Test_Autoconfigure and Test_KeySplits do.
+func Test_Autoconfigure(t *testing.T) {
+	f := newFakePlatform(t)
+	s := f.newSDK(t, f.options())
+	kasA, kasB := f.server.URL+"/kas-a", f.server.URL+"/kas-b"
+	type kao struct{ url, kid, typ string }
+	for _, tc := range []struct {
+		name     string
+		mode     string
+		values   []map[string]any
+		offline  bool
+		kaos     []kao
+		sameSID  bool
+		lookups  bool
+		unsplits bool
+	}{
+		{name: "default kas", values: []map[string]any{fakeValue("a.com", "c", "HIERARCHY", "s", nil)}, kaos: []kao{{f.kasURL(), "r1", "wrapped"}}, unsplits: true},
+		{name: "any of two value grants", values: []map[string]any{fakeValue("a.com", "rel", "ANY_OF", "a", map[string]map[string]any{"value": grants(kasA)}), fakeValue("a.com", "rel", "ANY_OF", "b", map[string]map[string]any{"value": grants(kasB)})}, kaos: []kao{{kasA, "r1", "wrapped"}, {kasB, "r1", "wrapped"}}, sameSID: true},
+		{name: "all of two value grants", values: []map[string]any{fakeValue("a.com", "n2k", "ALL_OF", "a", map[string]map[string]any{"value": grants(kasA)}), fakeValue("a.com", "n2k", "ALL_OF", "b", map[string]map[string]any{"value": grants(kasB)})}, kaos: []kao{{kasA, "r1", "wrapped"}, {kasB, "r1", "wrapped"}}},
+		{name: "attribute grant", values: []map[string]any{fakeValue("a.com", "g", "ANY_OF", "a", map[string]map[string]any{"attr": grants(kasB)})}, kaos: []kao{{kasB, "r1", "wrapped"}}, unsplits: true},
+		{name: "namespace grant", values: []map[string]any{fakeValue("ns.com", "g", "ANY_OF", "a", map[string]map[string]any{"ns": grants(kasA)})}, kaos: []kao{{kasA, "r1", "wrapped"}}, unsplits: true},
+		{name: "mapped keys of two kinds", mode: "key-mappings", values: []map[string]any{fakeValue("a.com", "mk", "ALL_OF", "r1", map[string]map[string]any{"value": kasKeys(f.simpleKey(f.kasURL(), "r1"))}), fakeValue("a.com", "mk", "ALL_OF", "e1", map[string]map[string]any{"value": kasKeys(f.simpleKey(f.kasURL(), "e1"))})}, kaos: []kao{{f.kasURL(), "r1", "wrapped"}, {f.kasURL(), "e1", "ec-wrapped"}}},
+		{name: "mapped definition key", mode: "key-mappings", values: []map[string]any{fakeValue("a.com", "dk", "ANY_OF", "x", map[string]map[string]any{"attr": kasKeys(f.simpleKey(kasA, "e1"))})}, kaos: []kao{{kasA, "e1", "ec-wrapped"}}, unsplits: true},
+		{name: "offline values", offline: true, values: []map[string]any{fakeValue("a.com", "n2k", "ALL_OF", "a", map[string]map[string]any{"value": grants(kasA)}), fakeValue("a.com", "n2k", "ALL_OF", "b", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasB, "e1"))})}, kaos: []kao{{kasB, "e1", "ec-wrapped"}}, unsplits: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f.mode.Store(tc.mode)
+			defer f.mode.Store("")
+			fqns := f.defineAttributes(tc.values...)
+			opts := TDFOptions{KasInformation: []KASInfo{{URL: f.kasURL(), Default: true}}}
+			if tc.offline {
+				f.attributes.Store(map[string]map[string]any(nil))
+				for _, v := range tc.values {
+					data, _ := json.Marshal(v)
+					opts.AttributeValues = append(opts.AttributeValues, string(data))
+				}
+			} else {
+				opts.Attributes = fqns
+			}
+			f.served()
+			data, obj, err := s.EncryptBytes(context.Background(), []byte("autoconfigured"), opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, path := range f.served() {
+				if tc.offline && strings.HasPrefix(path, "/policy.attributes.") {
+					t.Fatal("offline values looked up", path)
+				}
+			}
+			kaos := obj.Manifest().EncryptionInformation.KeyAccessObjs
+			if len(kaos) != len(tc.kaos) {
+				t.Fatalf("%d KAOs: %+v", len(kaos), kaos)
+			}
+			sids := map[string]bool{}
+			for i, want := range tc.kaos {
+				if kaos[i].KasURL != want.url || kaos[i].KID != want.kid || kaos[i].KeyType != want.typ {
+					t.Fatalf("KAO %d: %+v, want %+v", i, kaos[i], want)
+				}
+				sids[kaos[i].SplitID] = true
+			}
+			switch {
+			case tc.unsplits:
+				if !sids[""] || len(sids) != 1 {
+					t.Fatal("one share has no split id", sids)
+				}
+			case tc.sameSID:
+				if len(sids) != 1 || sids[""] {
+					t.Fatal("an OR group shares one split id", sids)
+				}
+			default:
+				if len(sids) != len(kaos) || sids[""] {
+					t.Fatal("an AND split has one split id per share", sids)
+				}
+			}
+			out, err := s.DecryptBytes(context.Background(), data, ReaderOptions{})
+			if err != nil || string(out) != "autoconfigured" {
+				t.Fatal(err)
+			}
+		})
+	}
+	f.defineAttributes(fakeValue("a.com", "rel", "ANY_OF", "a", nil))
+	if _, _, err := s.EncryptBytes(context.Background(), []byte("x"), TDFOptions{Attributes: []string{"https://a.com/attr/rel/value/a"}, AttributeValues: []string{"{}"}}); err == nil {
+		t.Fatal("Attributes and AttributeValues together")
+	}
+	if _, _, err := s.EncryptBytes(context.Background(), []byte("x"), TDFOptions{AttributeValues: []string{`{"fqn":"https://a.com/attr/rel/value/a"}`}, KasInformation: []KASInfo{{URL: f.kasURL()}}}); err == nil || !strings.Contains(err.Error(), "no associated definition with value [https://a.com/attr/rel/value/a]") {
+		t.Fatal("an offline value needs its definition", err)
+	}
+	if _, _, err := s.EncryptBytes(context.Background(), []byte("x"), TDFOptions{Attributes: []string{"https://a.com/attr/rel"}}); err == nil || !strings.Contains(err.Error(), "invalid type: attribute regex fail") {
+		t.Fatal("attributes are value FQNs", err)
+	}
+}

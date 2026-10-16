@@ -48,6 +48,7 @@ type fakePlatform struct {
 	tokenType      atomic.Value
 	baseKey        atomic.Value
 	nonce          atomic.Value
+	attributes     atomic.Value
 	tokenCalls     atomic.Int32
 	rewrapCalls    atomic.Int32
 	publicKeyCalls atomic.Int32
@@ -67,6 +68,7 @@ func newFakePlatform(t *testing.T) *fakePlatform {
 	f.tokenType.Store("Bearer")
 	f.baseKey.Store("")
 	f.nonce.Store("")
+	f.attributes.Store(map[string]map[string]any(nil))
 	var err error
 	f.kasRSA, err = rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -289,13 +291,40 @@ func (f *fakePlatform) handle(w http.ResponseWriter, r *http.Request) {
 			Fqns []string `json:"fqns"`
 		}
 		json.Unmarshal(body, &req)
+		values := f.attributes.Load().(map[string]map[string]any)
 		found := map[string]any{}
 		for _, fqn := range req.Fqns {
-			if !strings.HasSuffix(fqn, "/missing") {
+			if v, ok := values[strings.ToLower(fqn)]; ok {
+				found[fqn] = map[string]any{"attribute": v["attribute"], "value": v}
+			} else if !strings.HasSuffix(fqn, "/missing") {
 				found[fqn] = map[string]any{"value": map[string]any{"fqn": fqn}}
 			}
 		}
 		writeJSON(w, 200, map[string]any{"fqnAttributeValues": found})
+	case r.URL.Path == "/policy.attributes.AttributesService/GetKeyMappingsByFqns" && mode == "key-mappings":
+		var req struct {
+			Fqns []string `json:"fqns"`
+		}
+		json.Unmarshal(body, &req)
+		values := f.attributes.Load().(map[string]map[string]any)
+		mappings := map[string]any{}
+		for _, fqn := range req.Fqns {
+			v, ok := values[strings.ToLower(fqn)]
+			if !ok {
+				continue
+			}
+			attr, _ := v["attribute"].(map[string]any)
+			ns, _ := attr["namespace"].(map[string]any)
+			mapping := map[string]any{"rule": attr["rule"]}
+			for _, holder := range []map[string]any{v, attr, ns} {
+				if keys, ok := holder["kasKeys"]; ok {
+					mapping["keys"] = keys
+					break
+				}
+			}
+			mappings[strings.ToLower(fqn)] = mapping
+		}
+		writeJSON(w, 200, map[string]any{"fqnKeyMappings": mappings})
 	case r.URL.Path == "/authorization.AuthorizationService/GetEntitlements":
 		f.mu.Lock()
 		f.lastAuth = r.Header.Get("Authorization")

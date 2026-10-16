@@ -17,7 +17,7 @@ func TestKeyTypeAlgorithmRoundTrip(t *testing.T) {
 		{"rsa:2048", AlgorithmRSA2048}, {"rsa:4096", AlgorithmRSA4096}, {"ec:secp256r1", AlgorithmECP256}, {"ec:secp384r1", AlgorithmECP384}, {"ec:secp521r1", AlgorithmECP521},
 	} {
 		result, err := getKasKeyAlg(tc.algStr)
-		if err != nil || result != tc.expected {
+		if err != nil || result.String() != tc.expected {
 			t.Fatalf("getKasKeyAlg(%q) = %q %v", tc.algStr, result, err)
 		}
 		formatted, err := formatAlg(result)
@@ -26,12 +26,12 @@ func TestKeyTypeAlgorithmRoundTrip(t *testing.T) {
 		}
 	}
 	for _, bad := range []string{"unsupported", ""} {
-		if result, err := getKasKeyAlg(bad); err == nil || result != AlgorithmUnspecified {
+		if result, err := getKasKeyAlg(bad); err == nil || result.String() != AlgorithmUnspecified {
 			t.Fatalf("getKasKeyAlg(%q)", bad)
 		}
 	}
 	for _, bad := range []string{AlgorithmUnspecified, "ALGORITHM_99"} {
-		if _, err := formatAlg(bad); err == nil {
+		if _, err := formatAlg(policyAlgorithmOf(bad)); err == nil {
 			t.Fatalf("formatAlg(%q)", bad)
 		}
 	}
