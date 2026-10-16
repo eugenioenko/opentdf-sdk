@@ -150,6 +150,20 @@ let json = sdk.call("policy.namespaces.NamespaceService", "ListNamespaces", "{}"
 # Ok::<(), opentdf_tdf3::Error>(())
 ```
 
+The helpers are `sdk.list_attributes(Option<&str>)`
+(`Vec<protocol::policy::Attribute>`), `get_entity_attributes(Option<&Entity>)`,
+`validate_attributes(&[String])`, `attribute_exists(&str)` and
+`attribute_value_exists(&str)`, each with an `*_async` twin;
+`sdk.auth().access_token()` returns the SDK's `AccessToken` and `sdk.conn()`
+a `ConnectRpcConnection`. `Options { core_endpoint, policy_endpoint,
+authorization_endpoint, entity_resolution_endpoint, wellknown_endpoint, .. }`
+route those services through the SDK's transport.
+
+```rust
+let exists = sdk.attribute_value_exists("https://example.com/attr/level/value/high")?;
+let token = sdk.auth().access_token()?;
+```
+
 Every failure is an `Error` with `kind` (a `Kind` enum; `Kind::Boundary`
 carries the runtime's kind for `closed`, `poisoned`, `invalid_argument`,
 `source_panic`, `host_fault`), `op`, `message` (the reference's wording, see

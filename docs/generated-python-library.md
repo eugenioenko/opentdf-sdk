@@ -114,6 +114,22 @@ resp = sdk.attributes.list_attributes(ListAttributesRequest(namespace='example.c
 text = sdk.call('policy.namespaces.NamespaceService', 'ListNamespaces', '{}')
 ```
 
+The helpers are `sdk.list_attributes(namespace=None)` (protobuf `Attribute`
+messages), `sdk.get_entity_attributes(entity)`, `sdk.validate_attributes(fqns)`,
+`sdk.attribute_exists(fqn)` and `sdk.attribute_value_exists(fqn)`, each with
+an `*_async` twin; `sdk.auth().access_token()` returns the SDK's
+`AccessToken` and `sdk.conn()` the core endpoint. The `core_endpoint`,
+`policy_endpoint`, `authorization_endpoint`, `entity_resolution_endpoint`
+and `wellknown_endpoint` keyword options route those services through the
+SDK's transport.
+
+```python
+from opentdf_tdf3.protocol.authorization.authorization_pb2 import Entity
+
+fqns = sdk.get_entity_attributes(Entity(id='e1', client_id='my-service'))
+sdk.validate_attributes(['https://example.com/attr/level/value/high'])
+```
+
 ## Errors
 
 Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the

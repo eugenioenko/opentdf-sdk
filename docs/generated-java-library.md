@@ -129,6 +129,20 @@ var attrs = sdk.attributes().listAttributes(ListAttributesRequest.newBuilder().s
 String json = sdk.call("policy.namespaces.NamespaceService", "ListNamespaces", "{}");
 ```
 
+The helpers are `sdk.listAttributes(namespace)` (`List<Attribute>`),
+`sdk.getEntityAttributes(Entity)`, `sdk.validateAttributes(List<String>)`,
+`sdk.attributeExists(fqn)` and `sdk.attributeValueExists(fqn)`, blocking with
+an optional `Duration` and with `*Async` twins; `sdk.auth().accessToken()`
+returns a `TDF3.AccessToken` and `sdk.conn()` the core endpoint.
+`Builder.coreEndpoint`, `policyEndpoint`, `authorizationEndpoint`,
+`entityResolutionEndpoint` and `wellknownEndpoint` route those services
+through the SDK's transport.
+
+```java
+List<String> fqns = sdk.getEntityAttributes(Entity.newBuilder().setId("e1").setClientId("my-service").build());
+boolean exists = sdk.attributeValueExists("https://example.com/attr/level/value/high");
+```
+
 ## Errors
 
 Every failure is an `OpenTDFException` with `kind()`, `op()`,

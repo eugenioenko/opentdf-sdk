@@ -37,11 +37,11 @@ OPTION_FIELDS = {
     'WithInsecureSkipVerifyConn': 'Options.InsecureSkipVerify',
     'WithTLSCredentials': 'Options.TLS',
     'WithIPC': 'Options.UnixSocket (unsupported on Java and in browsers)',
-    'WithCustomCoreConnection': 'Options.CoreEndpoint',
-    'WithCustomPolicyConnection': 'Options.PolicyEndpoint',
-    'WithCustomAuthorizationConnection': 'Options.AuthorizationEndpoint',
-    'WithCustomEntityResolutionConnection': 'Options.EntityResolutionEndpoint',
-    'WithCustomWellknownConnection': 'Options.WellknownEndpoint',
+    'WithCustomCoreConnection': 'Options.CoreEndpoint (every service, through the SDK transport)',
+    'WithCustomPolicyConnection': 'Options.PolicyEndpoint (the policy.* services)',
+    'WithCustomAuthorizationConnection': 'Options.AuthorizationEndpoint (the authorization services)',
+    'WithCustomEntityResolutionConnection': 'Options.EntityResolutionEndpoint (the entity resolution services)',
+    'WithCustomWellknownConnection': 'Options.WellknownEndpoint (the well-known service and discovery)',
     'WithSessionEncryptionRSA': 'Options.SessionEncryptionRSAPEM',
     'WithSessionSignerRSA': 'Options.SessionSignerRSAPEM',
     'WithDPoPAlgorithm': 'Options.DPoPAlgorithm',
@@ -130,7 +130,7 @@ ROOT = {
     'NewOAuthAccessTokenSource': ('phase 8', 'sdk/auth host-callback TokenSource'),
     'NewIDPTokenExchangeTokenSource': ('phase 8', 'sdk/auth token-exchange TokenSource'),
     'NewCertExchangeTokenSource': ('phase 8', 'sdk/auth certificate-exchange TokenSource'),
-    'SDK.Conn': ('phase 3', 'no exported connection; service clients share the SDK transport'),
+    'SDK.Conn': ('phase 3', 'SDK.Conn() ConnectRPCConnection: the core endpoint; requests use the SDK transport'),
     'SDK.CreateTDF': ('phase 2', 'SDK.EncryptBytes (phase 2); SDK.CreateTDF(ctx, w, r, TDFOptions) streams in phase 7'),
     'SDK.CreateTDFContext': ('phase 2', 'SDK.CreateTDF takes ctx; streaming form in phase 7'),
     'SDK.LoadTDF': ('phase 2', 'SDK.LoadTDF(ctx, io.ReadSeeker, ReaderOptions)'),
@@ -142,10 +142,10 @@ ROOT = {
     'SDK.IsHealthy': ('phase 2', 'SDK.IsHealthy'),
     'SDK.Close': ('phase 2', 'SDK.Close'),
     'SDK.Logger': ('phase 2', 'SDK.Logger'),
-    'SDK.Auth': ('phase 3', 'SDK.Auth'),
-    'SDK.ListAttributes': ('phase 3', 'SDK.ListAttributes'),
-    'SDK.GetEntityAttributes': ('phase 3', 'SDK.GetEntityAttributes'),
-    'SDK.ValidateAttributes': ('phase 3', 'SDK.ValidateAttributes'),
+    'SDK.Auth': ('phase 3', 'SDK.Auth() *AuthClient'),
+    'SDK.ListAttributes': ('phase 3', 'SDK.ListAttributes (hosts: SDK.ListAttributesJSON with their policy.Attribute)'),
+    'SDK.GetEntityAttributes': ('phase 3', 'SDK.GetEntityAttributes (hosts: SDK.GetEntityAttributesJSON with their authorization.Entity)'),
+    'SDK.ValidateAttributes': ('phase 3', 'SDK.ValidateAttributes(ctx, []string)'),
     'SDK.AttributeExists': ('phase 3', 'SDK.AttributeExists'),
     'SDK.AttributeValueExists': ('phase 3', 'SDK.AttributeValueExists'),
     'SDK.BulkDecrypt': ('phase 9', 'SDK.BulkDecrypt(ctx, BulkOptions)'),
@@ -163,7 +163,7 @@ ROOT = {
     'Reader.Obligations': ('phase 9', 'Reader.Obligations'),
     'TDFObject.Manifest': ('phase 2', 'TDFObject.Manifest'),
     'TDFObject.Size': ('phase 2', 'TDFObject.Size'),
-    'AuthClient.AccessToken': ('phase 3', 'AuthClient.AccessToken'),
+    'AuthClient.AccessToken': ('phase 3', 'AuthClient.AccessToken (AccessToken with scheme and expiry)'),
     'PlatformConfiguration.AuthzEndpoint': ('phase 2', 'PlatformConfiguration.AuthzEndpoint'),
     'PlatformConfiguration.Issuer': ('phase 2', 'PlatformConfiguration.Issuer'),
     'PlatformConfiguration.TokenEndpoint': ('phase 2', 'PlatformConfiguration.TokenEndpoint'),
@@ -200,7 +200,7 @@ ROOT = {
     'TdfType': ('phase 2', 'sdk.TdfType'),
     'Error': ('phase 2', 'sdk.Error struct (Kind, Op, Message, ...)'),
     'AuthClient': ('phase 3', 'sdk.AuthClient'),
-    'ConnectRPCConnection': ('phase 3', 'SDK transport plus Options endpoint overrides'),
+    'ConnectRPCConnection': ('phase 3', 'sdk.ConnectRPCConnection{Endpoint}; requests use the SDK transport'),
     'AttributeNameFQN': ('phase 4', 'sdk.AttributeNameFQN'),
     'AttributeValueFQN': ('phase 4', 'sdk.AttributeValueFQN'),
     'KeySplitter': ('phase 4', 'sdk.KeySplitter (TDFOptions.KeySplitter)'),
@@ -295,7 +295,7 @@ ERROR_KINDS = {
     'ErrPlatformTokenEndpointNotFound': 'KindInvalidInput', 'ErrPlatformEndpointNotFound': 'KindInvalidInput',
     'ErrAccessTokenInvalid': 'KindAuth', 'ErrNoAccessTokenSource': 'KindAuth',
     'ErrWellKnowConfigEmpty': 'KindTransport', 'ErrAttributeNotFound': 'KindInvalidInput',
-    'ErrInvalid': 'KindInvalidInput (granter.go, phase 4)', 'ErrInvalidPerSchema': 'KindInvalidInput',
+    'ErrInvalid': 'KindInvalidInput (granter.go FQN parsing)', 'ErrInvalidPerSchema': 'KindInvalidInput',
     'ErrSplitterRequiresDefaultKAS': 'KindInvalidInput', 'ErrSplitterUnsupportedAlgorithm': 'KindUnsupportedFeature',
 }
 for i, name in enumerate(['ErrChunkedAlreadyFinalized', 'ErrChunkedCleanupFailed', 'ErrChunkedCloseFailed',
@@ -403,6 +403,13 @@ DONE = {
     'ErrTDFNotDecryptable', 'ErrTDFDecryptFailed', 'ErrBaseKeyNotFound',
     'ErrBaseKeyInvalidFormat', 'ErrBaseKeyEmpty', 'ErrMarshalBaseKeyFailed',
     'ErrUnmarshalBaseKeyFailed',
+    # Phase 3 part 3: helpers, SDK.Auth, SDK.Conn and endpoint overrides.
+    'SDK.ListAttributes', 'SDK.GetEntityAttributes', 'SDK.ValidateAttributes',
+    'SDK.AttributeExists', 'SDK.AttributeValueExists', 'SDK.Auth', 'AuthClient',
+    'AuthClient.AccessToken', 'SDK.Conn', 'ConnectRPCConnection',
+    'WithCustomCoreConnection', 'WithCustomPolicyConnection', 'WithCustomAuthorizationConnection',
+    'WithCustomEntityResolutionConnection', 'WithCustomWellknownConnection',
+    'ErrAttributeNotFound', 'ErrAccessTokenInvalid', 'ErrInvalid',
 }
 
 def root_status(kind, sym):
@@ -562,7 +569,10 @@ lines.append('`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Pha
 lines.append('delivered the service clients: `SDK.Call` in the shared source, typed accessors in')
 lines.append('the Go, TypeScript and Python packages (part 1) and the Java, C#, Rust and Swift')
 lines.append('packages, with one JSON function per method in C (part 2), so the `SDK` service')
-lines.append('fields and every `sdkconnect` symbol are `done`.')
+lines.append('fields and every `sdkconnect` symbol are `done`. Part 3 delivered the attribute')
+lines.append('helpers, `SDK.Auth`, `SDK.Conn` and the `WithCustom*Connection` endpoint overrides')
+lines.append('on every target; with them `ErrAttributeNotFound`, `ErrAccessTokenInvalid` and')
+lines.append('`ErrInvalid` (the FQN parsers of `granter.go`) are `done`.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
 lines.append('[goalchemy-gaps.md](goalchemy-gaps.md):')

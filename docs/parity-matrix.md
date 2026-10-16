@@ -24,7 +24,10 @@ TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swif
 delivered the service clients: `SDK.Call` in the shared source, typed accessors in
 the Go, TypeScript and Python packages (part 1) and the Java, C#, Rust and Swift
 packages, with one JSON function per method in C (part 2), so the `SDK` service
-fields and every `sdkconnect` symbol are `done`.
+fields and every `sdkconnect` symbol are `done`. Part 3 delivered the attribute
+helpers, `SDK.Auth`, `SDK.Conn` and the `WithCustom*Connection` endpoint overrides
+on every target; with them `ErrAttributeNotFound`, `ErrAccessTokenInvalid` and
+`ErrInvalid` (the FQN parsers of `granter.go`) are `done`.
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
@@ -39,14 +42,13 @@ Goalchemy issues opened for the gaps the phases depend on, detailed in
 
 | Status | Symbols |
 | --- | --- |
-| `done` | 327 |
+| `done` | 345 |
 | `phase 1` | 2 |
-| `phase 3` | 16 |
-| `phase 4` | 80 |
+| `phase 4` | 79 |
 | `phase 5` | 41 |
 | `phase 6` | 15 |
 | `phase 7` | 7 |
-| `phase 8` | 55 |
+| `phase 8` | 54 |
 | `phase 9` | 20 |
 | `phase 10` | 105 |
 | `not planned` | 1 |
@@ -112,9 +114,9 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AuthClient` | type | sdk.AuthClient | `phase 3` |
-| `AuthClient.AccessToken` | method | AuthClient.AccessToken | `phase 3` |
-| `SDK.Auth` | method | SDK.Auth | `phase 3` |
+| `AuthClient` | type | sdk.AuthClient | `done` |
+| `AuthClient.AccessToken` | method | AuthClient.AccessToken (AccessToken with scheme and expiry) | `done` |
+| `SDK.Auth` | method | SDK.Auth() *AuthClient | `done` |
 
 ### `basekey.go`
 
@@ -208,11 +210,11 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `SDK.AttributeExists` | method | SDK.AttributeExists | `phase 3` |
-| `SDK.AttributeValueExists` | method | SDK.AttributeValueExists | `phase 3` |
-| `SDK.GetEntityAttributes` | method | SDK.GetEntityAttributes | `phase 3` |
-| `SDK.ListAttributes` | method | SDK.ListAttributes | `phase 3` |
-| `SDK.ValidateAttributes` | method | SDK.ValidateAttributes | `phase 3` |
+| `SDK.AttributeExists` | method | SDK.AttributeExists | `done` |
+| `SDK.AttributeValueExists` | method | SDK.AttributeValueExists | `done` |
+| `SDK.GetEntityAttributes` | method | SDK.GetEntityAttributes (hosts: SDK.GetEntityAttributesJSON with their authorization.Entity) | `done` |
+| `SDK.ListAttributes` | method | SDK.ListAttributes (hosts: SDK.ListAttributesJSON with their policy.Attribute) | `done` |
+| `SDK.ValidateAttributes` | method | SDK.ValidateAttributes(ctx, []string) | `done` |
 
 ### `dpop_key.go`
 
@@ -236,7 +238,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `AttributeValueFQN.Prefix` | method | sdk.AttributeValueFQN.Prefix | `phase 4` |
 | `AttributeValueFQN.String` | method | sdk.AttributeValueFQN.String | `phase 4` |
 | `AttributeValueFQN.Value` | method | sdk.AttributeValueFQN.Value | `phase 4` |
-| `ErrInvalid` | var | sdk.ErrInvalid sentinel; Error.Kind = KindInvalidInput (granter.go, phase 4) | `phase 4` |
+| `ErrInvalid` | var | sdk.ErrInvalid sentinel; Error.Kind = KindInvalidInput (granter.go FQN parsing) | `done` |
 | `NewAttributeNameFQN` | func | sdk.NewAttributeNameFQN | `phase 4` |
 | `NewAttributeValueFQN` | func | sdk.NewAttributeValueFQN | `phase 4` |
 
@@ -321,7 +323,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `ConnectRPCConnection` | type | SDK transport plus Options endpoint overrides | `phase 3` |
+| `ConnectRPCConnection` | type | sdk.ConnectRPCConnection{Endpoint}; requests use the SDK transport | `done` |
 | `ES256` | const | sdk/tdf.ES256 | `done` |
 | `ES384` | const | sdk/tdf.ES384 | `done` |
 | `ES512` | const | sdk/tdf.ES512 | `done` |
@@ -333,11 +335,11 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `SigningAlgorithm` | type | sdk.SigningAlgorithm | `done` |
 | `WithClientCredentials` | func | Options.ClientID/ClientSecret/Scopes | `done` |
 | `WithConnectionValidation` | func | Options.ValidateConnection | `done` |
-| `WithCustomAuthorizationConnection` | func | Options.AuthorizationEndpoint | `phase 3` |
-| `WithCustomCoreConnection` | func | Options.CoreEndpoint | `phase 3` |
-| `WithCustomEntityResolutionConnection` | func | Options.EntityResolutionEndpoint | `phase 3` |
-| `WithCustomPolicyConnection` | func | Options.PolicyEndpoint | `phase 3` |
-| `WithCustomWellknownConnection` | func | Options.WellknownEndpoint | `phase 3` |
+| `WithCustomAuthorizationConnection` | func | Options.AuthorizationEndpoint (the authorization services) | `done` |
+| `WithCustomCoreConnection` | func | Options.CoreEndpoint (every service, through the SDK transport) | `done` |
+| `WithCustomEntityResolutionConnection` | func | Options.EntityResolutionEndpoint (the entity resolution services) | `done` |
+| `WithCustomPolicyConnection` | func | Options.PolicyEndpoint (the policy.* services) | `done` |
+| `WithCustomWellknownConnection` | func | Options.WellknownEndpoint (the well-known service and discovery) | `done` |
 | `WithDPoPAlgorithm` | func | Options.DPoPAlgorithm | `done` |
 | `WithDPoPJWK` | func | Options.DPoPKeyPEM (JWK converted by the host adapter) | `phase 8` |
 | `WithDPoPKeyPEM` | func | Options.DPoPKeyPEM | `done` |
@@ -383,8 +385,8 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `ErrAccessTokenInvalid` | const | sdk.ErrAccessTokenInvalid sentinel; Error.Kind = KindAuth | `phase 8` |
-| `ErrAttributeNotFound` | const | sdk.ErrAttributeNotFound sentinel; Error.Kind = KindInvalidInput | `phase 3` |
+| `ErrAccessTokenInvalid` | const | sdk.ErrAccessTokenInvalid sentinel; Error.Kind = KindAuth | `done` |
+| `ErrAttributeNotFound` | const | sdk.ErrAttributeNotFound sentinel; Error.Kind = KindInvalidInput | `done` |
 | `ErrGrpcDialFailed` | const | sdk.ErrGrpcDialFailed sentinel; Error.Kind = KindTransport | `done` |
 | `ErrHealthCheckUnsupported` | const | sdk.ErrHealthCheckUnsupported sentinel; Error.Kind = KindTransport | `done` |
 | `ErrInvalidPerSchema` | var | sdk.ErrInvalidPerSchema sentinel; Error.Kind = KindInvalidInput | `phase 6` |
@@ -412,7 +414,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `SDK.Authorization` | field | SDK.Call; host accessor Authorization() returning sdkconnect.AuthorizationServiceClient | `done` |
 | `SDK.AuthorizationV2` | field | SDK.Call; host accessor AuthorizationV2() returning sdkconnect.AuthorizationServiceClientV2 | `done` |
 | `SDK.Close` | method | SDK.Close | `done` |
-| `SDK.Conn` | method | no exported connection; service clients share the SDK transport | `phase 3` |
+| `SDK.Conn` | method | SDK.Conn() ConnectRPCConnection: the core endpoint; requests use the SDK transport | `done` |
 | `SDK.DynamicValueMapping` | field | SDK.Call; host accessor DynamicValueMapping() returning sdkconnect.DynamicValueMappingServiceClient | `done` |
 | `SDK.EntityResolutionV2` | field | SDK.Call; host accessor EntityResolutionV2() returning sdkconnect.EntityResolutionServiceClientV2 | `done` |
 | `SDK.EntityResoution` | field | SDK.Call; host accessor EntityResoution() returning sdkconnect.EntityResolutionServiceClient | `done` |
