@@ -2311,3 +2311,73 @@ Verification:
   the offline job installs from a cached archive.
 - [parity-matrix.md](parity-matrix.md): no status changes; the `sdkconnect`
   equivalents now name every host.
+
+## Full SDK plan, Phase 3 part 3: attribute helpers, SDK.Auth and endpoint overrides
+
+Branch `feat/phase3-part3-helpers` (PR #32), the last Phase 3 part. No
+Goalchemy change was needed (pinned v0.6.5).
+
+Shared source:
+
+- `src/discovery.go` ports the reference's `ListAttributes`,
+  `AttributeExists`, `AttributeValueExists`, `ValidateAttributes` and
+  `GetEntityAttributes` with its pagination (until `next_offset` is 0, at most
+  1000 pages), limits (one namespace filter, 250 FQNs), `not_found` handling
+  and wording, over the generated `policy.attributes` and `authorization`
+  clients (already in `include=`) and the SDK's authenticated transport. The
+  services are `attributesService` and `authorizationService` collaborators
+  of the `SDK`. `ListAttributesJSON` and `GetEntityAttributesJSON` carry the
+  typed results across the boundary as protobuf JSON.
+- `src/auth_client.go` ports `SDK.Auth` and `AuthClient.AccessToken`
+  (`ErrNoAccessTokenSource`, `ErrAccessTokenInvalid`); `SDK.Conn` returns the
+  core endpoint as `ConnectRPCConnection`.
+- `src/granter.go` holds `ErrInvalid` and the reference's FQN regular
+  expressions as parsers (`newAttributeNameFQN`, `newAttributeValueFQN`); a
+  differential test compares them with Go's `regexp` on 200,000 generated
+  inputs and found an overlapping `/attr/` match the first version missed.
+- The `WithCustom*Connection` endpoints, rejected until now, route their
+  services: policy, authorization, entity resolution and well-known to their
+  override, else the core endpoint, else the platform endpoint; health and
+  `Conn` to core; the configuration `New` fetches to well-known.
+- Tests: the reference's `discovery_test.go` and `access_token_test.go`
+  ported (`src/discovery_test.go`, `src/auth_client_test.go`), the FQN cases
+  of `granter_test.go`, the helpers through the fake platform over HTTP
+  (`TestHelpersThroughPlatform`) and the routing of every override
+  (`TestCustomServiceEndpoints`); `delivery-offline.sh` runs them (118 named
+  checks).
+
+Hosts: each target exposes the helpers with its own messages, `auth()` and
+`conn()` in its idiom, and the Go adapter adds the reference's five
+`WithCustom*Connection` options (table in
+[api-spec.md](api-spec.md#helpers-auth-and-endpoint-overrides-phase-3-part-3)).
+C returns `ListAttributes` as a JSON array and adds `otdf_access_token`.
+
+Verification:
+
+- Locally (throttled, one target at a time, Goalchemy v0.6.5): `go test
+  ./src/...`, `goalchemy check -gate cooperative`, `delivery-offline.sh` and
+  `tests/ci` pass; the Go, TypeScript, Python, Java, C#, Rust and C packages
+  build; each of their consumers passes the extended `services` mode against
+  a scratch Connect fake that answers `not_found` for a missing value as the
+  platform does. Swift: the adapter and consumer pass `swiftc -parse` only.
+- Every consumer's `services` mode now reports `AttributeExists` and
+  `AttributeValueExists` true and false, `ListAttributes` in the new
+  namespace, `ValidateAttributes` with and without a missing value,
+  `GetEntityAttributes` for the `opentdf-sdk` client (entitled to
+  `attr1/value1` by the platform fixtures), `auth().accessToken()`, and a
+  core endpoint override: an SDK whose platform endpoint is unreachable
+  (`127.0.0.1:9`) but whose core connection is the platform.
+  `run-focused.py` and the coverage gate assert them.
+- CI run 38848744067 (`757baee`): `offline-format-protocol` and the focused
+  real-KAS jobs for go, typescript, java, csharp, python, rust and c pass
+  against the real platform, including `GetEntityAttributes` (`attr1/value1`
+  for `opentdf-sdk`) and the core endpoint override; the coverage gate
+  requires the override report. Swift times out on the hosted runner and is
+  not required, so the Swift adapter is not CI-verified.
+- [parity-matrix.md](parity-matrix.md): the 16 Phase 3 rows,
+  `ErrAttributeNotFound`, `ErrAccessTokenInvalid` and `ErrInvalid` are
+  `done` (345 of 669).
+
+Phase 3 is complete: the service clients (part 1: shared source, Go,
+TypeScript, Python; part 2: Java, C#, Rust, Swift, C), with messages crossing
+the boundary as protobuf JSON, and the helpers and overrides (part 3).

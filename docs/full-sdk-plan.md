@@ -35,7 +35,7 @@ when its verification items passed and its PRs are on `main`.
 | 0 Scope lock and gap inventory | done | #18, #19 | Parity matrix 669 symbols; Goalchemy issues #71–#76; 336 xtest tests inventoried |
 | 1 xtest harness and Go CLI | done | #20, opentdf-sdk-tests #9 | `gcgo` passes roundtrip and manifest validity against go and js (12/12 cells) |
 | 2 Handle API and platform discovery | done | #22, #24, opentdf-sdk-tests #10, #11 | Handle API on all eight targets. xtest: `gcgo`/`gcts`/`gcpy` 120/120 roundtrip, tamper and policy-type cells; `gcjava`/`gccs`/`gcrs`/`gcc`/`gcswift` 42/42 roundtrip and manifest, `gcjava`/`gccs`/`gcrs`/`gcc` 250/250 tamper and policy types. Swift CI times out on the hosted runner (not required) |
-| 3 Generated platform service clients | in progress | #30 | Part 1: shared source, Go, TypeScript, Python |
+| 3 Generated platform service clients | done | #30, #31, #32 | Messages cross the Goalchemy boundary as protobuf JSON: the shared source types only what it reads (`include=`) and exposes `SDK.Call`; each host types the 16 `sdkconnect` services with its own protobuf messages (C: JSON text). Part 1: shared source, generated KAS client, Go, TypeScript, Python. Part 2: Java, C#, Rust, Swift, C. Part 3: `ListAttributes`, `GetEntityAttributes`, `ValidateAttributes`, `AttributeExists`, `AttributeValueExists`, `SDK.Auth`, `SDK.Conn` and per-service `WithCustom*Connection` endpoints on every target. Focused real-KAS `services` runs pass for go, typescript, java, csharp, python, rust and c; the Swift adapter is not CI-verified (the Swift job times out on the hosted runner) |
 | 4 Autoconfigure, key splitting, key management | pending | | |
 | 5 Assertions | pending | | |
 | 6 Target modes, legacy readers, hardening | pending | | |
