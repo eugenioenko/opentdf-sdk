@@ -6,7 +6,7 @@ import json,sys,time,urllib.request,urllib.parse,hashlib,base64,secrets,threadin
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization,hashes
 from cryptography.hazmat.primitives.asymmetric import rsa,ec,padding,utils
-from opentdf_tdf3 import SDK,AccessToken,OpenTDFError,ProviderRejected,is_valid_tdf,version,supported_features
+from opentdf_tdf3 import SDK,AccessToken,OpenTDFError,ProviderRejected,is_valid_tdf,version,supported_features,new_attribute_value_fqn
 from opentdf_tdf3.protocol.policy import objects_pb2
 from opentdf_tdf3.protocol.policy.attributes import attributes_pb2
 from opentdf_tdf3.protocol.policy.namespaces import namespaces_pb2
@@ -238,7 +238,20 @@ def services(sdk,cfg):
  try:sdk.attributes.get_attribute(namespaces_pb2.ListNamespacesRequest());raise AssertionError('wrong request type')
  except TypeError:pass
  (run/'services.json').write_text(json.dumps({'namespace':ns_name,'namespaces_before':len(before.namespaces),'namespaces_after':len(after.namespaces),'attribute_fqn':attribute.fqn,'values':values,
-  'not_found':report(missing),'helpers':helpers(sdk,cfg,ns_name,attribute.fqn)}))
+  'not_found':report(missing),'helpers':helpers(sdk,cfg,ns_name,attribute.fqn),'autoconfigure':autoconfigure(sdk,cfg,attribute)}))
+
+# autoconfigure encrypts under a value of the attribute created, looked up
+# (attributes) and offline (attribute_values): the attribute has no grants, so
+# the plan is the base key or the default KAS.
+def autoconfigure(sdk,cfg,attribute):
+ value=attribute.fqn+'/value/1'
+ offline=objects_pb2.Value(fqn=value,value='1',attribute=objects_pb2.Attribute(fqn=attribute.fqn,rule=attribute.rule,namespace=attribute.namespace))
+ out={'key':new_attribute_value_fqn(value)['key']}
+ for label,extra in (('looked_up',{'attributes':[value]}),('offline',{'attribute_values':[offline]})):
+  with sdk.create_tdf(label.encode(),kas_information=[kas_information(cfg)],**extra) as obj:
+   kaos=obj.manifest()['encryptionInformation']['keyAccess']
+  out[label]={'kaos':len(kaos),'kas':kaos[0]['url'],'sid':kaos[0].get('sid','')}
+ return out
 
 # The reference's attribute helpers on the attribute services created,
 # SDK.auth, and an SDK whose platform endpoint is unreachable but whose core

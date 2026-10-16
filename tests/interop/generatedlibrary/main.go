@@ -335,10 +335,37 @@ func services(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks 
 		"namespace": name, "namespaces_before": len(before.GetNamespaces()), "namespaces_after": len(after.GetNamespaces()),
 		"attribute_fqn": a.GetFqn(), "values": values,
 		"not_found": map[string]any{"kind": missing.Kind, "connectCode": missing.ConnectCode, "httpStatus": missing.HTTPStatus, "message": missing.Message},
-		"helpers":   helpers(ctx, client, cfg, callbacks, a.GetFqn()),
+		"helpers":       helpers(ctx, client, cfg, callbacks, a.GetFqn()),
+		"autoconfigure": autoconfigure(ctx, client, cfg, callbacks, a),
 	})
 	fail("report", e)
 	write(filepath.Join(run, "services.json"), report)
+}
+
+// autoconfigure encrypts under a value of the attribute created, looked up
+// (WithDataAttributes) and offline (WithDataAttributeValues): the attribute
+// has no grants, so the plan is the base key or the default KAS.
+func autoconfigure(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks g.Callbacks, a *policy.Attribute) map[string]any {
+	value := a.GetFqn() + "/value/1"
+	fqn, e := g.NewAttributeValueFQN(ctx, value, callbacks)
+	fail("attribute value fqn", e)
+	offline := &policy.Value{Fqn: value, Value: "1", Attribute: &policy.Attribute{Fqn: a.GetFqn(), Rule: a.GetRule(), Namespace: a.GetNamespace()}}
+	report := map[string]any{"key": fqn.Key}
+	for _, path := range []struct {
+		label  string
+		option g.TDFOption
+	}{{"looked_up", g.WithDataAttributes(value)}, {"offline", g.WithDataAttributeValues(offline)}} {
+		opts, e := g.TDFOptionsOf(g.WithKasInformation(kasInformation(cfg)), path.option)
+		fail("autoconfigure options", e)
+		_, obj, e := client.EncryptBytes(ctx, []byte(path.label), opts, callbacks)
+		fail("autoconfigure "+path.label, e)
+		manifest, e := obj.Manifest(ctx, callbacks)
+		fail("autoconfigure manifest", e)
+		fail("autoconfigure close", obj.Close())
+		kaos := manifest.EncryptionInformation.KeyAccessObjs
+		report[path.label] = map[string]any{"kaos": len(kaos), "kas": kaos[0].KasURL, "sid": kaos[0].SplitID}
+	}
+	return report
 }
 
 // helpers runs the reference's attribute helpers against the attribute

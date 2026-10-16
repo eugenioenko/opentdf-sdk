@@ -8,7 +8,9 @@ import io.opentdf.tdf3.TDF3;
 import io.opentdf.tdf3.TDFObject;
 import io.opentdf.tdf3.TDFOptions;
 import io.opentdf.tdf3.protocol.authorization.Entity;
+import io.opentdf.tdf3.protocol.policy.Attribute;
 import io.opentdf.tdf3.protocol.policy.AttributeRuleTypeEnum;
+import io.opentdf.tdf3.protocol.policy.Value;
 import io.opentdf.tdf3.protocol.policy.attributes.CreateAttributeRequest;
 import io.opentdf.tdf3.protocol.policy.attributes.GetAttributeRequest;
 import io.opentdf.tdf3.protocol.policy.attributes.ListAttributesRequest;
@@ -146,7 +148,27 @@ public final class Consumer {
   report.put("namespace",ns);report.put("namespaces_before",before.getNamespacesCount());report.put("namespaces_after",after.getNamespacesCount());
   report.put("attribute_fqn",attribute.getFqn());report.put("values",values);report.put("not_found",missing);
   report.put("helpers",helpers(sdk,cfg,ns,attribute.getFqn()));
+  report.put("autoconfigure",autoconfigure(sdk,cfg,attribute));
   write("services.json",Json.write(report));
+ }
+
+ /** Encrypts under a value of the attribute created, looked up (attributes) and offline (attributeValues): the attribute has no grants, so the plan is the base key or the default KAS. */
+ @SuppressWarnings("unchecked")static Map<String,Object> autoconfigure(SDK sdk,Map<String,Object> cfg,Attribute attribute)throws Exception{
+  String value=attribute.getFqn()+"/value/1";
+  Value offline=Value.newBuilder().setFqn(value).setValue("1").setAttribute(Attribute.newBuilder().setFqn(attribute.getFqn()).setRule(attribute.getRule()).setNamespace(attribute.getNamespace())).build();
+  Map<String,Object> out=new LinkedHashMap<>();
+  out.put("key",SDK.newAttributeValueFQN(value).key());
+  Map<String,TDFOptions.Builder> paths=new LinkedHashMap<>();
+  paths.put("looked_up",TDFOptions.builder().kasInformation(kasInformation(cfg)).attributes(value));
+  paths.put("offline",TDFOptions.builder().kasInformation(kasInformation(cfg)).attributeValues(offline));
+  for(var path:paths.entrySet()){
+   try(TDFObject object=sdk.createTDF(path.getKey().getBytes(StandardCharsets.UTF_8),path.getValue().build())){
+    List<Map<String,Object>> kaos=(List<Map<String,Object>>)((Map<String,Object>)object.manifest().get("encryptionInformation")).get("keyAccess");
+    Map<String,Object> kao=kaos.get(0);
+    out.put(path.getKey(),Map.of("kaos",kaos.size(),"kas",kao.get("url"),"sid",kao.getOrDefault("sid","")));
+   }
+  }
+  return out;
  }
 
  /** The reference's attribute helpers on the attribute services created, SDK.auth, and an SDK whose platform endpoint is unreachable but whose core connection is the platform. */

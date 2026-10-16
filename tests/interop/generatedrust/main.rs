@@ -169,9 +169,32 @@ fn services(sdk: &Sdk, cfg: &Value, name: &str, run: &Path) -> Result<(), Error>
     let missing = expect_failure("missing attribute", sdk.attributes().get_attribute(&by_id("00000000-0000-0000-0000-000000000000".into())));
     check(missing["connectCode"] == "not_found" && missing["httpStatus"] == 404, &format!("missing attribute error: {missing}"));
     let helpers = helpers(sdk, cfg, name, &ns, &attribute.fqn)?;
-    let report = json!({"namespace": ns, "namespaces_before": before.namespaces.len(), "namespaces_after": after.namespaces.len(), "attribute_fqn": attribute.fqn, "values": values, "not_found": missing, "helpers": helpers});
+    let autoconfigure = autoconfigure(sdk, cfg, &attribute)?;
+    let report = json!({"namespace": ns, "namespaces_before": before.namespaces.len(), "namespaces_after": after.namespaces.len(), "attribute_fqn": attribute.fqn, "values": values, "not_found": missing, "helpers": helpers, "autoconfigure": autoconfigure});
     fs::write(run.join("services.json"), report.to_string()).unwrap();
     Ok(())
+}
+
+/// Encrypts under a value of the attribute created, looked up (attributes) and offline (attribute_values): the attribute has no grants, so the plan is the base key or the default KAS.
+fn autoconfigure(sdk: &Sdk, cfg: &Value, attribute: &opentdf_tdf3::protocol::policy::Attribute) -> Result<Value, Error> {
+    let value = format!("{}/value/1", attribute.fqn);
+    let offline = opentdf_tdf3::protocol::policy::Value {
+        fqn: value.clone(),
+        value: "1".into(),
+        attribute: Some(opentdf_tdf3::protocol::policy::Attribute { fqn: attribute.fqn.clone(), rule: attribute.rule, namespace: attribute.namespace.clone(), ..Default::default() }),
+        ..Default::default()
+    };
+    let mut report = json!({"key": tdf::new_attribute_value_fqn(&value)?.key});
+    for (label, options) in [
+        ("looked_up", TdfOptions { kas_information: vec![kas_information(cfg)], attributes: vec![value.clone()], ..Default::default() }),
+        ("offline", TdfOptions { kas_information: vec![kas_information(cfg)], attribute_values: vec![offline.clone()], ..Default::default() }),
+    ] {
+        let object = sdk.create_tdf(label.as_bytes(), &options)?;
+        let kaos = object.manifest()?.encryption_information.key_access;
+        object.close()?;
+        report[label] = json!({"kaos": kaos.len(), "kas": kaos[0].url, "sid": kaos[0].sid});
+    }
+    Ok(report)
 }
 
 /// The reference's attribute helpers on the attribute services created, Sdk::auth, and an Sdk whose platform endpoint is unreachable but whose core connection is the platform.

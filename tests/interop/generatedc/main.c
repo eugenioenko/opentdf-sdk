@@ -97,6 +97,29 @@ static J *helpers(otdf_sdk *sdk,J *cfg,provider_state *ps,const char *ns,const c
  return h;
 }
 
+/* Encrypts under a value of the attribute created, looked up (attributes) and offline (attribute_values): the attribute has no grants, so the plan is the base key or the default KAS. */
+static J *autoconfigure(otdf_sdk *sdk,J *cfg,J *attribute,const char *fqn){
+ char value[300],offline[1024],n[32];otdf_error e={0};char *url=NULL,*key=NULL;snprintf(value,sizeof value,"%s/value/1",fqn);
+ if(otdf_new_attribute_value_fqn(value,&url,&key,&e))fail("attribute value fqn",&e);
+ J *report=j_new(J_OBJ);j_set(report,"key",j_cstr(key));otdf_string_free(url);otdf_string_free(key);
+ J *ns=j_get(attribute,"namespace");
+ snprintf(offline,sizeof offline,"{\"fqn\":\"%s\",\"value\":\"1\",\"attribute\":{\"fqn\":\"%s\",\"rule\":\"%s\",\"namespace\":{\"name\":\"%s\",\"fqn\":\"%s\"}}}",value,fqn,text(attribute,"rule"),text(ns,"name"),text(ns,"fqn"));
+ const char *values[]={value},*offlines[]={offline};
+ for(int i=0;i<2;i++){
+  otdf_kas_info kas=kas_information(cfg);otdf_tdf_options o=OTDF_TDF_OPTIONS_INIT;o.kas_information=&kas;o.kas_information_count=1;
+  if(i==0){o.attributes=values;o.attribute_count=1;}else{o.attribute_values=offlines;o.attribute_value_count=1;}
+  otdf_owned_bytes tdf={0};otdf_tdf_object *object=NULL;char *manifest=NULL;const char *err=NULL;
+  if(otdf_create_tdf(sdk,(otdf_bytes){(const uint8_t *)"autoconfigure",13},&o,NULL,&tdf,&object,&e))fail("autoconfigure",&e);
+  if(otdf_tdf_object_manifest_json(object,NULL,&manifest,&e))fail("autoconfigure manifest",&e);
+  J *m=j_parse(manifest,&err);check(m&&!err,"autoconfigure manifest json");free(manifest);
+  J *kaos=j_get(j_get(m,"encryptionInformation"),"keyAccess");check(kaos&&kaos->t==J_ARR&&kaos->len>0,"autoconfigure key access");
+  J *row=j_new(J_OBJ),*total=j_new(J_NUM);snprintf(n,sizeof n,"%zu",kaos->len);total->s=GC_strdup(n);total->n=strlen(n);
+  j_set(row,"kaos",total);j_set(row,"kas",j_cstr(text(kaos->items[0],"url")));j_set(row,"sid",j_cstr(text(kaos->items[0],"sid")));
+  j_set(report,i?"offline":"looked_up",row);
+  otdf_tdf_object_close(object,NULL);otdf_tdf_object_free(object);otdf_bytes_free(&tdf);
+ }
+ return report;
+}
 static void services(otdf_sdk *sdk,J *cfg,provider_state *ps,const char *run){
  char ns[64],request[512];otdf_error e={0};char *out=NULL;uint8_t rand[6];assert(RAND_bytes(rand,6)>0);snprintf(ns,sizeof ns,"gcc%02x%02x%02x%02x%02x%02x.com",rand[0],rand[1],rand[2],rand[3],rand[4],rand[5]);
  J *before=reply("list namespaces",otdf_namespaces_list_namespaces(sdk,NULL,NULL,&out,&e),&e,&out);
@@ -123,7 +146,7 @@ static void services(otdf_sdk *sdk,J *cfg,provider_state *ps,const char *run){
  J *report_=j_new(J_OBJ);char n[32];j_set(report_,"namespace",j_cstr(ns));
  J *before_n=j_new(J_NUM);snprintf(n,sizeof n,"%zu",count(before,"namespaces"));before_n->s=GC_strdup(n);before_n->n=strlen(n);j_set(report_,"namespaces_before",before_n);
  J *after_n=j_new(J_NUM);snprintf(n,sizeof n,"%zu",count(after,"namespaces"));after_n->s=GC_strdup(n);after_n->n=strlen(n);j_set(report_,"namespaces_after",after_n);
- j_set(report_,"attribute_fqn",j_cstr(fqn));j_set(report_,"values",values);j_set(report_,"not_found",missing);j_set(report_,"helpers",helpers(sdk,cfg,ps,ns,fqn));write_json(run,"services.json",report_);
+ j_set(report_,"attribute_fqn",j_cstr(fqn));j_set(report_,"values",values);j_set(report_,"not_found",missing);j_set(report_,"helpers",helpers(sdk,cfg,ps,ns,fqn));j_set(report_,"autoconfigure",autoconfigure(sdk,cfg,attribute,fqn));write_json(run,"services.json",report_);
 }
 
 /* 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail. */

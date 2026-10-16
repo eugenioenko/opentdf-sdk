@@ -153,7 +153,24 @@ async function services(sdk,cfg){
  assert(missing?.name==='ConnectError'&&missing.code===5&&cause instanceof g.OpenTDFError&&cause.connectCode==='not_found'&&cause.httpStatus===404,'missing attribute ConnectError');
  await write('services.json',JSON.stringify({namespace:name,namespaces_before:before.namespaces.length,namespaces_after:after.namespaces.length,attribute_fqn:attribute.fqn,values,
   not_found:{connectError:missing.code,rawMessage:missing.rawMessage,kind:cause.kind,connectCode:cause.connectCode,httpStatus:cause.httpStatus,message:cause.message},
-  helpers:await helpers(sdk,cfg,name,attribute.fqn)}));
+  helpers:await helpers(sdk,cfg,name,attribute.fqn),autoconfigure:await autoconfigure(sdk,cfg,attribute)}));
+}
+
+// autoconfigure encrypts under a value of the attribute created, looked up
+// (attributes) and offline (attributeValues): the attribute has no grants, so
+// the plan is the base key or the default KAS.
+async function autoconfigure(sdk,cfg,attribute){
+ const value=attribute.fqn+'/value/1';
+ const fqn=await g.newAttributeValueFqn(value);
+ const offline={fqn:value,value:'1',attribute:{fqn:attribute.fqn,rule:attribute.rule,namespace:attribute.namespace}};
+ const report={key:fqn.key};
+ for(const [label,extra] of [['looked_up',{attributes:[value]}],['offline',{attributeValues:[offline]}]]){
+  const object=await sdk.createTdf(new TextEncoder().encode(label),{kasInformation:[kasInformation(cfg)],...extra});
+  const kaos=(await object.manifest()).encryptionInformation.keyAccess;
+  await object.close();
+  report[label]={kaos:kaos.length,kas:kaos[0].url,sid:kaos[0].sid??''};
+ }
+ return report;
 }
 
 // The reference's attribute helpers on the attribute services created,
