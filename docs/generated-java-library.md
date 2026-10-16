@@ -143,6 +143,16 @@ List<String> fqns = sdk.getEntityAttributes(Entity.newBuilder().setId("e1").setC
 boolean exists = sdk.attributeValueExists("https://example.com/attr/level/value/high");
 ```
 
+With autoconfigure on (the default), `Builder.attributes` drive the
+reference's key split (grants and mapped keys, else the base key, else the
+default KAS); `Builder.attributeValues(List<Value>)` plans offline from
+values with their definitions. `SDK.newAttributeValueFQN(fqn)` and
+`SDK.newAttributeNameFQN(fqn)` return `SDK.AttributeFQN(url, key)`.
+
+```java
+TDFObject object = sdk.createTDF(data, TDFOptions.builder().attributes("https://example.com/attr/level/value/high").build());
+```
+
 ## Errors
 
 Every failure is an `OpenTDFException` with `kind()`, `op()`,

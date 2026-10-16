@@ -2381,3 +2381,85 @@ Verification:
 Phase 3 is complete: the service clients (part 1: shared source, Go,
 TypeScript, Python; part 2: Java, C#, Rust, Swift, C), with messages crossing
 the boundary as protobuf JSON, and the helpers and overrides (part 3).
+
+## Full SDK plan, Phase 4 part 1: autoconfigure, granter and key splitting (writer)
+
+Branch `feat/phase4-part1-writer`. Goalchemy v0.6.6 (`a7ac87b2`) is pinned:
+the part found that the generated Go package called value-receiver methods
+of a handle (`ResourceLocator.GetURL`, ...) on the handle's pointer and did
+not build; goalchemy#89 runs them on a copy on every target, released in
+v0.6.6 (goalchemy#90).
+
+Shared source:
+
+- `src/granter.go`, `src/key_splitter.go` and `src/resource_locator.go` are
+  file-by-file ports of the reference: rule evaluation (`anyOf`, `allOf`,
+  `hierarchy`, unspecified), grants and mapped keys on values, definitions
+  and namespaces, `GetKeyMappingsByFqns` with the `GetAttributeValuesByFqns`
+  fallback (per value, and for platforms that answer `unimplemented`), the
+  boolean reduction and `plan`/`resolveTemplate`; `KeySplitter`, `Split`,
+  `SplitResult.Validate`/`VerifyReconstruction`, `KASPublicKey`, the
+  single-KAS splitter and the splitter sentinels; `ResourceLocator` with its
+  binary form. `GetKeyMappingsByFqns` joins the protocol generator's
+  `include=`.
+- `initKAOTemplate` and `newGranter` are the reference's: explicit
+  `KasInformation` without autoconfigure, else grants and mapped keys, else
+  the base key, else the default KAS; split ids, `kid` (`NoKIDInKAO`) and the
+  KAO order follow the plan. `templateSplitShares` XOR-splits the DEK with
+  `splitDEK` over the host's random source.
+- `TDFOptions.AttributeValues` carries `WithDataAttributeValues` as
+  `policy.Value` protobuf JSON. `NewAttributeNameFQN`, `NewAttributeValueFQN`,
+  `NewResourceLocator` and `NewResourceLocatorFromReader` are exported; the
+  FQN values export their `URL` and `Key` so they cross the boundary.
+  `DefaultKeySplitter` stays unexported until the chunked writer takes it.
+- Tests: the reference's `granter_test.go`, `key_splitter_test.go` and
+  `resource_locator_test.go` ported (the FQN regexp differential test kept),
+  and `Test_Autoconfigure` round trips through the fake platform (value,
+  definition and namespace grants, OR and AND splits, mapped RSA and EC keys,
+  offline values).
+- `tests/splitplan` runs the reference SDK and the shared source against one
+  fake Connect platform (attributes and well-known handlers from
+  `protocol/go`) and requires identical key access objects: KAS, kid,
+  wrapping and split grouping, in order. Inputs: the fixtures of
+  `../tests/xtest/fixtures/attributes.py` and the key fixtures of
+  `fixtures/keys.py` (no post-quantum or extended mechanisms), each with
+  legacy grants, grants with keys, grants with cached keys and mapped keys,
+  through `GetKeyMappingsByFqns`, through the older-platform fallback and
+  offline: 198 cases; plus 150 random policies (1800 cases). All identical; a
+  deliberately reversed sort fails it. `delivery-offline.sh` runs it.
+
+Hosts: `AttributeValues` and the FQN constructors on every target
+([api-spec.md](api-spec.md#autoconfigure-and-key-splitting-phase-4-part-1));
+the Go adapter's `WithDataAttributeValues` keeps the reference's ordering
+against `WithDataAttributes`. Each consumer's `services` mode encrypts with
+autoconfigure under the attribute it creates, looked up and offline, and the
+focused job checks one key access object and the FQN key.
+
+Verification (local, throttled, one job at a time, Goalchemy v0.6.6,
+platform from `otdf-local` at `4d9e555b`):
+
+- `go test ./src/...` (granter tests also under `-race`), `tests/splitplan`
+  and `delivery-offline.sh` (262 named checks) pass; the generated
+  protocol output is unchanged by the v0.6.6 plugin.
+- The Go, TypeScript, Python, Java, C#, Rust and C packages build; the Go,
+  Java, C#, Rust and C consumers compile (`cargo check`, `-fsyntax-only` for
+  C) and the Python and TypeScript packages answer the FQN constructors and
+  `attribute_values` conversion; Swift: the adapter and consumer pass
+  `swiftc -parse` only.
+- xtest through `scripts/xtest-run.sh`:
+  - `test_tdf_roundtrip` (`ztdf`, `ztdf-ecwrap`) and `test_manifest_validity`
+    for `go js gcgo`: 21/21;
+  - `test_abac.py` autoconfigure, key mapping, base key and legacy golden
+    cells plus `test_policytypes.py` for `go js gcgo`, focus gcgo: 97 passed;
+    every gcgo cell passes in both directions except platform-gated skips
+    (`kas_uri_from_kao`, `attribute_traversal`, `mechanism-ec-curves-384-521`
+    are not in the pinned platform) and `mechanism-rsa-4096` (part 2);
+  - the same autoconfigure, key mapping and base key cells and the
+    round trips for `go gcts`: 45 passed.
+- `SupportedFeatures()` adds `autoconfigure`, `ns_grants`, `key_management`
+  and `ecwrap`. `multikao` (duplicate KAOs on read), the extended
+  mechanisms and `attribute_traversal` wait for part 2.
+- [parity-matrix.md](parity-matrix.md): the FQN types, `ResourceLocator`,
+  the `KeySplitter` contract types and the three autoconfigure options are
+  `done` (380 of 669); `DefaultKeySplitter` moves to phase 10 and the
+  `experimental/tdf/keysplit` rows stay phase 4.

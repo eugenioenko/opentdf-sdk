@@ -158,6 +158,16 @@ let exists = try await sdk.attributeValueExists("https://example.com/attr/level/
 let token = try await sdk.auth().accessToken()
 ```
 
+With autoconfigure on (the default), `TDFOptions.attributes` drive the
+reference's key split (grants and mapped keys, else the base key, else the
+default KAS); `attributeValues` (`Policy_Value`s with their definitions)
+plan offline. `SDK.newAttributeValueFQN(_:)` and `SDK.newAttributeNameFQN(_:)`
+return `AttributeFQN`.
+
+```swift
+let tdf = try await sdk.createTDF(data, TDFOptions(attributes: ["https://example.com/attr/level/value/high"]))
+```
+
 `src/hosts/swift/cmd/otdfgc/main.swift` is the native Swift CLI over this
 package, built by `scripts/build-swift-cli.sh <package> <binary>` and
 registered with the xtest harness as the `gcswift` SDK type (see

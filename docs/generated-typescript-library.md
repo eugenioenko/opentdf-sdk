@@ -121,6 +121,17 @@ const fqns = await sdk.getEntityAttributes({ id: 'e1', entityType: { case: 'clie
 const core = await SDK.create(platform, { clientId, clientSecret, coreEndpoint: 'https://core.example.com' });
 ```
 
+With autoconfigure on (the default), `attributes` drive the reference's key
+split (grants and mapped keys, else the base key, else the default KAS);
+`attributeValues` (protobuf-es `Value`s with their definitions) plan
+offline. `newAttributeValueFqn(fqn)` and `newAttributeNameFqn(fqn)` return
+`{url, key}`.
+
+```ts
+const object = await sdk.createTdf(data, { attributes: ['https://example.com/attr/level/value/high'] });
+const { key } = await newAttributeValueFqn('https://Example.com/attr/Level/value/High');
+```
+
 ## Errors
 
 Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the

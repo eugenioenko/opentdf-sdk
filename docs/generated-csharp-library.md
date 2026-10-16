@@ -131,6 +131,16 @@ var fqns = await sdk.GetEntityAttributesAsync(new OpenTDF.Protocol.Authorization
 await sdk.ValidateAttributesAsync(new[] { "https://example.com/attr/level/value/high" }, ct);
 ```
 
+With autoconfigure on (the default), `TdfOptions.Attributes` drive the
+reference's key split (grants and mapped keys, else the base key, else the
+default KAS); `TdfOptions.AttributeValues` (`Policy.Value` messages with
+their definitions) plan offline. `Sdk.NewAttributeValueFqnAsync(fqn)` and
+`Sdk.NewAttributeNameFqnAsync(fqn)` return `AttributeFqn(Url, Key)`.
+
+```csharp
+await using var tdf = await sdk.CreateTdfAsync(data, new TdfOptions { Attributes = new[] { "https://example.com/attr/level/value/high" } });
+```
+
 ## Errors
 
 Every failure is an `OpenTdfException` with `Kind`, `Op`, `Message` (the

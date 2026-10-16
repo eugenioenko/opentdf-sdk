@@ -158,6 +158,32 @@ At the pinned platform revision `GetAttributeValuesByFqns` answers
 found` there and `attribute not found: ...` only against a service that
 omits missing values; both are the reference's behaviour.
 
+## Autoconfigure and key splitting (Phase 4 part 1)
+
+The writer's planning errors, from the ported `granter.go`, `key_splitter.go`
+and `tdf.go`; `CreateTDF` reports them with kind `kas_request` unless the
+cause carries its own (a service error keeps its Connect code).
+
+| Message | Reference | Kind |
+| --- | --- | --- |
+| `failed generate plan: <cause>` | `sdk/tdf.go:501` | `kas_request` |
+| `no default KAS specified; required for grantless plans` | `sdk/granter.go:732` | (inside `failed generate plan`) |
+| `no key found for resource locator [<kas>#<kid>]` | `sdk/granter.go:798` | (inside `failed generate plan`) |
+| `invalid algorithm [<alg>] for kas <kas> with kid [<kid>]: unsupported algorithm: <alg>` | `sdk/granter.go:802`, `sdk/basekey.go:83` | (inside `failed generate plan`) |
+| `no defintion or grant found for [<fqn>]` (sic) | `sdk/granter.go:895` | (inside `failed generate plan`) |
+| `no associated definition with value [<fqn>]`, `no associated namespace with definition [<def>] from value [<fqn>]` (offline values) | `sdk/granter.go:658,662` | `kas_request` |
+| `unable to retrieve public key from KAS at [<kas>]: <cause>` | `sdk/tdf.go:524,613` | `kas_request` |
+| `empty KAS key found for splitID:[<sid>], kas:[<kas>]: tdf: kas public key is missing` | `sdk/tdf.go:529` | `kas_request` |
+| `splitID:[<sid>]: share names no KAS; its bytes could never be unwrapped`, `no key access objects generated` | `sdk/key_splitter.go:452,481` | `kas_request` |
+| `unknown key type: <type>` (`KeyTypeToPolicyAlgorithm`), `unsupported algorithm: <alg>` (`PolicyAlgorithmToKeyType`) | `sdk/basekey.go:54,83` | `invalid_input` |
+| `invalid alg [<alg>]: unrecognized key type: <alg>` (base key) | `sdk/basekey.go:23`, `lib/ocrypto/key_type.go:32` | `base_key_invalid` |
+| `chunked: ...` (`SplitResult.Validate`, `VerifyReconstruction`), `chunked: default splitter requires a default KAS; ...` (`ErrSplitterRequiresDefaultKAS`), `chunked: unsupported KAS key algorithm: kas <url>: ...` (`ErrSplitterUnsupportedAlgorithm`) | `sdk/key_splitter.go` | returned as is (shared source only) |
+| `Attributes and AttributeValues are exclusive: AttributeValues replaces the attributes` | none (struct options) | `invalid_input` |
+| `unsupported in this build: wrapping key algorithm <post-quantum type>` | none (not planned) | `unsupported_feature` |
+
+The base key's unknown algorithm now reads `unrecognized key type` (ocrypto's
+`ParseKeyType`) instead of the earlier `unsupported key type`.
+
 ## Shim and CLI contract strings
 
 Strings the shims themselves assert or emit, which the generated `cli.sh`

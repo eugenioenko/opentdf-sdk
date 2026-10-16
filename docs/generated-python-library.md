@@ -130,6 +130,16 @@ fqns = sdk.get_entity_attributes(Entity(id='e1', client_id='my-service'))
 sdk.validate_attributes(['https://example.com/attr/level/value/high'])
 ```
 
+With autoconfigure on (the default), `attributes=` drive the reference's key
+split (grants and mapped keys, else the base key, else the default KAS);
+`attribute_values=` (protobuf `Value` messages with their definitions) plan
+offline. `new_attribute_value_fqn(fqn)` and `new_attribute_name_fqn(fqn)`
+return `{'url', 'key'}`.
+
+```python
+with sdk.create_tdf(data, attributes=['https://example.com/attr/level/value/high']) as obj: ...
+```
+
 ## Errors
 
 Every failure is an `OpenTDFError` with `kind`, `op`, `message` (the
