@@ -350,7 +350,6 @@ public final class SDK extends PlatformServices implements AutoCloseable {
  public static boolean isPlatformEndpointMalformed(String endpoint) { return Values.await(Values.run(() -> Generated.IsPlatformEndpointMalformed(Values.encode(endpoint), new Library.Options())), null); }
  /** The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key. */
  public record AttributeFQN(String url, String key) {
-  static AttributeFQN of(Generated.AttributeNameFQN f) { return new AttributeFQN(Values.decode(f.URL), Values.decode(f.Key)); }
   static AttributeFQN of(Generated.AttributeValueFQN f) { return new AttributeFQN(Values.decode(f.URL), Values.decode(f.Key)); }
  }
  public static AttributeFQN newAttributeNameFQN(String fqn) { return AttributeFQN.of(Values.await(Values.run(() -> Generated.NewAttributeNameFQN(Values.encode(fqn), new Library.Options())), null)); }
