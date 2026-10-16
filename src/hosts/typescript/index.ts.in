@@ -6,7 +6,7 @@ import * as generated from './main.js';
 import { fromJsonString, toJsonString, create, type DescMessage, type DescMethodStreaming, type DescMethodUnary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError, type ContextValues, type StreamResponse, type Transport, type UnaryResponse } from '@connectrpc/connect';
 import { platformServices, type PlatformServices } from './services.js';
-import { AttributeSchema, type Attribute } from './protocol/policy/objects_pb.js';
+import { AttributeSchema, ValueSchema, type Attribute, type Value } from './protocol/policy/objects_pb.js';
 import { EntitySchema, type Entity } from './protocol/authorization/authorization_pb.js';
 export type { Config, KASRoute, EncryptOptions, Failure } from './main.js';
 export type { PlatformServices } from './services.js';
@@ -108,10 +108,14 @@ const kasInfoShape: Shape = [['url', 'URL', 's'], ['publicKey', 'PublicKey', 's'
 const statementShape: Shape = [['format', 'Format', 's'], ['schema', 'Schema', 's'], ['value', 'Value', 's']];
 const assertionConfigShape: Shape = [['id', 'ID', 's'], ['type', 'Type', 's'], ['scope', 'Scope', 's'], ['appliesToState', 'AppliesToState', 's'], ['statement', 'Statement', statementShape]];
 const tdfOptionsShape: Shape = [
-  ['attributes', 'Attributes', 'ss'], ['disableAutoconfigure', 'DisableAutoconfigure', 'b'], ['kasInformation', 'KasInformation', [kasInfoShape]],
+  ['attributes', 'Attributes', 'ss'], ['attributeValues', 'AttributeValues', 'ss'], ['disableAutoconfigure', 'DisableAutoconfigure', 'b'], ['kasInformation', 'KasInformation', [kasInfoShape]],
   ['wrappingKeyAlgorithm', 'WrappingKeyAlgorithm', 's'], ['segmentSize', 'SegmentSize', 'n'], ['inputSize', 'InputSize', 'n'], ['mimeType', 'MimeType', 's'],
   ['metadata', 'Metadata', 's'], ['assertions', 'Assertions', [assertionConfigShape]], ['systemMetadataAssertion', 'SystemMetadataAssertion', 'b'], ['targetMode', 'TargetMode', 's'],
 ];
+function generatedTdfOptions(options: TDFOptions): generated.TDFOptions {
+  const attributeValues = options.attributeValues?.map((v) => toJsonString(ValueSchema, create(ValueSchema, v)));
+  return toGenerated(tdfOptionsShape, { ...options, attributeValues }) as generated.TDFOptions;
+}
 const readerOptionsShape: Shape = [
   ['disableAssertionVerification', 'DisableAssertionVerification', 'b'], ['kasAllowlist', 'KasAllowlist', 'ss'], ['ignoreAllowlist', 'IgnoreAllowlist', 'b'],
   ['maxManifestSize', 'MaxManifestSize', 'n'], ['schemaValidation', 'SchemaValidation', 'n'], ['sessionKeyType', 'SessionKeyType', 's'],
@@ -119,6 +123,7 @@ const readerOptionsShape: Shape = [
 ];
 const kasPublicKeyShape: Shape = [['pem', 'Pem', 's'], ['kid', 'Kid', 's'], ['alg', 'Alg', 's']];
 const kasPublicKeySetShape: Shape = [['keys', 'Keys', [kasPublicKeyShape]]];
+const attributeFqnShape: Shape = [['url', 'URL', 's'], ['key', 'Key', 's']];
 const simpleKasKeyShape: Shape = [['kasUri', 'KasURI', 's'], ['publicKey', 'PublicKey', [['algorithm', 'Algorithm', 's'], ['kid', 'Kid', 's'], ['pem', 'Pem', 's']]], ['kasId', 'KasID', 's']];
 const errorShape: Shape = [
   ['kind', 'Kind', 's'], ['op', 'Op', 's'], ['message', 'Message', 's'], ['httpStatus', 'HTTPStatus', 'n'], ['connectCode', 'ConnectCode', 's'],
@@ -182,7 +187,11 @@ export interface KASInfo { url: string; publicKey?: string; kid?: string; algori
 export interface Statement { format?: string; schema?: string; value?: string; }
 export interface AssertionConfig { id: string; type: string; scope: string; appliesToState?: string; statement: Statement; }
 export interface TDFOptions {
-  attributes?: string[]; disableAutoconfigure?: boolean; kasInformation?: KASInfo[]; wrappingKeyAlgorithm?: KeyType | string;
+  /** WithDataAttributes. */
+  attributes?: string[];
+  /** WithDataAttributeValues: values with their definitions, read offline instead of looked up; they replace attributes. */
+  attributeValues?: (MessageInitShape<typeof ValueSchema> | Value)[];
+  disableAutoconfigure?: boolean; kasInformation?: KASInfo[]; wrappingKeyAlgorithm?: KeyType | string;
   segmentSize?: number; inputSize?: number; mimeType?: string; metadata?: string; assertions?: AssertionConfig[];
   systemMetadataAssertion?: boolean; targetMode?: string;
 }
@@ -451,7 +460,7 @@ export class SDK {
   /** The reference's CreateTDF over bytes: the TDF bytes with their TDFObject handle. */
   createTdf(plaintext: Uint8Array, options: TDFOptions = {}, call: CallOptions = {}): Promise<TDFObject> {
     return guard(async () => {
-      const [data, object] = await this.#handle.EncryptBytes(bytes(plaintext), toGenerated(tdfOptionsShape, options) as generated.TDFOptions, this.#options(call));
+      const [data, object] = await this.#handle.EncryptBytes(bytes(plaintext), generatedTdfOptions(options), this.#options(call));
       if (data === null || object === null) throw new Error('invalid generated result');
       return new TDFObject(data, object, this.#calls);
     });
@@ -542,6 +551,14 @@ export function getTdfType(data: Uint8Array, call: CallOptions = {}): Promise<st
 }
 export function isPlatformEndpointMalformed(endpoint: string): Promise<boolean> {
   return guard(() => generated.IsPlatformEndpointMalformed(inValue('s', endpoint) as string));
+}
+/** The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key. */
+export interface AttributeFQN { url: string; key: string; }
+export function newAttributeNameFqn(fqn: string): Promise<AttributeFQN> {
+  return guard(async () => fromGenerated(attributeFqnShape, await generated.NewAttributeNameFQN(inValue('s', fqn) as string)) as unknown as AttributeFQN);
+}
+export function newAttributeValueFqn(fqn: string): Promise<AttributeFQN> {
+  return guard(async () => fromGenerated(attributeFqnShape, await generated.NewAttributeValueFQN(inValue('s', fqn) as string)) as unknown as AttributeFQN);
 }
 export function keyTypeToPolicyAlgorithm(keyType: string): Promise<string> {
   return guard(async () => decode(await generated.KeyTypeToPolicyAlgorithm(inValue('s', keyType) as string)));

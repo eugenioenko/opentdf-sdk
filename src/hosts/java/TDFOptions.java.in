@@ -1,6 +1,9 @@
 package io.opentdf.tdf3;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import io.goalchemy.generated.Generated;
+import io.opentdf.tdf3.protocol.policy.Value;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,6 +33,22 @@ public final class TDFOptions {
   /** WithDataAttributes */
   public Builder attributes(List<String> attributes) { o.Attributes = Values.encode(attributes); return this; }
   public Builder attributes(String... attributes) { return attributes(List.of(attributes)); }
+  /** WithDataAttributeValues: values with their definitions, read offline instead of looked up; they replace attributes. */
+  public Builder attributeValues(List<Value> values) {
+   if (values == null) { o.AttributeValues = null; return this; }
+   JsonFormat.Printer printer = JsonFormat.printer().omittingInsignificantWhitespace();
+   List<String> out = new ArrayList<>();
+   for (Value v : values) {
+    try {
+     out.add(printer.print(v));
+    } catch (InvalidProtocolBufferException e) {
+     throw new IllegalArgumentException("attribute value is not printable as protobuf JSON", e);
+    }
+   }
+   o.AttributeValues = Values.encode(out);
+   return this;
+  }
+  public Builder attributeValues(Value... values) { return attributeValues(List.of(values)); }
   /** WithAutoconfigure(false) */
   public Builder disableAutoconfigure(boolean disable) { o.DisableAutoconfigure = disable; return this; }
   /** WithKasInformation */

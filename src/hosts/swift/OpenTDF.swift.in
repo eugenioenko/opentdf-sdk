@@ -189,6 +189,8 @@ public struct AssertionConfig {
 /// The reference's TDFConfig options (shared-source TDFOptions); every default is the reference default.
 public struct TDFOptions {
   public var attributes: [String] = []
+  /// WithDataAttributeValues: values with their definitions, read offline instead of looked up; they replace attributes.
+  public var attributeValues: [Policy_Value] = []
   public var disableAutoconfigure = false
   public var kasInformation: [KASInfo] = []
   /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
@@ -199,11 +201,11 @@ public struct TDFOptions {
   public var systemMetadataAssertion = false
   public var targetMode = ""
   public init(
-    attributes: [String] = [], disableAutoconfigure: Bool = false, kasInformation: [KASInfo] = [],
+    attributes: [String] = [], attributeValues: [Policy_Value] = [], disableAutoconfigure: Bool = false, kasInformation: [KASInfo] = [],
     wrappingKeyAlgorithm: String = "", segmentSize: Int64 = 0, inputSize: Int64 = 0, mimeType: String = "",
     metadata: String = "", assertions: [AssertionConfig] = [], systemMetadataAssertion: Bool = false, targetMode: String = ""
   ) {
-    self.attributes = attributes; self.disableAutoconfigure = disableAutoconfigure; self.kasInformation = kasInformation
+    self.attributes = attributes; self.attributeValues = attributeValues; self.disableAutoconfigure = disableAutoconfigure; self.kasInformation = kasInformation
     self.wrappingKeyAlgorithm = wrappingKeyAlgorithm; self.segmentSize = segmentSize; self.inputSize = inputSize
     self.mimeType = mimeType; self.metadata = metadata; self.assertions = assertions
     self.systemMetadataAssertion = systemMetadataAssertion; self.targetMode = targetMode
@@ -211,6 +213,7 @@ public struct TDFOptions {
   fileprivate var generated: GoalchemyGenerated.TDFOptions {
     var o = GoalchemyGenerated.TDFOptions()
     o.Attributes = gos(attributes); o.DisableAutoconfigure = disableAutoconfigure
+    o.AttributeValues = gos(attributeValues.map { (try? $0.jsonString()) ?? "" })
     o.KasInformation = kasInformation.isEmpty ? nil : kasInformation.map { GoalchemyGenerated.KASInfo(URL: go($0.url), PublicKey: go($0.publicKey), KID: go($0.kid), Algorithm: go($0.algorithm), Default: $0.isDefault) }
     o.WrappingKeyAlgorithm = go(wrappingKeyAlgorithm); o.SegmentSize = segmentSize; o.InputSize = inputSize
     o.MimeType = go(mimeType); o.Metadata = go(metadata)
@@ -219,6 +222,9 @@ public struct TDFOptions {
     return o
   }
 }
+
+/// The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key.
+public struct AttributeFQN: Equatable { public let url: String; public let key: String }
 
 /// The reference's TDFReaderConfig options (shared-source ReaderOptions); every default is the reference default.
 public struct ReaderOptions {
@@ -519,6 +525,8 @@ public final class SDK {
   public static func isValidTdf(_ data: Data) async throws -> Bool { try await run(GoalchemyGenerated.IsValidTdf(GoalchemyStream(bytes: Array(data)))) }
   public static func getTdfType(_ data: Data) async throws -> String { text(try await run(GoalchemyGenerated.GetTdfType(GoalchemyStream(bytes: Array(data))))) }
   public static func isPlatformEndpointMalformed(_ endpoint: String) async throws -> Bool { try await run(GoalchemyGenerated.IsPlatformEndpointMalformed(go(endpoint))) }
+  public static func newAttributeNameFQN(_ fqn: String) async throws -> AttributeFQN { let f = try await run(GoalchemyGenerated.NewAttributeNameFQN(go(fqn))); return AttributeFQN(url: text(f.URL), key: text(f.Key)) }
+  public static func newAttributeValueFQN(_ fqn: String) async throws -> AttributeFQN { let f = try await run(GoalchemyGenerated.NewAttributeValueFQN(go(fqn))); return AttributeFQN(url: text(f.URL), key: text(f.Key)) }
   public static func keyTypeToPolicyAlgorithm(_ keyType: String) async throws -> String { text(try await run(GoalchemyGenerated.KeyTypeToPolicyAlgorithm(go(keyType)))) }
   public static func policyAlgorithmToKeyType(_ alg: String) async throws -> String { text(try await run(GoalchemyGenerated.PolicyAlgorithmToKeyType(go(alg)))) }
   public static func version() throws -> String { text(try runSync(GoalchemyGenerated.Version())) }

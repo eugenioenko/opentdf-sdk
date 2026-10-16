@@ -58,6 +58,10 @@ typedef struct { const char *id, *type, *scope, *applies_to_state, *format, *sch
 /* The reference's TDFConfig options (shared-source TDFOptions). */
 typedef struct {
     const char *const *attributes; size_t attribute_count;
+    /* WithDataAttributeValues: policy.Value messages in protobuf JSON, with
+     * their definitions, read offline instead of looked up; they replace
+     * attributes. */
+    const char *const *attribute_values; size_t attribute_value_count;
     bool disable_autoconfigure;
     const otdf_kas_info *kas_information; size_t kas_information_count;
     /* rsa:2048 (default) or ec:secp256r1 in this build. */
@@ -177,6 +181,10 @@ int otdf_sdk_conn(otdf_sdk *sdk, const otdf_call *call, char **endpoint, otdf_er
 int otdf_is_valid_tdf(otdf_bytes data, const otdf_call *call, bool *valid, otdf_error *error);
 int otdf_get_tdf_type(otdf_bytes data, const otdf_call *call, char **type, otdf_error *error);
 int otdf_is_platform_endpoint_malformed(const char *endpoint, bool *malformed, otdf_error *error);
+/* NewAttributeNameFQN and NewAttributeValueFQN: the FQN as given and its
+ * lower-case key. Release *url and *key with otdf_string_free. */
+int otdf_new_attribute_name_fqn(const char *fqn, char **url, char **key, otdf_error *error);
+int otdf_new_attribute_value_fqn(const char *fqn, char **url, char **key, otdf_error *error);
 int otdf_key_type_to_policy_algorithm(const char *key_type, char **algorithm, otdf_error *error);
 int otdf_policy_algorithm_to_key_type(const char *algorithm, char **key_type, otdf_error *error);
 int otdf_version(char **version, otdf_error *error);

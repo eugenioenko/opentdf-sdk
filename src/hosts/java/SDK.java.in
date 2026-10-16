@@ -348,6 +348,13 @@ public final class SDK extends PlatformServices implements AutoCloseable {
  public static boolean isValidTdf(byte[] data) { return Values.await(Values.run(() -> Generated.IsValidTdf(Values.bytes(data), new Library.Options())), null); }
  public static String getTdfType(byte[] data) { return Values.decode(Values.await(Values.run(() -> Generated.GetTdfType(Values.bytes(data), new Library.Options())), null)); }
  public static boolean isPlatformEndpointMalformed(String endpoint) { return Values.await(Values.run(() -> Generated.IsPlatformEndpointMalformed(Values.encode(endpoint), new Library.Options())), null); }
+ /** The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key. */
+ public record AttributeFQN(String url, String key) {
+  static AttributeFQN of(Generated.AttributeNameFQN f) { return new AttributeFQN(Values.decode(f.URL), Values.decode(f.Key)); }
+  static AttributeFQN of(Generated.AttributeValueFQN f) { return new AttributeFQN(Values.decode(f.URL), Values.decode(f.Key)); }
+ }
+ public static AttributeFQN newAttributeNameFQN(String fqn) { return AttributeFQN.of(Values.await(Values.run(() -> Generated.NewAttributeNameFQN(Values.encode(fqn), new Library.Options())), null)); }
+ public static AttributeFQN newAttributeValueFQN(String fqn) { return AttributeFQN.of(Values.await(Values.run(() -> Generated.NewAttributeValueFQN(Values.encode(fqn), new Library.Options())), null)); }
  public static String keyTypeToPolicyAlgorithm(String keyType) { return Values.decode(Values.await(Values.run(() -> Generated.KeyTypeToPolicyAlgorithm(Values.encode(keyType), new Library.Options())), null)); }
  public static String policyAlgorithmToKeyType(String alg) { return Values.decode(Values.await(Values.run(() -> Generated.PolicyAlgorithmToKeyType(Values.encode(alg), new Library.Options())), null)); }
  public static String version() { return Values.decode(Values.await(Values.run(() -> Generated.Version(new Library.Options())), null)); }

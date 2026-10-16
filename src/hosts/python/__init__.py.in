@@ -42,7 +42,8 @@ _KAS_INFO = (('url', 'URL', 's'), ('public_key', 'PublicKey', 's'), ('kid', 'KID
 _STATEMENT = (('format', 'Format', 's'), ('schema', 'Schema', 's'), ('value', 'Value', 's'))
 _ASSERTION_CONFIG = (('id', 'ID', 's'), ('type', 'Type', 's'), ('scope', 'Scope', 's'), ('applies_to_state', 'AppliesToState', 's'), ('statement', 'Statement', _STATEMENT))
 _TDF_OPTIONS = (
-    ('attributes', 'Attributes', 'ss'), ('disable_autoconfigure', 'DisableAutoconfigure', 'b'), ('kas_information', 'KasInformation', [_KAS_INFO]),
+    ('attributes', 'Attributes', 'ss'), ('attribute_values', 'AttributeValues', 'ss'), ('disable_autoconfigure', 'DisableAutoconfigure', 'b'),
+    ('kas_information', 'KasInformation', [_KAS_INFO]),
     ('wrapping_key_algorithm', 'WrappingKeyAlgorithm', 's'), ('segment_size', 'SegmentSize', 'n'), ('input_size', 'InputSize', 'n'), ('mime_type', 'MimeType', 's'),
     ('metadata', 'Metadata', 's'), ('assertions', 'Assertions', [_ASSERTION_CONFIG]), ('system_metadata_assertion', 'SystemMetadataAssertion', 'b'), ('target_mode', 'TargetMode', 's'),
 )
@@ -52,6 +53,7 @@ _READER_OPTIONS = (
     ('fulfillable_obligation_fqns', 'FulfillableObligationFQNs', 'ss'),
 )
 _KAS_PUBLIC_KEY_SET = (('keys', 'Keys', [(('pem', 'Pem', 's'), ('kid', 'Kid', 's'), ('alg', 'Alg', 's'))]),)
+_ATTRIBUTE_FQN = (('url', 'URL', 's'), ('key', 'Key', 's'))
 _SIMPLE_KAS_KEY = (('kas_uri', 'KasURI', 's'), ('public_key', 'PublicKey', (('algorithm', 'Algorithm', 's'), ('kid', 'Kid', 's'), ('pem', 'Pem', 's'))), ('kas_id', 'KasID', 's'))
 _ERROR = (
     ('kind', 'Kind', 's'), ('op', 'Op', 's'), ('message', 'Message', 's'), ('http_status', 'HTTPStatus', 'n'), ('connect_code', 'ConnectCode', 's'),
@@ -221,6 +223,15 @@ def _entity(entity):
     return json.dumps(json_format.MessageToDict(entity), separators=(',', ':')).encode('utf-8')
 
 
+def _tdf_options(options):
+    values = options.get('attribute_values')
+    if values is None: return options
+    for value in values:
+        if getattr(getattr(value, 'DESCRIPTOR', None), 'full_name', None) != 'policy.Value':
+            raise TypeError('attribute_values takes policy.Value messages')
+    return dict(options, attribute_values=[json.dumps(json_format.MessageToDict(v), separators=(',', ':')) for v in values])
+
+
 def _provider(provider):
     def call(request):
         value = provider(request)
@@ -328,7 +339,7 @@ class SDK:
         return cls(platform_endpoint, _handle=await _await(operation), _calls=calls)
 
     def _encrypt(self, plaintext, options):
-        try: return self._handle.EncryptBytes(rt.library_snapshot_bytes(plaintext), _to_generated(_TDF_OPTIONS, options), self._calls)
+        try: return self._handle.EncryptBytes(rt.library_snapshot_bytes(plaintext), _to_generated(_TDF_OPTIONS, _tdf_options(options)), self._calls)
         except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
     def _object(self, result): return TDFObject(result[0] or b'', result[1], self._calls)
     def create_tdf(self, plaintext, *, timeout=None, **options):
@@ -465,6 +476,12 @@ def _free(call, convert=lambda v: v, timeout=None):
 def is_valid_tdf(data, timeout=None): return _free(lambda: _generated.IsValidTdf(rt.library_snapshot_bytes(data)), timeout=timeout)
 def get_tdf_type(data, timeout=None): return _free(lambda: _generated.GetTdfType(rt.library_snapshot_bytes(data)), _decode, timeout)
 def is_platform_endpoint_malformed(endpoint): return _free(lambda: _generated.IsPlatformEndpointMalformed(_text(endpoint)))
+def new_attribute_name_fqn(fqn):
+    """The reference's NewAttributeNameFQN: {'url', 'key'}, or OpenTDFError (invalid type)."""
+    return _free(lambda: _generated.NewAttributeNameFQN(_text(fqn)), lambda v: _from_generated(_ATTRIBUTE_FQN, v))
+def new_attribute_value_fqn(fqn):
+    """The reference's NewAttributeValueFQN: {'url', 'key'}, or OpenTDFError (invalid type)."""
+    return _free(lambda: _generated.NewAttributeValueFQN(_text(fqn)), lambda v: _from_generated(_ATTRIBUTE_FQN, v))
 def key_type_to_policy_algorithm(key_type): return _free(lambda: _generated.KeyTypeToPolicyAlgorithm(_text(key_type)), _decode)
 def policy_algorithm_to_key_type(alg): return _free(lambda: _generated.PolicyAlgorithmToKeyType(_text(alg)), _decode)
 def version(): return _free(_generated.Version, _decode)

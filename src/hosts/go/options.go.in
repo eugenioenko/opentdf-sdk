@@ -12,6 +12,9 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/opentdf/platform/protocol/go/policy"
+	"google.golang.org/protobuf/encoding/protojson"
+
 	"goalchemyout/cap/log"
 )
 
@@ -208,7 +211,36 @@ func TDFOptionsOf(opts ...TDFOption) (TDFOptions, error) {
 // WithDataAttributes appends the given data attributes to the bound policy
 func WithDataAttributes(attributes ...string) TDFOption {
 	return func(o *TDFOptions) error {
+		for _, data := range o.AttributeValues {
+			v := &policy.Value{}
+			if err := protojson.Unmarshal([]byte(data), v); err != nil {
+				return err
+			}
+			o.Attributes = append(o.Attributes, v.GetFqn())
+		}
+		o.AttributeValues = nil
 		o.Attributes = append(o.Attributes, attributes...)
+		return nil
+	}
+}
+
+// WithDataAttributeValues appends the given data attributes to the bound policy.
+// Unlike `WithDataAttributes`, this will not trigger an attribute definition lookup
+// during autoconfigure. That is, to use autoconfigure in an 'offline' context,
+// you must first store the relevant attribute information locally and load
+// it to the `CreateTDF` method with this option.
+// DEPRECATION: This option is deprecated and will be removed in a future release.
+func WithDataAttributeValues(attributes ...*policy.Value) TDFOption {
+	return func(o *TDFOptions) error {
+		o.Attributes = nil
+		o.AttributeValues = make([]string, 0, len(attributes))
+		for _, a := range attributes {
+			data, err := protojson.Marshal(a)
+			if err != nil {
+				return err
+			}
+			o.AttributeValues = append(o.AttributeValues, string(data))
+		}
 		return nil
 	}
 }
