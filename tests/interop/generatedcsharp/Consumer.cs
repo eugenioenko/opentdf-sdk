@@ -65,7 +65,7 @@ static class Entry
 
  /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
  /// xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error.
- static async Task Services(Sdk sdk)
+ static async Task Services(Sdk sdk,JsonElement cfg)
  {
   string ns="gccs"+Convert.ToHexString(RandomNumberGenerator.GetBytes(6)).ToLowerInvariant()+".com";
   var before=await sdk.Namespaces.ListNamespacesAsync(new Namespaces.ListNamespacesRequest());
@@ -83,7 +83,22 @@ static class Entry
   Check(raw.GetProperty("attribute").GetProperty("fqn").GetString()==attribute.Fqn,"raw JSON call");
   var missing=await ExpectFailure("missing attribute",()=>sdk.Attributes.GetAttributeAsync(new Attributes.GetAttributeRequest{AttributeId="00000000-0000-0000-0000-000000000000"}));
   Check((string)missing["connectCode"]=="not_found"&&(long)missing["httpStatus"]==404,"missing attribute error: "+JsonSerializer.Serialize(missing));
-  Write("services.json",JsonSerializer.Serialize(new Dictionary<string,object>{["namespace"]=ns,["namespaces_before"]=before.Namespaces.Count,["namespaces_after"]=after.Namespaces.Count,["attribute_fqn"]=attribute.Fqn,["values"]=values,["not_found"]=missing}));
+  Write("services.json",JsonSerializer.Serialize(new Dictionary<string,object>{["namespace"]=ns,["namespaces_before"]=before.Namespaces.Count,["namespaces_after"]=after.Namespaces.Count,["attribute_fqn"]=attribute.Fqn,["values"]=values,["not_found"]=missing,["helpers"]=await Helpers(sdk,cfg,ns,attribute.Fqn)}));
+ }
+ // The reference's attribute helpers on the attribute services created, Sdk.Auth, and an Sdk whose platform endpoint is unreachable but whose core connection is the platform.
+ static async Task<Dictionary<string,object>> Helpers(Sdk sdk,JsonElement cfg,string ns,string fqn)
+ {
+  var h=new Dictionary<string,object>{["attribute_exists"]=await sdk.AttributeExistsAsync(fqn),["attribute_missing"]=await sdk.AttributeExistsAsync(fqn+"-missing"),
+   ["value_exists"]=await sdk.AttributeValueExistsAsync(fqn+"/value/1"),["value_missing"]=await sdk.AttributeValueExistsAsync(fqn+"/value/9")};
+  h["listed"]=(await sdk.ListAttributesAsync(ns)).Select(a=>a.Fqn).ToArray();
+  await sdk.ValidateAttributesAsync(new[]{fqn+"/value/1",fqn+"/value/2"});h["validate_ok"]=true;
+  h["validate_missing"]=await ExpectFailure("validate missing",()=>sdk.ValidateAttributesAsync(new[]{fqn+"/value/1",fqn+"/value/9"}));
+  h["entity_attributes"]=await sdk.GetEntityAttributesAsync(new OpenTDF.Protocol.Authorization.Entity{Id="e1",ClientId="opentdf-sdk"});
+  var token=await sdk.Auth().AccessTokenAsync();
+  h["access_token"]=new Dictionary<string,object>{["present"]=token.Value!="",["scheme"]=token.Scheme};
+  await using(var over=await Sdk.CreateAsync("http://127.0.0.1:9",OptionsOf(cfg) with{CoreEndpoint=Text(cfg,"PlatformURL")}))
+   h["override"]=new Dictionary<string,object>{["endpoint"]=(await over.ConnAsync()).Endpoint,["attribute_exists"]=await over.AttributeExistsAsync(fqn)};
+  return h;
  }
  static async Task Repeat(Sdk sdk,JsonElement cfg)
  {
@@ -192,7 +207,7 @@ static class Entry
     }
     case "negative":Write(name+".error.json",JsonSerializer.Serialize(await ExpectFailure("negative",()=>sdk.DecryptBytesAsync(Read(name+".tdf"),ReaderOptionsOf(raw)))));break;
     case "repeat":await Repeat(sdk,raw);break;
-    case "services":await Services(sdk);break;
+    case "services":await Services(sdk,raw);break;
     default:throw new ArgumentException("unknown mode");
    }
    Console.WriteLine("PASS generated native library "+mode+" "+name);

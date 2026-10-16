@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opentdf/platform/protocol/go/authorization"
 	"github.com/opentdf/platform/protocol/go/policy"
 	"github.com/opentdf/platform/protocol/go/policy/attributes"
 	"github.com/opentdf/platform/protocol/go/policy/namespaces"
@@ -209,7 +210,7 @@ func main() {
 	case "repeat":
 		repeat(ctx, client, cfg, callbacks)
 	case "services":
-		services(ctx, client, callbacks, run)
+		services(ctx, client, cfg, callbacks, run)
 	case "negative":
 		payload, e := client.DecryptBytes(ctx, read(filepath.Join(run, name+".tdf")), readerOptions(cfg), callbacks)
 		if e == nil || payload != nil {
@@ -281,8 +282,9 @@ func repeat(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks g.
 // services is xtest's test_self.py through the generated service clients:
 // list namespaces, create a namespace and an attribute, read the attribute
 // back by id and in the namespace's list, and report a missing attribute's
-// Connect error.
-func services(ctx context.Context, client *g.SDK, callbacks g.Callbacks, run string) {
+// Connect error. The attribute helpers, the access token and a core
+// endpoint override are reported with it.
+func services(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks g.Callbacks, run string) {
 	name := "gcgo" + strconv.FormatInt(time.Now().UnixNano(), 36) + ".com"
 	before, e := client.Namespaces(callbacks).ListNamespaces(ctx, &namespaces.ListNamespacesRequest{})
 	fail("list namespaces", e)
@@ -333,7 +335,60 @@ func services(ctx context.Context, client *g.SDK, callbacks g.Callbacks, run str
 		"namespace": name, "namespaces_before": len(before.GetNamespaces()), "namespaces_after": len(after.GetNamespaces()),
 		"attribute_fqn": a.GetFqn(), "values": values,
 		"not_found": map[string]any{"kind": missing.Kind, "connectCode": missing.ConnectCode, "httpStatus": missing.HTTPStatus, "message": missing.Message},
+		"helpers":   helpers(ctx, client, cfg, callbacks, a.GetFqn()),
 	})
 	fail("report", e)
 	write(filepath.Join(run, "services.json"), report)
+}
+
+// helpers runs the reference's attribute helpers against the attribute
+// services created, SDK.Auth, and an SDK whose platform endpoint is
+// unreachable but whose core connection is the platform.
+func helpers(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks g.Callbacks, fqn string) map[string]any {
+	report := map[string]any{}
+	check := func(label string, got bool, e error) {
+		fail(label, e)
+		report[label] = got
+	}
+	ok, e := client.AttributeExists(ctx, fqn, callbacks)
+	check("attribute_exists", ok, e)
+	ok, e = client.AttributeExists(ctx, fqn+"-missing", callbacks)
+	check("attribute_missing", ok, e)
+	ok, e = client.AttributeValueExists(ctx, fqn+"/value/1", callbacks)
+	check("value_exists", ok, e)
+	ok, e = client.AttributeValueExists(ctx, fqn+"/value/9", callbacks)
+	check("value_missing", ok, e)
+	attrs, e := client.ListAttributes(ctx, []string{strings.TrimPrefix(strings.TrimSuffix(fqn, "/attr/free"), "https://")}, callbacks)
+	fail("list attributes helper", e)
+	listed := []string{}
+	for _, attr := range attrs {
+		listed = append(listed, attr.GetFqn())
+	}
+	report["listed"] = listed
+	fail("validate attributes", client.ValidateAttributes(ctx, []string{fqn + "/value/1", fqn + "/value/2"}, callbacks))
+	report["validate_ok"] = true
+	e = client.ValidateAttributes(ctx, []string{fqn + "/value/1", fqn + "/value/9"}, callbacks)
+	var invalid *g.Error
+	if !errors.As(e, &invalid) {
+		panic(fmt.Sprintf("validate missing: %v", e))
+	}
+	report["validate_missing"] = map[string]any{"kind": invalid.Kind, "connectCode": invalid.ConnectCode, "message": invalid.Message}
+	entitled, e := client.GetEntityAttributes(ctx, &authorization.Entity{Id: "e1", EntityType: &authorization.Entity_ClientId{ClientId: "opentdf-sdk"}}, callbacks)
+	fail("entity attributes", e)
+	report["entity_attributes"] = entitled
+	auth, e := client.Auth(ctx, callbacks)
+	fail("auth", e)
+	token, e := auth.AccessToken(ctx, callbacks)
+	fail("access token", e)
+	fail("auth close", auth.Close())
+	report["access_token"] = map[string]any{"present": token.Value != "", "scheme": token.Scheme}
+	override, e := g.New(ctx, "http://127.0.0.1:9", g.OptionsOf(append(optionsOf(cfg), g.WithCustomCoreConnection(&g.ConnectRPCConnection{Endpoint: cfg.PlatformURL}))...), callbacks)
+	fail("new with core connection", e)
+	defer override.Close()
+	conn, e := override.Conn(ctx, callbacks)
+	fail("conn", e)
+	ok, e = override.AttributeExists(ctx, fqn, callbacks)
+	fail("override attribute exists", e)
+	report["override"] = map[string]any{"endpoint": conn.Endpoint, "attribute_exists": ok}
+	return report
 }

@@ -78,7 +78,26 @@ static void write_json(const char *run,const char *file,J *j){char path[4096];sn
  * namespace's list and through the raw call, and check a missing attribute's error. */
 static J *reply(const char *label,int rc,otdf_error *e,char **json){if(rc)fail(label,e);const char *err=NULL;J *j=j_parse(*json,&err);check(j&&!err,label);otdf_string_free(*json);*json=NULL;return j;}
 static size_t count(J *j,const char *k){J *v=j_get(j,k);return v&&v->t==J_ARR?v->len:0;}
-static void services(otdf_sdk *sdk,const char *run){
+/* The reference's attribute helpers on the attribute services created, SDK.Auth, and an SDK whose platform endpoint is unreachable but whose core connection is the platform. */
+static J *helpers(otdf_sdk *sdk,J *cfg,provider_state *ps,const char *ns,const char *fqn){
+ J *h=j_new(J_OBJ);bool ok=false;char value[300],missing[300],other[300];snprintf(value,sizeof value,"%s/value/1",fqn);snprintf(missing,sizeof missing,"%s/value/9",fqn);snprintf(other,sizeof other,"%s/value/2",fqn);
+ TRY("attribute exists",otdf_attribute_exists(sdk,fqn,NULL,&ok,&e_));j_set(h,"attribute_exists",j_bool(ok));
+ char absent[300];snprintf(absent,sizeof absent,"%s-missing",fqn);TRY("attribute missing",otdf_attribute_exists(sdk,absent,NULL,&ok,&e_));j_set(h,"attribute_missing",j_bool(ok));
+ TRY("value exists",otdf_attribute_value_exists(sdk,value,NULL,&ok,&e_));j_set(h,"value_exists",j_bool(ok));
+ TRY("value missing",otdf_attribute_value_exists(sdk,missing,NULL,&ok,&e_));j_set(h,"value_missing",j_bool(ok));
+ char *out=NULL;otdf_error e={0};const char *err=NULL;if(otdf_list_attributes(sdk,ns,NULL,&out,&e))fail("list attributes helper",&e);J *attrs=j_parse(out,&err);check(attrs&&!err&&attrs->t==J_ARR,"list attributes json");otdf_string_free(out);
+ J *listed=j_new(J_ARR);for(size_t i=0;i<attrs->len;i++)j_push(listed,j_cstr(text(attrs->items[i],"fqn")));j_set(h,"listed",listed);
+ const char *both[]={value,other};TRY("validate attributes",otdf_validate_attributes(sdk,both,2,NULL,&e_));j_set(h,"validate_ok",j_bool(true));
+ const char *some[]={value,missing};j_set(h,"validate_missing",EXPECT("validate missing",otdf_validate_attributes(sdk,some,2,NULL,&e_)));
+ char **fqns=NULL;size_t n=0;TRY("entity attributes",otdf_get_entity_attributes(sdk,"{\"id\":\"e1\",\"clientId\":\"opentdf-sdk\"}",NULL,&fqns,&n,&e_));J *entitled=j_new(J_ARR);for(size_t i=0;i<n;i++)j_push(entitled,j_cstr(fqns[i]));otdf_strings_free(fqns,n);j_set(h,"entity_attributes",entitled);
+ otdf_access_token token={0};TRY("access token",otdf_auth_access_token(sdk,NULL,&token,&e_));J *t=j_new(J_OBJ);j_set(t,"present",j_bool(token.value&&*token.value));j_set(t,"scheme",j_cstr(token.scheme));otdf_access_token_free(&token);j_set(h,"access_token",t);
+ otdf_options o=options_of(cfg,ps,true);o.core_endpoint=text(cfg,"PlatformURL");otdf_sdk *override=NULL;TRY("new with core connection",otdf_sdk_new("http://127.0.0.1:9",&o,NULL,&override,&e_));
+ char *endpoint=NULL;TRY("conn",otdf_sdk_conn(override,NULL,&endpoint,&e_));TRY("override attribute exists",otdf_attribute_exists(override,fqn,NULL,&ok,&e_));
+ J *over=j_new(J_OBJ);j_set(over,"endpoint",j_cstr(endpoint));j_set(over,"attribute_exists",j_bool(ok));otdf_string_free(endpoint);otdf_sdk_close(override,NULL);otdf_sdk_free(override);j_set(h,"override",over);
+ return h;
+}
+
+static void services(otdf_sdk *sdk,J *cfg,provider_state *ps,const char *run){
  char ns[64],request[512];otdf_error e={0};char *out=NULL;uint8_t rand[6];assert(RAND_bytes(rand,6)>0);snprintf(ns,sizeof ns,"gcc%02x%02x%02x%02x%02x%02x.com",rand[0],rand[1],rand[2],rand[3],rand[4],rand[5]);
  J *before=reply("list namespaces",otdf_namespaces_list_namespaces(sdk,NULL,NULL,&out,&e),&e,&out);
  snprintf(request,sizeof request,"{\"name\":\"%s\"}",ns);
@@ -104,7 +123,7 @@ static void services(otdf_sdk *sdk,const char *run){
  J *report_=j_new(J_OBJ);char n[32];j_set(report_,"namespace",j_cstr(ns));
  J *before_n=j_new(J_NUM);snprintf(n,sizeof n,"%zu",count(before,"namespaces"));before_n->s=GC_strdup(n);before_n->n=strlen(n);j_set(report_,"namespaces_before",before_n);
  J *after_n=j_new(J_NUM);snprintf(n,sizeof n,"%zu",count(after,"namespaces"));after_n->s=GC_strdup(n);after_n->n=strlen(n);j_set(report_,"namespaces_after",after_n);
- j_set(report_,"attribute_fqn",j_cstr(fqn));j_set(report_,"values",values);j_set(report_,"not_found",missing);write_json(run,"services.json",report_);
+ j_set(report_,"attribute_fqn",j_cstr(fqn));j_set(report_,"values",values);j_set(report_,"not_found",missing);j_set(report_,"helpers",helpers(sdk,cfg,ps,ns,fqn));write_json(run,"services.json",report_);
 }
 
 /* 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail. */
@@ -210,7 +229,7 @@ int main(int argc,char **argv){assert(argc==5);GC_INIT();GC_allow_register_threa
   snprintf(path,sizeof path,"%s/%s.tdf",run,name);uint8_t *input=readfile(path,&n);assert(input);otdf_owned_bytes out={0};otdf_reader_options ro=reader_options(cfg);
   J *error=EXPECT("negative",otdf_decrypt_bytes(sdk,(otdf_bytes){input,n},&ro,NULL,&out,&e_));char file[256];snprintf(file,sizeof file,"%s.error.json",name);write_json(run,file,error);free(input);
  }else if(!strcmp(mode,"repeat")){repeat(sdk,cfg,name);sdk=NULL;}
- else if(!strcmp(mode,"services"))services(sdk,run);
+ else if(!strcmp(mode,"services"))services(sdk,cfg,&ps,run);
  else{fprintf(stderr,"unknown mode\n");return 1;}
  if(sdk){otdf_sdk_close(sdk,NULL);otdf_sdk_free(sdk);}
  printf("PASS generated native library %s %s\n",mode,name);return 0;

@@ -10,6 +10,7 @@ from opentdf_tdf3 import SDK,AccessToken,OpenTDFError,ProviderRejected,is_valid_
 from opentdf_tdf3.protocol.policy import objects_pb2
 from opentdf_tdf3.protocol.policy.attributes import attributes_pb2
 from opentdf_tdf3.protocol.policy.namespaces import namespaces_pb2
+from opentdf_tdf3.protocol.authorization import authorization_pb2
 run=Path(sys.argv[2]);mode,name=sys.argv[3:5]
 ATTRIBUTE='https://example.com/attr/attr1/value/value1'
 def b64(v):return base64.urlsafe_b64encode(v).rstrip(b'=').decode()
@@ -215,7 +216,7 @@ def controlled():
 # namespaces, create a namespace and an attribute, read the attribute back by
 # id, through the namespace's list and through the raw JSON call, and check a
 # missing attribute's error.
-def services(sdk):
+def services(sdk,cfg):
  ns_name='gcpy'+secrets.token_hex(6)+'.com'
  before=sdk.namespaces.list_namespaces(namespaces_pb2.ListNamespacesRequest())
  namespace=sdk.namespaces.create_namespace(namespaces_pb2.CreateNamespaceRequest(name=ns_name)).namespace
@@ -237,7 +238,24 @@ def services(sdk):
  try:sdk.attributes.get_attribute(namespaces_pb2.ListNamespacesRequest());raise AssertionError('wrong request type')
  except TypeError:pass
  (run/'services.json').write_text(json.dumps({'namespace':ns_name,'namespaces_before':len(before.namespaces),'namespaces_after':len(after.namespaces),'attribute_fqn':attribute.fqn,'values':values,
-  'not_found':report(missing)}))
+  'not_found':report(missing),'helpers':helpers(sdk,cfg,ns_name,attribute.fqn)}))
+
+# The reference's attribute helpers on the attribute services created,
+# SDK.auth, and an SDK whose platform endpoint is unreachable but whose core
+# connection is the platform.
+def helpers(sdk,cfg,namespace,fqn):
+ out={'attribute_exists':sdk.attribute_exists(fqn),'attribute_missing':sdk.attribute_exists(fqn+'-missing'),
+      'value_exists':sdk.attribute_value_exists(fqn+'/value/1'),'value_missing':asyncio.run(sdk.attribute_value_exists_async(fqn+'/value/9'))}
+ out['listed']=[a.fqn for a in sdk.list_attributes(namespace)]
+ sdk.validate_attributes([fqn+'/value/1',fqn+'/value/2']);out['validate_ok']=True
+ try:sdk.validate_attributes([fqn+'/value/1',fqn+'/value/9']);raise AssertionError('validate missing')
+ except OpenTDFError as e:out['validate_missing']=report(e)
+ out['entity_attributes']=sdk.get_entity_attributes(authorization_pb2.Entity(id='e1',client_id='opentdf-sdk'))
+ token=sdk.auth().access_token()
+ out['access_token']={'present':token.value!='','scheme':token.scheme}
+ with SDK('http://127.0.0.1:9',**options_of(cfg),core_endpoint=cfg['PlatformURL']) as override:
+  out['override']={'endpoint':override.conn().endpoint,'attribute_exists':override.attribute_exists(fqn)}
+ return out
 
 try:
  if mode=='controlled':
@@ -265,7 +283,7 @@ try:
     try:sdk.decrypt_bytes((run/(name+'.tdf')).read_bytes(),**reader_options(cfg));raise AssertionError('negative plaintext')
     except OpenTDFError as e:(run/(name+'.error.json')).write_text(json.dumps(report(e)))
    elif mode=='repeat':repeat(sdk,cfg)
-   elif mode=='services':services(sdk)
+   elif mode=='services':services(sdk,cfg)
    else:raise AssertionError('unknown mode')
  print('PASS generated native library',mode,name)
 except OpenTDFError as e:
