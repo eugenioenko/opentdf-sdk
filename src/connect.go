@@ -6,6 +6,8 @@ import (
 	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
 	"github.com/eugenioenko/goalchemy/std/encoding/protojson"
 	"github.com/eugenioenko/goalchemy/std/strings"
+	"opentdf-local/sdk/src/protocol/authorization"
+	"opentdf-local/sdk/src/protocol/policy/attributes"
 )
 
 const healthProcedure = "/grpc.health.v1.Health/Check"
@@ -122,15 +124,22 @@ func callJSON(ctx context.Context, client *httpClient, baseURL, procedure string
 	return response.value, nil
 }
 
+// The connections the reference's services share: the core (platform)
+// connection, and the per-service overrides of WithCustom*Connection.
+const (
+	coreServices             = ""
+	policyServices           = "policy"
+	authorizationServices    = "authorization"
+	entityResolutionServices = "entityresolution"
+	wellknownServices        = "wellknownconfiguration"
+)
+
 // platformService reports whether service is one the reference SDK has a
-// client for (sdkconnect) and whether it is reached through the entity
-// resolution connection rather than the platform's.
-func platformService(service string) (known bool, entityResolution bool) {
+// client for (sdkconnect) and which connection reaches it.
+func platformService(service string) (connection string, known bool) {
 	switch service {
 	case "policy.actions.ActionService",
 		"policy.attributes.AttributesService",
-		"authorization.AuthorizationService",
-		"authorization.v2.AuthorizationService",
 		"policy.kasregistry.KeyAccessServerRegistryService",
 		"policy.keymanagement.KeyManagementService",
 		"policy.namespaces.NamespaceService",
@@ -139,14 +148,18 @@ func platformService(service string) (known bool, entityResolution bool) {
 		"policy.resourcemapping.ResourceMappingService",
 		"policy.subjectmapping.SubjectMappingService",
 		"policy.dynamicvaluemapping.DynamicValueMappingService",
-		"policy.unsafe.UnsafeService",
-		"wellknownconfiguration.WellKnownService":
-		return true, false
+		"policy.unsafe.UnsafeService":
+		return policyServices, true
+	case "authorization.AuthorizationService",
+		"authorization.v2.AuthorizationService":
+		return authorizationServices, true
 	case "entityresolution.EntityResolutionService",
 		"entityresolution.v2.EntityResolutionService":
-		return true, true
+		return entityResolutionServices, true
+	case "wellknownconfiguration.WellKnownService":
+		return wellknownServices, true
 	}
-	return false, false
+	return "", false
 }
 
 func isMethodName(method string) bool {
@@ -162,9 +175,27 @@ func isMethodName(method string) bool {
 	return true
 }
 
-// serviceEndpoint is the base URL of service's connection: the reference's
-// platformConn, or ersConn for the entity resolution services.
-func (s *SDK) serviceEndpoint(entityResolution bool) string {
+// serviceEndpoint is the base URL of a connection: its WithCustom*Connection
+// override, else the core connection's, else the platform endpoint, as the
+// reference's ersConn falls back to its platformConn.
+func (s *SDK) serviceEndpoint(connection string) string {
+	override := ""
+	switch connection {
+	case policyServices:
+		override = s.cfg.policyEndpoint
+	case authorizationServices:
+		override = s.cfg.authorizationEndpoint
+	case entityResolutionServices:
+		override = s.cfg.entityResolutionEndpoint
+	case wellknownServices:
+		override = s.cfg.wellknownEndpoint
+	}
+	if override != "" {
+		return override
+	}
+	if s.cfg.coreEndpoint != "" {
+		return s.cfg.coreEndpoint
+	}
 	return s.platformEndpoint
 }
 
@@ -179,7 +210,7 @@ func (s *SDK) Call(ctx context.Context, service, method, request string) (string
 	if err := s.check("Call"); err != nil {
 		return "", err
 	}
-	known, entityResolution := platformService(service)
+	connection, known := platformService(service)
 	if !known {
 		return "", newError(KindInvalidInput, "Call", "unknown service: "+service)
 	}
@@ -194,7 +225,7 @@ func (s *SDK) Call(ctx context.Context, service, method, request string) (string
 	if err != nil || value.Kind() != jsonvalue.KindObject {
 		return "", newError(KindInvalidInput, "Call", "request is not a JSON object")
 	}
-	response, err := callJSON(ctx, s.client, s.serviceEndpoint(entityResolution), "/"+service+"/"+method, value, "Call")
+	response, err := callJSON(ctx, s.client, s.serviceEndpoint(connection), "/"+service+"/"+method, value, "Call")
 	if err != nil {
 		return "", err
 	}
@@ -203,4 +234,71 @@ func (s *SDK) Call(ctx context.Context, service, method, request string) (string
 		return "", boundaryError(KindTransport, "Call", err)
 	}
 	return string(out), nil
+}
+
+// attributesService is the part of the reference's
+// sdkconnect.AttributesServiceClient the SDK's helpers call.
+type attributesService interface {
+	ListAttributes(ctx context.Context, req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error)
+	GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error)
+	GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error)
+}
+
+// authorizationService is the part of the reference's
+// sdkconnect.AuthorizationServiceClient the SDK's helpers call.
+type authorizationService interface {
+	GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error)
+}
+
+// serviceConnection reaches the services at endpoint through the SDK's
+// authenticated transport with the generated clients, one Connect client
+// per call; a failure is the SDK's Error with the service's Connect code.
+type serviceConnection struct {
+	client   *httpClient
+	endpoint string
+}
+
+func (c serviceConnection) ListAttributes(ctx context.Context, req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error) {
+	conn, call := c.client.newServiceClient(c.endpoint, nil)
+	resp, err := attributes.NewAttributesServiceClient(conn).ListAttributes(ctx, req)
+	if err != nil {
+		return nil, call.serviceError("ListAttributes", err)
+	}
+	return resp, nil
+}
+
+func (c serviceConnection) GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error) {
+	conn, call := c.client.newServiceClient(c.endpoint, nil)
+	resp, err := attributes.NewAttributesServiceClient(conn).GetAttribute(ctx, req)
+	if err != nil {
+		return nil, call.serviceError("GetAttribute", err)
+	}
+	return resp, nil
+}
+
+func (c serviceConnection) GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error) {
+	conn, call := c.client.newServiceClient(c.endpoint, nil)
+	resp, err := attributes.NewAttributesServiceClient(conn).GetAttributeValuesByFqns(ctx, req)
+	if err != nil {
+		return nil, call.serviceError("GetAttributeValuesByFqns", err)
+	}
+	return resp, nil
+}
+
+func (c serviceConnection) GetEntitlements(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error) {
+	conn, call := c.client.newServiceClient(c.endpoint, nil)
+	resp, err := authorization.NewAuthorizationServiceClient(conn).GetEntitlements(ctx, req)
+	if err != nil {
+		return nil, call.serviceError("GetEntitlements", err)
+	}
+	return resp, nil
+}
+
+// connectCodeOf is connect.CodeOf for the SDK's errors: the Connect code
+// name the service replied with, or "".
+func connectCodeOf(err error) string {
+	if e, ok := asError(err); ok {
+		return e.ConnectCode
+	}
+	return ""
 }

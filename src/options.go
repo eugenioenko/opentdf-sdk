@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"github.com/eugenioenko/goalchemy/lib/crypto"
+	"github.com/eugenioenko/goalchemy/std/fmt"
 	"github.com/eugenioenko/goalchemy/std/log/slog"
 )
 
@@ -42,11 +43,16 @@ type Options struct {
 	ValidateConnection    bool
 
 	// Transport.
-	InsecurePlaintext        bool
-	InsecureSkipVerify       bool
-	TLS                      TLSOptions
-	UnixSocket               string
-	TimeoutMillis            int64
+	InsecurePlaintext  bool
+	InsecureSkipVerify bool
+	TLS                TLSOptions
+	UnixSocket         string
+	TimeoutMillis      int64
+
+	// Service endpoints (WithCustom*Connection), reached through the SDK's
+	// transport. CoreEndpoint replaces the platform endpoint for every
+	// service; the others replace it for their own services (policy.*,
+	// authorization, entity resolution, well-known).
 	CoreEndpoint             string
 	PolicyEndpoint           string
 	AuthorizationEndpoint    string
@@ -120,6 +126,18 @@ type config struct {
 	logger                             *slog.Logger
 	timeoutMillis                      int64
 	insecurePlaintext                  bool
+	coreEndpoint                       string
+	policyEndpoint                     string
+	authorizationEndpoint              string
+	entityResolutionEndpoint           string
+	wellknownEndpoint                  string
+}
+
+// ConnectRPCConnection is the reference's connection to the platform's
+// services. Every connection uses the SDK's authenticated transport, so the
+// endpoint is all a caller chooses.
+type ConnectRPCConnection struct {
+	Endpoint string
 }
 
 type clientCredentials struct {
@@ -149,9 +167,16 @@ func newConfig(opts Options) (*config, error) {
 	if opts.UnixSocket != "" {
 		return nil, unsupported("New", "UnixSocket")
 	}
-	if opts.CoreEndpoint != "" || opts.PolicyEndpoint != "" || opts.AuthorizationEndpoint != "" || opts.EntityResolutionEndpoint != "" || opts.WellknownEndpoint != "" {
-		return nil, unsupported("New", "custom service endpoints")
+	for _, endpoint := range []string{opts.CoreEndpoint, opts.PolicyEndpoint, opts.AuthorizationEndpoint, opts.EntityResolutionEndpoint, opts.WellknownEndpoint} {
+		if endpoint != "" && IsPlatformEndpointMalformed(endpoint) {
+			return nil, newError(KindInvalidInput, "New", fmt.Sprintf("%v [%v]", ErrPlatformEndpointMalformed, endpoint))
+		}
 	}
+	cfg.coreEndpoint = opts.CoreEndpoint
+	cfg.policyEndpoint = opts.PolicyEndpoint
+	cfg.authorizationEndpoint = opts.AuthorizationEndpoint
+	cfg.entityResolutionEndpoint = opts.EntityResolutionEndpoint
+	cfg.wellknownEndpoint = opts.WellknownEndpoint
 	if opts.ClientID != "" || opts.ClientSecret != "" {
 		cfg.clientCredentials = &clientCredentials{ClientID: opts.ClientID, ClientAuth: opts.ClientSecret}
 		cfg.scopes = append([]string(nil), opts.Scopes...)

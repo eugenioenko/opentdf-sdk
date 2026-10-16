@@ -225,7 +225,6 @@ func TestUnsupportedOptions(t *testing.T) {
 		"CertExchange":  {CertExchange: CertExchange{ClientCertPEM: "x"}},
 		"TLS":           {TLS: TLSOptions{RootCAsPEM: "x"}},
 		"UnixSocket":    {UnixSocket: "/tmp/x"},
-		"CoreEndpoint":  {CoreEndpoint: "https://x"},
 	} {
 		opts.PlatformConfiguration = c
 		_, err := New(context.Background(), "http://localhost:8080", opts)

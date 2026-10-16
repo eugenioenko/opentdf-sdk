@@ -57,6 +57,7 @@ type fakePlatform struct {
 	lastDPoP       string
 	lastAuth       string
 	lastBody       string
+	paths          []string
 }
 
 func newFakePlatform(t *testing.T) *fakePlatform {
@@ -191,6 +192,9 @@ func (f *fakePlatform) wellKnown() map[string]any {
 func (f *fakePlatform) handle(w http.ResponseWriter, r *http.Request) {
 	mode := f.mode.Load().(string)
 	body, _ := io.ReadAll(r.Body)
+	f.mu.Lock()
+	f.paths = append(f.paths, r.URL.Path)
+	f.mu.Unlock()
 	switch {
 	case r.URL.Path == "/wellknownconfiguration.WellKnownService/GetWellKnownConfiguration":
 		if mode == "wellknown-error" {
@@ -253,6 +257,61 @@ func (f *fakePlatform) handle(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, 200, map[string]any{"keyAccessServers": []any{map[string]any{"uri": f.kasURL(), "name": "kas"}}})
+	case r.URL.Path == "/policy.attributes.AttributesService/ListAttributes":
+		var req struct {
+			Namespace  string `json:"namespace"`
+			Pagination struct {
+				Offset int `json:"offset"`
+			} `json:"pagination"`
+		}
+		json.Unmarshal(body, &req)
+		if mode == "registry-error" {
+			writeJSON(w, 404, map[string]any{"code": "not_found", "message": "no attributes"})
+			return
+		}
+		if req.Pagination.Offset == 0 {
+			writeJSON(w, 200, map[string]any{"attributes": []any{map[string]any{"id": "a1", "fqn": "https://" + req.Namespace + "/attr/a", "unknownField": 1}}, "pagination": map[string]any{"nextOffset": 1, "total": 2}})
+			return
+		}
+		writeJSON(w, 200, map[string]any{"attributes": []any{map[string]any{"id": "a2", "fqn": "https://" + req.Namespace + "/attr/b"}}, "pagination": map[string]any{"currentOffset": 1, "total": 2}})
+	case r.URL.Path == "/policy.attributes.AttributesService/GetAttribute":
+		var req struct {
+			Fqn string `json:"fqn"`
+		}
+		json.Unmarshal(body, &req)
+		if strings.HasSuffix(req.Fqn, "/missing") {
+			writeJSON(w, 404, map[string]any{"code": "not_found", "message": "resource not found"})
+			return
+		}
+		writeJSON(w, 200, map[string]any{"attribute": map[string]any{"fqn": req.Fqn}})
+	case r.URL.Path == "/policy.attributes.AttributesService/GetAttributeValuesByFqns":
+		var req struct {
+			Fqns []string `json:"fqns"`
+		}
+		json.Unmarshal(body, &req)
+		found := map[string]any{}
+		for _, fqn := range req.Fqns {
+			if !strings.HasSuffix(fqn, "/missing") {
+				found[fqn] = map[string]any{"value": map[string]any{"fqn": fqn}}
+			}
+		}
+		writeJSON(w, 200, map[string]any{"fqnAttributeValues": found})
+	case r.URL.Path == "/authorization.AuthorizationService/GetEntitlements":
+		f.mu.Lock()
+		f.lastAuth = r.Header.Get("Authorization")
+		f.mu.Unlock()
+		var req struct {
+			Entities []struct {
+				ID       string `json:"id"`
+				ClientID string `json:"clientId"`
+			} `json:"entities"`
+		}
+		json.Unmarshal(body, &req)
+		entitlements := []any{}
+		for _, e := range req.Entities {
+			entitlements = append(entitlements, map[string]any{"entityId": e.ID, "attributeValueFqns": []string{"https://example.com/attr/attr1/value/" + e.ClientID}})
+		}
+		writeJSON(w, 200, map[string]any{"entitlements": entitlements})
 	case r.URL.Path == "/grpc.health.v1.Health/Check":
 		status := "SERVING"
 		if mode == "unhealthy" {
@@ -417,6 +476,15 @@ func (f *fakePlatform) unwrap(kao fakeKAO) ([]byte, error) {
 }
 
 var _ = ecdh.P256
+
+// served returns the paths the platform has answered, and forgets them.
+func (f *fakePlatform) served() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	paths := f.paths
+	f.paths = nil
+	return paths
+}
 
 func (f *fakePlatform) options() Options {
 	return Options{ClientID: "opentdf", ClientSecret: "secret"}

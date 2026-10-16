@@ -53,6 +53,8 @@ type SDK struct {
 	rewrapper        Rewrapper
 	splitter         KeySplitter
 	granter          Granter
+	attributes       attributesService
+	authorization    authorizationService
 	mu               sync.Mutex
 	closed           bool
 }
@@ -107,7 +109,7 @@ func (s *SDK) init(ctx context.Context) error {
 		return newError(KindInvalidInput, "New", fmt.Sprintf("%v [%v]", ErrPlatformEndpointMalformed, s.platformEndpoint))
 	}
 	if cfg.shouldValidatePlatformConnectivity {
-		if err := validateHealthyPlatformConnection(ctx, s.platformEndpoint, preAuth); err != nil {
+		if err := validateHealthyPlatformConnection(ctx, s.serviceEndpoint(coreServices), preAuth); err != nil {
 			return err
 		}
 	}
@@ -141,6 +143,8 @@ func (s *SDK) init(ctx context.Context) error {
 	s.rewrapper = newKASClient(s.client, dpop, s.clock, cfg.fulfillableObligationFQNs)
 	s.splitter = defaultKeySplitter{}
 	s.granter = noGranter{}
+	s.attributes = serviceConnection{client: s.client, endpoint: s.serviceEndpoint(policyServices)}
+	s.authorization = serviceConnection{client: s.client, endpoint: s.serviceEndpoint(authorizationServices)}
 	return nil
 }
 
@@ -256,6 +260,12 @@ func (s *SDK) Logger() *slog.Logger {
 	return s.cfg.logger
 }
 
+// Conn returns the connection the SDK reaches the platform's core services
+// through: the platform endpoint, or WithCustomCoreConnection's.
+func (s *SDK) Conn() ConnectRPCConnection {
+	return ConnectRPCConnection{Endpoint: s.serviceEndpoint(coreServices)}
+}
+
 // PlatformConfiguration returns the platform's well-known configuration, with
 // platform_endpoint set, as the reference's exported field does.
 func (s *SDK) PlatformConfiguration() PlatformConfiguration {
@@ -272,7 +282,7 @@ func (s *SDK) IsHealthy(ctx context.Context) (bool, error) {
 	if s.client == nil {
 		return false, sentinelError(KindUnsupportedFeature, ErrHealthCheckUnsupported)
 	}
-	healthy, err := checkPlatformHealth(ctx, s.platformEndpoint, s.client)
+	healthy, err := checkPlatformHealth(ctx, s.serviceEndpoint(coreServices), s.client)
 	if err != nil {
 		return false, joinError(KindTransport, "IsHealthy", []error{ErrPlatformUnreachable, err})
 	}
@@ -424,7 +434,7 @@ func validateHealthyPlatformConnection(ctx context.Context, platformEndpoint str
 // fetchWellKnownConfiguration calls the well-known service with the
 // generated client, as the reference's getPlatformConfiguration does.
 func (s *SDK) fetchWellKnownConfiguration(ctx context.Context, client *httpClient) (jsonvalue.Value, error) {
-	conn, call := client.newServiceClient(s.platformEndpoint, nil)
+	conn, call := client.newServiceClient(s.serviceEndpoint(wellknownServices), nil)
 	wellKnownConfig := wellknownconfiguration.NewWellKnownServiceClient(conn)
 	response, err := wellKnownConfig.GetWellKnownConfiguration(ctx, &wellknownconfiguration.GetWellKnownConfigurationRequest{})
 	if err != nil {
