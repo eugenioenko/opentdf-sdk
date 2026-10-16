@@ -23,8 +23,12 @@ const (
 // whose xtest cells prove it.
 func SupportedFeatures() []string {
 	return []string{
+		"autoconfigure",        // attribute grants and mapped keys drive the key split (Phase 4 test_abac cells)
 		"better-messages-2024", // tamper failures name the check that failed (Phase 2 tamper cells)
+		"ecwrap",               // EC P-256 wrapped KAOs and EC sessions (test_tdf_roundtrip[ztdf-ecwrap])
 		"hexless",              // TDF spec 4.3.0: base64 integrity values and schemaVersion
 		"kasallowlist",         // reader rejects KAS URLs outside the allowlist (test_tdf_with_malicious_kao)
+		"key_management",       // mapped KAS keys with kids (Phase 4 test_abac key mapping cells)
+		"ns_grants",            // namespace-level grants and keys (Phase 4 test_abac cells)
 	}
 }
