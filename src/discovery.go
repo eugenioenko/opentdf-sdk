@@ -78,7 +78,7 @@ func (s *SDK) AttributeExists(ctx context.Context, attributeFqn string) (bool, e
 	if err := s.check("AttributeExists"); err != nil {
 		return false, err
 	}
-	if _, err := NewAttributeNameFQN(attributeFqn); err != nil {
+	if _, err := newAttributeNameFQN(attributeFqn); err != nil {
 		return false, newError(KindInvalidInput, "AttributeExists", fmt.Sprintf("invalid attribute FQN %q: %v", attributeFqn, err))
 	}
 
@@ -106,7 +106,7 @@ func (s *SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error
 	if err := s.check("AttributeValueExists"); err != nil {
 		return false, err
 	}
-	if _, err := NewAttributeValueFQN(fqn); err != nil {
+	if _, err := newAttributeValueFQN(fqn); err != nil {
 		return false, newError(KindInvalidInput, "AttributeValueExists", fmt.Sprintf("invalid attribute value FQN %q: %v", fqn, err))
 	}
 
@@ -148,7 +148,7 @@ func (s *SDK) ValidateAttributes(ctx context.Context, fqns []string) error {
 	}
 
 	for _, fqn := range fqns {
-		if _, err := NewAttributeValueFQN(fqn); err != nil {
+		if _, err := newAttributeValueFQN(fqn); err != nil {
 			return newError(KindInvalidInput, "ValidateAttributes", fmt.Sprintf("invalid attribute value FQN %q: %v", fqn, err))
 		}
 	}

@@ -62,7 +62,13 @@ func attributeURLPartsValid(parts []string) error {
 	return nil
 }
 
+// NewAttributeNameFQN parses an attribute FQN: https://<namespace>/attr/<name>.
 func NewAttributeNameFQN(u string) (AttributeNameFQN, error) {
+	a, err := newAttributeNameFQN(u)
+	return a, boundaryError(KindInvalidInput, "NewAttributeNameFQN", err)
+}
+
+func newAttributeNameFQN(u string) (AttributeNameFQN, error) {
 	m := matchAttributeNameFQN(u)
 	if len(m) < 3 || len(m[0]) == 0 {
 		return AttributeNameFQN{}, fmt.Errorf("%w: attribute regex fail", ErrInvalid)
@@ -119,7 +125,14 @@ type AttributeValueFQN struct {
 	URL, Key string
 }
 
+// NewAttributeValueFQN parses an attribute value FQN:
+// https://<namespace>/attr/<name>/value/<value>.
 func NewAttributeValueFQN(u string) (AttributeValueFQN, error) {
+	a, err := newAttributeValueFQN(u)
+	return a, boundaryError(KindInvalidInput, "NewAttributeValueFQN", err)
+}
+
+func newAttributeValueFQN(u string) (AttributeValueFQN, error) {
 	m := matchAttributeValueFQN(u)
 	if len(m) < 4 || len(m[0]) == 0 {
 		return AttributeValueFQN{}, fmt.Errorf("%w: attribute regex fail for [%s]", ErrInvalid, u)
@@ -158,7 +171,7 @@ func (a AttributeValueFQN) Prefix() AttributeNameFQN {
 	if m == nil {
 		panic(ErrInvalid)
 	}
-	p, err := NewAttributeNameFQN(m[1] + "/attr/" + m[2])
+	p, err := newAttributeNameFQN(m[1] + "/attr/" + m[2])
 	if err != nil {
 		panic(ErrInvalid)
 	}
@@ -302,7 +315,7 @@ func (r *granter) addMappedKey(fqn AttributeValueFQN, sk *policy.SimpleKasKey) e
 		r.mapTable[fqn.Key] = rls
 	}
 
-	rl, err := NewResourceLocator(sk.GetKasUri())
+	rl, err := newResourceLocator(sk.GetKasUri())
 	if err != nil {
 		r.logger.Debug("invalid KAS URL in policy service",
 			slog.String("kas", sk.GetKasUri()),
@@ -559,7 +572,7 @@ func (r *granter) addGrantsFromAttributeValues(ctx context.Context, logger *slog
 		return err
 	}
 	for fqnstr, pair := range av.GetFqnAttributeValues() {
-		fqn, err := NewAttributeValueFQN(fqnstr)
+		fqn, err := newAttributeValueFQN(fqnstr)
 		if err != nil {
 			return err
 		}
@@ -635,7 +648,7 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 			// Store in rlKeyCache if sufficient information is available
 			// (KID and PEM must not be empty)
 			if kc != nil && ki.GetKid() != "" && ki.GetPem() != "" {
-				rl, err := NewResourceLocator(kas.GetUri())
+				rl, err := newResourceLocator(kas.GetUri())
 				if err != nil {
 					logger.Debug("failed to create ResourceLocator",
 						slog.String("kas", kas.GetUri()),
@@ -670,7 +683,7 @@ func storeKeysToCache(logger *slog.Logger, kases []*policy.KeyAccessServer, keys
 
 		// Store in rlKeyCache if provided
 		if kc != nil && key.GetPublicKey().GetKid() != "" && key.GetPublicKey().GetPem() != "" {
-			rl, err := NewResourceLocator(key.GetKasUri())
+			rl, err := newResourceLocator(key.GetKasUri())
 			if err != nil {
 				logger.Debug("failed to create ResourceLocator",
 					slog.String("kas", key.GetKasUri()),
@@ -696,7 +709,7 @@ func newGranterFromAttributes(logger *slog.Logger, keyCache *kasKeyCache, attrs 
 		keyCache:   &rlKeyCache{c: make(map[ResourceLocator]*policy.SimpleKasKey)},
 	}
 	for i, v := range attrs {
-		fqn, err := NewAttributeValueFQN(v.GetFqn())
+		fqn, err := newAttributeValueFQN(v.GetFqn())
 		if err != nil {
 			return grants, err
 		}
@@ -953,7 +966,7 @@ func (r *granter) insertKeysForAttribute(e attributeBooleanExpression) (booleanK
 					rl = &ResourceLocator{}
 				} else {
 					var err error
-					rl, err = NewResourceLocator(kas)
+					rl, err = newResourceLocator(kas)
 					if err != nil {
 						r.logger.Warn("invalid KAS URL in policy service",
 							slog.String("kas", kas),

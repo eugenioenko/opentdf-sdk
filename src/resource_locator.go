@@ -64,6 +64,14 @@ const (
 )
 
 func NewResourceLocator(url string) (*ResourceLocator, error) {
+	rl, err := newResourceLocator(url)
+	if err != nil {
+		return nil, boundaryError(KindInvalidInput, "NewResourceLocator", err)
+	}
+	return rl, nil
+}
+
+func newResourceLocator(url string) (*ResourceLocator, error) {
 	rl := &ResourceLocator{}
 
 	err := rl.setURL(url)
@@ -78,7 +86,7 @@ func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	rl := &ResourceLocator{}
 	err := rl.readResourceLocator(reader)
 	if err != nil {
-		return nil, err
+		return nil, boundaryError(KindInvalidInput, "NewResourceLocatorFromReader", err)
 	}
 	return rl, nil
 }

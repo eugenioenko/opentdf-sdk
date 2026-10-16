@@ -177,7 +177,7 @@ func newTDFConfig(opts TDFOptions) (*TDFConfig, error) {
 		return nil, errors.New("Attributes and AttributeValues are exclusive: AttributeValues replaces the attributes")
 	}
 	for _, a := range opts.Attributes {
-		v, err := NewAttributeValueFQN(a)
+		v, err := newAttributeValueFQN(a)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +188,7 @@ func newTDFConfig(opts TDFOptions) (*TDFConfig, error) {
 		if err := protojson.Unmarshal([]byte(data), a); err != nil {
 			return nil, fmt.Errorf("attribute value at index %d is not a policy.Value in protobuf JSON: %w", i, err)
 		}
-		afqn, err := NewAttributeValueFQN(a.GetFqn())
+		afqn, err := newAttributeValueFQN(a.GetFqn())
 		if err != nil {
 			return nil, err
 		}
