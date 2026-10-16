@@ -2,10 +2,15 @@
 """Generates the host service-client accessors from the reference SDK.
 
 Reads the SDK's service fields (../platform/sdk/sdk.go), their sdkconnect
-interfaces and the services' .proto packages, and writes, under <out>:
-  go/services.go.in          the sdkconnect interfaces over SDK.Call
-  typescript/services.ts.in  Connect-ES clients over the SDK's Transport
-  python/services.py.in      the service table the Python clients use
+interfaces and the services' .proto files, and writes, under <out>:
+  go/services.go.in             the sdkconnect interfaces over SDK.Call
+  typescript/services.ts.in     Connect-ES clients over the SDK's Transport
+  python/services.py.in         the service table the Python clients use
+  java/PlatformServices.java.in the sdkconnect interfaces over protobuf-java messages
+  csharp/Services.cs.in         the sdkconnect interfaces over Google.Protobuf messages
+  rust/services.rs.in           the service clients over prost messages
+  swift/Services.swift.in       the service clients over SwiftProtobuf messages
+  c/opentdf_services.{h,c}      one JSON function per method over otdf_sdk_call
 Usage: generate-service-clients.py <platform> <out>
 """
 from pathlib import Path
@@ -31,14 +36,38 @@ def camel(name):
     return w[0].lower() + ''.join(w[1:])
 
 
+def upper_camel(name):
+    """prost's type names (heck's UpperCamelCase)."""
+    out = []
+    for part in re.split(r'[^A-Za-z0-9]+', name):
+        word = ''
+        for i, c in enumerate(part):
+            word += c
+            following = part[i+1:i+3]
+            if (c.islower() and following[:1].isupper()) or (c.isupper() and len(following) == 2 and following[0].isupper() and following[1].islower()):
+                out.append(word)
+                word = ''
+        if word:
+            out.append(word)
+    return ''.join(w[0].upper() + w[1:].lower() for w in out)
+
+
+def lower_first(name):
+    return name[0].lower() + name[1:]
+
+
 def proto_service(import_path, connect_client):
     rel = import_path[len(GO_PREFIX):]
     name = connect_client[:-len('Client')]
     for proto in sorted((PLATFORM/'service'/rel).glob('*.proto')):
         text = proto.read_text()
-        if re.search(r'^service ' + name + r' \{', text, re.M):
+        body = re.search(r'^service ' + name + r' \{\n(.*?)^\}', text, re.M | re.S)
+        if body:
             package = re.search(r'^package ([\w.]+);', text, re.M)[1]
-            return package + '.' + name, str(proto.relative_to(PLATFORM/'service'))
+            rpcs = {}
+            for method, request, response in re.findall(r'^\s*rpc (\w+)\((\w+)\) returns \((\w+)\)', body[1], re.M):
+                rpcs[method] = (package + '.' + request, package + '.' + response)
+            return package + '.' + name, str(proto.relative_to(PLATFORM/'service')), rpcs
     raise SystemExit('no service ' + name + ' under ' + rel)
 
 
@@ -53,10 +82,14 @@ for field, interface in fields:
     body = re.search(r'^type ' + interface + r' interface \{\n(.*?)^\}', text, re.M | re.S)[1]
     methods = re.findall(r'^\t(\w+)\(ctx context\.Context, req \*(\w+)\.(\w+)\) \(\*\w+\.(\w+), error\)$', body, re.M)
     import_path = next(path for path in imports.values() if path.endswith('/' + connect_package) or path.rsplit('/', 2)[-2] + path.rsplit('/', 1)[-1] == connect_package)
-    full_name, proto = proto_service(import_path, connect_client)
+    full_name, proto, rpcs = proto_service(import_path, connect_client)
+    missing = [m for m, _, _, _ in methods if m not in rpcs]
+    if missing:
+        raise SystemExit(full_name + ' has no unary rpc ' + ', '.join(missing))
     accessor = {'wellknownConfiguration': 'WellKnown', 'EntityResoution': 'EntityResolution'}.get(field, field)
     services.append({'field': field, 'accessor': accessor, 'interface': interface, 'package': methods[0][1],
-                     'import': import_path, 'service': full_name, 'proto': proto, 'methods': methods})
+                     'import': import_path, 'service': full_name, 'proto': proto, 'methods': methods,
+                     'rpcs': [(m, *rpcs[m]) for m, _, _, _ in methods]})
 
 go = ['// ' + HEADER, '', 'package generated', '', 'import (', '\t"context"', '']
 for path, package in sorted({(s['import'], s['package']) for s in services}):
@@ -108,3 +141,145 @@ for s in services:
 py.append(')')
 (OUT/'python').mkdir(parents=True, exist_ok=True)
 (OUT/'python/services.py.in').write_text('\n'.join(py) + '\n')
+
+
+def java_type(name):
+    return 'io.opentdf.tdf3.protocol.' + name
+
+
+java = ['// ' + HEADER, 'package io.opentdf.tdf3;', '', 'import com.google.protobuf.Descriptors;', 'import com.google.protobuf.Message;',
+        'import java.time.Duration;', 'import java.util.List;', 'import java.util.concurrent.CompletableFuture;', '',
+        '/**', ' * The platform service clients of the reference SDK (sdkconnect): one interface',
+        ' * per service over the protobuf-java messages of io.opentdf.tdf3.protocol, each',
+        ' * method blocking with an optional Duration and with an *Async twin. Messages',
+        ' * cross to the generated package as protobuf JSON through SDK.call.', ' */',
+        'public abstract class PlatformServices {', ' PlatformServices() {}', '',
+        ' abstract <T extends Message> T serviceCall(String service, String method, Message request, T prototype, Duration timeout);',
+        ' abstract <T extends Message> CompletableFuture<T> serviceCallAsync(String service, String method, Message request, T prototype);', '',
+        ' /** A request message of every service: their files and imports are the JSON type registry. */',
+        ' static List<Descriptors.Descriptor> descriptors() {',
+        '  return List.of(' + ', '.join(java_type(s['rpcs'][0][1]) + '.getDescriptor()' for s in services) + ');', ' }']
+for s in services:
+    java += ['', ' /** The reference sdkconnect.' + s['interface'] + ' for ' + s['service'] + '. */', ' public interface ' + s['interface'] + ' {']
+    for method, request, response in s['rpcs']:
+        name, req, resp = lower_first(method), java_type(request), java_type(response)
+        java += ['  ' + resp + ' ' + name + '(' + req + ' request, Duration timeout);',
+                 '  default ' + resp + ' ' + name + '(' + req + ' request) { return ' + name + '(request, null); }',
+                 '  CompletableFuture<' + resp + '> ' + name + 'Async(' + req + ' request);']
+    java += [' }', '', ' /** The reference SDK.' + s['field'] + ': a client of ' + s['service'] + ' over the SDK\'s transport. */',
+             ' public ' + s['interface'] + ' ' + lower_first(s['accessor']) + '() {', '  return new ' + s['interface'] + '() {']
+    for method, request, response in s['rpcs']:
+        name, req, resp = lower_first(method), java_type(request), java_type(response)
+        args = '"' + s['service'] + '", "' + method + '", request, ' + resp + '.getDefaultInstance()'
+        java += ['   @Override public ' + resp + ' ' + name + '(' + req + ' request, Duration timeout) { return serviceCall(' + args + ', timeout); }',
+                 '   @Override public CompletableFuture<' + resp + '> ' + name + 'Async(' + req + ' request) { return serviceCallAsync(' + args + '); }']
+    java += ['  };', ' }']
+java.append('}')
+(OUT/'java').mkdir(parents=True, exist_ok=True)
+(OUT/'java/PlatformServices.java.in').write_text('\n'.join(java) + '\n')
+
+
+def csharp_type(name):
+    return 'global::OpenTDF.Protocol.' + '.'.join(p[0].upper() + p[1:] for p in name.split('.')[:-1]) + '.' + name.rsplit('.', 1)[1]
+
+
+cs = ['// ' + HEADER, 'using System.Collections.Generic;', 'using System.Threading;', 'using System.Threading.Tasks;',
+      'using Google.Protobuf;', 'using Google.Protobuf.Reflection;', 'namespace OpenTDF;', '',
+      '// The platform service clients of the reference SDK (sdkconnect): one interface per',
+      '// service over the Google.Protobuf messages of OpenTDF.Protocol, Task methods taking',
+      '// a CancellationToken. Messages cross to the generated assembly as protobuf JSON',
+      '// through Sdk.CallAsync.']
+for s in services:
+    cs += ['', '/// The reference sdkconnect.' + s['interface'] + ' for ' + s['service'] + '.', 'public interface I' + s['interface'], '{']
+    for method, request, response in s['rpcs']:
+        cs.append('    Task<' + csharp_type(response) + '> ' + method + 'Async(' + csharp_type(request) + ' request,CancellationToken ct=default);')
+    cs.append('}')
+cs += ['', '/// The service accessors of the Sdk handle.', 'public abstract class PlatformServices', '{', '    private protected PlatformServices(){}',
+       '    private protected abstract Task<T> ServiceCallAsync<T>(string service,string method,IMessage request,MessageDescriptor response,CancellationToken ct) where T:IMessage<T>;',
+       '    /// The files of a request message of every service: with their imports, the JSON type registry.',
+       '    private protected static IEnumerable<FileDescriptor> Files()=>new[]{' + ','.join(csharp_type(s['rpcs'][0][1]) + '.Descriptor.File' for s in services) + '};']
+for s in services:
+    cs += ['    /// The reference SDK.' + s['field'] + ': a client of ' + s['service'] + ' over the SDK\'s transport.',
+           '    public I' + s['interface'] + ' ' + s['accessor'] + '=>new ' + s['interface'] + '(this);',
+           '    sealed class ' + s['interface'] + '(PlatformServices sdk):I' + s['interface'], '    {']
+    for method, request, response in s['rpcs']:
+        cs.append('        public Task<' + csharp_type(response) + '> ' + method + 'Async(' + csharp_type(request) + ' request,CancellationToken ct=default)=>sdk.ServiceCallAsync<' + csharp_type(response) + '>("' + s['service'] + '","' + method + '",request,' + csharp_type(response) + '.Descriptor,ct);')
+    cs.append('    }')
+cs.append('}')
+(OUT/'csharp').mkdir(parents=True, exist_ok=True)
+(OUT/'csharp/Services.cs.in').write_text('\n'.join(cs) + '\n')
+
+
+def rust_ident(name):
+    return 'r#' + name if name in ('unsafe', 'type', 'mod', 'use') else name
+
+
+def rust_type(name):
+    parts = name.split('.')
+    return 'protocol::' + '::'.join(rust_ident(p) for p in parts[:-1]) + '::' + upper_camel(parts[-1])
+
+
+rs = ['// ' + HEADER, '//! The platform service clients of the reference SDK (sdkconnect): one client', '//! per service over the prost messages of [`crate::protocol`], each method',
+      '//! blocking with an `*_async` twin. Messages cross to the generated crate as', '//! protobuf JSON through [`Sdk::call`].',
+      'use crate::protocol;', 'use crate::sdk::{Error, Sdk};', 'use std::future::Future;', '', 'type Result<T> = std::result::Result<T, Error>;']
+for s in services:
+    rs += ['', '/// The reference `sdkconnect.' + s['interface'] + '` for `' + s['service'] + '`.', 'pub struct ' + s['interface'] + "<'a> {", "    sdk: &'a Sdk,", '}',
+           'impl ' + s['interface'] + "<'_> {"]
+    for method, request, response in s['rpcs']:
+        name, req, resp = snake(method), rust_type(request), rust_type(response)
+        rs += ['    pub fn ' + name + '(&self, request: &' + req + ') -> Result<' + resp + '> {',
+               '        self.sdk.service_call("' + s['service'] + '", "' + method + '", request)', '    }',
+               '    pub fn ' + name + '_async(&self, request: &' + req + ') -> impl Future<Output = Result<' + resp + '>> {',
+               '        self.sdk.service_call_async("' + s['service'] + '", "' + method + '", request)', '    }']
+    rs.append('}')
+rs += ['', 'impl Sdk {']
+for s in services:
+    rs += ['    /// The reference `SDK.' + s['field'] + '`: a client of `' + s['service'] + '` over the SDK\'s transport.',
+           '    pub fn ' + rust_ident(snake(s['accessor'])) + '(&self) -> ' + s['interface'] + "<'_> {", '        ' + s['interface'] + ' { sdk: self }', '    }']
+rs.append('}')
+(OUT/'rust').mkdir(parents=True, exist_ok=True)
+(OUT/'rust/services.rs.in').write_text('\n'.join(rs) + '\n')
+
+
+def swift_type(name):
+    parts = name.split('.')
+    return '_'.join(upper_first for upper_first in (p[0].upper() + p[1:] for p in parts[:-1])) + '_' + parts[-1]
+
+
+swift = ['// ' + HEADER, 'import SwiftProtobuf', '',
+         '// The platform service clients of the reference SDK (sdkconnect): one client per',
+         '// service over the SwiftProtobuf messages generated from the platform protos,',
+         '// async throwing methods that honour Task cancellation. Messages cross to the',
+         '// generated module as protobuf JSON through SDK.call.']
+for s in services:
+    swift += ['', '/// The reference sdkconnect.' + s['interface'] + ' for ' + s['service'] + '.', 'public struct ' + s['interface'] + ' {', '  let sdk: SDK']
+    for method, request, response in s['rpcs']:
+        swift.append('  public func ' + lower_first(method) + '(_ request: ' + swift_type(request) + ' = .init()) async throws -> ' + swift_type(response) + ' { try await sdk.serviceCall("' + s['service'] + '", "' + method + '", request) }')
+    swift.append('}')
+swift += ['', 'extension SDK {']
+for s in services:
+    name = lower_first(s['accessor'])
+    swift += ['  /// The reference SDK.' + s['field'] + ': a client of ' + s['service'] + ' over the SDK\'s transport.',
+              '  public var ' + ('`' + name + '`' if name == 'unsafe' else name) + ': ' + s['interface'] + ' { ' + s['interface'] + '(sdk: self) }']
+swift.append('}')
+(OUT/'swift').mkdir(parents=True, exist_ok=True)
+(OUT/'swift/Services.swift.in').write_text('\n'.join(swift) + '\n')
+
+
+h = ['/* ' + HEADER + ' */', '/* The platform service clients of the reference SDK (sdkconnect) as JSON functions:',
+     ' * otdf_<service>_<method> sends request_json (a protobuf JSON object; NULL is {})',
+     ' * through otdf_sdk_call and returns the reply in *response_json (release with',
+     ' * otdf_string_free). A failure the service reports sets error->connect_code. */',
+     '#ifndef OPENTDF_SERVICES_H', '#define OPENTDF_SERVICES_H', '#include "opentdf.h"']
+c = ['/* ' + HEADER + ' */', '#include "opentdf_services.h"']
+for s in services:
+    h += ['', '/* The reference sdkconnect.' + s['interface'] + ': ' + s['service'] + '. */']
+    for method, request, response in s['rpcs']:
+        name = 'otdf_' + snake(s['accessor']) + '_' + snake(method)
+        signature = 'int ' + name + '(otdf_sdk *sdk, const char *request_json, const otdf_call *call, char **response_json, otdf_error *error)'
+        h.append(signature + ';')
+        c.append(signature + ' { return otdf_sdk_call(sdk, "' + s['service'] + '", "' + method + '", request_json, call, response_json, error); }')
+h += ['#endif']
+(OUT/'c').mkdir(parents=True, exist_ok=True)
+(OUT/'c/opentdf_services.h').write_text('\n'.join(h) + '\n')
+(OUT/'c/opentdf_services.c').write_text('\n'.join(c) + '\n')

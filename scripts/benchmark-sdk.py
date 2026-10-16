@@ -124,7 +124,7 @@ def setup(base, packages):
     csharp.mkdir(exist_ok=True)
     shutil.copyfile(SRC / 'Benchmark.cs', csharp / 'Benchmark.cs')
     dll = (consumers / 'csharp/package/lib/OpenTDF.TDF3.dll').resolve()
-    (csharp / 'benchmark.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>' + str(dll) + '</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>' + str(dll.with_name('System.IO.Hashing.dll')) + '</HintPath></Reference></ItemGroup></Project>')
+    (csharp / 'benchmark.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>' + str(dll) + '</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>' + str(dll.with_name('System.IO.Hashing.dll')) + '</HintPath></Reference><Reference Include="Google.Protobuf"><HintPath>' + str(dll.with_name('Google.Protobuf.dll')) + '</HintPath></Reference></ItemGroup></Project>')
     dotnet = receipts['csharp']['consumer_command'][0]
     invoke([dotnet, 'build', '-c', 'Release', '-o', csharp / 'bin', '--nologo'], csharp, env)
     commands['csharp'] = [dotnet, str(csharp / 'bin/benchmark.dll')]

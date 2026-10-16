@@ -7,8 +7,9 @@ import OpenTDFTDF3
 #endif
 
 // Independent importing consumer of the handle API: one SDK per run,
-// createTDF/decryptBytes, loadTDF readers, 100 round trips, and the controlled
-// checks of tests/interop/delivery/controlled_platform.py. The host token
+// createTDF/decryptBytes, loadTDF readers, 100 round trips, the platform
+// service clients, and the controlled checks of
+// tests/interop/delivery/controlled_platform.py. The host token
 // source signs its DPoP proof with the native C ABI, independently of the
 // shared source's OAuth/DPoP implementation.
 private final class HostProof {
@@ -133,6 +134,40 @@ func expectFailure<T>(_ label: String, _ call: () async throws -> T) async throw
 }
 func writeJSON(_ run: URL, _ file: String, _ value: [String: Any]) throws {
   try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]).write(to: run.appendingPathComponent(file))
+}
+
+/// xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error.
+func services(_ sdk: SDK, _ run: URL) async throws {
+  let ns = "gcswift" + String(UInt64(Date().timeIntervalSince1970 * 1_000_000), radix: 36) + ".com"
+  let before = try await sdk.namespaces.listNamespaces()
+  var create = Policy_Namespaces_CreateNamespaceRequest()
+  create.name = ns
+  let namespace = try await sdk.namespaces.createNamespace(create).namespace
+  try check(!namespace.id.isEmpty && namespace.name == ns, "created namespace")
+  let after = try await sdk.namespaces.listNamespaces(Policy_Namespaces_ListNamespacesRequest())
+  try check(after.namespaces.contains { $0.id == namespace.id } && after.namespaces.count == before.namespaces.count + 1, "namespace listed")
+  var attributeRequest = Policy_Attributes_CreateAttributeRequest()
+  attributeRequest.namespaceID = namespace.id
+  attributeRequest.name = "free"
+  attributeRequest.rule = .anyOf
+  attributeRequest.values = ["1", "2", "3"]
+  let created = try await sdk.attributes.createAttribute(attributeRequest).attribute
+  var byID = Policy_Attributes_GetAttributeRequest()
+  byID.attributeID = created.id
+  let attribute = try await sdk.attributes.getAttribute(byID).attribute
+  let values = attribute.values.map { $0.value }
+  try check(attribute.fqn == "https://\(ns)/attr/free" && attribute.rule == .anyOf && values == ["1", "2", "3"] && attribute.namespace.name == ns, "attribute read back")
+  var list = Policy_Attributes_ListAttributesRequest()
+  list.namespace = ns
+  let listed = try await sdk.attributes.listAttributes(list)
+  try check(listed.attributes.count == 1 && listed.attributes[0].id == attribute.id, "attribute listed")
+  let raw = try JSONSerialization.jsonObject(with: Data(try await sdk.call("policy.attributes.AttributesService", "GetAttribute", "{\"attributeId\":\"\(attribute.id)\"}").utf8)) as? [String: Any]
+  try check((raw?["attribute"] as? [String: Any])?["fqn"] as? String == attribute.fqn, "raw JSON call")
+  var missingRequest = Policy_Attributes_GetAttributeRequest()
+  missingRequest.attributeID = "00000000-0000-0000-0000-000000000000"
+  let missing = try await expectFailure("missing attribute") { try await sdk.attributes.getAttribute(missingRequest) }
+  try check(missing["connectCode"] as? String == "not_found" && missing["httpStatus"] as? Int64 == 404, "missing attribute error: \(missing)")
+  try writeJSON(run, "services.json", ["namespace": ns, "namespaces_before": before.namespaces.count, "namespaces_after": after.namespaces.count, "attribute_fqn": attribute.fqn, "values": values, "not_found": missing])
 }
 
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
@@ -273,6 +308,8 @@ struct Consumer {
         try await repeatRounds(sdk, raw, name)
         print("PASS generated native library", mode, name)
         return
+      case "services":
+        try await services(sdk, run)
       default: fatalError("unknown mode")
       }
       try sdk.close()

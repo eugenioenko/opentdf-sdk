@@ -7,6 +7,12 @@ import io.opentdf.tdf3.SDK;
 import io.opentdf.tdf3.TDF3;
 import io.opentdf.tdf3.TDFObject;
 import io.opentdf.tdf3.TDFOptions;
+import io.opentdf.tdf3.protocol.policy.AttributeRuleTypeEnum;
+import io.opentdf.tdf3.protocol.policy.attributes.CreateAttributeRequest;
+import io.opentdf.tdf3.protocol.policy.attributes.GetAttributeRequest;
+import io.opentdf.tdf3.protocol.policy.attributes.ListAttributesRequest;
+import io.opentdf.tdf3.protocol.policy.namespaces.CreateNamespaceRequest;
+import io.opentdf.tdf3.protocol.policy.namespaces.ListNamespacesRequest;
 import java.nio.file.*;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
@@ -20,7 +26,7 @@ import java.util.concurrent.*;
 import org.bouncycastle.asn1.sec.SECNamedCurves;
 import org.bouncycastle.math.ec.FixedPointCombMultiplier;
 
-/** Independent importing consumer of the handle API: one SDK per run, createTDF/decryptBytes, loadTDF readers, 100 round trips, and the controlled checks of tests/interop/delivery/controlled_platform.py. Host OAuth uses native JCA/HTTP. */
+/** Independent importing consumer of the handle API: one SDK per run, createTDF/decryptBytes, loadTDF readers, 100 round trips, the platform service clients, and the controlled checks of tests/interop/delivery/controlled_platform.py. Host OAuth uses native JCA/HTTP. */
 public final class Consumer {
  static Path run;static Map<String,Object> raw;static String name;
  static final String ATTRIBUTE="https://example.com/attr/attr1/value/value1";
@@ -116,6 +122,30 @@ public final class Consumer {
   check("closed".equals(expectFailure("closed",()->sdk.decryptBytes(last,readerOptions(cfg))).get("kind")),"closed handle");
  }
 
+ /** xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error. */
+ @SuppressWarnings("unchecked")static void services(SDK sdk)throws Exception{
+  String ns="gcjava"+Long.toString(System.nanoTime(),36)+".com";
+  var before=sdk.namespaces().listNamespaces(ListNamespacesRequest.getDefaultInstance());
+  var namespace=sdk.namespaces().createNamespace(CreateNamespaceRequest.newBuilder().setName(ns).build()).getNamespace();
+  check(!namespace.getId().isEmpty()&&namespace.getName().equals(ns),"created namespace");
+  var after=sdk.namespaces().listNamespacesAsync(ListNamespacesRequest.getDefaultInstance()).get(60,TimeUnit.SECONDS);
+  check(after.getNamespacesList().stream().anyMatch(n->n.getId().equals(namespace.getId()))&&after.getNamespacesCount()==before.getNamespacesCount()+1,"namespace listed");
+  var created=sdk.attributes().createAttribute(CreateAttributeRequest.newBuilder().setNamespaceId(namespace.getId()).setName("free").setRule(AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF).addAllValues(List.of("1","2","3")).build());
+  var attribute=sdk.attributes().getAttribute(GetAttributeRequest.newBuilder().setAttributeId(created.getAttribute().getId()).build()).getAttribute();
+  List<String> values=attribute.getValuesList().stream().map(v->v.getValue()).toList();
+  check(attribute.getFqn().equals("https://"+ns+"/attr/free")&&attribute.getRule()==AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF&&values.equals(List.of("1","2","3"))&&attribute.getNamespace().getName().equals(ns),"attribute read back");
+  var listed=sdk.attributes().listAttributes(ListAttributesRequest.newBuilder().setNamespace(ns).build());
+  check(listed.getAttributesCount()==1&&listed.getAttributes(0).getId().equals(attribute.getId()),"attribute listed");
+  Map<String,Object> raw=(Map<String,Object>)Json.parse(sdk.call("policy.attributes.AttributesService","GetAttribute",Json.write(Map.of("attributeId",attribute.getId()))));
+  check(attribute.getFqn().equals(((Map<String,Object>)raw.get("attribute")).get("fqn")),"raw JSON call");
+  Map<String,Object> missing=expectFailure("missing attribute",()->sdk.attributes().getAttribute(GetAttributeRequest.newBuilder().setAttributeId("00000000-0000-0000-0000-000000000000").build()));
+  check("not_found".equals(missing.get("connectCode"))&&Long.valueOf(404).equals(missing.get("httpStatus")),"missing attribute error: "+missing);
+  Map<String,Object> report=new LinkedHashMap<>();
+  report.put("namespace",ns);report.put("namespaces_before",before.getNamespacesCount());report.put("namespaces_after",after.getNamespacesCount());
+  report.put("attribute_fqn",attribute.getFqn());report.put("values",values);report.put("not_found",missing);
+  write("services.json",Json.write(report));
+ }
+
  /** One controlled case against the harness fixture (tests/interop/delivery/controlled_platform.py). */
  @SuppressWarnings("unchecked")static void controlled(Map<String,Object> cfg)throws Exception{
   String url=text(cfg,"PlatformURL"),kasPem=text(cfg,"KASPublicKeyPEM");
@@ -179,6 +209,7 @@ public final class Consumer {
      }
      case "negative"->write(name+".error.json",Json.write(expectFailure("negative",()->sdk.decryptBytes(read(name+".tdf"),readerOptions(raw)))));
      case "repeat"->repeat(sdk,raw);
+     case "services"->services(sdk);
      default->throw new IllegalArgumentException("unknown mode");
     }
    }

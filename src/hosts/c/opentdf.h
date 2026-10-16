@@ -3,8 +3,9 @@
  * lengths, a status code from every call and an otdf_error out parameter.
  * Strings are NUL-terminated UTF-8 (NULL means unset); payloads carry lengths.
  * Manifests, policies and keys are returned as JSON text keyed by the
- * reference's JSON tags. The adapter maps names and errors only; the TDF
- * protocol executes in the generated library. */
+ * reference's JSON tags. The platform service clients take and return
+ * protobuf JSON text (opentdf_services.h). The adapter maps names and errors
+ * only; the TDF protocol executes in the generated library. */
 #ifndef OPENTDF_H
 #define OPENTDF_H
 #include "library.h"
@@ -143,6 +144,12 @@ int otdf_platform_configuration_json(otdf_sdk *sdk, const otdf_call *call, char 
 /* The reference's GetBaseKey as JSON (kasUri, publicKey{algorithm,kid,pem}, kasId). */
 int otdf_get_base_key_json(otdf_sdk *sdk, const otdf_call *call, char **json, otdf_error *error);
 int otdf_store_kas_keys(otdf_sdk *sdk, const char *url, const otdf_kas_public_key *keys, size_t count, const otdf_call *call, otdf_error *error);
+/* Sends one unary request to a platform service method, such as
+ * ("policy.attributes.AttributesService", "ListAttributes"), with the request
+ * and *response_json in protobuf JSON (NULL request_json is {}): the shared
+ * source's SDK.Call. A failure the service reports sets error->connect_code,
+ * service_message and http_status. Release *response_json with otdf_string_free. */
+int otdf_sdk_call(otdf_sdk *sdk, const char *service, const char *method, const char *request_json, const otdf_call *call, char **response_json, otdf_error *error);
 
 /* Free functions of the reference, each a library call. */
 int otdf_is_valid_tdf(otdf_bytes data, const otdf_call *call, bool *valid, otdf_error *error);
@@ -153,4 +160,5 @@ int otdf_policy_algorithm_to_key_type(const char *algorithm, char **key_type, ot
 int otdf_version(char **version, otdf_error *error);
 int otdf_tdf_spec_version(char **version, otdf_error *error);
 int otdf_supported_features(char ***features, size_t *count, otdf_error *error);
+#include "opentdf_services.h"
 #endif

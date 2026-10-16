@@ -1,7 +1,10 @@
 //! The handle API of api-spec.md in Rust idiom: option structs with
 //! `Default`, methods returning `Result`, `*_async` twins whose future drop
-//! cancels the call, and one `Error`. The adapter maps names, idioms and
-//! errors only; the TDF protocol executes in the generated crate.
+//! cancels the call, and one `Error`. The platform service clients
+//! (`attributes()`, `namespaces()`, ...) take and return the prost messages of
+//! [`crate::protocol`], which cross to the generated crate as protobuf JSON.
+//! The adapter maps names, idioms and errors only; the TDF protocol executes
+//! in the generated crate.
 use crate::generated::{self, CallOptions, LibraryError, Operation, Provider, Stream};
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -200,8 +203,30 @@ impl std::fmt::Display for Error {
     }
 }
 impl std::error::Error for Error {}
+impl Error {
+    fn codec(kind: Kind, message: String) -> Error {
+        Error {
+            kind,
+            op: "Call".to_owned(),
+            message,
+            http_status: 0,
+            connect_code: String::new(),
+            service_message: String::new(),
+            kas_url: String::new(),
+            required_obligations: vec![],
+            assertion_id: String::new(),
+        }
+    }
+}
 
 type Result<T> = std::result::Result<T, Error>;
+
+fn encode<Q: serde::Serialize>(request: &Q) -> Result<String> {
+    serde_json::to_string(request).map_err(|e| Error::codec(Kind::InvalidInput, format!("marshal message: {e}")))
+}
+fn decode<R: serde::de::DeserializeOwned>(reply: String) -> Result<R> {
+    serde_json::from_str(&reply).map_err(|e| Error::codec(Kind::Transport, format!("unmarshal message: {e}")))
+}
 
 #[derive(Clone, Debug, Default)]
 pub struct TokenExchange {
@@ -793,6 +818,22 @@ impl Sdk {
             Keys: keys.iter().map(|k| generated::KasPublicKey { Pem: bytes(&k.pem), Kid: bytes(&k.kid), Alg: bytes(&k.alg) }).collect(),
         };
         wait(self.handle.StoreKASKeys(bytes(url), set, self.calls.options()), |v| v)
+    }
+    /// Sends one unary request to a platform service method, such as
+    /// `("policy.attributes.AttributesService", "ListAttributes")`, with the
+    /// request and reply in protobuf JSON: the shared source's `SDK.Call`.
+    pub fn call(&self, service: &str, method: &str, request: &str) -> Result<String> {
+        wait(self.handle.Call(bytes(service), bytes(method), bytes(request), self.calls.options()), text)
+    }
+    pub fn call_async(&self, service: &str, method: &str, request: &str) -> impl Future<Output = Result<String>> {
+        future(self.handle.Call(bytes(service), bytes(method), bytes(request), self.calls.options()), text)
+    }
+    pub(crate) fn service_call<Q: serde::Serialize, R: serde::de::DeserializeOwned>(&self, service: &str, method: &str, request: &Q) -> Result<R> {
+        decode(self.call(service, method, &encode(request)?)?)
+    }
+    pub(crate) fn service_call_async<Q: serde::Serialize, R: serde::de::DeserializeOwned>(&self, service: &str, method: &str, request: &Q) -> impl Future<Output = Result<R>> {
+        let call = encode(request).map(|body| self.call_async(service, method, &body));
+        async move { decode(call?.await?) }
     }
     /// Releases the handle; later calls fail with `Kind::Boundary("closed")`.
     pub fn close(&self) -> Result<()> {

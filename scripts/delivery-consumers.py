@@ -74,7 +74,7 @@ def install(target, base):
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(build/name, path)
         shutil.copyfile(source/'Consumer.java', destination/'Consumer.java')
-        cp = str(package/'tdf3-java.jar')+':'+str(package/'lib/bcprov-jdk18on-1.86.jar')
+        cp = ':'.join(str(p) for p in [package/'tdf3-java.jar', *sorted((package/'lib').glob('*.jar'))])
         run([Path(env['JAVA_HOME'])/'bin/javac', '-encoding', 'UTF-8', '-cp', cp, '-d', destination/'classes', 'Consumer.java'])
         command = [str(Path(env['JAVA_HOME'])/'bin/java'), '-cp', str(destination/'classes')+':'+cp, 'consumer.Consumer']
     elif target == 'csharp':
@@ -83,7 +83,7 @@ def install(target, base):
             path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(build/name, path)
         shutil.copyfile(source/'Consumer.cs', destination/'Consumer.cs')
-        (destination/'consumer.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>package/lib/OpenTDF.TDF3.dll</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>package/lib/System.IO.Hashing.dll</HintPath></Reference></ItemGroup></Project>\n')
+        (destination/'consumer.csproj').write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>disable</Nullable></PropertyGroup><ItemGroup><Reference Include="OpenTDF.TDF3"><HintPath>package/lib/OpenTDF.TDF3.dll</HintPath></Reference><Reference Include="System.IO.Hashing"><HintPath>package/lib/System.IO.Hashing.dll</HintPath></Reference><Reference Include="Google.Protobuf"><HintPath>package/lib/Google.Protobuf.dll</HintPath></Reference></ItemGroup></Project>\n')
         dotnet = env.get('DOTNET_BIN', str(SDK.parent/'goalchemy/.toolchains/dotnet/dotnet'))
         run([dotnet, 'build', 'consumer.csproj', '-c', 'Release', '-o', destination/'bin', '--nologo'])
         command = [dotnet, str(destination/'bin/consumer.dll')]

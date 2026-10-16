@@ -34,9 +34,24 @@ jobs:
       - name: Bootstrap version and diagnostic regressions
         run: python3 -m unittest discover -s sdk/tests/ci -p 'test_*.py' -v
       - run: bash sdk/scripts/delivery-offline.sh
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            sdk/.local/protocol-tools
+            goalchemy/.toolchains/downloads
+          key: protocol-tools-linux-x64-rust1.98.0-swift6.4.0-${{ hashFiles('sdk/scripts/generate-protocol.sh', 'sdk/scripts/protocol-tools/package-lock.json', 'goalchemy/toolchains.lock') }}
+      - name: Protocol generator toolchains
+        run: |
+          rustup toolchain install 1.98.0 --profile minimal
+          # protoc-gen-swift links the pinned Swift runtime, so the toolchain is
+          # installed even when the plugin comes from the cache.
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends libcurl4-openssl-dev libxml2 libsqlite3-0 libncurses6 libpython3.10
+          bash goalchemy/scripts/fetch-toolchains.sh swift
       - name: Generated protocol code is current
         env:
           GOTOOLCHAIN: go1.25.14
+          RUSTUP_TOOLCHAIN: 1.98.0
         run: bash sdk/scripts/generate-protocol.sh --check
 
   real-kas-native-packages:

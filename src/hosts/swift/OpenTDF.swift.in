@@ -1,10 +1,14 @@
 import Foundation
 import GoalchemyGenerated
+import SwiftProtobuf
 
 // The handle API of api-spec.md in Swift idiom: option structs with defaults,
 // async throwing methods that honour Task cancellation, SDK, Reader and
-// TDFObject classes and one OpenTDFError. The adapter maps names, idioms and
-// errors only; the TDF protocol executes in the generated module.
+// TDFObject classes and one OpenTDFError. The platform service clients
+// (sdk.attributes, sdk.namespaces, ...) take and return the SwiftProtobuf
+// messages generated from the platform protos, which cross to the generated
+// module as protobuf JSON. The adapter maps names, idioms and errors only; the
+// TDF protocol executes in the generated module.
 
 private let tokenProviderName = "access-token"
 
@@ -71,6 +75,18 @@ public struct OpenTDFError: Error, CustomStringConvertible {
     kasUrl = record ? field("KASURL") : ""
     requiredObligations = record ? texts(failure.fields["RequiredObligations"] as? [GoString]) : []
     assertionId = record ? field("AssertionID") : ""
+  }
+
+  init(_ kind: ErrorKind, _ message: String) {
+    self.kind = kind
+    op = "Call"
+    self.message = message
+    httpStatus = 0
+    connectCode = ""
+    serviceMessage = ""
+    kasUrl = ""
+    requiredObligations = []
+    assertionId = ""
   }
 }
 
@@ -432,6 +448,20 @@ public final class SDK {
   public func storeKASKeys(_ url: String, _ keys: [KasPublicKey]) async throws {
     let set = GoalchemyGenerated.KasPublicKeySet(Keys: keys.map { GoalchemyGenerated.KasPublicKey(Pem: go($0.pem), Kid: go($0.kid), Alg: go($0.alg)) })
     try await run(handle.StoreKASKeys(go(url), set, calls.options))
+  }
+  /// Sends one unary request to a platform service method, such as
+  /// ("policy.attributes.AttributesService", "ListAttributes"), with the
+  /// request and reply in protobuf JSON: the shared source's SDK.Call.
+  public func call(_ service: String, _ method: String, _ request: String) async throws -> String {
+    text(try await run(handle.Call(go(service), go(method), go(request), calls.options)))
+  }
+  func serviceCall<Request: SwiftProtobuf.Message, Response: SwiftProtobuf.Message>(_ service: String, _ method: String, _ request: Request) async throws -> Response {
+    let body: String
+    do { body = try request.jsonString() } catch { throw OpenTDFError(.invalidInput, "marshal message: \(error)") }
+    let reply = try await call(service, method, body)
+    var options = JSONDecodingOptions()
+    options.ignoreUnknownFields = true
+    do { return try Response(jsonString: reply, options: options) } catch { throw OpenTDFError(.transport, "unmarshal message: \(error)") }
   }
   /// Releases the handle; later calls fail with kind .boundary("closed").
   public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }

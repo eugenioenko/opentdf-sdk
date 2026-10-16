@@ -50,6 +50,26 @@ otdf_sdk_close(sdk, &e); otdf_sdk_free(sdk);
 | `otdf_load_tdf` → `otdf_reader` (`otdf_reader_init`, `_manifest_json`, `_policy_json`, `_data_attributes`, `_unencrypted_metadata`, `_close`, `_free`), `otdf_decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The reader keeps a copy of the bytes. The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set. |
 | `otdf_is_healthy`, `otdf_platform_configuration_json`, `otdf_get_base_key_json`, `otdf_store_kas_keys`, `otdf_sdk_close`, `otdf_sdk_free` | same | Configuration and keys are returned as JSON text. |
 | `otdf_is_valid_tdf`, `otdf_get_tdf_type`, `otdf_is_platform_endpoint_malformed`, `otdf_key_type_to_policy_algorithm`, `otdf_policy_algorithm_to_key_type`, `otdf_version`, `otdf_tdf_spec_version`, `otdf_supported_features` | same | Free functions. |
+| `otdf_sdk_call(sdk, service, method, request_json, call, &response_json, &error)`, `otdf_<service>_<method>` (`opentdf_services.h`) | `SDK.Attributes` and the other `sdkconnect` clients | Protobuf JSON text in and out; see Service clients. |
+
+### Service clients
+
+The platform service clients are JSON functions: `opentdf_services.h`
+(included by `opentdf.h`) declares one function per method of the
+reference's `sdkconnect` clients, named after the accessor and method in
+snake_case (`otdf_attributes_get_attribute`,
+`otdf_namespaces_list_namespaces`, ...; 131 in all), each a call of
+`otdf_sdk_call` with the service and method. The request is a protobuf JSON
+object (NULL is `{}`) and the reply, protobuf JSON, is malloc-owned text
+released with `otdf_string_free`. A failure the service reports fills
+`connect_code`, `service_message` and `http_status`. Typed C messages are
+[#29](https://github.com/eugenioenko/opentdf-sdk/issues/29).
+
+```c
+char *reply;
+if (otdf_attributes_list_attributes(sdk, "{\"namespace\":\"example.com\"}", NULL, &reply, &e) == 0) { puts(reply); otdf_string_free(reply); }
+else if (!strcmp(e.connect_code, "not_found")) { ... }
+```
 
 Every call returns 0 or the generated library's error kind (1 an SDK error,
 2 source panic, 3 host fault, 4 fatal, 5 invalid argument, 6 canceled, 7
@@ -78,7 +98,7 @@ built by `scripts/build-c-cli.sh <package> <launcher>` (linking `libtdf3.a`
 with the dependencies of `native-link.env`) and driven by the xtest harness
 as the `gcc` SDK type (see [xtest.md](xtest.md)); it implements the Go
 `otdfgc` contract. The consumer in `tests/interop/generatedc/main.c` drives
-the real platform and, in `controlled` mode, the offline checks of
+the real platform (including the service clients) and, in `controlled` mode, the offline checks of
 `tests/interop/delivery/controlled_platform.py`. The C runtime reports an
 expired request timeout as a transport failure, so the per-request timeout
 (`timeout_millis`) surfaces as kind `transport` or `deadline_exceeded`,

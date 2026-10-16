@@ -20,10 +20,11 @@ A row turns `done` in the PR that delivers its symbol in the shared source (the
 discovery and the generated Go package; the symbols the plan lists under Phase 2
 are all `done` in the shared source; part 2 exposes them through the generated
 TypeScript and Python packages and part 3 through the Java, C#, Rust, C and Swift ones.
-`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Phase 3 part 1
+`ErrInvalid` moved to phase 4: it is declared in `granter.go`. Phase 3
 delivered the service clients: `SDK.Call` in the shared source, typed accessors in
-the Go, TypeScript and Python packages (the other targets follow in part 2), so the
-`SDK` service fields and every `sdkconnect` symbol are `done`.
+the Go, TypeScript and Python packages (part 1) and the Java, C#, Rust and Swift
+packages, with one JSON function per method in C (part 2), so the `SDK` service
+fields and every `sdkconnect` symbol are `done`.
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
@@ -782,7 +783,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `ActionServiceClient` | type | SDK.Call; the Go adapter declares ActionServiceClient over protocol/go messages | `done` |
+| `ActionServiceClient` | type | SDK.Call; each host adapter declares ActionServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `ActionServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns ActionServiceClient | `done` |
 | `ActionServiceClientConnectWrapper.CreateAction` | method | SDK.Call(ctx, service, "CreateAction", json); host accessor ActionServiceClient.CreateAction | `done` |
 | `ActionServiceClientConnectWrapper.DeleteAction` | method | SDK.Call(ctx, service, "DeleteAction", json); host accessor ActionServiceClient.DeleteAction | `done` |
@@ -795,7 +796,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AttributesServiceClient` | type | SDK.Call; the Go adapter declares AttributesServiceClient over protocol/go messages | `done` |
+| `AttributesServiceClient` | type | SDK.Call; each host adapter declares AttributesServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `AttributesServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns AttributesServiceClient | `done` |
 | `AttributesServiceClientConnectWrapper.AssignKeyAccessServerToAttribute` | method | SDK.Call(ctx, service, "AssignKeyAccessServerToAttribute", json); host accessor AttributesServiceClient.AssignKeyAccessServerToAttribute | `done` |
 | `AttributesServiceClientConnectWrapper.AssignKeyAccessServerToValue` | method | SDK.Call(ctx, service, "AssignKeyAccessServerToValue", json); host accessor AttributesServiceClient.AssignKeyAccessServerToValue | `done` |
@@ -824,7 +825,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AuthorizationServiceClient` | type | SDK.Call; the Go adapter declares AuthorizationServiceClient over protocol/go messages | `done` |
+| `AuthorizationServiceClient` | type | SDK.Call; each host adapter declares AuthorizationServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `AuthorizationServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns AuthorizationServiceClient | `done` |
 | `AuthorizationServiceClientConnectWrapper.GetDecisions` | method | SDK.Call(ctx, service, "GetDecisions", json); host accessor AuthorizationServiceClient.GetDecisions | `done` |
 | `AuthorizationServiceClientConnectWrapper.GetDecisionsByToken` | method | SDK.Call(ctx, service, "GetDecisionsByToken", json); host accessor AuthorizationServiceClient.GetDecisionsByToken | `done` |
@@ -835,7 +836,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AuthorizationServiceClientV2` | type | SDK.Call; the Go adapter declares AuthorizationServiceClientV2 over protocol/go messages | `done` |
+| `AuthorizationServiceClientV2` | type | SDK.Call; each host adapter declares AuthorizationServiceClientV2 over its protobuf messages (C: JSON functions) | `done` |
 | `AuthorizationServiceClientV2ConnectWrapper` | type | SDK.Call; the host accessor returns AuthorizationServiceClientV2 | `done` |
 | `AuthorizationServiceClientV2ConnectWrapper.GetDecision` | method | SDK.Call(ctx, service, "GetDecision", json); host accessor AuthorizationServiceClientV2.GetDecision | `done` |
 | `AuthorizationServiceClientV2ConnectWrapper.GetDecisionBulk` | method | SDK.Call(ctx, service, "GetDecisionBulk", json); host accessor AuthorizationServiceClientV2.GetDecisionBulk | `done` |
@@ -847,7 +848,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `DynamicValueMappingServiceClient` | type | SDK.Call; the Go adapter declares DynamicValueMappingServiceClient over protocol/go messages | `done` |
+| `DynamicValueMappingServiceClient` | type | SDK.Call; each host adapter declares DynamicValueMappingServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `DynamicValueMappingServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns DynamicValueMappingServiceClient | `done` |
 | `DynamicValueMappingServiceClientConnectWrapper.CreateDynamicValueMapping` | method | SDK.Call(ctx, service, "CreateDynamicValueMapping", json); host accessor DynamicValueMappingServiceClient.CreateDynamicValueMapping | `done` |
 | `DynamicValueMappingServiceClientConnectWrapper.DeleteDynamicValueMapping` | method | SDK.Call(ctx, service, "DeleteDynamicValueMapping", json); host accessor DynamicValueMappingServiceClient.DeleteDynamicValueMapping | `done` |
@@ -860,7 +861,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `EntityResolutionServiceClient` | type | SDK.Call; the Go adapter declares EntityResolutionServiceClient over protocol/go messages | `done` |
+| `EntityResolutionServiceClient` | type | SDK.Call; each host adapter declares EntityResolutionServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `EntityResolutionServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns EntityResolutionServiceClient | `done` |
 | `EntityResolutionServiceClientConnectWrapper.CreateEntityChainFromJwt` | method | SDK.Call(ctx, service, "CreateEntityChainFromJwt", json); host accessor EntityResolutionServiceClient.CreateEntityChainFromJwt | `done` |
 | `EntityResolutionServiceClientConnectWrapper.ResolveEntities` | method | SDK.Call(ctx, service, "ResolveEntities", json); host accessor EntityResolutionServiceClient.ResolveEntities | `done` |
@@ -870,7 +871,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `EntityResolutionServiceClientV2` | type | SDK.Call; the Go adapter declares EntityResolutionServiceClientV2 over protocol/go messages | `done` |
+| `EntityResolutionServiceClientV2` | type | SDK.Call; each host adapter declares EntityResolutionServiceClientV2 over its protobuf messages (C: JSON functions) | `done` |
 | `EntityResolutionServiceClientV2ConnectWrapper` | type | SDK.Call; the host accessor returns EntityResolutionServiceClientV2 | `done` |
 | `EntityResolutionServiceClientV2ConnectWrapper.CreateEntityChainsFromTokens` | method | SDK.Call(ctx, service, "CreateEntityChainsFromTokens", json); host accessor EntityResolutionServiceClientV2.CreateEntityChainsFromTokens | `done` |
 | `EntityResolutionServiceClientV2ConnectWrapper.ResolveEntities` | method | SDK.Call(ctx, service, "ResolveEntities", json); host accessor EntityResolutionServiceClientV2.ResolveEntities | `done` |
@@ -880,7 +881,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `KeyAccessServerRegistryServiceClient` | type | SDK.Call; the Go adapter declares KeyAccessServerRegistryServiceClient over protocol/go messages | `done` |
+| `KeyAccessServerRegistryServiceClient` | type | SDK.Call; each host adapter declares KeyAccessServerRegistryServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `KeyAccessServerRegistryServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns KeyAccessServerRegistryServiceClient | `done` |
 | `KeyAccessServerRegistryServiceClientConnectWrapper.CreateKey` | method | SDK.Call(ctx, service, "CreateKey", json); host accessor KeyAccessServerRegistryServiceClient.CreateKey | `done` |
 | `KeyAccessServerRegistryServiceClientConnectWrapper.CreateKeyAccessServer` | method | SDK.Call(ctx, service, "CreateKeyAccessServer", json); host accessor KeyAccessServerRegistryServiceClient.CreateKeyAccessServer | `done` |
@@ -902,7 +903,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `KeyManagementServiceClient` | type | SDK.Call; the Go adapter declares KeyManagementServiceClient over protocol/go messages | `done` |
+| `KeyManagementServiceClient` | type | SDK.Call; each host adapter declares KeyManagementServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `KeyManagementServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns KeyManagementServiceClient | `done` |
 | `KeyManagementServiceClientConnectWrapper.CreateProviderConfig` | method | SDK.Call(ctx, service, "CreateProviderConfig", json); host accessor KeyManagementServiceClient.CreateProviderConfig | `done` |
 | `KeyManagementServiceClientConnectWrapper.DeleteProviderConfig` | method | SDK.Call(ctx, service, "DeleteProviderConfig", json); host accessor KeyManagementServiceClient.DeleteProviderConfig | `done` |
@@ -915,7 +916,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NamespaceServiceClient` | type | SDK.Call; the Go adapter declares NamespaceServiceClient over protocol/go messages | `done` |
+| `NamespaceServiceClient` | type | SDK.Call; each host adapter declares NamespaceServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `NamespaceServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns NamespaceServiceClient | `done` |
 | `NamespaceServiceClientConnectWrapper.AssignKeyAccessServerToNamespace` | method | SDK.Call(ctx, service, "AssignKeyAccessServerToNamespace", json); host accessor NamespaceServiceClient.AssignKeyAccessServerToNamespace | `done` |
 | `NamespaceServiceClientConnectWrapper.AssignPublicKeyToNamespace` | method | SDK.Call(ctx, service, "AssignPublicKeyToNamespace", json); host accessor NamespaceServiceClient.AssignPublicKeyToNamespace | `done` |
@@ -933,7 +934,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `NewObligationsServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
-| `ObligationsServiceClient` | type | SDK.Call; the Go adapter declares ObligationsServiceClient over protocol/go messages | `done` |
+| `ObligationsServiceClient` | type | SDK.Call; each host adapter declares ObligationsServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `ObligationsServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns ObligationsServiceClient | `done` |
 | `ObligationsServiceClientConnectWrapper.AddObligationTrigger` | method | SDK.Call(ctx, service, "AddObligationTrigger", json); host accessor ObligationsServiceClient.AddObligationTrigger | `done` |
 | `ObligationsServiceClientConnectWrapper.CreateObligation` | method | SDK.Call(ctx, service, "CreateObligation", json); host accessor ObligationsServiceClient.CreateObligation | `done` |
@@ -956,7 +957,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `NewRegisteredResourcesServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
-| `RegisteredResourcesServiceClient` | type | SDK.Call; the Go adapter declares RegisteredResourcesServiceClient over protocol/go messages | `done` |
+| `RegisteredResourcesServiceClient` | type | SDK.Call; each host adapter declares RegisteredResourcesServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `RegisteredResourcesServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns RegisteredResourcesServiceClient | `done` |
 | `RegisteredResourcesServiceClientConnectWrapper.CreateRegisteredResource` | method | SDK.Call(ctx, service, "CreateRegisteredResource", json); host accessor RegisteredResourcesServiceClient.CreateRegisteredResource | `done` |
 | `RegisteredResourcesServiceClientConnectWrapper.CreateRegisteredResourceValue` | method | SDK.Call(ctx, service, "CreateRegisteredResourceValue", json); host accessor RegisteredResourcesServiceClient.CreateRegisteredResourceValue | `done` |
@@ -975,7 +976,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `NewResourceMappingServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
-| `ResourceMappingServiceClient` | type | SDK.Call; the Go adapter declares ResourceMappingServiceClient over protocol/go messages | `done` |
+| `ResourceMappingServiceClient` | type | SDK.Call; each host adapter declares ResourceMappingServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `ResourceMappingServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns ResourceMappingServiceClient | `done` |
 | `ResourceMappingServiceClientConnectWrapper.CreateResourceMapping` | method | SDK.Call(ctx, service, "CreateResourceMapping", json); host accessor ResourceMappingServiceClient.CreateResourceMapping | `done` |
 | `ResourceMappingServiceClientConnectWrapper.CreateResourceMappingGroup` | method | SDK.Call(ctx, service, "CreateResourceMappingGroup", json); host accessor ResourceMappingServiceClient.CreateResourceMappingGroup | `done` |
@@ -994,7 +995,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `NewSubjectMappingServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
-| `SubjectMappingServiceClient` | type | SDK.Call; the Go adapter declares SubjectMappingServiceClient over protocol/go messages | `done` |
+| `SubjectMappingServiceClient` | type | SDK.Call; each host adapter declares SubjectMappingServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `SubjectMappingServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns SubjectMappingServiceClient | `done` |
 | `SubjectMappingServiceClientConnectWrapper.CreateSubjectConditionSet` | method | SDK.Call(ctx, service, "CreateSubjectConditionSet", json); host accessor SubjectMappingServiceClient.CreateSubjectConditionSet | `done` |
 | `SubjectMappingServiceClientConnectWrapper.CreateSubjectMapping` | method | SDK.Call(ctx, service, "CreateSubjectMapping", json); host accessor SubjectMappingServiceClient.CreateSubjectMapping | `done` |
@@ -1014,7 +1015,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `NewUnsafeServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
-| `UnsafeServiceClient` | type | SDK.Call; the Go adapter declares UnsafeServiceClient over protocol/go messages | `done` |
+| `UnsafeServiceClient` | type | SDK.Call; each host adapter declares UnsafeServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `UnsafeServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns UnsafeServiceClient | `done` |
 | `UnsafeServiceClientConnectWrapper.UnsafeDeleteAttribute` | method | SDK.Call(ctx, service, "UnsafeDeleteAttribute", json); host accessor UnsafeServiceClient.UnsafeDeleteAttribute | `done` |
 | `UnsafeServiceClientConnectWrapper.UnsafeDeleteAttributeValue` | method | SDK.Call(ctx, service, "UnsafeDeleteAttributeValue", json); host accessor UnsafeServiceClient.UnsafeDeleteAttributeValue | `done` |
@@ -1033,6 +1034,6 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `NewWellKnownServiceClientConnectWrapper` | func | SDK accessors create the clients over the SDK transport | `done` |
-| `WellKnownServiceClient` | type | SDK.Call; the Go adapter declares WellKnownServiceClient over protocol/go messages | `done` |
+| `WellKnownServiceClient` | type | SDK.Call; each host adapter declares WellKnownServiceClient over its protobuf messages (C: JSON functions) | `done` |
 | `WellKnownServiceClientConnectWrapper` | type | SDK.Call; the host accessor returns WellKnownServiceClient | `done` |
 | `WellKnownServiceClientConnectWrapper.GetWellKnownConfiguration` | method | SDK.Call(ctx, service, "GetWellKnownConfiguration", json); host accessor WellKnownServiceClient.GetWellKnownConfiguration | `done` |

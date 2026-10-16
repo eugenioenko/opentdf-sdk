@@ -17,7 +17,6 @@ import zipfile
 from delivery_capture import capture
 
 SDK = Path(__file__).resolve().parents[3]
-SERVICE_TARGETS = ('go', 'typescript', 'python')
 
 
 def digest(value):
@@ -139,16 +138,15 @@ def run(target, profile, packages_base, output_base):
             no_preinit = packages_base/'consumers/c/no-preinit-consumer'
             invoke('public-no-preinit-real-kas', [no_preinit, output/'rs-binary.go.tdf', 'http://localhost:8080', output/'no-preinit.out', output/'no-preinit.metadata', output/'no-preinit.presence'])
             assert (output/'no-preinit.out').read_bytes() == payload
-        if target in SERVICE_TARGETS:
-            # xtest's test_self.py through the service clients, as the platform's admin client.
-            (output/'config.json').write_text(json.dumps({**config, 'ClientID': 'opentdf'}))
-            native('services', 'self')
-            services = json.loads((output/'services.json').read_text())
-            assert services['attribute_fqn'] == 'https://'+services['namespace']+'/attr/free' and services['values'] == ['1', '2', '3'], services
-            assert services['namespaces_after'] == services['namespaces_before']+1, services
-            assert services['not_found']['connectCode'] == 'not_found' and services['not_found']['httpStatus'] == 404, services
+        # xtest's test_self.py through the service clients, as the platform's admin client.
+        (output/'config.json').write_text(json.dumps({**config, 'ClientID': 'opentdf'}))
+        native('services', 'self')
+        services = json.loads((output/'services.json').read_text())
+        assert services['attribute_fqn'] == 'https://'+services['namespace']+'/attr/free' and services['values'] == ['1', '2', '3'], services
+        assert services['namespaces_after'] == services['namespaces_before']+1, services
+        assert services['not_found']['connectCode'] == 'not_found' and services['not_found']['httpStatus'] == 404, services
     receipt = {'target':target,'profile':profile,'scope':'actual focused final installed native package execution; historical full matrices remain separately attributed',
-               'pairs':rows,'services':services if profile == 'basic' and target in SERVICE_TARGETS else None,'payload_sha256':digest(payload),'metadata_sha256':digest(b''),'status':0,
+               'pairs':rows,'services':services,'payload_sha256':digest(payload),'metadata_sha256':digest(b''),'status':0,
                'consumer_receipt_sha256':digest(consumer_receipt.read_bytes()),
                'package_receipt_sha256':digest((packages_base/'packages'/target/'receipt.json').read_bytes()),
                'known_stock_web_dpop_limits':'historical accepted four nonce401 cases; no successful stock-Web enforced-auth pair claimed' if profile == 'dpop' else None}

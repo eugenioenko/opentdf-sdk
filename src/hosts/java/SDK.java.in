@@ -1,5 +1,8 @@
 package io.opentdf.tdf3;
 
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.Message;
+import com.google.protobuf.util.JsonFormat;
 import io.goalchemy.generated.Generated;
 import io.goalchemy.runtime.Callback;
 import io.goalchemy.runtime.Library;
@@ -14,20 +17,27 @@ import java.util.concurrent.CompletableFuture;
  * The reference SDK handle (api-spec.md) in Java idiom: a builder over the
  * shared-source Options, blocking methods with an optional Duration, and
  * *Async twins returning a CompletableFuture whose cancel cancels the call.
- * The adapter maps names, idioms and errors only; the protocol executes in
- * the generated package.
+ * The platform service clients (attributes(), namespaces(), ...) take and
+ * return the protobuf-java messages of io.opentdf.tdf3.protocol, which cross
+ * to the generated package as protobuf JSON. The adapter maps names, idioms
+ * and errors only; the protocol executes in the generated package.
  */
-public final class SDK implements AutoCloseable {
+public final class SDK extends PlatformServices implements AutoCloseable {
  /** A KAS public key for storeKASKeys (reference KasPublicKey). */
  public record KasPublicKey(String pem, String kid, String alg) {}
 
  static final String TOKEN_PROVIDER = "access-token";
  private final Generated.SDK handle;
  private final Callback.Registration[] callbacks;
+ private final JsonFormat.Printer printer;
+ private final JsonFormat.Parser parser;
 
  private SDK(Generated.SDK handle, Callback.Registration[] callbacks) {
   this.handle = handle;
   this.callbacks = callbacks;
+  JsonFormat.TypeRegistry types = JsonFormat.TypeRegistry.newBuilder().add(descriptors()).build();
+  printer = JsonFormat.printer().usingTypeRegistry(types).omittingInsignificantWhitespace();
+  parser = JsonFormat.parser().usingTypeRegistry(types).ignoringUnknownFields();
  }
 
  Library.Options call() {
@@ -190,6 +200,51 @@ public final class SDK implements AutoCloseable {
    set.Keys[i] = k;
   }
   return Values.run(() -> handle.StoreKASKeys(Values.encode(url), set, call()));
+ }
+
+ /**
+  * Sends one unary request to a platform service method, such as
+  * ("policy.attributes.AttributesService", "ListAttributes"), with the
+  * request and reply in protobuf JSON: the shared source's SDK.Call.
+  */
+ public String call(String service, String method, String request) { return call(service, method, request, null); }
+ public String call(String service, String method, String request, Duration timeout) { return Values.decode(Values.await(startCall(service, method, request), timeout)); }
+ public CompletableFuture<String> callAsync(String service, String method, String request) { return Values.future(startCall(service, method, request), Values::decode); }
+ private Library.Operation<String> startCall(String service, String method, String request) {
+  return Values.run(() -> {
+   if (service == null || method == null || request == null) throw Library.invalid();
+   return handle.Call(Values.encode(service), Values.encode(method), Values.encode(request), call());
+  });
+ }
+
+ @Override <T extends Message> T serviceCall(String service, String method, Message request, T prototype, Duration timeout) {
+  return decode(call(service, method, encode(request), timeout), prototype);
+ }
+ @Override <T extends Message> CompletableFuture<T> serviceCallAsync(String service, String method, Message request, T prototype) {
+  String body;
+  try {
+   body = encode(request);
+  } catch (RuntimeException e) {
+   return CompletableFuture.failedFuture(e);
+  }
+  return callAsync(service, method, body).thenApply(json -> decode(json, prototype));
+ }
+ private String encode(Message request) {
+  if (request == null) throw new OpenTDFException(Library.invalid());
+  try {
+   return printer.print(request);
+  } catch (InvalidProtocolBufferException e) {
+   throw OpenTDFException.boundary("invalid_input", "marshal message: " + e.getMessage());
+  }
+ }
+ @SuppressWarnings("unchecked") private <T extends Message> T decode(String json, T prototype) {
+  Message.Builder builder = prototype.newBuilderForType();
+  try {
+   parser.merge(json, builder);
+  } catch (InvalidProtocolBufferException e) {
+   throw OpenTDFException.boundary("transport", "unmarshal message: " + e.getMessage());
+  }
+  return (T) builder.build();
  }
 
  /** Releases the handle; later calls fail with kind "closed". */
