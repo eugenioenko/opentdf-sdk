@@ -96,6 +96,42 @@ func WithInsecureSkipVerifyConn() Option {
 	return func(o *Options) { o.InsecureSkipVerify = true }
 }
 
+// WithCustomCoreConnection returns an Option that reaches every platform
+// service at conn's endpoint through the SDK's transport.
+func WithCustomCoreConnection(conn *ConnectRPCConnection) Option {
+	return func(o *Options) { o.CoreEndpoint = endpointOf(conn) }
+}
+
+// WithCustomPolicyConnection reaches the policy services at conn's endpoint.
+func WithCustomPolicyConnection(conn *ConnectRPCConnection) Option {
+	return func(o *Options) { o.PolicyEndpoint = endpointOf(conn) }
+}
+
+// WithCustomAuthorizationConnection reaches the authorization services at
+// conn's endpoint.
+func WithCustomAuthorizationConnection(conn *ConnectRPCConnection) Option {
+	return func(o *Options) { o.AuthorizationEndpoint = endpointOf(conn) }
+}
+
+// WithCustomEntityResolutionConnection reaches the entity resolution
+// services at conn's endpoint.
+func WithCustomEntityResolutionConnection(conn *ConnectRPCConnection) Option {
+	return func(o *Options) { o.EntityResolutionEndpoint = endpointOf(conn) }
+}
+
+// WithCustomWellknownConnection reaches the well-known configuration service
+// at conn's endpoint.
+func WithCustomWellknownConnection(conn *ConnectRPCConnection) Option {
+	return func(o *Options) { o.WellknownEndpoint = endpointOf(conn) }
+}
+
+func endpointOf(conn *ConnectRPCConnection) string {
+	if conn == nil {
+		return ""
+	}
+	return conn.Endpoint
+}
+
 // WithTimeout bounds every request the SDK makes.
 func WithTimeout(millis int64) Option {
 	return func(o *Options) { o.TimeoutMillis = millis }

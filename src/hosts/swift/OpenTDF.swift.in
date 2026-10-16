@@ -398,6 +398,26 @@ public final class Reader {
   public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }
 }
 
+/// The reference's ConnectRPCConnection: the endpoint a connection reaches.
+public struct ConnectRPCConnection: Equatable {
+  public let endpoint: String
+}
+
+/// The reference's AuthClient: authentication operations of an SDK.
+public final class AuthClient {
+  private let handle: GoalchemyGenerated.SDK
+  private let calls: Calls
+  fileprivate init(_ handle: GoalchemyGenerated.SDK, _ calls: Calls) { self.handle = handle; self.calls = calls }
+  /// A valid access token for the SDK's credentials; fails with the
+  /// reference's ErrNoAccessTokenSource without credentials.
+  public func accessToken() async throws -> AccessToken {
+    guard let client = try await run(handle.Auth(calls.options)) else { throw GoalchemyFailure("host", "invalid generated result") }
+    defer { try? client.close() }
+    let token = try await run(client.AccessToken(calls.options))
+    return AccessToken(value: text(token.Value), scheme: text(token.Scheme), expiresAt: token.ExpiresAt, confirmationJKT: text(token.ConfirmationJKT))
+  }
+}
+
 /// The reference SDK handle: `try await SDK(endpoint, options)`.
 public final class SDK {
   private let handle: GoalchemyGenerated.SDK
@@ -463,6 +483,35 @@ public final class SDK {
     options.ignoreUnknownFields = true
     do { return try Response(jsonString: reply, options: options) } catch { throw OpenTDFError(.transport, "unmarshal message: \(error)") }
   }
+  /// The reference's Auth: the SDK's authentication operations.
+  public func auth() -> AuthClient { AuthClient(handle, calls) }
+  /// The reference's Conn: the endpoint of the core services.
+  public func conn() async throws -> ConnectRPCConnection { ConnectRPCConnection(endpoint: text(try await run(handle.Conn(calls.options)).Endpoint)) }
+  /// The reference's ListAttributes: every active attribute, following the
+  /// pages, optionally in one namespace (name or id).
+  public func listAttributes(_ namespace: String? = nil) async throws -> [Policy_Attribute] {
+    var options = JSONDecodingOptions()
+    options.ignoreUnknownFields = true
+    return try (try await run(handle.ListAttributesJSON(namespace.map { [go($0)] } ?? [], calls.options)) ?? []).map { json in
+      do { return try Policy_Attribute(jsonString: text(json), options: options) } catch { throw OpenTDFError(.transport, "unmarshal message: \(error)") }
+    }
+  }
+  /// The reference's GetEntityAttributes: the attribute value FQNs entitled
+  /// to an entity; nil is the reference's nil.
+  public func getEntityAttributes(_ entity: Authorization_Entity?) async throws -> [String] {
+    var request = ""
+    if let entity = entity {
+      do { request = try entity.jsonString() } catch { throw OpenTDFError(.invalidInput, "marshal message: \(error)") }
+    }
+    return texts(try await run(handle.GetEntityAttributesJSON(go(request), calls.options)))
+  }
+  /// The reference's ValidateAttributes: fails with ErrAttributeNotFound
+  /// naming the missing value FQNs.
+  public func validateAttributes(_ fqns: [String]) async throws { try await run(handle.ValidateAttributes(fqns.map(go), calls.options)) }
+  /// The reference's AttributeExists for an attribute FQN (https://<namespace>/attr/<name>).
+  public func attributeExists(_ fqn: String) async throws -> Bool { try await run(handle.AttributeExists(go(fqn), calls.options)) }
+  /// The reference's AttributeValueExists for a value FQN (.../attr/<name>/value/<value>).
+  public func attributeValueExists(_ fqn: String) async throws -> Bool { try await run(handle.AttributeValueExists(go(fqn), calls.options)) }
   /// Releases the handle; later calls fail with kind .boundary("closed").
   public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }
 

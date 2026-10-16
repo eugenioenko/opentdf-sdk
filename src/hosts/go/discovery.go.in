@@ -1,0 +1,48 @@
+// The reference's attribute helpers with its protocol/go messages: the
+// shared source runs them and returns protobuf JSON, decoded here as
+// connect-go's JSON codec does (unknown fields discarded).
+package generated
+
+import (
+	"context"
+
+	"github.com/opentdf/platform/protocol/go/authorization"
+	"github.com/opentdf/platform/protocol/go/policy"
+	"google.golang.org/protobuf/encoding/protojson"
+)
+
+// ListAttributes returns all active attributes available on the platform,
+// auto-paginating through all results. At most one namespace name or ID may
+// be given to filter results.
+func (x *SDK) ListAttributes(ctx context.Context, namespace []string, callbacks ...Callbacks) ([]*policy.Attribute, error) {
+	out, err := x.ListAttributesJSON(ctx, namespace, callbacks...)
+	if err != nil {
+		return nil, err
+	}
+	attrs := make([]*policy.Attribute, 0, len(out))
+	for _, text := range out {
+		a := &policy.Attribute{}
+		if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal([]byte(text), a); err != nil {
+			return nil, &Error{Kind: KindTransport, Op: "ListAttributes", Message: "unmarshal message: " + err.Error()}
+		}
+		attrs = append(attrs, a)
+	}
+	return attrs, nil
+}
+
+// GetEntityAttributes returns the attribute value FQNs assigned to an entity
+// (PE or NPE).
+func (x *SDK) GetEntityAttributes(ctx context.Context, entity *authorization.Entity, callbacks ...Callbacks) ([]string, error) {
+	request := ""
+	if entity != nil {
+		body, err := protojson.Marshal(entity)
+		if err != nil {
+			return nil, &Error{Kind: KindInvalidInput, Op: "GetEntityAttributes", Message: "marshal message: " + err.Error()}
+		}
+		request = string(body)
+		if request == "" {
+			request = "{}"
+		}
+	}
+	return x.GetEntityAttributesJSON(ctx, request, callbacks...)
+}

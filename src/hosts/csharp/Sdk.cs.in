@@ -77,6 +77,22 @@ public sealed record TlsOptions{public string ClientCertPem{get;init;}public str
 public sealed record KasInfo(string Url){public string PublicKey{get;init;}public string Kid{get;init;}public string Algorithm{get;init;}public bool Default{get;init;}}
 public sealed record AssertionConfig(string Id,string Type,string Scope,string AppliesToState,string Format,string Schema,string Value);
 public sealed record KasPublicKey(string Pem,string Kid,string Alg);
+/// The reference's ConnectRPCConnection: the endpoint a connection reaches.
+public sealed record ConnectRPCConnection(string Endpoint);
+
+/// The reference's AuthClient: authentication operations of an Sdk.
+public sealed class AuthClient
+{
+    readonly Generated.SDK handle;readonly Sdk sdk;
+    internal AuthClient(Generated.SDK handle,Sdk sdk){this.handle=handle;this.sdk=sdk;}
+    /// A valid access token for the SDK's credentials; fails with the reference's ErrNoAccessTokenSource without credentials.
+    public async Task<TDF3.AccessToken> AccessTokenAsync(CancellationToken ct=default)
+    {
+        var client=await Values.Run(()=>handle.Auth(sdk.Call(ct)),c=>c??throw new InvalidOperationException("invalid generated result")).ConfigureAwait(false);
+        try{return await Values.Run(()=>client.AccessToken(sdk.Call(ct)),t=>new TDF3.AccessToken(Values.Decode(t.Value),Values.Decode(t.Scheme),t.ExpiresAt,Values.Decode(t.ConfirmationJKT))).ConfigureAwait(false);}
+        finally{await Values.Run(client.CloseAsync,v=>v).ConfigureAwait(false);}
+    }
+}
 
 /// The reference's TDFConfig options (shared-source TDFOptions); every unset member is the reference default.
 public sealed record TdfOptions
@@ -179,10 +195,34 @@ public sealed class Sdk : PlatformServices, IAsyncDisposable, IDisposable
     private protected override async Task<T> ServiceCallAsync<T>(string service,string method,IMessage request,MessageDescriptor response,CancellationToken ct)
     {
         if(request==null)throw new OpenTdfException(Library.invalid());
-        string body;
-        try{body=formatter.Format(request);}catch(InvalidOperationException e){throw new OpenTdfException("invalid_input","marshal message: "+e.Message);}
-        var reply=await CallAsync(service,method,body,ct).ConfigureAwait(false);
-        try{return (T)parser.Parse(reply,response);}catch(Exception e)when(e is InvalidProtocolBufferException or InvalidJsonException or FormatException){throw new OpenTdfException("transport","unmarshal message: "+e.Message);}
+        var reply=await CallAsync(service,method,Format(request),ct).ConfigureAwait(false);
+        return Parse<T>(reply,response);
+    }
+    /// The reference's Auth: the SDK's authentication operations.
+    public AuthClient Auth()=>new(handle,this);
+    /// The reference's Conn: the endpoint of the core services.
+    public Task<ConnectRPCConnection> ConnAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Conn(Call(ct)),c=>new ConnectRPCConnection(Values.Decode(c?.Endpoint)));
+    /// The reference's ListAttributes: every active attribute, following the pages; namespace (name or id) null lists all.
+    public Task<IReadOnlyList<OpenTDF.Protocol.Policy.Attribute>> ListAttributesAsync(string @namespace=null,CancellationToken ct=default)=>Values.Run(()=>handle.ListAttributesJSON(@namespace==null?Array.Empty<string>():new[]{Values.Encode(@namespace)},Call(ct)),json=>(IReadOnlyList<OpenTDF.Protocol.Policy.Attribute>)Array.ConvertAll(json??Array.Empty<string>(),j=>Parse<OpenTDF.Protocol.Policy.Attribute>(Values.Decode(j),OpenTDF.Protocol.Policy.Attribute.Descriptor)));
+    /// The reference's GetEntityAttributes: the attribute value FQNs entitled to an entity.
+    public Task<IReadOnlyList<string>> GetEntityAttributesAsync(OpenTDF.Protocol.Authorization.Entity entity,CancellationToken ct=default)
+    {
+        var request=entity==null?"":Format(entity);
+        return Values.Run(()=>handle.GetEntityAttributesJSON(Values.Encode(request),Call(ct)),Values.Decode);
+    }
+    /// The reference's ValidateAttributes: fails with ErrAttributeNotFound naming the missing value FQNs.
+    public Task ValidateAttributesAsync(IReadOnlyList<string> fqns,CancellationToken ct=default)=>Values.Run(()=>handle.ValidateAttributes(Values.Encode(fqns??throw Library.invalid()),Call(ct)),v=>v);
+    /// The reference's AttributeExists for an attribute FQN (https://&lt;namespace&gt;/attr/&lt;name&gt;).
+    public Task<bool> AttributeExistsAsync(string fqn,CancellationToken ct=default)=>Values.Run(()=>handle.AttributeExists(Values.Encode(fqn),Call(ct)),b=>b);
+    /// The reference's AttributeValueExists for a value FQN (.../attr/&lt;name&gt;/value/&lt;value&gt;).
+    public Task<bool> AttributeValueExistsAsync(string fqn,CancellationToken ct=default)=>Values.Run(()=>handle.AttributeValueExists(Values.Encode(fqn),Call(ct)),b=>b);
+    string Format(IMessage message)
+    {
+        try{return formatter.Format(message);}catch(InvalidOperationException e){throw new OpenTdfException("invalid_input","marshal message: "+e.Message);}
+    }
+    T Parse<T>(string json,MessageDescriptor descriptor)
+    {
+        try{return (T)parser.Parse(json,descriptor);}catch(Exception e)when(e is InvalidProtocolBufferException or InvalidJsonException or FormatException){throw new OpenTdfException("transport","unmarshal message: "+e.Message);}
     }
     /// Releases the handle; later calls fail with kind "closed".
     public Task CloseAsync()=>Values.Run(handle.CloseAsync,v=>v);
