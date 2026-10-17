@@ -41,6 +41,12 @@ cd ../sdk
 GOROOT="$(GOTOOLCHAIN=go1.25.14 go env GOROOT)" GOALCHEMY_BIN=../goalchemy/out/final-delivery/goalchemy bash scripts/build-generated-go.sh .local/generated/go
 ```
 
+The helpers explicitly select Goalchemy's native pause model for Go,
+TypeScript, Python, Java, C#, Rust and Swift. C keeps the frames model.
+The pinned compiler release is v0.7.2; CI rebuilds packages and exercises the
+existing offline and focused real-KAS jobs for this update. Historical
+acceptance and benchmark results below describe their original compiler builds.
+
 Every `scripts/build-generated-<target>.sh` accepts a destination and
 `GOALCHEMY_BIN`. Both may be relative to the caller's working directory or
 absolute. Clean delivery checks build twice from different caller directories

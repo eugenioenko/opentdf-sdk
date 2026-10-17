@@ -18,7 +18,7 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 rm -rf "$DEST/opentdf_tdf3" "$DEST/build" "$DEST/opentdf_tdf3.egg-info"
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target python -out "$DEST/opentdf_tdf3/_generated" ./src/library ./src)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native -target python -out "$DEST/opentdf_tdf3/_generated" ./src/library ./src)
 cp "$SDK/src/hosts/python/__init__.py.in" "$DEST/opentdf_tdf3/__init__.py"
 cp "$SDK/src/hosts/python/services.py.in" "$DEST/opentdf_tdf3/services.py"
 cp -r "$SDK/src/hosts/python/protocol" "$DEST/opentdf_tdf3/protocol"
