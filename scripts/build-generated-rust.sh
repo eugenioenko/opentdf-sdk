@@ -7,7 +7,7 @@ DEST=${1:-"$ROOT/out/rust-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target rust -out "$DEST" ./src/library ./src)
+(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative -target rust -pause-model native -out "$DEST" ./src/library ./src)
 mv "$DEST/src/lib.rs" "$DEST/src/generated.rs"
 cp "$SDK/src/hosts/rust/lib.rs.in" "$DEST/src/lib.rs"
 cp "$SDK/src/hosts/rust/sdk.rs.in" "$DEST/src/sdk.rs"
