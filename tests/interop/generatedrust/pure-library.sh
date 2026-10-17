@@ -6,7 +6,7 @@ BASE=${TDF_RUST_PURE_OUT:-"$SDK/.local/rust-tdf-library/acceptance-repair-pure"}
 mkdir -p "$BASE/source" "$BASE/consumer/src" "$BASE/executable-source"
 printf 'module purevalue\n\ngo 1.25\nrequire github.com/eugenioenko/goalchemy v0.0.0\nreplace github.com/eugenioenko/goalchemy => %s\n' "$GOAL" > "$BASE/source/go.mod"
 printf 'package plain\nfunc Echo(payload []byte) []byte { return payload }\n' > "$BASE/source/plain.go"
-(cd "$BASE/source"; GOALCHEMY_ROOT="$GOAL" "$GOAL/out/rust-tdf-library/goalchemy" compile -gate cooperative -target rust -out "$BASE/emitted" .)
+(cd "$BASE/source"; GOALCHEMY_ROOT="$GOAL" "$GOAL/out/rust-tdf-library/goalchemy" compile -gate cooperative --pause-model=native -target rust -out "$BASE/emitted" .)
 cat > "$BASE/consumer/Cargo.toml" <<TOML
 [package]
 name = "rust-pure-value-consumer"
@@ -34,6 +34,6 @@ CARGO_TARGET_DIR="$GOAL/out/rust-tdf-library/sdk/target" cargo run --locked --of
 CARGO_TARGET_DIR="$GOAL/out/rust-tdf-library/sdk/target" cargo run --locked --offline --release --no-default-features --manifest-path "$BASE/consumer/Cargo.toml"
 printf 'module pureexecutable\n\ngo 1.25\nrequire github.com/eugenioenko/goalchemy v0.0.0\nreplace github.com/eugenioenko/goalchemy => %s\n' "$GOAL" > "$BASE/executable-source/go.mod"
 printf 'package main\nfunc main(){ if len([]byte{0,255})!=2 { panic("bytes") } }\n' > "$BASE/executable-source/main.go"
-(cd "$BASE/executable-source"; GOALCHEMY_ROOT="$GOAL" "$GOAL/out/rust-tdf-library/goalchemy" compile -gate cooperative -target rust -out "$BASE/executable" .)
+(cd "$BASE/executable-source"; GOALCHEMY_ROOT="$GOAL" "$GOAL/out/rust-tdf-library/goalchemy" compile -gate cooperative --pause-model=native -target rust -out "$BASE/executable" .)
 (cd "$BASE/executable"; sh run.sh)
 printf 'PASS std-only generated executable\n'

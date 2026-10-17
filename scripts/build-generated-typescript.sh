@@ -21,7 +21,7 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 if [[ "$DEPENDENCIES" != /* ]]; then DEPENDENCIES="$(pwd)/$DEPENDENCIES"; fi
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target typescript -out "$DEST" ./src/library ./src)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native -target typescript -out "$DEST" ./src/library ./src)
 cp "$SDK/src/hosts/typescript/index.ts.in" "$DEST/index.ts"
 cp "$SDK/src/hosts/typescript/node-index.ts.in" "$DEST/node-index.ts"
 cp "$SDK/src/hosts/typescript/services.ts.in" "$DEST/services.ts"

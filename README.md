@@ -87,10 +87,13 @@ Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
 The build configuration pins released
-[Goalchemy v0.6.0](https://github.com/eugenioenko/goalchemy/releases/tag/v0.6.0)
+[Goalchemy v0.7.1](https://github.com/eugenioenko/goalchemy/releases/tag/v0.7.1)
 for package-based output across all eight targets. The exact release commit is
 recorded in [references.lock.json](references.lock.json).
-Readable source-derived identifiers remain the default.
+Build helpers explicitly select `--pause-model=native` for Go, TypeScript,
+Python, Java, C#, Rust and Swift; C uses `--pause-model=frames`. Native pausing
+uses each target's async/await or blocking calls under Goalchemy's scheduler.
+Generated identifiers use source names by default.
 The performance table identifies the actual compiler commits used for its
 measurements.
 
