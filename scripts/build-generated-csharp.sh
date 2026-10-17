@@ -8,7 +8,7 @@ mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
 DOTNET=${DOTNET_BIN:-"$ROOT/.toolchains/dotnet/dotnet"}
-(cd "$SDK"; "$COMPILER" compile -gate cooperative -target csharp -out "$DEST" ./src/library ./src)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native -target csharp -out "$DEST" ./src/library ./src)
 cp "$SDK/src/hosts/csharp/TDF3.cs.in" "$DEST/TDF3.cs"
 cp "$SDK/src/hosts/csharp/Sdk.cs.in" "$DEST/Sdk.cs"
 cp "$SDK/src/hosts/csharp/Services.cs.in" "$DEST/Services.cs"

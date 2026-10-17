@@ -12,7 +12,7 @@ require github.com/eugenioenko/goalchemy v0.0.0
 replace github.com/eugenioenko/goalchemy => $GOAL
 MOD
 cp "$GOAL/targets/rust/tests/library_fixture.go.in" "$BASE/fixture/fixture.go"
-(cd "$BASE/fixture"; GOALCHEMY_ROOT="$GOAL" "$GOAL/out/rust-tdf-library/goalchemy" compile -gate cooperative -target rust -out "$BASE/fixture-library" .)
+(cd "$BASE/fixture"; GOALCHEMY_ROOT="$GOAL" "$GOAL/out/rust-tdf-library/goalchemy" compile -gate cooperative --pause-model=native -target rust -out "$BASE/fixture-library" .)
 cat > "$BASE/fixture-consumer/Cargo.toml" <<TOML
 [package]
 name = "rust-fixture-consumer"

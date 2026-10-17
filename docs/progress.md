@@ -1,5 +1,20 @@
 # OpenTDF SDK implementation progress
 
+## Goalchemy 0.7.1 and native pausing: CI validation pending
+
+The compiler release pin is now v0.7.1 at
+`fb8b304ad22bd44e3b6a1c30897212d481f2b606`, resolved from the annotated
+release tag. The root and nested Go module requirements, reference lock and
+both delivery-workflow compiler checkouts use that release.
+
+All seven supported SDK build helpers explicitly select native pausing;
+C explicitly selects frames. Rust acceptance fixture generation uses native
+pausing too. Public host adapters and historical benchmark results are unchanged.
+
+No local tests, package builds, protocol regeneration or benchmarks were run,
+as requested. The PR's existing offline/protocol and eight-target real-KAS
+jobs provide validation; this entry does not claim they have passed.
+
 ## Goalchemy 0.6.0 compiler update
 
 Goalchemy v0.6.0 is released at

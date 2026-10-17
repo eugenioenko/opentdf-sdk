@@ -1,5 +1,18 @@
 # OpenTDF SDK implementation plan
 
+## Goalchemy 0.7.1 native pausing adoption
+
+Pin the SDK module, nested test modules, reference lock and both CI compiler
+checkouts to released Goalchemy v0.7.1 at
+`fb8b304ad22bd44e3b6a1c30897212d481f2b606`. Use `--pause-model=native`
+for Go, TypeScript, Python, Java, C#, Rust and Swift; keep C on frames.
+Apply the same mode to the Rust acceptance fixture generators. Preserve native
+public APIs, reference SDK pins and historical benchmark results.
+
+The user requested no local tests or builds for this update. Open a PR and
+let the existing offline/protocol and eight-target real-KAS CI jobs determine
+compatibility. Do not claim migration acceptance until those jobs pass.
+
 ## Goalchemy 0.6.0 adoption
 
 The user authorized releasing Goalchemy 0.6.0 before its CI finished. Pin the
