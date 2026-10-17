@@ -82,8 +82,9 @@ func kasOptions(f *fakePlatform, alg KeyType) TDFOptions {
 	return TDFOptions{KasInformation: []KASInfo{{URL: f.kasURL()}}, WrappingKeyAlgorithm: alg, Attributes: []string{"https://example.com/attr/attr1/value/value1"}}
 }
 
-// Test_SimpleTDF, over the fake KAS: RSA and EC wrapping, RSA and EC
-// sessions, metadata, several segments and an empty payload round-trip.
+// Test_SimpleTDF, over the fake KAS: RSA and EC wrapping and sessions of
+// every non-PQ key type, metadata, several segments and an empty payload
+// round-trip.
 func Test_SimpleTDF(t *testing.T) {
 	f := newFakePlatform(t)
 	s := f.newSDK(t, f.options())
@@ -102,6 +103,11 @@ func Test_SimpleTDF(t *testing.T) {
 		{"ec-ec-session", EC256Key, EC256Key, plain, "", 32 * 1024},
 		{"empty", "", RSA2048Key, []byte{}, "", 0},
 		{"exact-multiple", RSA2048Key, "", bytes.Repeat([]byte("x"), 32*1024), "", 16 * 1024},
+		{"rsa-4096", RSA4096Key, RSA4096Key, []byte("rsa 4096"), "meta", 0},
+		{"ec-p384", EC384Key, EC384Key, plain, "meta", 32 * 1024},
+		{"ec-p521", EC521Key, EC521Key, []byte("ec p521"), "", 0},
+		{"ec-p521-rsa-session", EC521Key, RSA2048Key, []byte("mixed"), "", 0},
+		{"rsa-ec-p384-session", RSA2048Key, EC384Key, []byte("mixed"), "", 0},
 	} {
 		opts := kasOptions(f, tc.wrapping)
 		opts.Metadata = tc.metadata
@@ -119,11 +125,11 @@ func Test_SimpleTDF(t *testing.T) {
 		if m.TDFVersion != TDFSpecVersion || m.Payload.MimeType != "text/plain" || kao.KasURL != f.kasURL() || kao.SchemaVersion != "1.0" || kao.Protocol != "kas" || m.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm != "GMAC" || m.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm != "HS256" {
 			t.Fatalf("%s: manifest %+v", tc.name, m)
 		}
-		if tc.wrapping == EC256Key {
-			if kao.KeyType != "ec-wrapped" || kao.EphemeralPublicKey == "" || kao.KID != "e1" {
+		if IsECKeyType(tc.wrapping) {
+			if kao.KeyType != "ec-wrapped" || kao.EphemeralPublicKey == "" || kao.KID != fakeKID(string(tc.wrapping)) {
 				t.Fatalf("%s: ec kao %+v", tc.name, kao)
 			}
-		} else if kao.KeyType != "wrapped" || kao.EphemeralPublicKey != "" || kao.KID != "r1" {
+		} else if kao.KeyType != "wrapped" || kao.EphemeralPublicKey != "" || kao.KID != fakeKID(string(tc.wrapping)) {
 			t.Fatalf("%s: rsa kao %+v", tc.name, kao)
 		}
 		if (tc.metadata != "") != (kao.EncryptedMetadata != "") {
@@ -173,9 +179,9 @@ func Test_SimpleTDF(t *testing.T) {
 		}
 		reader.Close()
 	}
-	// One fetch per (URL, algorithm) key: rsa:2048, ec:secp256r1 and the
+	// One fetch per (URL, algorithm) key: the five key types and the
 	// unspecified algorithm of the empty case, as the reference caches them.
-	if f.publicKeyCalls.Load() != 3 {
+	if f.publicKeyCalls.Load() != 6 {
 		t.Fatal("KAS keys fetched once per algorithm and cached", f.publicKeyCalls.Load())
 	}
 	if f.registryCalls.Load() == 0 {
@@ -608,11 +614,13 @@ func kasKeys(keys ...map[string]any) map[string]any {
 }
 
 func (f *fakePlatform) simpleKey(url, kid string) map[string]any {
-	alg, pem := "ALGORITHM_RSA_2048", publicPEM(f.t, &f.kasRSA.PublicKey)
-	if strings.HasPrefix(kid, "e") {
-		alg, pem = "ALGORITHM_EC_P256", publicPEM(f.t, &f.kasEC.PublicKey)
+	alg := ""
+	for _, k := range fakeKASKeys {
+		if k.kid == kid {
+			alg = k.policyAlg
+		}
 	}
-	return map[string]any{"kasUri": url, "publicKey": map[string]any{"algorithm": alg, "kid": kid, "pem": pem}}
+	return map[string]any{"kasUri": url, "publicKey": map[string]any{"algorithm": alg, "kid": kid, "pem": f.kasPublicPEM(kid)}}
 }
 
 func (f *fakePlatform) defineAttributes(values ...map[string]any) []string {
@@ -651,6 +659,13 @@ func Test_Autoconfigure(t *testing.T) {
 		{name: "attribute grant", values: []map[string]any{fakeValue("a.com", "g", "ANY_OF", "a", map[string]map[string]any{"attr": grants(kasB)})}, kaos: []kao{{kasB, "r1", "wrapped"}}, unsplits: true},
 		{name: "namespace grant", values: []map[string]any{fakeValue("ns.com", "g", "ANY_OF", "a", map[string]map[string]any{"ns": grants(kasA)})}, kaos: []kao{{kasA, "r1", "wrapped"}}, unsplits: true},
 		{name: "mapped keys of two kinds", mode: "key-mappings", values: []map[string]any{fakeValue("a.com", "mk", "ALL_OF", "r1", map[string]map[string]any{"value": kasKeys(f.simpleKey(f.kasURL(), "r1"))}), fakeValue("a.com", "mk", "ALL_OF", "e1", map[string]map[string]any{"value": kasKeys(f.simpleKey(f.kasURL(), "e1"))})}, kaos: []kao{{f.kasURL(), "r1", "wrapped"}, {f.kasURL(), "e1", "ec-wrapped"}}},
+		{name: "mapped extended mechanisms", mode: "key-mappings", values: []map[string]any{
+			fakeValue("a.com", "xm", "ALL_OF", "r1", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasA, "r1"))}),
+			fakeValue("a.com", "xm", "ALL_OF", "r2", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasA, "r2"))}),
+			fakeValue("a.com", "xm", "ALL_OF", "e1", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasB, "e1"))}),
+			fakeValue("a.com", "xm", "ALL_OF", "e2", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasB, "e2"))}),
+			fakeValue("a.com", "xm", "ALL_OF", "e3", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasB, "e3"))}),
+		}, kaos: []kao{{kasA, "r1", "wrapped"}, {kasA, "r2", "wrapped"}, {kasB, "e1", "ec-wrapped"}, {kasB, "e2", "ec-wrapped"}, {kasB, "e3", "ec-wrapped"}}},
 		{name: "mapped definition key", mode: "key-mappings", values: []map[string]any{fakeValue("a.com", "dk", "ANY_OF", "x", map[string]map[string]any{"attr": kasKeys(f.simpleKey(kasA, "e1"))})}, kaos: []kao{{kasA, "e1", "ec-wrapped"}}, unsplits: true},
 		{name: "offline values", offline: true, values: []map[string]any{fakeValue("a.com", "n2k", "ALL_OF", "a", map[string]map[string]any{"value": grants(kasA)}), fakeValue("a.com", "n2k", "ALL_OF", "b", map[string]map[string]any{"value": kasKeys(f.simpleKey(kasB, "e1"))})}, kaos: []kao{{kasB, "e1", "ec-wrapped"}}, unsplits: true},
 	} {
@@ -718,5 +733,200 @@ func Test_Autoconfigure(t *testing.T) {
 	}
 	if _, _, err := s.EncryptBytes(context.Background(), []byte("x"), TDFOptions{Attributes: []string{"https://a.com/attr/rel"}}); err == nil || !strings.Contains(err.Error(), "invalid type: attribute regex fail") {
 		t.Fatal("attributes are value FQNs", err)
+	}
+}
+
+// encryptWithSplitPlan is the reference's withSplitPlan option: the plan's
+// keys are fetched from each KAS and the DEK is split across its split ids.
+func encryptWithSplitPlan(t *testing.T, s *SDK, plaintext []byte, plan []keySplitStep) ([]byte, *TDFObject) {
+	t.Helper()
+	tdfConfig, err := newTDFConfig(TDFOptions{DisableAutoconfigure: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tdfConfig.splitPlan = plan
+	data, obj, err := s.encryptBytes(context.Background(), plaintext, tdfConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data, obj
+}
+
+// Ported from Test_KeySplits: shared, split and mixed plans over three KAS
+// rebuild the DEK by XOR of one share per split id, with one rewrap request
+// per KAS; a denied KAS fails only the splits it alone holds.
+func Test_KeySplits(t *testing.T) {
+	f := newFakePlatform(t)
+	s := f.newSDK(t, f.options())
+	kasA, kasB, kasC := f.server.URL+"/kas-a", f.server.URL+"/kas-b", f.server.URL+"/kas-c"
+	for _, tc := range []struct {
+		name      string
+		plan      []keySplitStep
+		requests  int32
+		deniedB   bool
+		reconcile bool
+	}{
+		{name: "shared", plan: []keySplitStep{{kasA, "a"}, {kasB, "a"}, {kasC, "a"}}, requests: 3, reconcile: true},
+		{name: "split", plan: []keySplitStep{{kasA, "a"}, {kasB, "b"}, {kasC, "c"}}, requests: 3},
+		{name: "mixture", plan: []keySplitStep{{kasA, "a"}, {kasB, "a"}, {kasB, "b"}, {kasC, "b"}}, requests: 3, reconcile: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, obj := encryptWithSplitPlan(t, s, []byte("hello"), tc.plan)
+			kaos := obj.Manifest().EncryptionInformation.KeyAccessObjs
+			if len(kaos) != len(tc.plan) || kaos[0].KasURL != tc.plan[0].KAS {
+				t.Fatalf("KAOs %+v", kaos)
+			}
+			for i, step := range tc.plan {
+				if kaos[i].KasURL != step.KAS || kaos[i].SplitID != step.SplitID {
+					t.Fatalf("KAO %d: %+v, want %+v", i, kaos[i], step)
+				}
+			}
+			before := f.rewrapCalls.Load()
+			out, err := s.DecryptBytes(context.Background(), data, ReaderOptions{})
+			if err != nil || string(out) != "hello" {
+				t.Fatal(err)
+			}
+			if got := f.rewrapCalls.Load() - before; got != tc.requests {
+				t.Fatalf("%d rewrap requests, want one per KAS", got)
+			}
+			f.mu.Lock()
+			for _, kao := range f.lastRewrap["requests"].([]any)[0].(map[string]any)["keyAccessObjects"].([]any) {
+				if url := kao.(map[string]any)["keyAccessObject"].(map[string]any)["url"]; url != kasC {
+					t.Fatal("the last request carries only kas-c's KAOs", url)
+				}
+			}
+			f.mu.Unlock()
+
+			f.mode.Store("deny:" + kasB)
+			defer f.mode.Store("")
+			out, err = s.DecryptBytes(context.Background(), data, ReaderOptions{})
+			if tc.reconcile {
+				if err != nil || string(out) != "hello" {
+					t.Fatal("an alternative KAS holds every split kas-b holds", err)
+				}
+				return
+			}
+			var e *Error
+			if !errors.As(err, &e) || e.Kind != KindRewrapForbidden || !errors.Is(err, ErrRewrapForbidden) || !errors.Is(err, ErrTDFDecryptFailed) {
+				t.Fatal("denied split", err)
+			}
+			for _, text := range []string{
+				"splitKey.unable to reconstruct split key: map[{" + kasB + " b}:",
+				"tdf: rewrap request 403\nkao unwrap failed for split {" + kasB + " b}: rpc error: code = PermissionDenied desc = forbidden",
+			} {
+				if !strings.Contains(err.Error(), text) {
+					t.Fatalf("missing %q in %v", text, err)
+				}
+			}
+			if strings.Contains(err.Error(), "{"+kasA) || strings.Contains(err.Error(), "{"+kasC) {
+				t.Fatal("only the failed split is reported", err)
+			}
+		})
+	}
+}
+
+// Ported from Test_KeySplit_SameKas_SameAlgorithm and DSPX-3379
+// (test_tdf_with_duplicate_kao_same_kas): KAOs on one KAS travel in one
+// rewrap request, and a duplicate of an already satisfied split is skipped.
+func Test_KeySplit_SameKas(t *testing.T) {
+	f := newFakePlatform(t)
+	s := f.newSDK(t, f.options())
+	data, obj := encryptWithSplitPlan(t, s, []byte("same kas"), []keySplitStep{{f.kasURL(), "a"}, {f.kasURL(), "b"}})
+	if kaos := obj.Manifest().EncryptionInformation.KeyAccessObjs; len(kaos) != 2 || kaos[0].KasURL != kaos[1].KasURL || kaos[0].SplitID == kaos[1].SplitID {
+		t.Fatalf("KAOs %+v", kaos)
+	}
+	duplicated := rewriteTDF(t, data, func(m map[string]any) {
+		info := encryptionInformation(m)
+		kaos := info["keyAccess"].([]any)
+		copied := map[string]any{}
+		for k, v := range firstKAO(m) {
+			copied[k] = v
+		}
+		info["keyAccess"] = append(kaos, copied)
+	}, nil)
+	for _, tc := range []struct {
+		name string
+		data []byte
+		kaos int
+	}{{"same kas", data, 2}, {"duplicate kao", duplicated, 3}} {
+		before := f.rewrapCalls.Load()
+		out, err := s.DecryptBytes(context.Background(), tc.data, ReaderOptions{})
+		if err != nil || string(out) != "same kas" {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if f.rewrapCalls.Load() != before+1 {
+			t.Fatalf("%s: one rewrap request for the KAS", tc.name)
+		}
+		f.mu.Lock()
+		requests := f.lastRewrap["requests"].([]any)
+		f.mu.Unlock()
+		if len(requests) != 1 || len(requests[0].(map[string]any)["keyAccessObjects"].([]any)) != tc.kaos {
+			t.Fatalf("%s: request %v", tc.name, requests)
+		}
+	}
+}
+
+// Post-quantum KAOs are not planned: each fails its split without being
+// sent, so an alternative KAO still opens the TDF.
+func Test_PostQuantumKAO(t *testing.T) {
+	f := newFakePlatform(t)
+	s := f.newSDK(t, f.options())
+	for _, keyType := range []string{"hybrid-wrapped", "mlkem-wrapped"} {
+		data, _, err := s.EncryptBytes(context.Background(), []byte("pq"), kasOptions(f, RSA2048Key))
+		if err != nil {
+			t.Fatal(err)
+		}
+		pq := rewriteTDF(t, data, func(m map[string]any) { firstKAO(m)["type"] = keyType }, nil)
+		before := f.rewrapCalls.Load()
+		_, err = s.DecryptBytes(context.Background(), pq, ReaderOptions{})
+		var e *Error
+		if !errors.As(err, &e) || e.Kind != KindUnsupportedKeyAccess || !strings.Contains(err.Error(), "unsupported key access type: "+keyType+": post-quantum mechanisms are not planned") || !strings.Contains(err.Error(), "splitKey.unable to reconstruct split key") {
+			t.Fatal(keyType, err)
+		}
+		if f.rewrapCalls.Load() != before {
+			t.Fatal("a post-quantum KAO is not sent", keyType)
+		}
+
+		shared, _ := encryptWithSplitPlan(t, s, []byte("pq or rsa"), []keySplitStep{{f.kasURL(), "a"}, {f.server.URL + "/kas-b", "a"}})
+		alternative := rewriteTDF(t, shared, func(m map[string]any) { firstKAO(m)["type"] = keyType }, nil)
+		if out, err := s.DecryptBytes(context.Background(), alternative, ReaderOptions{}); err != nil || string(out) != "pq or rsa" {
+			t.Fatal("the other alternative opens the split", keyType, err)
+		}
+	}
+}
+
+// WithWrappingKeyAlg and WithSessionKeyType take every non-PQ key type; a
+// post-quantum one fails with the not-planned reason, anything else as the
+// reference's ocrypto does.
+func TestKeyTypeOptions(t *testing.T) {
+	for _, kt := range []KeyType{RSA2048Key, RSA4096Key, EC256Key, EC384Key, EC521Key} {
+		if c, err := newTDFConfig(TDFOptions{WrappingKeyAlgorithm: kt}); err != nil || c.preferredKeyWrapAlg != kt {
+			t.Fatal(kt, err)
+		}
+		c, err := newTDFReaderConfig(nil, ReaderOptions{SessionKeyType: kt})
+		if err != nil || c.kasSessionKeyType != kt || c.kasSessionKey == nil {
+			t.Fatal(kt, err)
+		}
+		c.closeSessionKey()
+	}
+	for _, kt := range []KeyType{mlkem768Key, mlkem1024Key, hybridXWingKey, hybridSecp256r1MLKEM768Key, hybridSecp384r1MLKEM1024Key} {
+		_, err := newTDFConfig(TDFOptions{WrappingKeyAlgorithm: kt})
+		var e *Error
+		if !errors.As(err, &e) || e.Kind != KindUnsupportedFeature || e.Message != "unsupported in this build: WrappingKeyAlgorithm "+string(kt)+": post-quantum mechanisms are not planned" {
+			t.Fatal(kt, err)
+		}
+		_, err = newTDFReaderConfig(nil, ReaderOptions{SessionKeyType: kt})
+		if !errors.As(err, &e) || e.Kind != KindUnsupportedFeature || e.Message != "unsupported in this build: SessionKeyType "+string(kt)+": post-quantum mechanisms are not planned" {
+			t.Fatal(kt, err)
+		}
+		if _, err := createKeyAccess(KASInfo{URL: "https://kas.example", Algorithm: string(kt)}, make([]byte, 32), PolicyBinding{}, "", ""); !errors.As(err, &e) || e.Kind != KindUnsupportedFeature || !strings.Contains(err.Error(), "post-quantum mechanisms are not planned") {
+			t.Fatal(kt, err)
+		}
+	}
+	if _, err := newTDFConfig(TDFOptions{WrappingKeyAlgorithm: "rsa:1024"}); err == nil || err.Error() != "unsupported key type: rsa:1024" {
+		t.Fatal(err)
+	}
+	if _, err := newTDFReaderConfig(nil, ReaderOptions{SessionKeyType: "rsa:1024"}); err == nil || !strings.Contains(err.Error(), "failed to create rsa:1024 key pair") {
+		t.Fatal(err)
 	}
 }

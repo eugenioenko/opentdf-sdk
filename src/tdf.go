@@ -141,8 +141,11 @@ func (s *SDK) EncryptBytes(ctx context.Context, plaintext []byte, opts TDFOption
 	if err != nil {
 		return nil, nil, wrapError(KindInvalidInput, "CreateTDF", "NewTDFConfig failed", err)
 	}
+	return s.encryptBytes(ctx, plaintext, tdfConfig)
+}
 
-	err = tdfConfig.initKAOTemplate(ctx, s)
+func (s *SDK) encryptBytes(ctx context.Context, plaintext []byte, tdfConfig *TDFConfig) ([]byte, *TDFObject, error) {
+	err := tdfConfig.initKAOTemplate(ctx, s)
 	if err != nil {
 		return nil, nil, wrapError(KindKASRequest, "CreateTDF", "", err)
 	}
@@ -556,7 +559,7 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 	ktype := KeyType(kasInfo.Algorithm)
 	switch {
 	case isPQKeyType(ktype):
-		return KeyAccess{}, unsupported("CreateTDF", "wrapping key algorithm "+string(ktype))
+		return KeyAccess{}, notPlannedPQ("CreateTDF", "wrapping key algorithm "+string(ktype))
 	case IsECKeyType(ktype):
 		wrappedKeyInfo, err := generateWrapKeyWithEC(ktype, kasInfo.PublicKey, symKey)
 		if err != nil {
@@ -902,16 +905,26 @@ func (r *Reader) DataAttributes() ([]string, error) {
 }
 
 // rewrapRequests is the reference's map[string]*WithPolicyRequest keyed by
-// KAS URL, with insertion order kept for deterministic requests.
+// KAS URL, with insertion order kept for deterministic requests. rejected
+// holds the post-quantum KAOs, which are never sent: each fails its split
+// as an unwrap failure would, so an alternative KAO can still satisfy it.
 type rewrapRequests struct {
 	urls     []string
 	requests map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest
+	rejected []kaoResult
 }
 
 func createRewrapRequest(_ context.Context, r *Reader) (*rewrapRequests, error) {
 	kasReqs := &rewrapRequests{requests: make(map[string]*kas.UnsignedRewrapRequest_WithPolicyRequest)}
 	for i, kao := range r.manifest.EncryptionInformation.KeyAccessObjs {
 		kaoID := fmt.Sprintf("kao-%d", i)
+		if kao.KeyType == kHybridWrapped || kao.KeyType == kMLKEMWrapped {
+			kasReqs.rejected = append(kasReqs.rejected, kaoResult{
+				KeyAccessObjectID: kaoID,
+				Error:             newError(KindUnsupportedKeyAccess, "Init", "unsupported key access type: "+kao.KeyType+": "+postQuantumNotPlanned),
+			})
+			continue
+		}
 
 		key, err := encoding.Base64Decode(kao.WrappedKey)
 		if err != nil {
@@ -1108,6 +1121,7 @@ func (r *Reader) doPayloadKeyUnwrap(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	kaoResults = append(kaoResults, reqs.rejected...)
 	for _, kasurl := range reqs.urls {
 		req := reqs.requests[kasurl]
 		// if ignoreing allowlist then warn

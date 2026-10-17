@@ -191,3 +191,11 @@ func boundaryError(kind ErrorKind, op string, err error) error {
 func unsupported(op, feature string) *Error {
 	return newError(KindUnsupportedFeature, op, "unsupported in this build: "+feature)
 }
+
+// postQuantumNotPlanned is why post-quantum key types and key access objects
+// fail: Goalchemy has no post-quantum primitives (goalchemy#21).
+const postQuantumNotPlanned = "post-quantum mechanisms are not planned"
+
+func notPlannedPQ(op, feature string) *Error {
+	return unsupported(op, feature+": "+postQuantumNotPlanned)
+}
