@@ -182,6 +182,9 @@ func main() {
 		if name == "denied" || strings.HasSuffix(name, "-denied") {
 			extra = append(extra, g.WithDataAttributes("https://example.com/attr/attr1/value/value2"))
 		}
+		if name == "split" || strings.HasSuffix(name, "-split") {
+			extra = append(extra, g.WithKasInformation(kasInformation(cfg), kasInformation(cfg)))
+		}
 		data, _, e := client.EncryptBytes(ctx, read(filepath.Join(run, name+".input")), tdfOptions(cfg, extra...), callbacks)
 		fail("encrypt", e)
 		write(filepath.Join(run, name+".generated.tdf"), data)

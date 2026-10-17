@@ -280,8 +280,10 @@ try:
     extra={}
     if (name=='metadata' or name.endswith('-metadata')) and name!='empty-metadata' and not name.endswith('-empty-metadata'):extra['metadata']='{"source":"independent metadata","count":7}'
     if name=='denied' or name.endswith('-denied'):extra['attributes']=['https://example.com/attr/attr1/value/value2']
+    split=name=='split' or name.endswith('-split')
+    if split:extra['kas_information']=[kas_information(cfg),kas_information(cfg)]
     with sdk.create_tdf((run/(name+'.input')).read_bytes(),**tdf_options(cfg,**extra)) as obj:
-     assert obj.size()==len(obj.bytes) and len(obj.manifest()['encryptionInformation']['keyAccess'])==1
+     assert obj.size()==len(obj.bytes) and len(obj.manifest()['encryptionInformation']['keyAccess'])==(2 if split else 1)
      (run/(name+'.generated.tdf')).write_bytes(obj.bytes)
    elif mode=='decrypt':
     data=(run/(name+'.tdf')).read_bytes()

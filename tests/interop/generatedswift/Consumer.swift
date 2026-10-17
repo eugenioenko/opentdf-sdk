@@ -329,10 +329,12 @@ struct Consumer {
         var options = tdfOptions(raw)
         if (name == "metadata" || name.hasSuffix("-metadata")) && name != "empty-metadata" && !name.hasSuffix("-empty-metadata") { options.metadata = "{\"source\":\"independent metadata\",\"count\":7}" }
         if name == "denied" || name.hasSuffix("-denied") { options.attributes = ["https://example.com/attr/attr1/value/value2"] }
+        let split = name == "split" || name.hasSuffix("-split")
+        if split { options.kasInformation = [kasInformation(raw), kasInformation(raw)] }
         let object = try await sdk.createTDF(try Data(contentsOf: path(".input")), options)
         let size = try await object.size()
         let keyAccess = try await object.manifest().encryptionInformation.keyAccess
-        try check(size == Int64(object.bytes.count) && keyAccess.count == 1, "object")
+        try check(size == Int64(object.bytes.count) && keyAccess.count == (split ? 2 : 1), "object")
         try object.close()
         try object.bytes.write(to: path(".generated.tdf"))
       case "decrypt":
