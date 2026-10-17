@@ -1,10 +1,14 @@
 # OpenTDF SDK implementation progress
 
-## Goalchemy 0.7.1 and native pausing: CI validation pending
+## Goalchemy 0.7.2 and native pausing: CI validation pending
 
-The compiler release pin is now v0.7.1 at
-`fb8b304ad22bd44e3b6a1c30897212d481f2b606`, resolved from the annotated
-release tag. The root and nested Go module requirements, reference lock and
+The compiler release pin is now v0.7.2 at
+`cfc163ee5e9fa86dce7327864253074973ef9205`, resolved from the annotated
+release tag. The first attempt pinned v0.7.1 and failed the Go job: its
+lowercased source names collided with the declarations of the host adapters
+compiled into the generated package (`attributesServiceClient`, `log`, ...).
+v0.7.2 adds `--go-host`, and the Go build helper now passes the six host
+adapter files so the compiler reserves their names. The root and nested Go module requirements, reference lock and
 both delivery-workflow compiler checkouts use that release.
 
 All seven supported SDK build helpers explicitly select native pausing;

@@ -7,8 +7,11 @@ DEST=${1:-"$SDK/../goalchemy/out/go-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native -target go -out "$DEST" ./src/library ./src)
-for adapter in token options errors call services discovery; do
+ADAPTERS=(token options errors call services discovery)
+HOST=()
+for adapter in "${ADAPTERS[@]}"; do HOST+=("--go-host=src/hosts/go/$adapter.go.in"); done
+(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native "${HOST[@]}" -target go -out "$DEST" ./src/library ./src)
+for adapter in "${ADAPTERS[@]}"; do
   cp "$SDK/src/hosts/go/$adapter.go.in" "$DEST/$adapter.go"
   GOTOOLCHAIN=go1.25.14 gofmt -w "$DEST/$adapter.go"
 done

@@ -43,7 +43,7 @@ GOROOT="$(GOTOOLCHAIN=go1.25.14 go env GOROOT)" GOALCHEMY_BIN=../goalchemy/out/f
 
 The helpers explicitly select Goalchemy's native pause model for Go,
 TypeScript, Python, Java, C#, Rust and Swift. C keeps the frames model.
-The pinned compiler release is v0.7.1; CI rebuilds packages and exercises the
+The pinned compiler release is v0.7.2; CI rebuilds packages and exercises the
 existing offline and focused real-KAS jobs for this update. Historical
 acceptance and benchmark results below describe their original compiler builds.
 

@@ -8,7 +8,7 @@ experimental, like the rest of this POC, and its API may change.
 
 Use adjacent `sdk`, `goalchemy`, `platform` and `web-sdk` checkouts. The
 Goalchemy revision for all eight targets is pinned in
-[references.lock.json](../references.lock.json): v0.7.1. The build helper
+[references.lock.json](../references.lock.json): v0.7.2. The build helper
 selects `--pause-model=native`, so suspending source functions emit Swift
 `async throws` functions driven by Goalchemy's scheduler.
 

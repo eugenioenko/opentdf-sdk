@@ -1,12 +1,13 @@
 # OpenTDF SDK implementation plan
 
-## Goalchemy 0.7.1 native pausing adoption
+## Goalchemy 0.7.2 native pausing adoption
 
 Pin the SDK module, nested test modules, reference lock and both CI compiler
-checkouts to released Goalchemy v0.7.1 at
-`fb8b304ad22bd44e3b6a1c30897212d481f2b606`. Use `--pause-model=native`
+checkouts to released Goalchemy v0.7.2 at
+`cfc163ee5e9fa86dce7327864253074973ef9205`. Use `--pause-model=native`
 for Go, TypeScript, Python, Java, C#, Rust and Swift; keep C on frames.
-Apply the same mode to the Rust acceptance fixture generators. Preserve native
+Apply the same mode to the Rust acceptance fixture generators. Pass the Go
+host adapter files with `--go-host` so source names avoid their declarations. Preserve native
 public APIs, reference SDK pins and historical benchmark results.
 
 The user requested no local tests or builds for this update. Open a PR and
