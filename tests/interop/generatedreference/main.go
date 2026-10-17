@@ -32,7 +32,11 @@ func main() {
 		input, err := os.ReadFile(filepath.Join(run, name+".input"))
 		check(err)
 		key := reference.KASInfo{URL: kas, Algorithm: algorithm}
-		options := []reference.TDFOption{reference.WithAutoconfigure(false), reference.WithKasInformation(key), reference.WithWrappingKeyAlg(ocrypto.KeyType(algorithm)), reference.WithSegmentSize(16384), reference.WithDataAttributes("https://example.com/attr/attr1/value/value1")}
+		keys := []reference.KASInfo{key}
+		if name == "split" || strings.HasSuffix(name, "-split") {
+			keys = append(keys, key)
+		}
+		options := []reference.TDFOption{reference.WithAutoconfigure(false), reference.WithKasInformation(keys...), reference.WithWrappingKeyAlg(ocrypto.KeyType(algorithm)), reference.WithSegmentSize(16384), reference.WithDataAttributes("https://example.com/attr/attr1/value/value1")}
 		if (name == "metadata" || strings.HasSuffix(name, "-metadata")) && name != "empty-metadata" && !strings.HasSuffix(name, "-empty-metadata") {
 			options = append(options, reference.WithMetaData(`{"source":"independent metadata","count":7}`))
 		}

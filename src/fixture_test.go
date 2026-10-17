@@ -44,6 +44,10 @@ type fakePlatform struct {
 	server         *httptest.Server
 	kasRSA         *rsa.PrivateKey
 	kasEC          *ecdsa.PrivateKey
+	extendedKeys   sync.Once
+	kasRSA4096     *rsa.PrivateKey
+	kasEC384       *ecdsa.PrivateKey
+	kasEC521       *ecdsa.PrivateKey
 	mode           atomic.Value
 	tokenType      atomic.Value
 	baseKey        atomic.Value
@@ -81,6 +85,65 @@ func newFakePlatform(t *testing.T) *fakePlatform {
 	f.server = httptest.NewServer(http.HandlerFunc(f.handle))
 	t.Cleanup(f.server.Close)
 	return f
+}
+
+// fakeKASKeys are the KAS keys by kid, with their KeyType and the policy
+// service's algorithm name.
+var fakeKASKeys = []struct{ kid, keyType, policyAlg string }{
+	{"r1", "rsa:2048", "ALGORITHM_RSA_2048"},
+	{"r2", "rsa:4096", "ALGORITHM_RSA_4096"},
+	{"e1", "ec:secp256r1", "ALGORITHM_EC_P256"},
+	{"e2", "ec:secp384r1", "ALGORITHM_EC_P384"},
+	{"e3", "ec:secp521r1", "ALGORITHM_EC_P521"},
+}
+
+// kasKey returns the KAS private key for kid, generating the RSA-4096,
+// P-384 and P-521 keys on first use.
+func (f *fakePlatform) kasKey(kid string) any {
+	if kid == "r2" || kid == "e2" || kid == "e3" {
+		f.extendedKeys.Do(func() {
+			var err error
+			if f.kasRSA4096, err = rsa.GenerateKey(rand.Reader, 4096); err != nil {
+				f.t.Fatal(err)
+			}
+			if f.kasEC384, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader); err != nil {
+				f.t.Fatal(err)
+			}
+			if f.kasEC521, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader); err != nil {
+				f.t.Fatal(err)
+			}
+		})
+	}
+	switch kid {
+	case "r2":
+		return f.kasRSA4096
+	case "e1":
+		return f.kasEC
+	case "e2":
+		return f.kasEC384
+	case "e3":
+		return f.kasEC521
+	}
+	return f.kasRSA
+}
+
+func (f *fakePlatform) kasPublicPEM(kid string) string {
+	switch k := f.kasKey(kid).(type) {
+	case *rsa.PrivateKey:
+		return publicPEM(f.t, &k.PublicKey)
+	case *ecdsa.PrivateKey:
+		return publicPEM(f.t, &k.PublicKey)
+	}
+	return ""
+}
+
+func fakeKID(keyType string) string {
+	for _, k := range fakeKASKeys {
+		if k.keyType == keyType {
+			return k.kid
+		}
+	}
+	return "r1"
 }
 
 func (f *fakePlatform) issuer() string { return f.server.URL + "/auth/realms/opentdf" }
@@ -233,11 +296,8 @@ func (f *fakePlatform) handle(w http.ResponseWriter, r *http.Request) {
 			V         string `json:"v"`
 		}
 		json.Unmarshal(body, &req)
-		if req.Algorithm == "ec:secp256r1" {
-			writeJSON(w, 200, map[string]any{"publicKey": publicPEM(f.t, &f.kasEC.PublicKey), "kid": "e1"})
-			return
-		}
-		writeJSON(w, 200, map[string]any{"publicKey": publicPEM(f.t, &f.kasRSA.PublicKey), "kid": "r1"})
+		kid := fakeKID(req.Algorithm)
+		writeJSON(w, 200, map[string]any{"publicKey": f.kasPublicPEM(kid), "kid": kid})
 	case strings.HasSuffix(r.URL.Path, "/kas.AccessService/Rewrap"):
 		f.rewrapCalls.Add(1)
 		f.mu.Lock()
@@ -364,6 +424,7 @@ func (f *fakePlatform) proofClaims(proof string) string {
 type fakeKAO struct {
 	Type               string `json:"type"`
 	URL                string `json:"url"`
+	KID                string `json:"kid"`
 	WrappedKey         string `json:"wrappedKey"`
 	EphemeralPublicKey string `json:"ephemeralPublicKey"`
 	PolicyBinding      struct {
@@ -418,9 +479,8 @@ func (f *fakePlatform) rewrap(w http.ResponseWriter, body []byte, mode string) {
 	var sessionPublicKey string
 	var ephemeral *ecdsa.PrivateKey
 	if ecPub, ok := clientPub.(*ecdsa.PublicKey); ok {
-		ephemeral, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		ephemeral, _ = ecdsa.GenerateKey(ecPub.Curve, rand.Reader)
 		sessionPublicKey = publicPEM(f.t, &ephemeral.PublicKey)
-		_ = ecPub
 	}
 	for _, pr := range unsigned.Requests {
 		results := []any{}
@@ -435,7 +495,8 @@ func (f *fakePlatform) rewrap(w http.ResponseWriter, body []byte, mode string) {
 			} else {
 				err = errors.New("rpc error: code = InvalidArgument desc = bad request")
 			}
-			if err == nil && mode == "deny" {
+			// "deny:<kas url>" denies only the KAOs of that KAS.
+			if err == nil && (mode == "deny" || mode == "deny:"+kao.KeyAccessObject.URL) {
 				err = errors.New("rpc error: code = PermissionDenied desc = forbidden")
 			}
 			if err == nil && mode == "misconfigured" {
@@ -485,7 +546,11 @@ func (f *fakePlatform) unwrap(kao fakeKAO) ([]byte, error) {
 	}
 	switch kao.Type {
 	case "wrapped":
-		return rsa.DecryptOAEP(sha1.New(), rand.Reader, f.kasRSA, wrapped, nil)
+		key, ok := f.kasKey(kao.KID).(*rsa.PrivateKey)
+		if !ok {
+			return nil, errors.New("not rsa")
+		}
+		return rsa.DecryptOAEP(sha1.New(), rand.Reader, key, wrapped, nil)
 	case "ec-wrapped":
 		pub, err := parsePublicPEM(kao.EphemeralPublicKey)
 		if err != nil {
@@ -495,7 +560,14 @@ func (f *fakePlatform) unwrap(kao fakeKAO) ([]byte, error) {
 		if !ok {
 			return nil, errors.New("not ec")
 		}
-		secret, err := ecdhSecret(f.kasEC, ecPub)
+		kid := "e1"
+		switch ecPub.Curve {
+		case elliptic.P384():
+			kid = "e2"
+		case elliptic.P521():
+			kid = "e3"
+		}
+		secret, err := ecdhSecret(f.kasKey(kid).(*ecdsa.PrivateKey), ecPub)
 		if err != nil {
 			return nil, err
 		}

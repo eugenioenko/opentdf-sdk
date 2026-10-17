@@ -201,8 +201,10 @@ static class Entry
      var options=TdfOptionsOf(raw);
      if((name=="metadata"||name.EndsWith("-metadata"))&&name!="empty-metadata"&&!name.EndsWith("-empty-metadata"))options=options with{Metadata="{\"source\":\"independent metadata\",\"count\":7}"};
      if(name=="denied"||name.EndsWith("-denied"))options=options with{Attributes=new[]{"https://example.com/attr/attr1/value/value2"}};
+     var split=name=="split"||name.EndsWith("-split");
+     if(split)options=options with{KasInformation=new[]{KasInformation(raw),KasInformation(raw)}};
      await using var obj=await sdk.CreateTdfAsync(Read(name+".input"),options);
-     Check(await obj.SizeAsync()==obj.Bytes.Length&&KeyAccess(await obj.ManifestAsync()).Count==1,"object");
+     Check(await obj.SizeAsync()==obj.Bytes.Length&&KeyAccess(await obj.ManifestAsync()).Count==(split?2:1),"object");
      Write(name+".generated.tdf",obj.Bytes);
      break;
     }

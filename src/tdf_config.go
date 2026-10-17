@@ -213,11 +213,12 @@ func newTDFConfig(opts TDFOptions) (*TDFConfig, error) {
 	if opts.InputSize > 0 {
 		c.inputSize = opts.InputSize
 	}
-	switch opts.WrappingKeyAlgorithm {
-	case "", RSA2048Key, EC256Key:
-		c.preferredKeyWrapAlg = opts.WrappingKeyAlgorithm
-	case RSA4096Key, EC384Key, EC521Key:
-		return nil, unsupported("CreateTDF", "WrappingKeyAlgorithm "+string(opts.WrappingKeyAlgorithm))
+	wrapAlg := opts.WrappingKeyAlgorithm
+	switch {
+	case wrapAlg == "" || IsRSAKeyType(wrapAlg) || IsECKeyType(wrapAlg):
+		c.preferredKeyWrapAlg = wrapAlg
+	case isPQKeyType(wrapAlg):
+		return nil, notPlannedPQ("CreateTDF", "WrappingKeyAlgorithm "+string(wrapAlg))
 	default:
 		return nil, fmt.Errorf("unsupported key type: %s", string(opts.WrappingKeyAlgorithm))
 	}
@@ -362,18 +363,19 @@ func newTDFReaderConfig(sessionKey *crypto.Key, opts ReaderOptions) (*TDFReaderC
 	}
 	c.ignoreAllowList = opts.IgnoreAllowlist
 	c.fulfillableObligationFQNs = append([]string(nil), opts.FulfillableObligationFQNs...)
-	switch opts.SessionKeyType {
-	case "":
-	case RSA2048Key, EC256Key:
-		key, err := newKeyPair(opts.SessionKeyType)
+	sessionAlg := opts.SessionKeyType
+	switch {
+	case sessionAlg == "":
+	case IsRSAKeyType(sessionAlg) || IsECKeyType(sessionAlg):
+		key, err := newKeyPair(sessionAlg)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create %v key pair: %w", string(opts.SessionKeyType), err)
+			return nil, fmt.Errorf("failed to create %v key pair: %w", string(sessionAlg), err)
 		}
 		c.kasSessionKey = key
-		c.kasSessionKeyType = opts.SessionKeyType
+		c.kasSessionKeyType = sessionAlg
 		c.ownsSessionKey = true
-	case RSA4096Key, EC384Key, EC521Key:
-		return nil, unsupported("LoadTDF", "SessionKeyType "+string(opts.SessionKeyType))
+	case isPQKeyType(sessionAlg):
+		return nil, notPlannedPQ("LoadTDF", "SessionKeyType "+string(sessionAlg))
 	default:
 		return nil, fmt.Errorf("failed to create %v key pair: unsupported key type", string(opts.SessionKeyType))
 	}

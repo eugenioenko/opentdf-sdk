@@ -128,8 +128,33 @@ def run(target, profile, packages_base, output_base):
                     presence = metadata_presence(archive)
                     assert (output/(label+'.presence')).read_text().strip() == str(presence).lower()
                     rows.append({'producer':source+('-format-under-bearer' if profile == 'dpop' and source != 'generated' else ''),'consumer':target,'case':case,'wrap':wrap,'session':session,'auth':auth,'has_metadata':presence,'invocation':event['sequence']})
+    multikao = None
     if profile == 'basic':
         native('repeat', 'ownership')
+        # Multi-KAO: two key access objects on one KAS, one split each, rebuilt
+        # by XOR from one rewrap request; a duplicate KAO is tolerated.
+        split_payload = b'multi-KAO split payload'
+        (output/'split.input').write_bytes(split_payload)
+        native('encrypt', 'split')
+        invoke('stock-go-encrypt-split', [reference, output, 'encrypt', 'split', 'rsa:2048'])
+        with zipfile.ZipFile(output/'split.generated.tdf') as archive:
+            entries = {n: archive.read(n) for n in archive.namelist()}
+        manifest = json.loads(entries['0.manifest.json'])
+        kaos = manifest['encryptionInformation']['keyAccess']
+        assert len(kaos) == 2 and kaos[0]['url'] == kaos[1]['url'] and [k['sid'] for k in kaos] == ['s-0', 's-1'], kaos
+        kaos.append(dict(kaos[0]))
+        entries['0.manifest.json'] = json.dumps(manifest).encode()
+        with zipfile.ZipFile(output/'split-duplicate.generated.tdf', 'w', zipfile.ZIP_STORED) as archive:
+            for n, data in entries.items():
+                archive.writestr(n, data)
+        shutil.copyfile(output/'split.go.tdf', output/'split-go.tdf')
+        for label in ('split.generated', 'split-duplicate.generated', 'split-go'):
+            native('decrypt', label)
+            assert (output/(label+'.out')).read_bytes() == split_payload, label
+        for label in ('split', 'split-duplicate'):
+            invoke('stock-go-decrypt-'+label, [reference, output, 'decrypt', label, 'rsa:2048'])
+            assert (output/(label+'.stock-go.out')).read_bytes() == split_payload, label
+        multikao = {'generated_kaos': 2, 'duplicate_kaos': 3, 'readers': ['target', 'stock-go'], 'writers': ['target', 'stock-go']}
         (output/'malformed.tdf').write_bytes(b'bad archive')
         native('negative', 'malformed')
         malformed = json.loads((output/'malformed.error.json').read_text())
@@ -161,7 +186,7 @@ def run(target, profile, packages_base, output_base):
         for path in ('looked_up', 'offline'):
             assert auto[path]['kaos'] == 1 and auto[path]['kas'].startswith('http') and auto[path]['sid'] == '', auto
     receipt = {'target':target,'profile':profile,'scope':'actual focused final installed native package execution; historical full matrices remain separately attributed',
-               'pairs':rows,'services':services,'payload_sha256':digest(payload),'metadata_sha256':digest(b''),'status':0,
+               'pairs':rows,'services':services,'multikao':multikao,'payload_sha256':digest(payload),'metadata_sha256':digest(b''),'status':0,
                'consumer_receipt_sha256':digest(consumer_receipt.read_bytes()),
                'package_receipt_sha256':digest((packages_base/'packages'/target/'receipt.json').read_bytes()),
                'known_stock_web_dpop_limits':'historical accepted four nonce401 cases; no successful stock-Web enforced-auth pair claimed' if profile == 'dpop' else None}

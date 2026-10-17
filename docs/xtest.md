@@ -85,4 +85,17 @@ and input) by the Phase 1 round trips, `kasallowlist` and
 adds `autoconfigure`, `ns_grants` and `key_management` (the `test_abac.py`
 autoconfigure, key mapping and base key cells) and `ecwrap`
 (`test_tdf_roundtrip[ztdf-ecwrap]` and the EC key mapping cells), each
-passing with gcgo as encrypt and as decrypt SDK against go and js.
+passing with gcgo as encrypt and as decrypt SDK against go and js. Phase 4
+part 2 adds `multikao` (`test_tdf_with_duplicate_kao_same_kas`) and
+`mechanism-rsa-4096` (`test_key_mapping_extended_rsa_mechanisms`), passing
+for every type it ran as encrypt and as decrypt SDK. The pinned harness
+reports the platform as 0.9.0 (`PLATFORM_VERSION` unset), so the
+`mechanism-ec-curves-384-521` and `attribute_traversal` cells skip on the
+platform gate before any SDK runs; those two features stay unadvertised until
+a selection runs them.
+
+Known failures that are not the generated SDKs': `js@v0.20.0` as the decrypt
+SDK of `test_tdf_with_duplicate_kao_same_kas` fails with `Unable to decrypt:
+Multiple keys detected for Key Access Server` for every writer, the
+reference `go` included (its `cli.sh` answers `multikao` from the version,
+but that web-sdk release still rejects a repeated KAS within a split).

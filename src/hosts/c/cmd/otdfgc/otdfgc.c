@@ -18,10 +18,10 @@ enum { EXIT_OK = 0, EXIT_FAILED = 1, EXIT_USAGE = 2 };
 static const char *usage =
     "Usage:\n"
     "  otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>\n"
-    "      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]\n"
+    "      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]\n"
     "      [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]\n"
     "  otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>\n"
-    "      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]\n"
+    "      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]\n"
     "      [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]\n"
     "  otdfgc inspect <in>\n"
     "  otdfgc supports <feature>\n"
@@ -35,7 +35,7 @@ static const flag_spec decrypt_flags[] = {{"with-assertion-verification-keys", f
 /* Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones. */
 typedef struct { const char *name; const char *const *allowed; } rule;
 static const char *const dpop_algorithms[] = {"ES256", "ES384", "ES512", "RS256", "RS384", "RS512", NULL};
-static const char *const target_modes[] = {"4.3.0", NULL}, *const policy_modes[] = {"encrypted", NULL}, *const key_types[] = {"rsa:2048", "ec:secp256r1", NULL};
+static const char *const target_modes[] = {"4.3.0", NULL}, *const policy_modes[] = {"encrypted", NULL}, *const key_types[] = {"rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1", NULL};
 static const rule encrypt_unsupported[] = {{"with-assertions", NULL}, {"ecdsa-binding", NULL}, {"target-mode", target_modes}, {"policy-mode", policy_modes}, {"wrapping-key-algorithm", key_types}, {"dpop", dpop_algorithms}, {"with-client-creds-file", NULL}, {NULL, NULL}};
 static const rule decrypt_unsupported[] = {{"with-assertion-verification-keys", NULL}, {"session-key-algorithm", key_types}, {"dpop", dpop_algorithms}, {"with-client-creds-file", NULL}, {NULL, NULL}};
 

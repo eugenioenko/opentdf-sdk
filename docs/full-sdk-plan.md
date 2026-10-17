@@ -36,7 +36,7 @@ when its verification items passed and its PRs are on `main`.
 | 1 xtest harness and Go CLI | done | #20, opentdf-sdk-tests #9 | `gcgo` passes roundtrip and manifest validity against go and js (12/12 cells) |
 | 2 Handle API and platform discovery | done | #22, #24, opentdf-sdk-tests #10, #11 | Handle API on all eight targets. xtest: `gcgo`/`gcts`/`gcpy` 120/120 roundtrip, tamper and policy-type cells; `gcjava`/`gccs`/`gcrs`/`gcc`/`gcswift` 42/42 roundtrip and manifest, `gcjava`/`gccs`/`gcrs`/`gcc` 250/250 tamper and policy types. Swift CI times out on the hosted runner (not required) |
 | 3 Generated platform service clients | done | #30, #31, #32 | Messages cross the Goalchemy boundary as protobuf JSON: the shared source types only what it reads (`include=`) and exposes `SDK.Call`; each host types the 16 `sdkconnect` services with its own protobuf messages (C: JSON text). Part 1: shared source, generated KAS client, Go, TypeScript, Python. Part 2: Java, C#, Rust, Swift, C. Part 3: `ListAttributes`, `GetEntityAttributes`, `ValidateAttributes`, `AttributeExists`, `AttributeValueExists`, `SDK.Auth`, `SDK.Conn` and per-service `WithCustom*Connection` endpoints on every target. Focused real-KAS `services` runs pass for go, typescript, java, csharp, python, rust and c; the Swift adapter is not CI-verified (the Swift job times out on the hosted runner) |
-| 4 Autoconfigure, key splitting, key management | in progress | #33 | Part 1 (writer): `granter.go`, `key_splitter.go`, `resource_locator.go` ported; autoconfigure and multi-KAO manifests; `WithDataAttributeValues` and the FQN constructors on all eight targets; split plans identical to the reference's for the xtest fixtures and random policies (`tests/splitplan`). Part 2: reader and extended mechanisms |
+| 4 Autoconfigure, key splitting, key management | done | #33, #34 | Part 1 (writer): `granter.go`, `key_splitter.go`, `resource_locator.go` ported; autoconfigure and multi-KAO manifests; `WithDataAttributeValues` and the FQN constructors on all eight targets; split plans identical to the reference's (`tests/splitplan`). Part 2 (reader): split reconstruction, alternatives and duplicate KAOs, post-quantum KAOs rejected per split; RSA-4096, P-384, P-521 wrapping and sessions on every target; `multikao` and `mechanism-rsa-4096` advertised. xtest with go and js, `test_abac.py`, `test_policytypes.py`, round trips (ztdf, ztdf-ecwrap), manifest and duplicate-KAO cells: gcgo, gcts, gcpy, gcjava, gccs, gcrs, gcc 115 pass each; the one failure per type is gc → js@v0.20.0 duplicate KAO, which the reference go → js fails too (js reader); `mechanism-ec-curves-384-521`, `attribute_traversal`, `kas_uri_from_kao` and obligations cells skip on the harness's platform 0.9.0 default, so the first two stay unadvertised; gcswift not run locally. `experimental/tdf/keysplit` moves to Phase 10 |
 | 5 Assertions | pending | | |
 | 6 Target modes, legacy readers, hardening | pending | | |
 | 7 Streaming and large payloads | pending | | |
@@ -196,7 +196,8 @@ otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
     [--ecdsa-binding] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
 otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
     [--with-assertion-verification-keys <file>] [--no-verify-assertions]
-    [--session-key-algorithm rsa:2048|ec:secp256r1] [--kas-allowlist <url,...|*>]
+    [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+    [--kas-allowlist <url,...|*>]
     [--dpop ...] [--dpop-key ...] [--tls-no-verify]
 otdfgc inspect <in>                  # prints the manifest as JSON
 otdfgc supports <feature>            # exit 0 if SupportedFeatures() lists it
@@ -475,7 +476,8 @@ value, key mappings), `KeySplitter`, `DefaultKeySplitter`, `Split`,
 `WithWrappingKeyAlg` for RSA-4096, P-384, P-521, `ResourceLocator` and its
 methods, `KeyTypeToPolicyAlgorithm`, `PolicyAlgorithmToKeyType`,
 `Reader.buildKey` semantics (XOR reconstruction, OR alternatives, duplicate
-KAO tolerance), `experimental/tdf/keysplit`.
+KAO tolerance). `experimental/tdf/keysplit` moved to Phase 10 with
+`experimental/tdf`, its only importer.
 
 Tasks (two PRs: writer side; reader side and extended mechanisms):
 1. Port `granter.go` and `key_splitter.go` file by file; the split plan and
@@ -667,7 +669,8 @@ Tasks:
 1. Port the chunked writer: out-of-order segment encryption, manifest
    finalisation with a segment subset, parallel segment calls serialized by
    the instance lock (document the serialization).
-2. Port `experimental/tdf` as a separate importable package per target.
+2. Port `experimental/tdf` and `experimental/tdf/keysplit` as separate
+   importable packages per target.
 3. Close every remaining matrix row; for each `not planned` row add the
    reason and the error the SDK produces.
 4. Port the reference's root-package unit tests that test public behaviour

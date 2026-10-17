@@ -349,8 +349,12 @@ fn main() {
                     if name == "denied" || name.ends_with("-denied") {
                         options.attributes = vec!["https://example.com/attr/attr1/value/value2".into()];
                     }
+                    let split = name == "split" || name.ends_with("-split");
+                    if split {
+                        options.kas_information = vec![kas_information(&cfg), kas_information(&cfg)];
+                    }
                     let object = sdk.create_tdf(&fs::read(run.join(format!("{name}.input"))).unwrap(), &options)?;
-                    check(object.size()? == object.bytes.len() as i64 && object.manifest()?.encryption_information.key_access.len() == 1, "object");
+                    check(object.size()? == object.bytes.len() as i64 && object.manifest()?.encryption_information.key_access.len() == if split { 2 } else { 1 }, "object");
                     object.close()?;
                     fs::write(run.join(format!("{name}.generated.tdf")), &object.bytes).unwrap();
                 }

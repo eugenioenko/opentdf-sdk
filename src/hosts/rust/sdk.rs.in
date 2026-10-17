@@ -376,7 +376,7 @@ pub struct TdfOptions {
     pub attribute_values: Vec<crate::protocol::policy::Value>,
     pub disable_autoconfigure: bool,
     pub kas_information: Vec<KasInfo>,
-    /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
+    /// WithWrappingKeyAlg: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
     pub wrapping_key_algorithm: String,
     pub segment_size: i64,
     pub input_size: i64,
@@ -438,7 +438,7 @@ pub struct ReaderOptions {
     pub ignore_allowlist: bool,
     pub max_manifest_size: i64,
     pub schema_validation: i64,
-    /// WithSessionKeyType: rsa:2048 (default) or ec:secp256r1.
+    /// WithSessionKeyType: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
     pub session_key_type: String,
     pub fulfillable_obligation_fqns: Vec<String>,
 }

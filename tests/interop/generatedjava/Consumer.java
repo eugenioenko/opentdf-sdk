@@ -234,8 +234,10 @@ public final class Consumer {
       TDFOptions.Builder options=tdfOptions(raw);
       if((name.equals("metadata")||name.endsWith("-metadata"))&&!name.equals("empty-metadata")&&!name.endsWith("-empty-metadata"))options.metadata("{\"source\":\"independent metadata\",\"count\":7}");
       if(name.equals("denied")||name.endsWith("-denied"))options.attributes("https://example.com/attr/attr1/value/value2");
+      boolean split=name.equals("split")||name.endsWith("-split");
+      if(split)options.kasInformation(kasInformation(raw),kasInformation(raw));
       try(TDFObject object=sdk.createTDF(read(name+".input"),options.build())){
-       check(object.size()==object.bytes().length&&((List<Object>)((Map<String,Object>)object.manifest().get("encryptionInformation")).get("keyAccess")).size()==1,"object");
+       check(object.size()==object.bytes().length&&((List<Object>)((Map<String,Object>)object.manifest().get("encryptionInformation")).get("keyAccess")).size()==(split?2:1),"object");
        write(name+".generated.tdf",object.bytes());
       }
      }

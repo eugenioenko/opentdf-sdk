@@ -21,10 +21,10 @@ static class Program
     static readonly TimeSpan Timeout = TimeSpan.FromSeconds(120);
     const string Usage = @"Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]
+      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]
+      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -36,8 +36,8 @@ static class Program
     static readonly Dictionary<string,bool> DecryptFlags=Merge(Common,new(){["with-assertion-verification-keys"]=false,["no-verify-assertions"]=true,["session-key-algorithm"]=false,["kas-allowlist"]=false});
     static readonly string[] DpopAlgorithms={"ES256","ES384","ES512","RS256","RS384","RS512"};
     // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
-    static readonly (string,string[])[] EncryptUnsupported={("with-assertions",null),("ecdsa-binding",null),("target-mode",new[]{"4.3.0"}),("policy-mode",new[]{"encrypted"}),("wrapping-key-algorithm",new[]{"rsa:2048","ec:secp256r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
-    static readonly (string,string[])[] DecryptUnsupported={("with-assertion-verification-keys",null),("session-key-algorithm",new[]{"rsa:2048","ec:secp256r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
+    static readonly (string,string[])[] EncryptUnsupported={("with-assertions",null),("ecdsa-binding",null),("target-mode",new[]{"4.3.0"}),("policy-mode",new[]{"encrypted"}),("wrapping-key-algorithm",new[]{"rsa:2048","ec:secp256r1","rsa:4096","ec:secp384r1","ec:secp521r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
+    static readonly (string,string[])[] DecryptUnsupported={("with-assertion-verification-keys",null),("session-key-algorithm",new[]{"rsa:2048","ec:secp256r1","rsa:4096","ec:secp384r1","ec:secp521r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
     static Dictionary<string,bool> Merge(Dictionary<string,bool> a,Dictionary<string,bool> b){var m=new Dictionary<string,bool>(a);foreach(var e in b)m[e.Key]=e.Value;return m;}
 
     sealed class Parsed

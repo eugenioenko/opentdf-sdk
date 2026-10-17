@@ -234,9 +234,10 @@ int main(int argc,char **argv){assert(argc==5);GC_INIT();GC_allow_register_threa
   otdf_kas_info kas;otdf_tdf_options options=tdf_options(cfg,&kas);const char *denied="https://example.com/attr/attr1/value/value2";
   if(strstr(name,"metadata")&&!strstr(name,"empty-metadata"))options.metadata="{\"source\":\"independent metadata\",\"count\":7}";
   if(strstr(name,"denied")){options.attributes=&denied;}
+  otdf_kas_info split[2];bool is_split=strstr(name,"split")!=NULL;if(is_split){split[0]=kas;split[1]=kas;options.kas_information=split;options.kas_information_count=2;}
   snprintf(path,sizeof path,"%s/%s.input",run,name);uint8_t *input=readfile(path,&n);assert(input);
   otdf_owned_bytes tdf={0};otdf_tdf_object *object=NULL;if(otdf_create_tdf(sdk,(otdf_bytes){input,n},&options,NULL,&tdf,&object,&e))fail("encrypt",&e);
-  int64_t size=0;char *manifest=NULL;if(otdf_tdf_object_size(object,NULL,&size,&e)||otdf_tdf_object_manifest_json(object,NULL,&manifest,&e))fail("object",&e);check(size==(int64_t)tdf.length&&strstr(manifest,"\"keyAccess\":[{")!=NULL,"object");free(manifest);otdf_tdf_object_close(object,NULL);otdf_tdf_object_free(object);
+  int64_t size=0;char *manifest=NULL;if(otdf_tdf_object_size(object,NULL,&size,&e)||otdf_tdf_object_manifest_json(object,NULL,&manifest,&e))fail("object",&e);check(size==(int64_t)tdf.length&&strstr(manifest,"\"keyAccess\":[{")!=NULL&&(strstr(manifest,"\"sid\":\"s-1\"")!=NULL)==is_split,"object");free(manifest);otdf_tdf_object_close(object,NULL);otdf_tdf_object_free(object);
   snprintf(path,sizeof path,"%s/%s.generated.tdf",run,name);writefile(path,tdf.data,tdf.length);otdf_bytes_free(&tdf);free(input);
  }else if(!strcmp(mode,"decrypt")){
   snprintf(path,sizeof path,"%s/%s.tdf",run,name);uint8_t *input=readfile(path,&n);assert(input);

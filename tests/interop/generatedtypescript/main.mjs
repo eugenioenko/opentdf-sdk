@@ -61,9 +61,11 @@ try{
    const extra={};
    if((name==='metadata'||name.endsWith('-metadata'))&&name!=='empty-metadata'&&!name.endsWith('-empty-metadata'))extra.metadata='{"source":"independent metadata","count":7}';
    if(name==='denied'||name.endsWith('-denied'))extra.attributes=['https://example.com/attr/attr1/value/value2'];
+   const split=name==='split'||name.endsWith('-split');
+   if(split)extra.kasInformation=[kasInformation(cfg),kasInformation(cfg)];
    const object=await sdk.createTdf(new Uint8Array(await read(name+'.input')),tdfOptions(cfg,extra));
    const manifest=await object.manifest();
-   assert((await object.size())===object.bytes.length&&manifest.encryptionInformation.keyAccess.length===1,'object');
+   assert((await object.size())===object.bytes.length&&manifest.encryptionInformation.keyAccess.length===(split?2:1),'object');
    await object.close();
    await write(name+'.generated.tdf',object.bytes);
   }else if(mode==='decrypt'){

@@ -179,10 +179,29 @@ cause carries its own (a service error keeps its Connect code).
 | `invalid alg [<alg>]: unrecognized key type: <alg>` (base key) | `sdk/basekey.go:23`, `lib/ocrypto/key_type.go:32` | `base_key_invalid` |
 | `chunked: ...` (`SplitResult.Validate`, `VerifyReconstruction`), `chunked: default splitter requires a default KAS; ...` (`ErrSplitterRequiresDefaultKAS`), `chunked: unsupported KAS key algorithm: kas <url>: ...` (`ErrSplitterUnsupportedAlgorithm`) | `sdk/key_splitter.go` | returned as is (shared source only) |
 | `Attributes and AttributeValues are exclusive: AttributeValues replaces the attributes` | none (struct options) | `invalid_input` |
-| `unsupported in this build: wrapping key algorithm <post-quantum type>` | none (not planned) | `unsupported_feature` |
+| `unsupported in this build: wrapping key algorithm <post-quantum type>: post-quantum mechanisms are not planned` (the reason since part 2) | none (not planned) | `unsupported_feature` |
 
 The base key's unknown algorithm now reads `unrecognized key type` (ocrypto's
 `ParseKeyType`) instead of the earlier `unsupported key type`.
+
+## Split reconstruction and key types (Phase 4 part 2)
+
+The reader's split errors, as `test_policytypes.py` greps them
+(`forbidden|unable to reconstruct split key`): one line for the skipped
+splits, then each failed KAO's error, joined with newlines. A KAS's per-KAO
+error is the `error` string of its rewrap result, without a Connect prefix.
+
+| Message | Reference | Kind |
+| --- | --- | --- |
+| `splitKey.unable to reconstruct split key: map[{<kas> <sid>}:<error> ...]` (splits sorted by KAS, then split id, as `fmt` prints the map) | `sdk/tdf.go:1456` | the first failure's |
+| `kao unwrap failed for split {<kas> <sid>}: <KAS error>`, after `tdf: rewrap request 403`, `tdf: rewrap request 400` or `tdf: KAS request error` when `getKasErrorToReturn` classifies it | `sdk/tdf.go:1416`, `:1778-1798` | `rewrap_forbidden`, `rewrap_bad_request`, `kas_request`, else the cause's |
+| `unsupported key access type: <hybrid-wrapped or mlkem-wrapped>: post-quantum mechanisms are not planned` (the KAO is not sent) | none (not planned) | `unsupported_key_access` |
+| `unsupported in this build: WrappingKeyAlgorithm <post-quantum type>: post-quantum mechanisms are not planned`, `unsupported in this build: SessionKeyType <post-quantum type>: post-quantum mechanisms are not planned` | none (not planned) | `unsupported_feature` |
+| `unsupported key type: <type>` (`WrappingKeyAlgorithm` outside the ocrypto set), `failed to create <type> key pair: unsupported key type` (`SessionKeyType`), after `NewTDFConfig failed: ` / `newTDFReaderConfig failed: ` | `sdk/tdf_config.go:515` | `invalid_input` |
+
+`rsa:4096`, `ec:secp384r1` and `ec:secp521r1` no longer fail as
+`unsupported in this build: WrappingKeyAlgorithm <type>` or `SessionKeyType
+<type>`.
 
 ## Shim and CLI contract strings
 

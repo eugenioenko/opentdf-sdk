@@ -36,10 +36,10 @@ public final class Main {
  static final String USAGE = """
   Usage:
     otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
-        [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]
+        [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
         [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-        [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]
+        [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
         [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc inspect <in>
     otdfgc supports <feature>
@@ -52,8 +52,8 @@ public final class Main {
  static final Map<String, Boolean> DECRYPT_FLAGS = merge(COMMON, Map.of("with-assertion-verification-keys", false, "no-verify-assertions", true, "session-key-algorithm", false, "kas-allowlist", false));
  static final List<String> DPOP_ALGORITHMS = List.of("ES256", "ES384", "ES512", "RS256", "RS384", "RS512");
  // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
- static final List<Map.Entry<String, List<String>>> ENCRYPT_UNSUPPORTED = List.of(rule("with-assertions"), rule("ecdsa-binding"), rule("target-mode", "4.3.0"), rule("policy-mode", "encrypted"), rule("wrapping-key-algorithm", "rsa:2048", "ec:secp256r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
- static final List<Map.Entry<String, List<String>>> DECRYPT_UNSUPPORTED = List.of(rule("with-assertion-verification-keys"), rule("session-key-algorithm", "rsa:2048", "ec:secp256r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
+ static final List<Map.Entry<String, List<String>>> ENCRYPT_UNSUPPORTED = List.of(rule("with-assertions"), rule("ecdsa-binding"), rule("target-mode", "4.3.0"), rule("policy-mode", "encrypted"), rule("wrapping-key-algorithm", "rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
+ static final List<Map.Entry<String, List<String>>> DECRYPT_UNSUPPORTED = List.of(rule("with-assertion-verification-keys"), rule("session-key-algorithm", "rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
 
  static Map<String, Boolean> merge(Map<String, Boolean> a, Map<String, Boolean> b) { Map<String, Boolean> m = new HashMap<>(a); m.putAll(b); return m; }
  static Map.Entry<String, List<String>> rule(String name, String... allowed) { return Map.entry(name, List.of(allowed)); }

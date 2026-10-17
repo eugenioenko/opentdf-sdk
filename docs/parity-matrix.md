@@ -32,6 +32,11 @@ on every target; with them `ErrAttributeNotFound`, `ErrAccessTokenInvalid` and
 the FQN types, `ResourceLocator`, the `KeySplitter` contract types and the
 `WithAutoconfigure`/`WithDataAttributes`/`WithDataAttributeValues` options are `done`;
 `DefaultKeySplitter` moves to phase 10 with the chunked writer that takes it.
+Part 2 completed the reader (split reconstruction, alternatives, duplicate KAOs,
+post-quantum KAOs rejected) and the RSA-4096, P-384 and P-521 mechanisms of
+`WithWrappingKeyAlg` and `WithSessionKeyType`. The `experimental/tdf/keysplit`
+subpackage moves to phase 10 with `experimental/tdf`, the only package that
+imports it; the root writer uses the `granter.go` and `key_splitter.go` ports.
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
@@ -48,13 +53,12 @@ Goalchemy issues opened for the gaps the phases depend on, detailed in
 | --- | --- |
 | `done` | 380 |
 | `phase 1` | 2 |
-| `phase 4` | 44 |
 | `phase 5` | 41 |
 | `phase 6` | 15 |
 | `phase 7` | 7 |
 | `phase 8` | 54 |
 | `phase 9` | 20 |
-| `phase 10` | 105 |
+| `phase 10` | 149 |
 | `not planned` | 1 |
 | total | 669 |
 
@@ -713,65 +717,65 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AttributeClause.String` | method | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): AttributeClause.String | `phase 4` |
-| `BooleanExpression.String` | method | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): BooleanExpression.String | `phase 4` |
+| `AttributeClause.String` | method | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): AttributeClause.String | `phase 10` |
+| `BooleanExpression.String` | method | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): BooleanExpression.String | `phase 10` |
 
 ### `errors.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `ErrEmptyDEK` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrEmptyDEK | `phase 4` |
-| `ErrEncryptionFailed` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrEncryptionFailed | `phase 4` |
-| `ErrInvalidAttributeFQN` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidAttributeFQN | `phase 4` |
-| `ErrInvalidConfig` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidConfig | `phase 4` |
-| `ErrInvalidDEK` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidDEK | `phase 4` |
-| `ErrInvalidKASURL` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidKASURL | `phase 4` |
-| `ErrInvalidPublicKey` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidPublicKey | `phase 4` |
-| `ErrInvalidRule` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidRule | `phase 4` |
-| `ErrInvalidSplitID` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrInvalidSplitID | `phase 4` |
-| `ErrKAOBuild` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrKAOBuild | `phase 4` |
-| `ErrMetadataEncrypt` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrMetadataEncrypt | `phase 4` |
-| `ErrMissingDefinition` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrMissingDefinition | `phase 4` |
-| `ErrMissingGrants` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrMissingGrants | `phase 4` |
-| `ErrMissingKID` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrMissingKID | `phase 4` |
-| `ErrMissingPEM` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrMissingPEM | `phase 4` |
-| `ErrNoAttributes` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrNoAttributes | `phase 4` |
-| `ErrNoDefaultKAS` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrNoDefaultKAS | `phase 4` |
-| `ErrNoKASFound` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrNoKASFound | `phase 4` |
-| `ErrNoSplitsGenerated` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrNoSplitsGenerated | `phase 4` |
-| `ErrPolicyBinding` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrPolicyBinding | `phase 4` |
-| `ErrSplitCountMismatch` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrSplitCountMismatch | `phase 4` |
-| `ErrSplitGeneration` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrSplitGeneration | `phase 4` |
-| `ErrUnsupportedAlg` | var | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ErrUnsupportedAlg | `phase 4` |
+| `ErrEmptyDEK` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrEmptyDEK | `phase 10` |
+| `ErrEncryptionFailed` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrEncryptionFailed | `phase 10` |
+| `ErrInvalidAttributeFQN` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidAttributeFQN | `phase 10` |
+| `ErrInvalidConfig` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidConfig | `phase 10` |
+| `ErrInvalidDEK` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidDEK | `phase 10` |
+| `ErrInvalidKASURL` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidKASURL | `phase 10` |
+| `ErrInvalidPublicKey` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidPublicKey | `phase 10` |
+| `ErrInvalidRule` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidRule | `phase 10` |
+| `ErrInvalidSplitID` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrInvalidSplitID | `phase 10` |
+| `ErrKAOBuild` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrKAOBuild | `phase 10` |
+| `ErrMetadataEncrypt` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrMetadataEncrypt | `phase 10` |
+| `ErrMissingDefinition` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrMissingDefinition | `phase 10` |
+| `ErrMissingGrants` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrMissingGrants | `phase 10` |
+| `ErrMissingKID` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrMissingKID | `phase 10` |
+| `ErrMissingPEM` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrMissingPEM | `phase 10` |
+| `ErrNoAttributes` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrNoAttributes | `phase 10` |
+| `ErrNoDefaultKAS` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrNoDefaultKAS | `phase 10` |
+| `ErrNoKASFound` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrNoKASFound | `phase 10` |
+| `ErrNoSplitsGenerated` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrNoSplitsGenerated | `phase 10` |
+| `ErrPolicyBinding` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrPolicyBinding | `phase 10` |
+| `ErrSplitCountMismatch` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrSplitCountMismatch | `phase 10` |
+| `ErrSplitGeneration` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrSplitGeneration | `phase 10` |
+| `ErrUnsupportedAlg` | var | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ErrUnsupportedAlg | `phase 10` |
 
 ### `types.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AttributeClause` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): AttributeClause | `phase 4` |
-| `AttributeGrant` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): AttributeGrant | `phase 4` |
-| `BooleanExpression` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): BooleanExpression | `phase 4` |
-| `DefinitionLevel` | const | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): DefinitionLevel | `phase 4` |
-| `GrantLevel` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): GrantLevel | `phase 4` |
-| `GrantLevel.String` | method | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): GrantLevel.String | `phase 4` |
-| `KASGrant` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): KASGrant | `phase 4` |
-| `KASPublicKey` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): KASPublicKey | `phase 4` |
-| `NamespaceLevel` | const | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): NamespaceLevel | `phase 4` |
-| `Split` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): Split | `phase 4` |
-| `SplitAssignment` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): SplitAssignment | `phase 4` |
-| `SplitResult` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): SplitResult | `phase 4` |
-| `ValueLevel` | const | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): ValueLevel | `phase 4` |
+| `AttributeClause` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): AttributeClause | `phase 10` |
+| `AttributeGrant` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): AttributeGrant | `phase 10` |
+| `BooleanExpression` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): BooleanExpression | `phase 10` |
+| `DefinitionLevel` | const | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): DefinitionLevel | `phase 10` |
+| `GrantLevel` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): GrantLevel | `phase 10` |
+| `GrantLevel.String` | method | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): GrantLevel.String | `phase 10` |
+| `KASGrant` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): KASGrant | `phase 10` |
+| `KASPublicKey` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): KASPublicKey | `phase 10` |
+| `NamespaceLevel` | const | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): NamespaceLevel | `phase 10` |
+| `Split` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): Split | `phase 10` |
+| `SplitAssignment` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): SplitAssignment | `phase 10` |
+| `SplitResult` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): SplitResult | `phase 10` |
+| `ValueLevel` | const | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): ValueLevel | `phase 10` |
 
 ### `xor_splitter.go`
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewXORSplitter` | func | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): NewXORSplitter | `phase 4` |
-| `Splitter` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): Splitter | `phase 4` |
-| `SplitterOption` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): SplitterOption | `phase 4` |
-| `WithDefaultKAS` | func | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): WithDefaultKAS | `phase 4` |
-| `XORSplitter` | type | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): XORSplitter | `phase 4` |
-| `XORSplitter.GenerateSplits` | method | sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go): XORSplitter.GenerateSplits | `phase 4` |
+| `NewXORSplitter` | func | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): NewXORSplitter | `phase 10` |
+| `Splitter` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): Splitter | `phase 10` |
+| `SplitterOption` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): SplitterOption | `phase 10` |
+| `WithDefaultKAS` | func | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): WithDefaultKAS | `phase 10` |
+| `XORSplitter` | type | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): XORSplitter | `phase 10` |
+| `XORSplitter.GenerateSplits` | method | sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer): XORSplitter.GenerateSplits | `phase 10` |
 
 ## `platform/sdk/httputil`
 

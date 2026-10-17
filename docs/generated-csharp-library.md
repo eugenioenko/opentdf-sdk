@@ -71,8 +71,8 @@ catch (OpenTdfException e) { Console.WriteLine($"{e.Kind} {e.HttpStatus} {e.Mess
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `await Sdk.CreateAsync(endpoint, Options, ct)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `PlatformConfiguration` is given; `ValidateConnection` runs the health check first. |
-| `sdk.CreateTdfAsync(byte[], TdfOptions, ct)` → `TdfObject` (`Bytes`, `ManifestAsync`, `SizeAsync`, `CloseAsync`), `sdk.EncryptBytesAsync` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
-| `sdk.LoadTdfAsync(byte[], ReaderOptions, ct)` → `Reader` (`InitAsync`, `ManifestAsync`, `PolicyAsync`, `DataAttributesAsync`, `UnencryptedMetadataAsync`, `CloseAsync`), `sdk.DecryptBytesAsync` | `LoadTDF`, `Reader`, `DecryptBytes` | The KAS allowlist comes from the registry unless `KasAllowlist` or `IgnoreAllowlist` is set, as in the reference. |
+| `sdk.CreateTdfAsync(byte[], TdfOptions, ct)` → `TdfObject` (`Bytes`, `ManifestAsync`, `SizeAsync`, `CloseAsync`), `sdk.EncryptBytesAsync` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.LoadTdfAsync(byte[], ReaderOptions, ct)` → `Reader` (`InitAsync`, `ManifestAsync`, `PolicyAsync`, `DataAttributesAsync`, `UnencryptedMetadataAsync`, `CloseAsync`), `sdk.DecryptBytesAsync` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `KasAllowlist` or `IgnoreAllowlist` is set, as in the reference. |
 | `sdk.IsHealthyAsync`, `PlatformConfigurationAsync`, `GetBaseKeyAsync`, `StoreKasKeysAsync`, `CloseAsync` | same | `PlatformConfigurationAsync` returns the members as strings (non-string members as compact JSON); `GetBaseKeyAsync` a dictionary keyed `kasUri`, `publicKey{algorithm,kid,pem}`, `kasId`. |
 | `Sdk.IsValidTdfAsync`, `GetTdfTypeAsync`, `IsPlatformEndpointMalformedAsync`, `KeyTypeToPolicyAlgorithmAsync`, `PolicyAlgorithmToKeyTypeAsync`, `VersionAsync`, `TdfSpecVersionAsync`, `SupportedFeaturesAsync` | same | Static methods; each is a library call. |
 
@@ -89,7 +89,7 @@ sizes are `long`, strings UTF-8 `string`s, payloads `byte[]`.
 requests with the reference's ephemeral ES256 key unless `DpopKeyPem` is
 set. Options this build does not implement yet (`TokenExchange`,
 `CertExchange`, `Tls`, `UnixSocket`, service endpoint overrides, assertions,
-target mode `4.2.2`, schema validation, RSA-4096 and P-384/P-521 keys) fail
+target mode `4.2.2`, schema validation, post-quantum key types) fail
 with kind `unsupported_feature` and the message `unsupported in this build:
 <option>`.
 

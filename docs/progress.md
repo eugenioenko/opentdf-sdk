@@ -2463,3 +2463,86 @@ platform from `otdf-local` at `4d9e555b`):
   the `KeySplitter` contract types and the three autoconfigure options are
   `done` (380 of 669); `DefaultKeySplitter` moves to phase 10 and the
   `experimental/tdf/keysplit` rows stay phase 4.
+
+## Full SDK plan, Phase 4 part 2: reader and extended mechanisms
+
+Branch `feat/phase4-part2-reader`, Goalchemy v0.6.6 (no compiler change).
+
+Shared source:
+
+- The reader already followed the reference's `createRewrapRequest`,
+  `buildKey` and `doPayloadKeyUnwrap` (Phase 2): one rewrap request per KAS
+  with all of its KAOs, XOR of one share per split id, satisfied splits
+  skipped (alternatives and duplicate KAOs), and the reference's
+  `splitKey.unable to reconstruct split key` / `kao unwrap failed for split`
+  wording. Part 2 adds the post-quantum rejection: a `hybrid-wrapped` or
+  `mlkem-wrapped` KAO is not sent and fails its split as
+  `unsupported_key_access` (`unsupported key access type: <type>:
+  post-quantum mechanisms are not planned`), so another KAO of the split can
+  still open the TDF.
+- `WrappingKeyAlgorithm` and `SessionKeyType` take `rsa:4096`,
+  `ec:secp384r1` and `ec:secp521r1` (`lib/crypto` keys and ECDH on any
+  curve); post-quantum types fail as `unsupported_feature` with the
+  not-planned reason.
+- Tests: the reference's `Test_KeySplits` (shared, split, mixture, with a
+  denied KAS: alternatives open the TDF, a lone split fails with the
+  reference wording) and `Test_KeySplit_SameKas_SameAlgorithm` with the
+  DSPX-3379 duplicate KAO (one request, three KAOs) are ported over the fake
+  KAS, which now has RSA-4096, P-384 and P-521 keys and answers EC sessions
+  on the client's curve. `Test_SimpleTDF` round-trips every non-PQ wrapping
+  and session type; `Test_Autoconfigure` adds mapped RSA-2048/4096 and
+  P-256/384/521 keys; `Test_PostQuantumKAO` and `TestKeyTypeOptions` cover the
+  rejections. `delivery-offline.sh` runs them (270 named checks).
+- `EncryptBytes` builds its config and calls `encryptBytes`, which tests use
+  as the reference's `withSplitPlan`.
+
+Hosts: every `otdfgc` accepts the five key types for
+`--wrapping-key-algorithm` and `--session-key-algorithm`; the option doc
+comments list them. Each consumer's `encrypt` writes two KAOs on one KAS for
+a `split` case; the focused real-KAS job (basic profile) decrypts it, the
+reference's split TDF and a copy with a duplicated KAO natively, and the
+reference decrypts the generated split and duplicate TDFs.
+
+`SupportedFeatures()` adds `multikao` and `mechanism-rsa-4096`.
+`mechanism-ec-curves-384-521` and `attribute_traversal` stay unadvertised:
+the pinned harness reports the platform as 0.9.0 (`PLATFORM_VERSION` unset),
+so their cells skip on the platform gate before any SDK runs.
+
+Verification (local, throttled `systemd-run -p MemoryMax=6G -p
+CPUQuota=200%`, one type at a time, platform from `otdf-local` at
+`4d9e555b`):
+
+- `go test ./src/...` and `delivery-offline.sh` pass.
+- xtest, `--sdks "go js <type>@p4b" --focus <type>`, cells with the type:
+  `test_abac.py`, `test_policytypes.py`, `test_tdf_roundtrip` (`ztdf`,
+  `ztdf-ecwrap`), `test_manifest_validity`,
+  `test_tdf_with_duplicate_kao_same_kas`, size `small`:
+
+  | Type | Pass | Fail | Skip |
+  | --- | --- | --- | --- |
+  | gcgo | 115 | 1 | 67 |
+  | gcts | 115 | 1 | 67 |
+  | gcpy | 115 | 1 | 67 |
+  | gcjava | 115 | 1 | 67 |
+  | gccs | 115 | 1 | 67 |
+  | gcrs | 115 | 1 | 67 |
+  | gcc | 115 | 1 | 67 |
+  | gcswift | not run | | |
+
+  The failure is gc → `js@v0.20.0` in `test_tdf_with_duplicate_kao_same_kas`:
+  the js reader rejects a repeated KAS within a split (`Multiple keys
+  detected for Key Access Server`), and the reference `go` → `js` cell fails
+  the same way (rerun locally); its `cli.sh` claims `multikao` by version.
+  gcc's run had one fixture setup error (`otdfctl policy attributes create`
+  failed without output) in `test_autoconfigure_one_attribute_standard`; the
+  rerun of that test passed in all five directions. Skips: 40 obligations
+  (platform), 15 `kas_uri_from_kao`, 10 `mechanism-ec-curves-384-521`, 1
+  `attribute_traversal` (all platform-gated) and 1 js → gc RSA-4096 (js lacks
+  it). gcswift was not built: a release Swift build does not fit the 6 GiB
+  limit; its CLI and consumer pass `swiftc -parse`.
+- Consumers compile against the built packages: Go (`go build`), Java
+  (`javac`), C# (`dotnet build`), Rust (`cargo check`), C
+  (`-fsyntax-only -Werror`); Python and JavaScript syntax checks.
+- [parity-matrix.md](parity-matrix.md): no `phase 4` rows remain; the 44
+  `experimental/tdf/keysplit` rows move to phase 10 with `experimental/tdf`
+  ([api-spec.md](api-spec.md), Phase 4 part 2 deviations).

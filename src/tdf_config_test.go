@@ -51,7 +51,7 @@ func TestUnsupportedTDFOptions(t *testing.T) {
 		"TargetMode 4.2.2": {TargetMode: "4.2.2"},
 		"Assertions":       {Assertions: []AssertionConfig{{ID: "1"}}},
 		"SystemMetadata":   {SystemMetadataAssertion: true},
-		"RSA4096":          {WrappingKeyAlgorithm: RSA4096Key},
+		"X-Wing":           {WrappingKeyAlgorithm: hybridXWingKey},
 	} {
 		_, err := newTDFConfig(opts)
 		var e *Error
