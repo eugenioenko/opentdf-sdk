@@ -154,6 +154,12 @@ def run(target, profile, packages_base, output_base):
         assert 'https://example.com/attr/attr1/value/value1' in helpers['entity_attributes'], helpers
         assert helpers['access_token']['present'] is True and helpers['access_token']['scheme'] in ('Bearer', 'DPoP'), helpers
         assert helpers['override'] == {'endpoint': config['PlatformURL'], 'attribute_exists': True}, helpers
+        # Autoconfigure on a value with no grants, looked up and offline: one
+        # key access object, from the base key or the default KAS.
+        auto = services['autoconfigure']
+        assert auto['key'] == (fqn+'/value/1').lower(), auto
+        for path in ('looked_up', 'offline'):
+            assert auto[path]['kaos'] == 1 and auto[path]['kas'].startswith('http') and auto[path]['sid'] == '', auto
     receipt = {'target':target,'profile':profile,'scope':'actual focused final installed native package execution; historical full matrices remain separately attributed',
                'pairs':rows,'services':services,'payload_sha256':digest(payload),'metadata_sha256':digest(b''),'status':0,
                'consumer_receipt_sha256':digest(consumer_receipt.read_bytes()),

@@ -51,8 +51,6 @@ type SDK struct {
 	dpop             *dpopSigner
 	keyFetcher       KASKeyFetcher
 	rewrapper        Rewrapper
-	splitter         KeySplitter
-	granter          Granter
 	attributes       attributesService
 	authorization    authorizationService
 	mu               sync.Mutex
@@ -141,8 +139,6 @@ func (s *SDK) init(ctx context.Context) error {
 	s.kasKeyCache = newKasKeyCache(s.clock)
 	s.keyFetcher = s
 	s.rewrapper = newKASClient(s.client, dpop, s.clock, cfg.fulfillableObligationFQNs)
-	s.splitter = defaultKeySplitter{}
-	s.granter = noGranter{}
 	s.attributes = serviceConnection{client: s.client, endpoint: s.serviceEndpoint(policyServices)}
 	s.authorization = serviceConnection{client: s.client, endpoint: s.serviceEndpoint(authorizationServices)}
 	return nil
@@ -491,7 +487,7 @@ func getTokenEndpoint(ctx context.Context, c config, client *httpClient) (string
 // so only store the most recent known key per url & algorithm pair.
 func (s *SDK) StoreKASKeys(url string, keys KasPublicKeySet) error {
 	for _, key := range keys.Keys {
-		alg, err := formatAlg(key.Alg)
+		alg, err := formatAlg(policyAlgorithmOf(key.Alg))
 		if err != nil {
 			return boundaryError(KindInvalidInput, "StoreKASKeys", err)
 		}

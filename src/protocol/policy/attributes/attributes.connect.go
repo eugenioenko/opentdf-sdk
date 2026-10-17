@@ -12,6 +12,7 @@ const (
 	AttributesServiceListAttributesProcedure           = "/policy.attributes.AttributesService/ListAttributes"
 	AttributesServiceGetAttributeProcedure             = "/policy.attributes.AttributesService/GetAttribute"
 	AttributesServiceGetAttributeValuesByFqnsProcedure = "/policy.attributes.AttributesService/GetAttributeValuesByFqns"
+	AttributesServiceGetKeyMappingsByFqnsProcedure     = "/policy.attributes.AttributesService/GetKeyMappingsByFqns"
 )
 
 type AttributesServiceClient struct {
@@ -41,6 +42,14 @@ func (c *AttributesServiceClient) GetAttribute(ctx context.Context, req *GetAttr
 func (c *AttributesServiceClient) GetAttributeValuesByFqns(ctx context.Context, req *GetAttributeValuesByFqnsRequest) (*GetAttributeValuesByFqnsResponse, error) {
 	resp := &GetAttributeValuesByFqnsResponse{}
 	if _, err := c.client.CallUnary(ctx, AttributesServiceGetAttributeValuesByFqnsProcedure, req, resp, nil); err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *AttributesServiceClient) GetKeyMappingsByFqns(ctx context.Context, req *GetKeyMappingsByFqnsRequest) (*GetKeyMappingsByFqnsResponse, error) {
+	resp := &GetKeyMappingsByFqnsResponse{}
+	if _, err := c.client.CallUnary(ctx, AttributesServiceGetKeyMappingsByFqnsProcedure, req, resp, nil); err != nil {
 		return nil, err
 	}
 	return resp, nil

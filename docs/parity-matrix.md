@@ -27,7 +27,11 @@ packages, with one JSON function per method in C (part 2), so the `SDK` service
 fields and every `sdkconnect` symbol are `done`. Part 3 delivered the attribute
 helpers, `SDK.Auth`, `SDK.Conn` and the `WithCustom*Connection` endpoint overrides
 on every target; with them `ErrAttributeNotFound`, `ErrAccessTokenInvalid` and
-`ErrInvalid` (the FQN parsers of `granter.go`) are `done`.
+`ErrInvalid` (the FQN parsers of `granter.go`) are `done`. Phase 4 part 1 ported
+`granter.go`, `key_splitter.go` and `resource_locator.go` and the autoconfigure writer:
+the FQN types, `ResourceLocator`, the `KeySplitter` contract types and the
+`WithAutoconfigure`/`WithDataAttributes`/`WithDataAttributeValues` options are `done`;
+`DefaultKeySplitter` moves to phase 10 with the chunked writer that takes it.
 
 Goalchemy issues opened for the gaps the phases depend on, detailed in
 [goalchemy-gaps.md](goalchemy-gaps.md):
@@ -42,9 +46,9 @@ Goalchemy issues opened for the gaps the phases depend on, detailed in
 
 | Status | Symbols |
 | --- | --- |
-| `done` | 345 |
+| `done` | 380 |
 | `phase 1` | 2 |
-| `phase 4` | 79 |
+| `phase 4` | 44 |
 | `phase 5` | 41 |
 | `phase 6` | 15 |
 | `phase 7` | 7 |
@@ -226,21 +230,21 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AttributeNameFQN` | type | sdk.AttributeNameFQN | `phase 4` |
-| `AttributeNameFQN.Authority` | method | sdk.AttributeNameFQN.Authority | `phase 4` |
-| `AttributeNameFQN.Name` | method | sdk.AttributeNameFQN.Name | `phase 4` |
-| `AttributeNameFQN.Prefix` | method | sdk.AttributeNameFQN.Prefix | `phase 4` |
-| `AttributeNameFQN.Select` | method | sdk.AttributeNameFQN.Select | `phase 4` |
-| `AttributeNameFQN.String` | method | sdk.AttributeNameFQN.String | `phase 4` |
-| `AttributeValueFQN` | type | sdk.AttributeValueFQN | `phase 4` |
-| `AttributeValueFQN.Authority` | method | sdk.AttributeValueFQN.Authority | `phase 4` |
-| `AttributeValueFQN.Name` | method | sdk.AttributeValueFQN.Name | `phase 4` |
-| `AttributeValueFQN.Prefix` | method | sdk.AttributeValueFQN.Prefix | `phase 4` |
-| `AttributeValueFQN.String` | method | sdk.AttributeValueFQN.String | `phase 4` |
-| `AttributeValueFQN.Value` | method | sdk.AttributeValueFQN.Value | `phase 4` |
+| `AttributeNameFQN` | type | sdk.AttributeNameFQN (exported URL and Key fields, so the value crosses) | `done` |
+| `AttributeNameFQN.Authority` | method | sdk.AttributeNameFQN.Authority | `done` |
+| `AttributeNameFQN.Name` | method | sdk.AttributeNameFQN.Name | `done` |
+| `AttributeNameFQN.Prefix` | method | sdk.AttributeNameFQN.Prefix | `done` |
+| `AttributeNameFQN.Select` | method | sdk.AttributeNameFQN.Select | `done` |
+| `AttributeNameFQN.String` | method | sdk.AttributeNameFQN.String | `done` |
+| `AttributeValueFQN` | type | sdk.AttributeValueFQN (exported URL and Key fields, so the value crosses) | `done` |
+| `AttributeValueFQN.Authority` | method | sdk.AttributeValueFQN.Authority | `done` |
+| `AttributeValueFQN.Name` | method | sdk.AttributeValueFQN.Name | `done` |
+| `AttributeValueFQN.Prefix` | method | sdk.AttributeValueFQN.Prefix | `done` |
+| `AttributeValueFQN.String` | method | sdk.AttributeValueFQN.String | `done` |
+| `AttributeValueFQN.Value` | method | sdk.AttributeValueFQN.Value | `done` |
 | `ErrInvalid` | var | sdk.ErrInvalid sentinel; Error.Kind = KindInvalidInput (granter.go FQN parsing) | `done` |
-| `NewAttributeNameFQN` | func | sdk.NewAttributeNameFQN | `phase 4` |
-| `NewAttributeValueFQN` | func | sdk.NewAttributeValueFQN | `phase 4` |
+| `NewAttributeNameFQN` | func | sdk.NewAttributeNameFQN | `done` |
+| `NewAttributeValueFQN` | func | sdk.NewAttributeValueFQN | `done` |
 
 ### `idp_access_token_source.go`
 
@@ -293,15 +297,15 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `DefaultKeySplitter` | func | sdk.DefaultKeySplitter | `phase 4` |
-| `ErrSplitterRequiresDefaultKAS` | var | sdk.ErrSplitterRequiresDefaultKAS sentinel; Error.Kind = KindInvalidInput | `phase 4` |
-| `ErrSplitterUnsupportedAlgorithm` | var | sdk.ErrSplitterUnsupportedAlgorithm sentinel; Error.Kind = KindUnsupportedFeature | `phase 4` |
-| `KASPublicKey` | type | sdk/tdf.KASPublicKey | `phase 4` |
-| `KeySplitter` | type | sdk.KeySplitter (TDFOptions.KeySplitter) | `phase 4` |
-| `Split` | type | sdk/tdf.Split | `phase 4` |
-| `SplitResult` | type | sdk/tdf.SplitResult | `phase 4` |
-| `SplitResult.Validate` | method | SplitResult.Validate | `phase 4` |
-| `SplitResult.VerifyReconstruction` | method | SplitResult.VerifyReconstruction | `phase 4` |
+| `DefaultKeySplitter` | func | sdk.defaultKeySplitter, exported with the chunked writer that takes it (a KeySplitter result does not cross the Goalchemy boundary) | `phase 10` |
+| `ErrSplitterRequiresDefaultKAS` | var | sdk.ErrSplitterRequiresDefaultKAS sentinel; Error.Kind = KindInvalidInput | `done` |
+| `ErrSplitterUnsupportedAlgorithm` | var | sdk.ErrSplitterUnsupportedAlgorithm sentinel; Error.Kind = KindUnsupportedFeature | `done` |
+| `KASPublicKey` | type | sdk.KASPublicKey | `done` |
+| `KeySplitter` | type | sdk.KeySplitter (shared-source implementations; the chunked writer takes it in phase 10) | `done` |
+| `Split` | type | sdk.Split | `done` |
+| `SplitResult` | type | sdk.SplitResult | `done` |
+| `SplitResult.Validate` | method | SplitResult.Validate | `done` |
+| `SplitResult.VerifyReconstruction` | method | SplitResult.VerifyReconstruction | `done` |
 
 ### `manifest.go`
 
@@ -370,16 +374,16 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `NewResourceLocator` | func | sdk.NewResourceLocator | `phase 4` |
-| `NewResourceLocatorFromReader` | func | sdk.NewResourceLocatorFromReader | `phase 10` |
-| `ResourceLocator` | type | sdk/tdf.ResourceLocator | `phase 4` |
-| `ResourceLocator.Equals` | method | sdk.ResourceLocator.Equals | `phase 4` |
-| `ResourceLocator.GetIdentifier` | method | sdk.ResourceLocator.GetIdentifier | `phase 4` |
-| `ResourceLocator.GetURL` | method | sdk.ResourceLocator.GetURL | `phase 4` |
-| `ResourceLocator.ID` | method | sdk.ResourceLocator.ID | `phase 4` |
-| `ResourceLocator.KASURI` | method | sdk.ResourceLocator.KASURI | `phase 4` |
-| `ResourceLocator.Less` | method | sdk.ResourceLocator.Less | `phase 4` |
-| `ResourceLocator.String` | method | sdk.ResourceLocator.String | `phase 4` |
+| `NewResourceLocator` | func | sdk.NewResourceLocator (ResourceLocator handle) | `done` |
+| `NewResourceLocatorFromReader` | func | sdk.NewResourceLocatorFromReader (host stream in, ResourceLocator handle out) | `done` |
+| `ResourceLocator` | type | sdk.ResourceLocator (handle) | `done` |
+| `ResourceLocator.Equals` | method | sdk.ResourceLocator.Equals | `done` |
+| `ResourceLocator.GetIdentifier` | method | sdk.ResourceLocator.GetIdentifier | `done` |
+| `ResourceLocator.GetURL` | method | sdk.ResourceLocator.GetURL | `done` |
+| `ResourceLocator.ID` | method | sdk.ResourceLocator.ID | `done` |
+| `ResourceLocator.KASURI` | method | sdk.ResourceLocator.KASURI | `done` |
+| `ResourceLocator.Less` | method | sdk.ResourceLocator.Less | `done` |
+| `ResourceLocator.String` | method | sdk.ResourceLocator.String | `done` |
 
 ### `sdk.go`
 
@@ -492,9 +496,9 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `TDFReaderOption` | type | sdk.ReaderOptions struct; With* adapters in hosts/go | `done` |
 | `WithAssertionVerificationKeys` | func | ReaderOptions.AssertionVerificationKeys | `phase 5` |
 | `WithAssertions` | func | TDFOptions.Assertions | `phase 5` |
-| `WithAutoconfigure` | func | TDFOptions.DisableAutoconfigure | `phase 4` |
-| `WithDataAttributeValues` | func | TDFOptions.AttributeValues | `phase 4` |
-| `WithDataAttributes` | func | TDFOptions.Attributes | `phase 4` |
+| `WithAutoconfigure` | func | TDFOptions.DisableAutoconfigure | `done` |
+| `WithDataAttributeValues` | func | TDFOptions.AttributeValues | `done` |
+| `WithDataAttributes` | func | TDFOptions.Attributes | `done` |
 | `WithDisableAssertionVerification` | func | ReaderOptions.DisableAssertionVerification | `done` |
 | `WithIgnoreAllowlist` | func | ReaderOptions.IgnoreAllowlist | `done` |
 | `WithInputSize` | func | TDFOptions.InputSize | `done` |

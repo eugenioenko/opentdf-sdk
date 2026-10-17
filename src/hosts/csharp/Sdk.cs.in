@@ -97,16 +97,21 @@ public sealed class AuthClient
 /// The reference's TDFConfig options (shared-source TDFOptions); every unset member is the reference default.
 public sealed record TdfOptions
 {
-    public IReadOnlyList<string> Attributes{get;init;}public bool DisableAutoconfigure{get;init;}public IReadOnlyList<KasInfo> KasInformation{get;init;}
+    public IReadOnlyList<string> Attributes{get;init;}
+    /// WithDataAttributeValues: values with their definitions, read offline instead of looked up; they replace Attributes.
+    public IReadOnlyList<OpenTDF.Protocol.Policy.Value> AttributeValues{get;init;}
+    public bool DisableAutoconfigure{get;init;}public IReadOnlyList<KasInfo> KasInformation{get;init;}
     /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
     public string WrappingKeyAlgorithm{get;init;}public long SegmentSize{get;init;}public long InputSize{get;init;}public string MimeType{get;init;}public string Metadata{get;init;}
     public IReadOnlyList<AssertionConfig> Assertions{get;init;}public bool SystemMetadataAssertion{get;init;}public string TargetMode{get;init;}
-    internal Generated.TDFOptions ToGenerated()=>new(){Attributes=Values.Encode(Attributes),DisableAutoconfigure=DisableAutoconfigure,
+    internal Generated.TDFOptions ToGenerated()=>new(){Attributes=Values.Encode(Attributes),AttributeValues=Values.Encode(AttributeValues?.Select(v=>JsonFormatter.Default.Format(v)).ToList()),DisableAutoconfigure=DisableAutoconfigure,
         KasInformation=KasInformation?.Select(k=>new Generated.KASInfo{URL=Values.Encode(k.Url),PublicKey=Values.Encode(k.PublicKey),KID=Values.Encode(k.Kid),Algorithm=Values.Encode(k.Algorithm),Default=k.Default}).ToArray(),
         WrappingKeyAlgorithm=Values.Encode(WrappingKeyAlgorithm),SegmentSize=SegmentSize,InputSize=InputSize,MimeType=Values.Encode(MimeType),Metadata=Values.Encode(Metadata),
         Assertions=Assertions?.Select(a=>new Generated.AssertionConfig{ID=Values.Encode(a.Id),Type=Values.Encode(a.Type),Scope=Values.Encode(a.Scope),AppliesToState=Values.Encode(a.AppliesToState),Statement=new Generated.Statement{Format=Values.Encode(a.Format),Schema=Values.Encode(a.Schema),Value=Values.Encode(a.Value)}}).ToArray(),
         SystemMetadataAssertion=SystemMetadataAssertion,TargetMode=Values.Encode(TargetMode)};
 }
+/// The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key.
+public sealed record AttributeFqn(string Url,string Key);
 /// The reference's TDFReaderConfig options (shared-source ReaderOptions); every unset member is the reference default.
 public sealed record ReaderOptions
 {
@@ -233,6 +238,8 @@ public sealed class Sdk : PlatformServices, IAsyncDisposable, IDisposable
     public static Task<bool> IsValidTdfAsync(byte[] data,CancellationToken ct=default)=>Values.Run(()=>Generated.IsValidTdf(Values.Bytes(data),new Library.Options{Cancellation=ct}),b=>b);
     public static Task<string> GetTdfTypeAsync(byte[] data,CancellationToken ct=default)=>Values.Run(()=>Generated.GetTdfType(Values.Bytes(data),new Library.Options{Cancellation=ct}),Values.Decode);
     public static Task<bool> IsPlatformEndpointMalformedAsync(string endpoint)=>Values.Run(()=>Generated.IsPlatformEndpointMalformed(Values.Encode(endpoint),new Library.Options()),b=>b);
+    public static Task<AttributeFqn> NewAttributeNameFqnAsync(string fqn)=>Values.Run(()=>Generated.NewAttributeNameFQN(Values.Encode(fqn),new Library.Options()),f=>new AttributeFqn(Values.Decode(f.URL),Values.Decode(f.Key)));
+    public static Task<AttributeFqn> NewAttributeValueFqnAsync(string fqn)=>Values.Run(()=>Generated.NewAttributeValueFQN(Values.Encode(fqn),new Library.Options()),f=>new AttributeFqn(Values.Decode(f.URL),Values.Decode(f.Key)));
     public static Task<string> KeyTypeToPolicyAlgorithmAsync(string keyType)=>Values.Run(()=>Generated.KeyTypeToPolicyAlgorithm(Values.Encode(keyType),new Library.Options()),Values.Decode);
     public static Task<string> PolicyAlgorithmToKeyTypeAsync(string alg)=>Values.Run(()=>Generated.PolicyAlgorithmToKeyType(Values.Encode(alg),new Library.Options()),Values.Decode);
     public static Task<string> VersionAsync()=>Values.Run(()=>Generated.Version(new Library.Options()),Values.Decode);

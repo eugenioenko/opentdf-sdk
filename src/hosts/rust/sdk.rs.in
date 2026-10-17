@@ -372,6 +372,8 @@ pub struct AssertionConfig {
 #[derive(Clone, Debug, Default)]
 pub struct TdfOptions {
     pub attributes: Vec<String>,
+    /// WithDataAttributeValues: values with their definitions, read offline instead of looked up; they replace `attributes`.
+    pub attribute_values: Vec<crate::protocol::policy::Value>,
     pub disable_autoconfigure: bool,
     pub kas_information: Vec<KasInfo>,
     /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
@@ -388,6 +390,7 @@ impl TdfOptions {
     fn generated(&self) -> generated::TDFOptions {
         generated::TDFOptions {
             Attributes: list(&self.attributes),
+            AttributeValues: self.attribute_values.iter().map(|v| serde_json::to_string(v).unwrap_or_default().into_bytes()).collect(),
             DisableAutoconfigure: self.disable_autoconfigure,
             KasInformation: self
                 .kas_information
@@ -951,6 +954,18 @@ pub fn get_tdf_type(data: &[u8]) -> Result<String> {
 }
 pub fn is_platform_endpoint_malformed(endpoint: &str) -> Result<bool> {
     wait(generated::IsPlatformEndpointMalformed(bytes(endpoint), CallOptions::default()), |b| b)
+}
+/// The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AttributeFqn {
+    pub url: String,
+    pub key: String,
+}
+pub fn new_attribute_name_fqn(fqn: &str) -> Result<AttributeFqn> {
+    wait(generated::NewAttributeNameFQN(bytes(fqn), CallOptions::default()), |f| AttributeFqn { url: text(f.URL), key: text(f.Key) })
+}
+pub fn new_attribute_value_fqn(fqn: &str) -> Result<AttributeFqn> {
+    wait(generated::NewAttributeValueFQN(bytes(fqn), CallOptions::default()), |f| AttributeFqn { url: text(f.URL), key: text(f.Key) })
 }
 pub fn key_type_to_policy_algorithm(key_type: &str) -> Result<String> {
     wait(generated::KeyTypeToPolicyAlgorithm(bytes(key_type), CallOptions::default()), text)

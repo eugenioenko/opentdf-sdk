@@ -164,6 +164,16 @@ let exists = sdk.attribute_value_exists("https://example.com/attr/level/value/hi
 let token = sdk.auth().access_token()?;
 ```
 
+With autoconfigure on (the default), `TdfOptions::attributes` drive the
+reference's key split (grants and mapped keys, else the base key, else the
+default KAS); `attribute_values` (`protocol::policy::Value`s with their
+definitions) plan offline. `new_attribute_value_fqn(&str)` and
+`new_attribute_name_fqn(&str)` return `AttributeFqn { url, key }`.
+
+```rust
+let tdf = sdk.create_tdf(data, &TdfOptions { attributes: vec!["https://example.com/attr/level/value/high".into()], ..Default::default() })?;
+```
+
 Every failure is an `Error` with `kind` (a `Kind` enum; `Kind::Boundary`
 carries the runtime's kind for `closed`, `poisoned`, `invalid_argument`,
 `source_panic`, `host_fault`), `op`, `message` (the reference's wording, see
@@ -238,7 +248,6 @@ Every lock record is identical when sorted; no dependency changes occur.
 The final audit verifies every extracted archive member, generated Rust source,
 authored runtime member and retained notice against the delivered bytes.
 
-
 ## Bounded acceptance repairs
 
 Native arrays/slices now check their length against the source u32 descriptor
@@ -274,7 +283,6 @@ private-key validation. Positive KAS evidence uses representable vectors and
 valid keys; the narrowed invalid-input paths do not change those protocol or
 transport results. A separately extracted repaired package is rebuilt and smoke
 tested; no extra KAS matrix is counted or claimed.
-
 
 The same acceptance review also covers pure generic value libraries. Library
 emission includes its native crypto cleanup dependency even when source exports

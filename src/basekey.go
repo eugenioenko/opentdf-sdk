@@ -3,8 +3,8 @@ package sdk
 import (
 	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/std/encoding/jsonvalue"
-	"github.com/eugenioenko/goalchemy/std/errors"
 	"github.com/eugenioenko/goalchemy/std/fmt"
+	"opentdf-local/sdk/src/protocol/policy"
 )
 
 // Should match:
@@ -15,8 +15,9 @@ const (
 	baseKeyPublicKey = "public_key"
 )
 
-// Policy algorithm names as protojson spells the policy.Algorithm enum; the
-// generated enum replaces them in Phase 3.
+// Policy algorithm names as protojson spells the policy.Algorithm enum: the
+// exported helpers and SimpleKasKey carry these across the Goalchemy
+// boundary, where the generated enum type does not cross.
 const (
 	AlgorithmUnspecified = "ALGORITHM_UNSPECIFIED"
 	AlgorithmRSA2048     = "ALGORITHM_RSA_2048"
@@ -54,57 +55,112 @@ type KasPublicKeySet struct {
 
 func parseKeyType(alg string) (KeyType, error) {
 	switch KeyType(alg) {
-	case RSA2048Key, RSA4096Key, EC256Key, EC384Key, EC521Key:
+	case RSA2048Key, RSA4096Key, EC256Key, EC384Key, EC521Key,
+		mlkem768Key, mlkem1024Key,
+		hybridXWingKey, hybridSecp256r1MLKEM768Key, hybridSecp384r1MLKEM1024Key:
 		return KeyType(alg), nil
+	default:
+		return "", fmt.Errorf("unrecognized key type: %s", alg)
 	}
-	return "", errors.New("unsupported key type: " + alg)
 }
 
-func getKasKeyAlg(alg string) (string, error) {
+func getKasKeyAlg(alg string) (policy.Algorithm, error) {
 	kt, err := parseKeyType(alg)
 	if err != nil {
-		return AlgorithmUnspecified, fmt.Errorf("invalid alg [%s]: %w", alg, err)
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("invalid alg [%s]: %w", alg, err)
 	}
-	return KeyTypeToPolicyAlgorithm(kt)
+	return keyTypeToPolicyAlgorithm(kt)
 }
 
+// KeyTypeToPolicyAlgorithm returns the policy.Algorithm for a key type, by
+// its protojson name.
 func KeyTypeToPolicyAlgorithm(kt KeyType) (string, error) {
-	switch kt {
-	case RSA2048Key:
-		return AlgorithmRSA2048, nil
-	case RSA4096Key:
-		return AlgorithmRSA4096, nil
-	case EC256Key:
-		return AlgorithmECP256, nil
-	case EC384Key:
-		return AlgorithmECP384, nil
-	case EC521Key:
-		return AlgorithmECP521, nil
-	default:
-		return AlgorithmUnspecified, newError(KindInvalidInput, "KeyTypeToPolicyAlgorithm", "unknown key type: "+string(kt))
+	alg, err := keyTypeToPolicyAlgorithm(kt)
+	if err != nil {
+		return AlgorithmUnspecified, boundaryError(KindInvalidInput, "KeyTypeToPolicyAlgorithm", err)
 	}
+	return alg.String(), nil
 }
 
+// PolicyAlgorithmToKeyType returns the key type of a policy.Algorithm given
+// by its protojson name.
 func PolicyAlgorithmToKeyType(alg string) (KeyType, error) {
-	switch alg {
-	case AlgorithmRSA2048:
-		return RSA2048Key, nil
-	case AlgorithmRSA4096:
-		return RSA4096Key, nil
-	case AlgorithmECP256:
-		return EC256Key, nil
-	case AlgorithmECP384:
-		return EC384Key, nil
-	case AlgorithmECP521:
-		return EC521Key, nil
-	default:
+	value, ok := policy.Algorithm_value[alg]
+	if !ok {
 		return "", newError(KindInvalidInput, "PolicyAlgorithmToKeyType", "unsupported algorithm: "+alg)
 	}
+	kt, err := policyAlgorithmToKeyType(policy.Algorithm(value))
+	if err != nil {
+		return "", boundaryError(KindInvalidInput, "PolicyAlgorithmToKeyType", err)
+	}
+	return kt, nil
 }
 
-func formatAlg(alg string) (string, error) {
-	kt, err := PolicyAlgorithmToKeyType(alg)
+func keyTypeToPolicyAlgorithm(kt KeyType) (policy.Algorithm, error) {
+	switch kt {
+	case RSA2048Key:
+		return policy.Algorithm_ALGORITHM_RSA_2048, nil
+	case RSA4096Key:
+		return policy.Algorithm_ALGORITHM_RSA_4096, nil
+	case EC256Key:
+		return policy.Algorithm_ALGORITHM_EC_P256, nil
+	case EC384Key:
+		return policy.Algorithm_ALGORITHM_EC_P384, nil
+	case EC521Key:
+		return policy.Algorithm_ALGORITHM_EC_P521, nil
+	case hybridXWingKey:
+		return policy.Algorithm_ALGORITHM_HPQT_XWING, nil
+	case hybridSecp256r1MLKEM768Key:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768, nil
+	case hybridSecp384r1MLKEM1024Key:
+		return policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024, nil
+	case mlkem768Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_768, nil
+	case mlkem1024Key:
+		return policy.Algorithm_ALGORITHM_MLKEM_1024, nil
+	default:
+		return policy.Algorithm_ALGORITHM_UNSPECIFIED, fmt.Errorf("unknown key type: %s", string(kt))
+	}
+}
+
+func policyAlgorithmToKeyType(alg policy.Algorithm) (KeyType, error) {
+	switch alg {
+	case policy.Algorithm_ALGORITHM_RSA_2048:
+		return RSA2048Key, nil
+	case policy.Algorithm_ALGORITHM_RSA_4096:
+		return RSA4096Key, nil
+	case policy.Algorithm_ALGORITHM_EC_P256:
+		return EC256Key, nil
+	case policy.Algorithm_ALGORITHM_EC_P384:
+		return EC384Key, nil
+	case policy.Algorithm_ALGORITHM_EC_P521:
+		return EC521Key, nil
+	case policy.Algorithm_ALGORITHM_HPQT_XWING:
+		return hybridXWingKey, nil
+	case policy.Algorithm_ALGORITHM_HPQT_SECP256R1_MLKEM768:
+		return hybridSecp256r1MLKEM768Key, nil
+	case policy.Algorithm_ALGORITHM_HPQT_SECP384R1_MLKEM1024:
+		return hybridSecp384r1MLKEM1024Key, nil
+	case policy.Algorithm_ALGORITHM_MLKEM_768:
+		return mlkem768Key, nil
+	case policy.Algorithm_ALGORITHM_MLKEM_1024:
+		return mlkem1024Key, nil
+	case policy.Algorithm_ALGORITHM_UNSPECIFIED:
+		fallthrough
+	default:
+		return "", fmt.Errorf("unsupported algorithm: %s", alg)
+	}
+}
+
+func formatAlg(alg policy.Algorithm) (string, error) {
+	kt, err := policyAlgorithmToKeyType(alg)
 	return string(kt), err
+}
+
+// policyAlgorithmOf is the policy.Algorithm named by its protojson name, as
+// SimpleKasKey carries it.
+func policyAlgorithmOf(name string) policy.Algorithm {
+	return policy.Algorithm(policy.Algorithm_value[name])
 }
 
 // GetBaseKey retrieves the platform base KAS key from the well-known configuration.
@@ -165,7 +221,7 @@ func parseSimpleKasKey(baseKeyMap jsonvalue.Value) (*SimpleKasKey, error) {
 		KasURI: baseKeyMap.Get("kas_uri").String(),
 		KasID:  baseKeyMap.Get("kas_id").String(),
 		PublicKey: SimpleKasPublicKey{
-			Algorithm: a,
+			Algorithm: a.String(),
 			Kid:       publicKey.Get("kid").String(),
 			Pem:       publicKey.Get("pem").String(),
 		},

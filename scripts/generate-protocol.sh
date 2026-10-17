@@ -66,6 +66,7 @@ INCLUDE=(
   policy.attributes.AttributesService.ListAttributes
   policy.attributes.AttributesService.GetAttribute
   policy.attributes.AttributesService.GetAttributeValuesByFqns
+  policy.attributes.AttributesService.GetKeyMappingsByFqns
   authorization.AuthorizationService.GetEntitlements
 )
 

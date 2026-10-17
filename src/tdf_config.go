@@ -2,11 +2,13 @@ package sdk
 
 import (
 	"github.com/eugenioenko/goalchemy/lib/crypto"
+	"github.com/eugenioenko/goalchemy/std/encoding/protojson"
 	"github.com/eugenioenko/goalchemy/std/errors"
 	"github.com/eugenioenko/goalchemy/std/fmt"
 	"github.com/eugenioenko/goalchemy/std/net"
 	"github.com/eugenioenko/goalchemy/std/net/url"
 	"github.com/eugenioenko/goalchemy/std/strings"
+	"opentdf-local/sdk/src/protocol/policy"
 )
 
 const (
@@ -39,11 +41,29 @@ const (
 	EC256Key   KeyType = "ec:secp256r1"
 	EC384Key   KeyType = "ec:secp384r1"
 	EC521Key   KeyType = "ec:secp521r1"
+
+	// Post-quantum key types are not planned; the names are kept so that
+	// policy keys and KAOs that carry them are reported, not misread.
+	mlkem768Key                 KeyType = "mlkem:768"
+	mlkem1024Key                KeyType = "mlkem:1024"
+	hybridXWingKey              KeyType = "hpqt:xwing"
+	hybridSecp256r1MLKEM768Key  KeyType = "hpqt:secp256r1-mlkem768"
+	hybridSecp384r1MLKEM1024Key KeyType = "hpqt:secp384r1-mlkem1024"
 )
 
 // IsECKeyType reports whether kt is an EC key type.
 func IsECKeyType(kt KeyType) bool {
 	return kt == EC256Key || kt == EC384Key || kt == EC521Key
+}
+
+// isPQKeyType reports whether kt is one of the post-quantum key types, which
+// are not planned.
+func isPQKeyType(kt KeyType) bool {
+	switch kt {
+	case mlkem768Key, mlkem1024Key, hybridXWingKey, hybridSecp256r1MLKEM768Key, hybridSecp384r1MLKEM1024Key:
+		return true
+	}
+	return false
 }
 
 // IsRSAKeyType reports whether kt is an RSA key type.
@@ -111,7 +131,11 @@ type AssertionConfig struct {
 // TDFOptions configures CreateTDF and EncryptBytes. Zero values are the
 // reference defaults; the Go host adapter's With* options fill it.
 type TDFOptions struct {
-	Attributes              []string
+	Attributes []string
+	// AttributeValues are policy.Value messages in protobuf JSON
+	// (WithDataAttributeValues): autoconfigure reads their grants and keys
+	// instead of looking the attributes up. They replace Attributes.
+	AttributeValues         []string
 	DisableAutoconfigure    bool
 	KasInformation          []KASInfo
 	WrappingKeyAlgorithm    KeyType
@@ -131,7 +155,8 @@ type TDFConfig struct {
 	inputSize                  int64
 	metaData                   string
 	mimeType                   string
-	attributes                 []string
+	attributes                 []AttributeValueFQN
+	attributeValues            []*policy.Value
 	kasInfoList                []KASInfo
 	kaoTemplate                []kaoTpl
 	splitPlan                  []keySplitStep
@@ -141,22 +166,6 @@ type TDFConfig struct {
 	addDefaultAssertion        bool
 }
 
-// kaoTpl is one key access object template entry: a KAS, the split it holds
-// and the key it wraps to.
-type kaoTpl struct {
-	KAS       string
-	SplitID   string
-	kid       string
-	pem       string
-	algorithm KeyType
-}
-
-// keySplitStep names the KAS that holds a split.
-type keySplitStep struct {
-	KAS     string
-	SplitID string
-}
-
 func newTDFConfig(opts TDFOptions) (*TDFConfig, error) {
 	c := &TDFConfig{
 		autoconfigure:       !opts.DisableAutoconfigure,
@@ -164,11 +173,27 @@ func newTDFConfig(opts TDFOptions) (*TDFConfig, error) {
 		inputSize:           inputSizeUnknown,
 		addDefaultAssertion: false,
 	}
-	for i, a := range opts.Attributes {
-		if a == "" {
-			return nil, fmt.Errorf("attribute at index %d has an empty FQN", i)
+	if len(opts.AttributeValues) > 0 && len(opts.Attributes) > 0 {
+		return nil, errors.New("Attributes and AttributeValues are exclusive: AttributeValues replaces the attributes")
+	}
+	for _, a := range opts.Attributes {
+		v, err := newAttributeValueFQN(a)
+		if err != nil {
+			return nil, err
 		}
-		c.attributes = append(c.attributes, a)
+		c.attributes = append(c.attributes, v)
+	}
+	for i, data := range opts.AttributeValues {
+		a := &policy.Value{}
+		if err := protojson.Unmarshal([]byte(data), a); err != nil {
+			return nil, fmt.Errorf("attribute value at index %d is not a policy.Value in protobuf JSON: %w", i, err)
+		}
+		afqn, err := newAttributeValueFQN(a.GetFqn())
+		if err != nil {
+			return nil, err
+		}
+		c.attributeValues = append(c.attributeValues, a)
+		c.attributes = append(c.attributes, afqn)
 	}
 	c.kasInfoList = append(make([]KASInfo, 0), opts.KasInformation...)
 	c.metaData = opts.Metadata

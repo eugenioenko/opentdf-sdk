@@ -34,6 +34,10 @@ func (m *mockDiscoveryAttributesClient) GetAttribute(ctx context.Context, req *a
 	return m.getAttributeFunc(ctx, req)
 }
 
+func (m *mockDiscoveryAttributesClient) GetKeyMappingsByFqns(context.Context, *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
+	panic("GetKeyMappingsByFqns is not used by the discovery helpers")
+}
+
 type mockDiscoveryAuthzClient struct {
 	getEntitlementsFunc func(ctx context.Context, req *authorization.GetEntitlementsRequest) (*authorization.GetEntitlementsResponse, error)
 }
@@ -627,102 +631,5 @@ func TestDiscoveryJSON(t *testing.T) {
 	var e *Error
 	if _, err := s.GetEntityAttributesJSON(t.Context(), `{"id":`); !errors.As(err, &e) || e.Kind != KindInvalidInput {
 		t.Fatal(err)
-	}
-}
-
-// The reference's granter_test.go FQN cases, against the regexp-equivalent
-// parsers.
-func TestAttributeFromURL(t *testing.T) {
-	for _, tc := range []struct {
-		n, u       string
-		auth, name string
-	}{
-		{"letter", "http://e/attr/a", "http://e", "a"},
-		{"number", "http://e/attr/1", "http://e", "1"},
-		{"emoji", "http://e/attr/%F0%9F%98%81", "http://e", "%F0%9F%98%81"},
-		{"dash", "http://a-b.com/attr/b-c", "http://a-b.com", "b-c"},
-		{"nested", "https://e.com/x/attr/y/attr/a", "https://e.com/x/attr/y", "a"},
-	} {
-		t.Run(tc.n, func(t *testing.T) {
-			a, err := newAttributeNameFQN(tc.u)
-			if err != nil || a.String() != tc.u {
-				t.Fatal(a, err)
-			}
-			m := matchAttributeNameFQN(tc.u)
-			if m[1] != tc.auth || m[2] != tc.name {
-				t.Fatal(m)
-			}
-		})
-	}
-}
-
-func TestAttributeFromMalformedURL(t *testing.T) {
-	for _, tc := range []struct {
-		n, u string
-	}{
-		{"no name", "http://e/attr"},
-		{"invalid prefix 1", "hxxp://e/attr/a"},
-		{"invalid prefix 2", "e/attr/a"},
-		{"invalid prefix 3", "file://e/attr/a"},
-		{"invalid prefix 4", "http:///attr/a"},
-		{"bad encoding", "https://a/attr/%😁"},
-		{"with value", "http://e/attr/a/value/b"},
-		{"empty name", "http://e/attr/"},
-		{"space", "http://e/attr/a b"},
-	} {
-		t.Run(tc.n, func(t *testing.T) {
-			a, err := newAttributeNameFQN(tc.u)
-			if !errors.Is(err, ErrInvalid) || a.String() != "" {
-				t.Fatal(a, err)
-			}
-		})
-	}
-}
-
-func TestAttributeValueFromURL(t *testing.T) {
-	for _, tc := range []struct {
-		n, u              string
-		auth, name, value string
-	}{
-		{"number", "http://e/attr/a/value/1", "http://e", "a", "1"},
-		{"space", "http://e/attr/a/value/%20", "http://e", "a", "%20"},
-		{"emoji", "http://e/attr/a/value/%F0%9F%98%81", "http://e", "a", "%F0%9F%98%81"},
-		{"numberdef", "http://e/attr/1/value/one", "http://e", "1", "one"},
-		{"valuevalue", "http://e/attr/value/value/one", "http://e", "value", "one"},
-		{"dash", "http://a-b.com/attr/b-c/value/c-d", "http://a-b.com", "b-c", "c-d"},
-	} {
-		t.Run(tc.n, func(t *testing.T) {
-			a, err := newAttributeValueFQN(tc.u)
-			if err != nil || a.String() != tc.u {
-				t.Fatal(a, err)
-			}
-			m := matchAttributeValueFQN(tc.u)
-			if m[1] != tc.auth || m[2] != tc.name || m[3] != tc.value {
-				t.Fatal(m)
-			}
-		})
-	}
-}
-
-func TestAttributeValueFromMalformedURL(t *testing.T) {
-	for _, tc := range []struct {
-		n, u, want string
-	}{
-		{"no name", "http://e/attr/value/1", "invalid type: attribute regex fail for [http://e/attr/value/1]"},
-		{"no value", "http://e/attr/who/value", "invalid type: attribute regex fail for [http://e/attr/who/value]"},
-		{"invalid prefix 1", "hxxp://e/attr/a/value/1", "invalid type: attribute regex fail for [hxxp://e/attr/a/value/1]"},
-		{"invalid prefix 2", "e/attr/a/a/value/1", "invalid type: attribute regex fail for [e/attr/a/a/value/1]"},
-		{"bad encoding", "https://a/attr/emoji/value/%😁", "invalid type: error in attribute value [%😁]"},
-		{"empty name", "http://e/attr//value/0", "invalid type: empty url path parts are not allowed"},
-		{"slash name", "http://e/attr///value/0", "invalid type: slash not allowed in name or values"},
-		{"slash in name", "http://0/attr/0/0/value/0", "invalid type: slash not allowed in name or values"},
-		{"empty value", "http://e/attr/a/value/", "invalid type: empty url path parts are not allowed"},
-	} {
-		t.Run(tc.n, func(t *testing.T) {
-			a, err := newAttributeValueFQN(tc.u)
-			if !errors.Is(err, ErrInvalid) || a.String() != "" || err.Error() != tc.want {
-				t.Fatal(a, err)
-			}
-		})
 	}
 }

@@ -312,46 +312,12 @@ func segmentCount(inputSize, segmentSize int64) (int, error) {
 	return int(count), nil
 }
 
-// Granter resolves attribute grants into a key split plan: the reference's
-// granter. Until Phase 4 ports it, the default finds no keys, so the writer
-// falls back to the base key and the default KAS as the reference does.
-type Granter interface {
-	Plan(ctx context.Context, s *SDK, tdfConfig *TDFConfig) (grantType, error)
-}
-
-type grantType int
-
-const (
-	noKeysFound grantType = iota // No keys found
-	grantsFound                  // Only grants found
-	mappedFound                  // Only mapped keys found
-)
-
-type noGranter struct{}
-
-func (noGranter) Plan(_ context.Context, _ *SDK, _ *TDFConfig) (grantType, error) {
-	return noKeysFound, nil
-}
-
-// grantlessPlan is the reference granter's plan for no grants: split the key
-// across all default kases.
-func grantlessPlan(defaultKas []string, genSplitID func() string) ([]keySplitStep, error) {
-	switch len(defaultKas) {
-	case 0:
-		return nil, errors.New("no default KAS specified; required for grantless plans")
-	case 1:
-		return []keySplitStep{{KAS: defaultKas[0]}}, nil
-	default:
-		p := make([]keySplitStep, 0, len(defaultKas))
-		for _, kas := range defaultKas {
-			p = append(p, keySplitStep{KAS: kas, SplitID: genSplitID()})
-		}
-		return p, nil
-	}
-}
-
 // initKAOTemplate initializes the KAO template, from either the split plan, kaoTemplate, or autoconfigure based on tags.
 func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s *SDK) error {
+	// At most one of the following should be true:
+	// - autoconfigure is true
+	// - splitPlan is set
+	// - kaoTemplate is set
 	if len(tdfConfig.splitPlan) > 0 && len(tdfConfig.kaoTemplate) > 0 {
 		return errors.New("cannot set both splitPlan and kaoTemplate")
 	}
@@ -361,32 +327,38 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s *SDK) error {
 
 	// * Get base key before autoconfigure to condition off of.
 	if tdfConfig.autoconfigure {
-		typ, err := s.granter.Plan(ctx, s, tdfConfig)
+		g, err := s.newGranter(ctx, tdfConfig)
 		if err != nil {
 			return err
 		}
-		switch typ {
-		case mappedFound, grantsFound:
-			return unsupported("CreateTDF", "autoconfigure")
+
+		switch g.typ {
+		case mappedFound:
+			tdfConfig.kaoTemplate, err = g.resolveTemplate(ctx, string(tdfConfig.preferredKeyWrapAlg), uuidSplitIDGenerator)
+		case grantsFound:
+			tdfConfig.kaoTemplate = nil
+			tdfConfig.splitPlan, err = g.plan(make([]string, 0), uuidSplitIDGenerator)
 		case noKeysFound:
-			baseKey, err := s.GetBaseKey(ctx)
+			var baseKey SimpleKasKey
+			baseKey, err = s.GetBaseKey(ctx)
 			if err == nil {
 				err = populateKasInfoFromBaseKey(baseKey, tdfConfig, s.cfg.logger)
 			} else {
 				s.cfg.logger.Debug("cannot getting base key, falling back to default kas", slog.String("error", err.Error()))
 				dk := s.defaultKases(tdfConfig)
 				tdfConfig.kaoTemplate = nil
-				tdfConfig.splitPlan, err = grantlessPlan(dk, uuidSplitIDGenerator)
+				tdfConfig.splitPlan, err = g.plan(dk, uuidSplitIDGenerator)
 			}
-			if err != nil {
-				return fmt.Errorf("failed generate plan: %w", err)
-			}
+		}
+		if err != nil {
+			return fmt.Errorf("failed generate plan: %w", err)
 		}
 	}
 
 	switch {
 	case len(tdfConfig.kaoTemplate) > 0:
 		// use the kao template to create the key access objects
+		// This is the preferred behavior; the following options upgrade deprecated behaviors
 	case len(tdfConfig.splitPlan) > 0:
 		// Seed anything passed in manually
 		latestKASInfo := make(map[string]KASInfo)
@@ -420,10 +392,26 @@ func (tdfConfig *TDFConfig) initKAOTemplate(ctx context.Context, s *SDK) error {
 		tdfConfig.splitPlan = nil // clear split plan as we are using kaoTemplate now
 	case len(tdfConfig.kasInfoList) > 0:
 		// Default to split based on kasInfoList
+		// To remove. This has been deprecated for some time.
 		tdfConfig.kaoTemplate = createKaoTemplateFromKasInfo(tdfConfig.kasInfoList)
 	}
 
 	return nil
+}
+
+func (s *SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, error) {
+	var g granter
+	var err error
+	if len(tdfConfig.attributeValues) > 0 {
+		g, err = newGranterFromAttributes(s.cfg.logger, s.kasKeyCache, tdfConfig.attributeValues...)
+	} else if len(tdfConfig.attributes) > 0 {
+		g, err = newGranterFromService(ctx, s.cfg.logger, s.kasKeyCache, s.attributes, tdfConfig.attributes...)
+	}
+	if err != nil {
+		return g, err
+	}
+	g.keyInfoFetcher = s.keyFetcher
+	return g, nil
 }
 
 func (r *Reader) Manifest() Manifest {
@@ -439,56 +427,10 @@ func (s *SDK) resolveKeyAccess(ctx context.Context, tdfConfig *TDFConfig, dek []
 	}
 
 	fqns := make([]string, 0, len(tdfConfig.attributes))
-	fqns = append(fqns, tdfConfig.attributes...)
+	for _, attribute := range tdfConfig.attributes {
+		fqns = append(fqns, attribute.String())
+	}
 	return resolvePolicyAndKeyAccess(fqns, shares, tdfConfig.metaData)
-}
-
-// splitShare is one share of the DEK and the KAS servers that may unwrap it.
-type splitShare struct {
-	id    string
-	kases []KASInfo
-	data  []byte
-}
-
-// KeySplitter divides the DEK across the shares of a KAO template: the
-// reference's key splitter. The default handles a single share; XOR splits
-// across several KAS arrive in Phase 4.
-type KeySplitter interface {
-	Split(dek []byte, shares int) ([][]byte, error)
-}
-
-type defaultKeySplitter struct{}
-
-func (defaultKeySplitter) Split(dek []byte, count int) ([][]byte, error) {
-	if count <= 0 {
-		return nil, errors.New("no key splits requested")
-	}
-	if count > 1 {
-		return nil, unsupported("CreateTDF", "multiple key splits")
-	}
-	return splitDEK(dek, count)
-}
-
-// splitDEK divides the DEK into count shares that XOR back to it.
-func splitDEK(dek []byte, count int) ([][]byte, error) {
-	if count <= 0 {
-		return nil, errors.New("no key splits requested")
-	}
-	shares := make([][]byte, count)
-	parity := make([]byte, len(dek))
-	copy(parity, dek)
-	for i := 0; i < count-1; i++ {
-		share, err := crypto.Random(len(dek))
-		if err != nil {
-			return nil, fmt.Errorf("generate key split failed: %w", err)
-		}
-		for j, b := range share {
-			parity[j] ^= b
-		}
-		shares[i] = share
-	}
-	shares[count-1] = parity
-	return shares, nil
 }
 
 // templateSplitShares groups the KAO template by split ID and divides the DEK across
@@ -527,7 +469,10 @@ func (s *SDK) templateSplitShares(ctx context.Context, tdfConfig *TDFConfig, dek
 		shares = append(shares, splitShare{id: tpl.SplitID, kases: []KASInfo{ki}})
 	}
 
-	data, err := s.splitter.Split(dek, len(shares))
+	// The shares XOR back to the DEK, so every one of them is needed to reconstruct
+	// it — that is the AND half of the split semantics, with the OR half expressed by
+	// the several KAS servers that may sit on a single share.
+	data, err := splitDEK(dek, len(shares), randReader{})
 	if err != nil {
 		return nil, err
 	}
@@ -610,6 +555,8 @@ func createKeyAccess(kasInfo KASInfo, symKey []byte, policyBinding PolicyBinding
 
 	ktype := KeyType(kasInfo.Algorithm)
 	switch {
+	case isPQKeyType(ktype):
+		return KeyAccess{}, unsupported("CreateTDF", "wrapping key algorithm "+string(ktype))
 	case IsECKeyType(ktype):
 		wrappedKeyInfo, err := generateWrapKeyWithEC(ktype, kasInfo.PublicKey, symKey)
 		if err != nil {
@@ -727,60 +674,6 @@ func createPolicyObjectFromFQNs(fqns []string) (PolicyObject, error) {
 	}
 
 	return policyObj, nil
-}
-
-func resolvePolicyAndKeyAccess(fqns []string, shares []splitShare, metadata string) (string, []KeyAccess, error) {
-	policyObj, err := createPolicyObjectFromFQNs(fqns)
-	if err != nil {
-		return "", nil, fmt.Errorf("fail to create policy object:%w", err)
-	}
-	policyObjectAsStr, err := json.Marshal(policyObj)
-	if err != nil {
-		return "", nil, fmt.Errorf("json.Marshal failed:%w", err)
-	}
-	base64Policy, err := encoding.Base64Encode(policyObjectAsStr)
-	if err != nil {
-		return "", nil, err
-	}
-
-	kaos, err := buildKeyAccessObjects(shares, base64Policy, metadata)
-	if err != nil {
-		return "", nil, err
-	}
-	return base64Policy, kaos, nil
-}
-
-// buildKeyAccessObjects wraps every share to each of its KAS targets,
-// emitting the manifest's keyAccess array in share order.
-func buildKeyAccessObjects(shares []splitShare, base64Policy, metadata string) ([]KeyAccess, error) {
-	var kaos []KeyAccess
-	for _, share := range shares {
-		if len(share.kases) == 0 {
-			return nil, fmt.Errorf("splitID:[%s]: share names no KAS; its bytes could never be unwrapped", share.id)
-		}
-
-		policyBinding, err := createPolicyBinding(share.data, base64Policy)
-		if err != nil {
-			return nil, err
-		}
-
-		var encryptedMetadata string
-		if metadata != "" {
-			encryptedMetadata, err = encryptMetadata(share.data, metadata)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		for _, kasInfo := range share.kases {
-			kao, err := createKeyAccess(kasInfo, share.data, policyBinding, encryptedMetadata, share.id)
-			if err != nil {
-				return nil, err
-			}
-			kaos = append(kaos, kao)
-		}
-	}
-	return kaos, nil
 }
 
 func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegistryClient *kasregistry.KeyAccessServerRegistryServiceClient, call *serviceCall, platformURL string) (AllowList, error) {
@@ -1323,7 +1216,7 @@ func validateRootSignature(manifest Manifest, aggregateHash, secret []byte) (boo
 }
 
 func populateKasInfoFromBaseKey(key SimpleKasKey, tdfConfig *TDFConfig, logger *slog.Logger) error {
-	algoString, err := formatAlg(key.PublicKey.Algorithm)
+	algoString, err := formatAlg(policyAlgorithmOf(key.PublicKey.Algorithm))
 	if err != nil {
 		return fmt.Errorf("formatAlg failed: %w", err)
 	}

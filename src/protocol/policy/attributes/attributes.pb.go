@@ -707,6 +707,230 @@ func (m *GetAttributeValuesByFqnsResponse_AttributeAndValue) UnmarshalJSON(b []b
 	return protojson.Unmarshal(b, m)
 }
 
+type GetKeyMappingsByFqnsRequest struct {
+	Fqns []string
+}
+
+func (m *GetKeyMappingsByFqnsRequest) GetFqns() []string {
+	if m != nil {
+		return m.Fqns
+	}
+	return nil
+}
+
+func (m *GetKeyMappingsByFqnsRequest) EncodeProtoJSON(e *protojson.Encoder) {
+	e.BeginObject()
+	if m != nil {
+		if len(m.Fqns) > 0 {
+			e.Key("fqns")
+			e.BeginArray()
+			for _, v := range m.Fqns {
+				e.String(v)
+			}
+			e.EndArray()
+		}
+	}
+	e.EndObject()
+}
+
+func (m *GetKeyMappingsByFqnsRequest) DecodeProtoJSON(d *protojson.Decoder, v jsonvalue.Value) {
+	if !d.Object(v, "policy.attributes.GetKeyMappingsByFqnsRequest") {
+		return
+	}
+	for _, k := range v.Keys() {
+		f := v.Get(k)
+		switch k {
+		case "fqns":
+			if f.IsNull() {
+				break
+			}
+			if !d.Array(f, "fqns") {
+				return
+			}
+			for i := 0; i < f.Len(); i++ {
+				el := f.Index(i)
+				if el.IsNull() {
+					d.NullElement("fqns")
+					return
+				}
+				m.Fqns = append(m.Fqns, d.String(el, "fqns"))
+			}
+		}
+		if d.Err() != nil {
+			return
+		}
+	}
+}
+
+func (m *GetKeyMappingsByFqnsRequest) MarshalJSON() ([]byte, error) { return protojson.Marshal(m) }
+
+func (m *GetKeyMappingsByFqnsRequest) UnmarshalJSON(b []byte) error { return protojson.Unmarshal(b, m) }
+
+type GetKeyMappingsByFqnsResponse struct {
+	FqnKeyMappings map[string]*GetKeyMappingsByFqnsResponse_AttributeKeyMapping
+}
+
+func (m *GetKeyMappingsByFqnsResponse) GetFqnKeyMappings() map[string]*GetKeyMappingsByFqnsResponse_AttributeKeyMapping {
+	if m != nil {
+		return m.FqnKeyMappings
+	}
+	return nil
+}
+
+func (m *GetKeyMappingsByFqnsResponse) EncodeProtoJSON(e *protojson.Encoder) {
+	e.BeginObject()
+	if m != nil {
+		if len(m.FqnKeyMappings) > 0 {
+			e.Key("fqnKeyMappings")
+			e.BeginObject()
+			keys := make([]string, 0, len(m.FqnKeyMappings))
+			for k := range m.FqnKeyMappings {
+				keys = append(keys, k)
+			}
+			for _, k := range protojson.SortedKeys(keys) {
+				e.Key(k)
+				e.Message(m.FqnKeyMappings[k])
+			}
+			e.EndObject()
+		}
+	}
+	e.EndObject()
+}
+
+func (m *GetKeyMappingsByFqnsResponse) DecodeProtoJSON(d *protojson.Decoder, v jsonvalue.Value) {
+	if !d.Object(v, "policy.attributes.GetKeyMappingsByFqnsResponse") {
+		return
+	}
+	seenFqnKeyMappings := false
+	for _, k := range v.Keys() {
+		f := v.Get(k)
+		switch k {
+		case "fqnKeyMappings", "fqn_key_mappings":
+			if seenFqnKeyMappings {
+				d.Duplicate(k)
+				return
+			}
+			seenFqnKeyMappings = true
+			if f.IsNull() {
+				break
+			}
+			if !d.Object(f, "fqnKeyMappings") {
+				return
+			}
+			if m.FqnKeyMappings == nil {
+				m.FqnKeyMappings = map[string]*GetKeyMappingsByFqnsResponse_AttributeKeyMapping{}
+			}
+			for _, mk := range f.Keys() {
+				key := mk
+				el := f.Get(mk)
+				if el.IsNull() {
+					d.NullElement("fqnKeyMappings")
+					return
+				}
+				x := &GetKeyMappingsByFqnsResponse_AttributeKeyMapping{}
+				x.DecodeProtoJSON(d, el)
+				m.FqnKeyMappings[key] = x
+			}
+		}
+		if d.Err() != nil {
+			return
+		}
+	}
+}
+
+func (m *GetKeyMappingsByFqnsResponse) MarshalJSON() ([]byte, error) { return protojson.Marshal(m) }
+
+func (m *GetKeyMappingsByFqnsResponse) UnmarshalJSON(b []byte) error {
+	return protojson.Unmarshal(b, m)
+}
+
+type GetKeyMappingsByFqnsResponse_AttributeKeyMapping struct {
+	Rule policy.AttributeRuleTypeEnum
+	Keys []*policy.SimpleKasKey
+}
+
+func (m *GetKeyMappingsByFqnsResponse_AttributeKeyMapping) GetRule() policy.AttributeRuleTypeEnum {
+	if m != nil {
+		return m.Rule
+	}
+	return policy.AttributeRuleTypeEnum(0)
+}
+
+func (m *GetKeyMappingsByFqnsResponse_AttributeKeyMapping) GetKeys() []*policy.SimpleKasKey {
+	if m != nil {
+		return m.Keys
+	}
+	return nil
+}
+
+func (m *GetKeyMappingsByFqnsResponse_AttributeKeyMapping) EncodeProtoJSON(e *protojson.Encoder) {
+	e.BeginObject()
+	if m != nil {
+		if m.Rule != 0 {
+			e.Key("rule")
+			e.Enum(int32(m.Rule), policy.AttributeRuleTypeEnum_name[int32(m.Rule)])
+		}
+		if len(m.Keys) > 0 {
+			e.Key("keys")
+			e.BeginArray()
+			for _, v := range m.Keys {
+				e.Message(v)
+			}
+			e.EndArray()
+		}
+	}
+	e.EndObject()
+}
+
+func (m *GetKeyMappingsByFqnsResponse_AttributeKeyMapping) DecodeProtoJSON(d *protojson.Decoder, v jsonvalue.Value) {
+	if !d.Object(v, "policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping") {
+		return
+	}
+	for _, k := range v.Keys() {
+		f := v.Get(k)
+		switch k {
+		case "rule":
+			if f.IsNull() {
+				break
+			}
+			xn, ok := d.Enum(f, "rule", policy.AttributeRuleTypeEnum_value)
+			x := policy.AttributeRuleTypeEnum(xn)
+			if !ok {
+				break
+			}
+			m.Rule = x
+		case "keys":
+			if f.IsNull() {
+				break
+			}
+			if !d.Array(f, "keys") {
+				return
+			}
+			for i := 0; i < f.Len(); i++ {
+				el := f.Index(i)
+				if el.IsNull() {
+					d.NullElement("keys")
+					return
+				}
+				x := &policy.SimpleKasKey{}
+				x.DecodeProtoJSON(d, el)
+				m.Keys = append(m.Keys, x)
+			}
+		}
+		if d.Err() != nil {
+			return
+		}
+	}
+}
+
+func (m *GetKeyMappingsByFqnsResponse_AttributeKeyMapping) MarshalJSON() ([]byte, error) {
+	return protojson.Marshal(m)
+}
+
+func (m *GetKeyMappingsByFqnsResponse_AttributeKeyMapping) UnmarshalJSON(b []byte) error {
+	return protojson.Unmarshal(b, m)
+}
+
 func init() {
 	protojson.Register([]string{
 		"policy.attributes.AttributesSort",
@@ -717,6 +941,9 @@ func init() {
 		"policy.attributes.GetAttributeValuesByFqnsRequest",
 		"policy.attributes.GetAttributeValuesByFqnsResponse",
 		"policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue",
+		"policy.attributes.GetKeyMappingsByFqnsRequest",
+		"policy.attributes.GetKeyMappingsByFqnsResponse",
+		"policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping",
 	}, func(name string) protojson.Message {
 		switch name {
 		case "policy.attributes.AttributesSort":
@@ -735,6 +962,12 @@ func init() {
 			return &GetAttributeValuesByFqnsResponse{}
 		case "policy.attributes.GetAttributeValuesByFqnsResponse.AttributeAndValue":
 			return &GetAttributeValuesByFqnsResponse_AttributeAndValue{}
+		case "policy.attributes.GetKeyMappingsByFqnsRequest":
+			return &GetKeyMappingsByFqnsRequest{}
+		case "policy.attributes.GetKeyMappingsByFqnsResponse":
+			return &GetKeyMappingsByFqnsResponse{}
+		case "policy.attributes.GetKeyMappingsByFqnsResponse.AttributeKeyMapping":
+			return &GetKeyMappingsByFqnsResponse_AttributeKeyMapping{}
 		}
 		return nil
 	})

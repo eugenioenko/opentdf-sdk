@@ -161,14 +161,32 @@ func services(_ sdk: SDK, _ raw: [String: Any], _ name: String, _ run: URL) asyn
   list.namespace = ns
   let listed = try await sdk.attributes.listAttributes(list)
   try check(listed.attributes.count == 1 && listed.attributes[0].id == attribute.id, "attribute listed")
-  let raw = try JSONSerialization.jsonObject(with: Data(try await sdk.call("policy.attributes.AttributesService", "GetAttribute", "{\"attributeId\":\"\(attribute.id)\"}").utf8)) as? [String: Any]
-  try check((raw?["attribute"] as? [String: Any])?["fqn"] as? String == attribute.fqn, "raw JSON call")
+  let autoconfigureReport = try await autoconfigure(sdk, raw, attribute)
+  let reply = try JSONSerialization.jsonObject(with: Data(try await sdk.call("policy.attributes.AttributesService", "GetAttribute", "{\"attributeId\":\"\(attribute.id)\"}").utf8)) as? [String: Any]
+  try check((reply?["attribute"] as? [String: Any])?["fqn"] as? String == attribute.fqn, "raw JSON call")
   var missingRequest = Policy_Attributes_GetAttributeRequest()
   missingRequest.attributeID = "00000000-0000-0000-0000-000000000000"
   let missing = try await expectFailure("missing attribute") { try await sdk.attributes.getAttribute(missingRequest) }
   try check(missing["connectCode"] as? String == "not_found" && missing["httpStatus"] as? Int64 == 404, "missing attribute error: \(missing)")
   let helperReport = try await helpers(sdk, raw, name, ns, attribute.fqn)
-  try writeJSON(run, "services.json", ["namespace": ns, "namespaces_before": before.namespaces.count, "namespaces_after": after.namespaces.count, "attribute_fqn": attribute.fqn, "values": values, "not_found": missing, "helpers": helperReport])
+  try writeJSON(run, "services.json", ["namespace": ns, "namespaces_before": before.namespaces.count, "namespaces_after": after.namespaces.count, "attribute_fqn": attribute.fqn, "values": values, "not_found": missing, "helpers": helperReport, "autoconfigure": autoconfigureReport])
+}
+
+/// Encrypts under a value of the attribute created, looked up (attributes) and offline (attributeValues): the attribute has no grants, so the plan is the base key or the default KAS.
+func autoconfigure(_ sdk: SDK, _ raw: [String: Any], _ attribute: Policy_Attribute) async throws -> [String: Any] {
+  let value = attribute.fqn + "/value/1"
+  var definition = Policy_Attribute()
+  definition.fqn = attribute.fqn; definition.rule = attribute.rule; definition.namespace = attribute.namespace
+  var offline = Policy_Value()
+  offline.fqn = value; offline.value = "1"; offline.attribute = definition
+  var report: [String: Any] = ["key": try await SDK.newAttributeValueFQN(value).key]
+  for (label, options) in [("looked_up", TDFOptions(attributes: [value], kasInformation: [kasInformation(raw)])), ("offline", TDFOptions(attributeValues: [offline], kasInformation: [kasInformation(raw)]))] {
+    let object = try await sdk.createTDF(Data(label.utf8), options)
+    let kaos = try await object.manifest().encryptionInformation.keyAccess
+    try object.close()
+    report[label] = ["kaos": kaos.count, "kas": kaos[0].url, "sid": kaos[0].sid]
+  }
+  return report
 }
 
 /// The reference's attribute helpers on the attribute services created, SDK.auth, and an SDK whose platform endpoint is unreachable but whose core connection is the platform.

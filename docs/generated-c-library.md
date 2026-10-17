@@ -87,6 +87,18 @@ bool exists;
 if (otdf_attribute_value_exists(sdk, "https://example.com/attr/level/value/high", NULL, &exists, &e) == 0 && exists) { ... }
 ```
 
+With autoconfigure on (the default), `otdf_tdf_options.attributes` drive the
+reference's key split (grants and mapped keys, else the base key, else the
+default KAS); `attribute_values` (each a `policy.Value` in protobuf JSON with
+its definition) plan offline. `otdf_new_attribute_value_fqn(fqn, &url, &key,
+&e)` and `otdf_new_attribute_name_fqn` return the FQN and its lower-case key
+(release both with `otdf_string_free`).
+
+```c
+const char *attrs[] = {"https://example.com/attr/level/value/high"};
+otdf_tdf_options o = OTDF_TDF_OPTIONS_INIT; o.attributes = attrs; o.attribute_count = 1;
+```
+
 Every call returns 0 or the generated library's error kind (1 an SDK error,
 2 source panic, 3 host fault, 4 fatal, 5 invalid argument, 6 canceled, 7
 closed handle, 8 poisoned, 9 handles of different instances) and fills the

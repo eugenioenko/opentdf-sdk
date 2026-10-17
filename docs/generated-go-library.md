@@ -117,6 +117,19 @@ exists, err := s.AttributeValueExists(ctx, "https://example.com/attr/level/value
 s2, err := sdk.NewWithOptions(ctx, platform, sdk.WithCustomCoreConnection(&sdk.ConnectRPCConnection{Endpoint: "https://core.example.com"}))
 ```
 
+With autoconfigure on (the default), `WithDataAttributes` drives the
+reference's key split: grants and mapped keys of the attributes decide the
+key access objects, else the base key, else the default KAS of
+`WithKasInformation` (see [api-spec.md](api-spec.md#autoconfigure-and-key-splitting-phase-4-part-1)).
+`WithDataAttributeValues(...*policy.Value)` plans offline from values that
+carry their definitions. `NewAttributeValueFQN(ctx, fqn)` and
+`NewAttributeNameFQN` return the FQN values with the reference's methods.
+
+```go
+o, err := sdk.TDFOptionsOf(sdk.WithDataAttributes("https://example.com/attr/level/value/high"))
+v, err := sdk.NewAttributeValueFQN(ctx, "https://example.com/attr/level/value/high") // v.Value() == "high"
+```
+
 ## Errors
 
 SDK failures are `*sdk.Error` values with `Kind`, `Op`, `Message`,

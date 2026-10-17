@@ -83,9 +83,23 @@ static class Entry
   Check(raw.GetProperty("attribute").GetProperty("fqn").GetString()==attribute.Fqn,"raw JSON call");
   var missing=await ExpectFailure("missing attribute",()=>sdk.Attributes.GetAttributeAsync(new Attributes.GetAttributeRequest{AttributeId="00000000-0000-0000-0000-000000000000"}));
   Check((string)missing["connectCode"]=="not_found"&&(long)missing["httpStatus"]==404,"missing attribute error: "+JsonSerializer.Serialize(missing));
-  Write("services.json",JsonSerializer.Serialize(new Dictionary<string,object>{["namespace"]=ns,["namespaces_before"]=before.Namespaces.Count,["namespaces_after"]=after.Namespaces.Count,["attribute_fqn"]=attribute.Fqn,["values"]=values,["not_found"]=missing,["helpers"]=await Helpers(sdk,cfg,ns,attribute.Fqn)}));
+  Write("services.json",JsonSerializer.Serialize(new Dictionary<string,object>{["namespace"]=ns,["namespaces_before"]=before.Namespaces.Count,["namespaces_after"]=after.Namespaces.Count,["attribute_fqn"]=attribute.Fqn,["values"]=values,["not_found"]=missing,["helpers"]=await Helpers(sdk,cfg,ns,attribute.Fqn),["autoconfigure"]=await Autoconfigure(sdk,cfg,attribute)}));
  }
  // The reference's attribute helpers on the attribute services created, Sdk.Auth, and an Sdk whose platform endpoint is unreachable but whose core connection is the platform.
+ /// Encrypts under a value of the attribute created, looked up (Attributes) and offline (AttributeValues): the attribute has no grants, so the plan is the base key or the default KAS.
+ static async Task<Dictionary<string,object>> Autoconfigure(Sdk sdk,JsonElement cfg,Policy.Attribute attribute)
+ {
+  string value=attribute.Fqn+"/value/1";
+  var offline=new Policy.Value{Fqn=value,Value_="1",Attribute=new Policy.Attribute{Fqn=attribute.Fqn,Rule=attribute.Rule,Namespace=attribute.Namespace}};
+  var report=new Dictionary<string,object>{["key"]=(await Sdk.NewAttributeValueFqnAsync(value)).Key};
+  foreach(var (label,options) in new[]{("looked_up",new TdfOptions{KasInformation=new[]{KasInformation(cfg)},Attributes=new[]{value}}),("offline",new TdfOptions{KasInformation=new[]{KasInformation(cfg)},AttributeValues=new[]{offline}})})
+  {
+   await using var obj=await sdk.CreateTdfAsync(Encoding.UTF8.GetBytes(label),options);
+   var kaos=KeyAccess(await obj.ManifestAsync());var kao=(IReadOnlyDictionary<string,object>)kaos[0];
+   report[label]=new Dictionary<string,object>{["kaos"]=kaos.Count,["kas"]=kao["url"],["sid"]=kao.TryGetValue("sid",out var sid)?sid:""};
+  }
+  return report;
+ }
  static async Task<Dictionary<string,object>> Helpers(Sdk sdk,JsonElement cfg,string ns,string fqn)
  {
   var h=new Dictionary<string,object>{["attribute_exists"]=await sdk.AttributeExistsAsync(fqn),["attribute_missing"]=await sdk.AttributeExistsAsync(fqn+"-missing"),

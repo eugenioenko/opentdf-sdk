@@ -36,7 +36,7 @@ when its verification items passed and its PRs are on `main`.
 | 1 xtest harness and Go CLI | done | #20, opentdf-sdk-tests #9 | `gcgo` passes roundtrip and manifest validity against go and js (12/12 cells) |
 | 2 Handle API and platform discovery | done | #22, #24, opentdf-sdk-tests #10, #11 | Handle API on all eight targets. xtest: `gcgo`/`gcts`/`gcpy` 120/120 roundtrip, tamper and policy-type cells; `gcjava`/`gccs`/`gcrs`/`gcc`/`gcswift` 42/42 roundtrip and manifest, `gcjava`/`gccs`/`gcrs`/`gcc` 250/250 tamper and policy types. Swift CI times out on the hosted runner (not required) |
 | 3 Generated platform service clients | done | #30, #31, #32 | Messages cross the Goalchemy boundary as protobuf JSON: the shared source types only what it reads (`include=`) and exposes `SDK.Call`; each host types the 16 `sdkconnect` services with its own protobuf messages (C: JSON text). Part 1: shared source, generated KAS client, Go, TypeScript, Python. Part 2: Java, C#, Rust, Swift, C. Part 3: `ListAttributes`, `GetEntityAttributes`, `ValidateAttributes`, `AttributeExists`, `AttributeValueExists`, `SDK.Auth`, `SDK.Conn` and per-service `WithCustom*Connection` endpoints on every target. Focused real-KAS `services` runs pass for go, typescript, java, csharp, python, rust and c; the Swift adapter is not CI-verified (the Swift job times out on the hosted runner) |
-| 4 Autoconfigure, key splitting, key management | pending | | |
+| 4 Autoconfigure, key splitting, key management | in progress | #33 | Part 1 (writer): `granter.go`, `key_splitter.go`, `resource_locator.go` ported; autoconfigure and multi-KAO manifests; `WithDataAttributeValues` and the FQN constructors on all eight targets; split plans identical to the reference's for the xtest fixtures and random policies (`tests/splitplan`). Part 2: reader and extended mechanisms |
 | 5 Assertions | pending | | |
 | 6 Target modes, legacy readers, hardening | pending | | |
 | 7 Streaming and large payloads | pending | | |
@@ -49,6 +49,7 @@ when its verification items passed and its PRs are on `main`.
 | Goalchemy: Swift reserved public names (GCE007) | done | goalchemy #79, #80 | v0.6.2 |
 | Goalchemy: protoc fieldless messages, proto3 optional, `connect.Client.HTTPClient` hook | done | goalchemy #83, #84 | v0.6.4 |
 | Goalchemy: `Connect-Timeout-Ms` only with `Client.SendTimeout` | done | goalchemy #86, #87 | v0.6.5 |
+| Goalchemy: value-receiver methods on handle types | done | goalchemy #89, #90 | v0.6.6 |
 | Goalchemy: JSON canonicalisation (#72), `std/os` files (#73), runtime info (#74), schema validator (#75), X.509 keys (#76) | pending | | before the phases that need them |
 
 ## References and pins

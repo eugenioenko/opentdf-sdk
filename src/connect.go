@@ -242,6 +242,7 @@ type attributesService interface {
 	ListAttributes(ctx context.Context, req *attributes.ListAttributesRequest) (*attributes.ListAttributesResponse, error)
 	GetAttribute(ctx context.Context, req *attributes.GetAttributeRequest) (*attributes.GetAttributeResponse, error)
 	GetAttributeValuesByFqns(ctx context.Context, req *attributes.GetAttributeValuesByFqnsRequest) (*attributes.GetAttributeValuesByFqnsResponse, error)
+	GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error)
 }
 
 // authorizationService is the part of the reference's
@@ -281,6 +282,15 @@ func (c serviceConnection) GetAttributeValuesByFqns(ctx context.Context, req *at
 	resp, err := attributes.NewAttributesServiceClient(conn).GetAttributeValuesByFqns(ctx, req)
 	if err != nil {
 		return nil, call.serviceError("GetAttributeValuesByFqns", err)
+	}
+	return resp, nil
+}
+
+func (c serviceConnection) GetKeyMappingsByFqns(ctx context.Context, req *attributes.GetKeyMappingsByFqnsRequest) (*attributes.GetKeyMappingsByFqnsResponse, error) {
+	conn, call := c.client.newServiceClient(c.endpoint, nil)
+	resp, err := attributes.NewAttributesServiceClient(conn).GetKeyMappingsByFqns(ctx, req)
+	if err != nil {
+		return nil, call.serviceError("GetKeyMappingsByFqns", err)
 	}
 	return resp, nil
 }

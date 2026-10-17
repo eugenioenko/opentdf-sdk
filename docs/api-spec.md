@@ -173,7 +173,7 @@ Package-level helpers, as in the reference: `IsValidTdf(io.ReadSeeker)`,
 ```go
 type TDFOptions struct {
 	Attributes            []string        // WithDataAttributes
-	AttributeValues       []*policy.Value // WithDataAttributeValues
+	AttributeValues       []string        // WithDataAttributeValues: policy.Value in protobuf JSON
 	DisableAutoconfigure  bool            // WithAutoconfigure(false)
 	KasInformation        []KASInfo       // WithKasInformation
 	WrappingKeyAlgorithm  KeyType         // WithWrappingKeyAlg; "" = rsa:2048
@@ -517,6 +517,58 @@ const fqns = await sdk.getEntityAttributes({ id: 'e1', entityType: { case: 'clie
 const token = await sdk.auth().accessToken();
 ```
 
+### Autoconfigure and key splitting (Phase 4 part 1)
+
+`granter.go`, `key_splitter.go` and `resource_locator.go` are ported file by
+file. With autoconfigure on (the default), `CreateTDF`/`EncryptBytes` resolve
+the key access template as the reference does:
+
+1. `TDFOptions.AttributeValues` (offline, `WithDataAttributeValues`) or
+   `TDFOptions.Attributes` looked up with `GetKeyMappingsByFqns`, falling
+   back to `GetAttributeValuesByFqns` for values without mapped keys and for
+   platforms without the method (`unimplemented`);
+2. mapped KAS keys (value, else definition, else namespace) become the
+   template directly; legacy grants become a split plan whose keys come
+   from `KasInformation` or the KAS;
+3. with neither, the platform's base key; without one, the default KAS of
+   `KasInformation` (`Default`, else every entry).
+
+The plan is the reference's boolean reduction: an `anyOf` clause is one
+share wrapped to each of its KAS (one `sid`), `allOf` and `hierarchy` give one
+share per KAS; a single share has no `sid`. `tests/splitplan` checks that the
+reference and the shared source produce the same key access objects (KAS,
+kid, wrapping and split grouping, in order) for the xtest fixtures and for
+random policies. `DisableAutoconfigure` keeps `KasInformation` as the
+template (one share per entry, `s-<i>` split ids when there are several).
+`Options.NoKIDInKAO` leaves `kid` out of the KAOs.
+
+Exported with it: `NewAttributeNameFQN` and `NewAttributeValueFQN` (values
+`{URL, Key}` with the reference's methods in the shared source and the
+generated Go package), `NewResourceLocator` and `NewResourceLocatorFromReader`
+(a `ResourceLocator` handle), and the `KeySplitter` contract types
+(`Split`, `SplitResult` with `Validate` and `VerifyReconstruction`,
+`KASPublicKey`, `ErrSplitterRequiresDefaultKAS`,
+`ErrSplitterUnsupportedAlgorithm`), which the chunked writer of Phase 10
+takes.
+
+Per target:
+
+| Target | Offline attribute values | FQN constructors |
+| --- | --- | --- |
+| Go | `WithDataAttributeValues(...*policy.Value)` (`protocol/go`); `WithDataAttributes` after it keeps the values' FQNs, as the reference does | `NewAttributeNameFQN(ctx, fqn)`, `NewAttributeValueFQN(ctx, fqn)` with `String`, `Authority`, `Name`, `Value`, `Prefix`, `Select` |
+| TypeScript | `attributeValues: ValueInit[]` | `newAttributeNameFqn(fqn)`, `newAttributeValueFqn(fqn)` → `{url, key}` |
+| Python | `attribute_values=[policy Value]` | `new_attribute_name_fqn(fqn)`, `new_attribute_value_fqn(fqn)` → `{'url', 'key'}` |
+| Java | `Builder.attributeValues(List<Value>)` | `SDK.newAttributeNameFQN(fqn)`, `SDK.newAttributeValueFQN(fqn)` → `SDK.AttributeFQN(url, key)` |
+| C# | `TdfOptions.AttributeValues` (`IReadOnlyList<Policy.Value>`) | `Sdk.NewAttributeNameFqnAsync`, `Sdk.NewAttributeValueFqnAsync` → `AttributeFqn(Url, Key)` |
+| Rust | `TdfOptions { attribute_values: Vec<protocol::policy::Value>, .. }` | `new_attribute_name_fqn`, `new_attribute_value_fqn` → `AttributeFqn { url, key }` |
+| Swift | `TDFOptions(attributeValues: [Policy_Value])` | `SDK.newAttributeNameFQN(_:)`, `SDK.newAttributeValueFQN(_:)` → `AttributeFQN` |
+| C | `otdf_tdf_options.attribute_values` (protobuf JSON strings) | `otdf_new_attribute_name_fqn(fqn, &url, &key, &e)`, `otdf_new_attribute_value_fqn` |
+
+```go
+tdf, err := s.CreateTDF(ctx, out, in, sdk.WithDataAttributes("https://example.com/attr/level/value/high"))
+v, err := sdk.NewAttributeValueFQN(ctx, "https://example.com/attr/level/value/high")
+```
+
 ## Target idioms
 
 Each generated package exposes the same surface. The table is the binding
@@ -844,3 +896,31 @@ on every target would dominate Swift and Rust build times).
 - `NewAttributeNameFQN` and `NewAttributeValueFQN` stay unexported
   (`newAttributeNameFQN`) until Phase 4 exports the FQN types with the
   granter; `ErrInvalid` is exported now.
+
+### Deviations recorded by Phase 4 part 1
+
+- `AttributeNameFQN` and `AttributeValueFQN` export their fields as `URL` and
+  `Key` (the reference's unexported `url` and `key`): a struct with
+  unexported fields does not cross the Goalchemy boundary (GCE007).
+- `DefaultKeySplitter` is unexported (`defaultKeySplitter`) until the chunked
+  writer of Phase 10 takes it: a function returning the `KeySplitter`
+  interface cannot be a library export. `CreateTDF` does not use a
+  `KeySplitter`, as in the reference; its shares come from `splitDEK`.
+- `TDFOptions.AttributeValues` is `[]string`, each a `policy.Value` in
+  protobuf JSON, like `SDK.Call`; setting it together with `Attributes` is an
+  error rather than the reference's last-option-wins (the Go adapter keeps
+  the reference's ordering).
+- `TDFOptions.Attributes` are parsed with `NewAttributeValueFQN` when the TDF
+  is created, as the reference's `WithDataAttributes` does when the option is
+  applied, so an invalid FQN fails with `invalid type: ...`.
+- `KeyTypeToPolicyAlgorithm` and `PolicyAlgorithmToKeyType` keep the
+  protojson names of `policy.Algorithm` at the boundary (the generated enum
+  type does not cross); the shared source uses the typed enum. They know the
+  post-quantum key types; a KAO for one fails with `unsupported in this
+  build: wrapping key algorithm <type>`.
+- The reference's `disjunction.Less` (unused, and indexing one past the end)
+  is replaced by `sort.Interface` methods; `sortedNoDupes` sorts with
+  Goalchemy's `sort.Sort`, which runs the same insertion sort as Go's
+  `sort.Slice` for the short lists a plan has.
+- The exported FQN and resource locator constructors return the SDK's
+  `Error` (kind `invalid_input`) with the reference's text.

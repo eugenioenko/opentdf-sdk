@@ -119,9 +119,9 @@ ROOT = {
     'PolicyAlgorithmToKeyType': ('phase 4', 'sdk.PolicyAlgorithmToKeyType'),
     'NewAttributeNameFQN': ('phase 4', 'sdk.NewAttributeNameFQN'),
     'NewAttributeValueFQN': ('phase 4', 'sdk.NewAttributeValueFQN'),
-    'NewResourceLocator': ('phase 4', 'sdk.NewResourceLocator'),
-    'NewResourceLocatorFromReader': ('phase 10', 'sdk.NewResourceLocatorFromReader'),
-    'DefaultKeySplitter': ('phase 4', 'sdk.DefaultKeySplitter'),
+    'NewResourceLocator': ('phase 4', 'sdk.NewResourceLocator (ResourceLocator handle)'),
+    'NewResourceLocatorFromReader': ('phase 4', 'sdk.NewResourceLocatorFromReader (host stream in, ResourceLocator handle out)'),
+    'DefaultKeySplitter': ('phase 10', 'sdk.defaultKeySplitter, exported with the chunked writer that takes it (a KeySplitter result does not cross the Goalchemy boundary)'),
     'GetSystemMetadataAssertionConfig': ('phase 5', 'sdk.GetSystemMetadataAssertionConfig'),
     'FromBulkErrors': ('phase 9', 'sdk.FromBulkErrors'),
     'NewChunkedWriter': ('phase 10', 'SDK.NewChunkedWriter(ctx, ChunkedWriterOptions)'),
@@ -201,13 +201,13 @@ ROOT = {
     'Error': ('phase 2', 'sdk.Error struct (Kind, Op, Message, ...)'),
     'AuthClient': ('phase 3', 'sdk.AuthClient'),
     'ConnectRPCConnection': ('phase 3', 'sdk.ConnectRPCConnection{Endpoint}; requests use the SDK transport'),
-    'AttributeNameFQN': ('phase 4', 'sdk.AttributeNameFQN'),
-    'AttributeValueFQN': ('phase 4', 'sdk.AttributeValueFQN'),
-    'KeySplitter': ('phase 4', 'sdk.KeySplitter (TDFOptions.KeySplitter)'),
-    'Split': ('phase 4', 'sdk/tdf.Split'),
-    'SplitResult': ('phase 4', 'sdk/tdf.SplitResult'),
-    'KASPublicKey': ('phase 4', 'sdk/tdf.KASPublicKey'),
-    'ResourceLocator': ('phase 4', 'sdk/tdf.ResourceLocator'),
+    'AttributeNameFQN': ('phase 4', 'sdk.AttributeNameFQN (exported URL and Key fields, so the value crosses)'),
+    'AttributeValueFQN': ('phase 4', 'sdk.AttributeValueFQN (exported URL and Key fields, so the value crosses)'),
+    'KeySplitter': ('phase 4', 'sdk.KeySplitter (shared-source implementations; the chunked writer takes it in phase 10)'),
+    'Split': ('phase 4', 'sdk.Split'),
+    'SplitResult': ('phase 4', 'sdk.SplitResult'),
+    'KASPublicKey': ('phase 4', 'sdk.KASPublicKey'),
+    'ResourceLocator': ('phase 4', 'sdk.ResourceLocator (handle)'),
     'Assertion': ('phase 5', 'sdk/tdf.Assertion'),
     'AssertionConfig': ('phase 5', 'sdk/tdf.AssertionConfig'),
     'AssertionKey': ('phase 5', 'sdk/tdf.AssertionKey'),
@@ -410,11 +410,19 @@ DONE = {
     'WithCustomCoreConnection', 'WithCustomPolicyConnection', 'WithCustomAuthorizationConnection',
     'WithCustomEntityResolutionConnection', 'WithCustomWellknownConnection',
     'ErrAttributeNotFound', 'ErrAccessTokenInvalid', 'ErrInvalid',
+    # Phase 4 part 1: granter, key splitter, resource locator and the writer options.
+    'NewAttributeNameFQN', 'NewAttributeValueFQN', 'AttributeNameFQN', 'AttributeValueFQN',
+    'NewResourceLocator', 'NewResourceLocatorFromReader', 'ResourceLocator',
+    'KeySplitter', 'Split', 'SplitResult', 'SplitResult.Validate', 'SplitResult.VerifyReconstruction',
+    'KASPublicKey', 'ErrSplitterRequiresDefaultKAS', 'ErrSplitterUnsupportedAlgorithm',
+    'WithAutoconfigure', 'WithDataAttributes', 'WithDataAttributeValues',
 }
+# Types whose every method is done with the type.
+DONE_METHODS = {'AttributeNameFQN', 'AttributeValueFQN', 'ResourceLocator'}
 
 def root_status(kind, sym):
     status, equiv = root_status_planned(kind, sym)
-    if sym in DONE:
+    if sym in DONE or sym.partition('.')[0] in DONE_METHODS and '.' in sym:
         return ('done', equiv)
     return status, equiv
 
@@ -572,7 +580,11 @@ lines.append('packages, with one JSON function per method in C (part 2), so the 
 lines.append('fields and every `sdkconnect` symbol are `done`. Part 3 delivered the attribute')
 lines.append('helpers, `SDK.Auth`, `SDK.Conn` and the `WithCustom*Connection` endpoint overrides')
 lines.append('on every target; with them `ErrAttributeNotFound`, `ErrAccessTokenInvalid` and')
-lines.append('`ErrInvalid` (the FQN parsers of `granter.go`) are `done`.')
+lines.append('`ErrInvalid` (the FQN parsers of `granter.go`) are `done`. Phase 4 part 1 ported')
+lines.append('`granter.go`, `key_splitter.go` and `resource_locator.go` and the autoconfigure writer:')
+lines.append('the FQN types, `ResourceLocator`, the `KeySplitter` contract types and the')
+lines.append('`WithAutoconfigure`/`WithDataAttributes`/`WithDataAttributeValues` options are `done`;')
+lines.append('`DefaultKeySplitter` moves to phase 10 with the chunked writer that takes it.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
 lines.append('[goalchemy-gaps.md](goalchemy-gaps.md):')

@@ -81,4 +81,8 @@ of the generated package (`sdk.SupportedFeatures(ctx)`), which is what
 `otdfgc --version --json` and `otdfgc supports` read. A feature name is added
 there only in the change whose xtest cells prove it: `hexless` (4.3.0 output
 and input) by the Phase 1 round trips, `kasallowlist` and
-`better-messages-2024` by the Phase 2 tamper and allowlist cells.
+`better-messages-2024` by the Phase 2 tamper and allowlist cells. Phase 4 part 1
+adds `autoconfigure`, `ns_grants` and `key_management` (the `test_abac.py`
+autoconfigure, key mapping and base key cells) and `ecwrap`
+(`test_tdf_roundtrip[ztdf-ecwrap]` and the EC key mapping cells), each
+passing with gcgo as encrypt and as decrypt SDK against go and js.

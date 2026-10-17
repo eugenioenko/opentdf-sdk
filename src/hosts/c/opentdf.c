@@ -57,7 +57,7 @@ static gxc_value options_value(arena *a, const otdf_options *o) {
         strs(a, o->fulfillable_obligation_fqns, o->fulfillable_obligation_fqn_count), integer(o->log_level));
 }
 static gxc_value tdf_options_value(arena *a, const otdf_tdf_options *o) {
-    static char *names[] = {"Attributes", "DisableAutoconfigure", "KasInformation", "WrappingKeyAlgorithm", "SegmentSize", "InputSize", "MimeType", "Metadata", "Assertions", "SystemMetadataAssertion", "TargetMode"};
+    static char *names[] = {"Attributes", "AttributeValues", "DisableAutoconfigure", "KasInformation", "WrappingKeyAlgorithm", "SegmentSize", "InputSize", "MimeType", "Metadata", "Assertions", "SystemMetadataAssertion", "TargetMode"};
     static char *kas[] = {"URL", "PublicKey", "KID", "Algorithm", "Default"}, *assertion[] = {"ID", "Type", "Scope", "AppliesToState", "Statement"}, *statement[] = {"Format", "Schema", "Value"};
     static const otdf_tdf_options zero = OTDF_TDF_OPTIONS_INIT;
     if (!o) o = &zero;
@@ -65,7 +65,7 @@ static gxc_value tdf_options_value(arena *a, const otdf_tdf_options *o) {
     for (size_t i = 0; i < o->kas_information_count; i++) { const otdf_kas_info *k = &o->kas_information[i]; kases[i] = RECORD(a, kas, str(k->url), str(k->public_key), str(k->kid), str(k->algorithm), boolean(k->is_default)); }
     gxc_value *assertions = keep(a, calloc(o->assertion_count ? o->assertion_count : 1, sizeof(*assertions)));
     for (size_t i = 0; i < o->assertion_count; i++) { const otdf_assertion_config *c = &o->assertions[i]; assertions[i] = RECORD(a, assertion, str(c->id), str(c->type), str(c->scope), str(c->applies_to_state), RECORD(a, statement, str(c->format), str(c->schema), str(c->value))); }
-    return RECORD(a, names, strs(a, o->attributes, o->attribute_count), boolean(o->disable_autoconfigure),
+    return RECORD(a, names, strs(a, o->attributes, o->attribute_count), strs(a, o->attribute_values, o->attribute_value_count), boolean(o->disable_autoconfigure),
         o->kas_information ? (gxc_value){.kind = GXC_LIST, .items = kases, .length = o->kas_information_count} : (gxc_value){.kind = GXC_NIL},
         str(o->wrapping_key_algorithm), integer(o->segment_size), integer(o->input_size), str(o->mime_type), str(o->metadata),
         o->assertions ? (gxc_value){.kind = GXC_LIST, .items = assertions, .length = o->assertion_count} : (gxc_value){.kind = GXC_NIL},
@@ -561,6 +561,15 @@ int otdf_is_platform_endpoint_malformed(const char *endpoint, bool *malformed, o
     gxc_value args[] = {str(endpoint)};
     return bool_call("IsPlatformEndpointMalformed", args, 1, NULL, malformed, error);
 }
+static int fqn_call(const char *name, const char *fqn, char **url, char **key, otdf_error *error) {
+    if (!fqn || !url || !key) return invalid(error);
+    gxc_value args[] = {str(fqn)}, result = {0};
+    int rc = invoke(name, args, 1, NULL, NULL, &result, error);
+    if (!rc) { *url = dup_text(gxc_field(&result, "URL")); *key = dup_text(gxc_field(&result, "Key")); gxc_value_free(&result); }
+    return rc;
+}
+int otdf_new_attribute_name_fqn(const char *fqn, char **url, char **key, otdf_error *error) { return fqn_call("NewAttributeNameFQN", fqn, url, key, error); }
+int otdf_new_attribute_value_fqn(const char *fqn, char **url, char **key, otdf_error *error) { return fqn_call("NewAttributeValueFQN", fqn, url, key, error); }
 int otdf_key_type_to_policy_algorithm(const char *key_type, char **algorithm, otdf_error *error) {
     if (!key_type) return invalid(error);
     gxc_value args[] = {str(key_type)};
