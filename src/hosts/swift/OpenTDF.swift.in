@@ -193,7 +193,7 @@ public struct TDFOptions {
   public var attributeValues: [Policy_Value] = []
   public var disableAutoconfigure = false
   public var kasInformation: [KASInfo] = []
-  /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
+  /// WithWrappingKeyAlg: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
   public var wrappingKeyAlgorithm = ""
   public var segmentSize: Int64 = 0, inputSize: Int64 = 0
   public var mimeType = "", metadata = ""
@@ -233,7 +233,7 @@ public struct ReaderOptions {
   public var kasAllowlist: [String]? = nil
   public var ignoreAllowlist = false
   public var maxManifestSize: Int64 = 0, schemaValidation: Int64 = 0
-  /// WithSessionKeyType: rsa:2048 (default) or ec:secp256r1.
+  /// WithSessionKeyType: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
   public var sessionKeyType = ""
   public var fulfillableObligationFqns: [String] = []
   public init(

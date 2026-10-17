@@ -15,10 +15,10 @@ TARGET = 'python'
 TIMEOUT_SECONDS = 120
 USAGE = '''Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]
+      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]
+      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -29,8 +29,8 @@ COMMON_FLAGS = (('out', False), ('host', False), ('with-client-creds', False), (
 ENCRYPT_FLAGS = (('attr', False), ('mime-type', False), ('with-assertions', False), ('wrapping-key-algorithm', False), ('target-mode', False), ('policy-mode', False), ('ecdsa-binding', True)) + COMMON_FLAGS
 DECRYPT_FLAGS = (('with-assertion-verification-keys', False), ('no-verify-assertions', True), ('session-key-algorithm', False), ('kas-allowlist', False)) + COMMON_FLAGS
 DPOP_ALGORITHMS = ('ES256', 'ES384', 'ES512', 'RS256', 'RS384', 'RS512')
-ENCRYPT_UNSUPPORTED = (('with-assertions', None), ('ecdsa-binding', None), ('target-mode', ('4.3.0',)), ('policy-mode', ('encrypted',)), ('wrapping-key-algorithm', ('rsa:2048', 'ec:secp256r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
-DECRYPT_UNSUPPORTED = (('with-assertion-verification-keys', None), ('session-key-algorithm', ('rsa:2048', 'ec:secp256r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
+ENCRYPT_UNSUPPORTED = (('with-assertions', None), ('ecdsa-binding', None), ('target-mode', ('4.3.0',)), ('policy-mode', ('encrypted',)), ('wrapping-key-algorithm', ('rsa:2048', 'ec:secp256r1', 'rsa:4096', 'ec:secp384r1', 'ec:secp521r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
+DECRYPT_UNSUPPORTED = (('with-assertion-verification-keys', None), ('session-key-algorithm', ('rsa:2048', 'ec:secp256r1', 'rsa:4096', 'ec:secp384r1', 'ec:secp521r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
 
 
 class Parsed:

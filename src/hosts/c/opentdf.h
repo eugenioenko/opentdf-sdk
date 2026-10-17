@@ -64,7 +64,7 @@ typedef struct {
     const char *const *attribute_values; size_t attribute_value_count;
     bool disable_autoconfigure;
     const otdf_kas_info *kas_information; size_t kas_information_count;
-    /* rsa:2048 (default) or ec:secp256r1 in this build. */
+    /* rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1. */
     const char *wrapping_key_algorithm;
     int64_t segment_size, input_size;
     const char *mime_type, *metadata;
@@ -80,7 +80,7 @@ typedef struct {
     const char *const *kas_allowlist; size_t kas_allowlist_count;
     bool ignore_allowlist;
     int64_t max_manifest_size, schema_validation;
-    /* rsa:2048 (default) or ec:secp256r1. */
+    /* rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1. */
     const char *session_key_type;
     const char *const *fulfillable_obligation_fqns; size_t fulfillable_obligation_fqn_count;
 } otdf_reader_options;

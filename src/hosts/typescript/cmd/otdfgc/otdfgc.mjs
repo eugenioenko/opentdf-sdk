@@ -13,10 +13,10 @@ const TARGET='typescript';
 const TIMEOUT_MILLIS=120000;
 const USAGE=`Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]
+      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]
+      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -29,8 +29,8 @@ const g=await import(pathToFileURL(packagePath).href);
 const commonFlags=[['out'],['host'],['with-client-creds'],['with-client-creds-file'],['dpop'],['dpop-key'],['tls-no-verify',true],['log-level']];
 const encryptFlags=[['attr'],['mime-type'],['with-assertions'],['wrapping-key-algorithm'],['target-mode'],['policy-mode'],['ecdsa-binding',true],...commonFlags];
 const decryptFlags=[['with-assertion-verification-keys'],['no-verify-assertions',true],['session-key-algorithm'],['kas-allowlist'],...commonFlags];
-const encryptUnsupported=[['with-assertions'],['ecdsa-binding'],['target-mode',['4.3.0']],['policy-mode',['encrypted']],['wrapping-key-algorithm',['rsa:2048','ec:secp256r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
-const decryptUnsupported=[['with-assertion-verification-keys'],['session-key-algorithm',['rsa:2048','ec:secp256r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
+const encryptUnsupported=[['with-assertions'],['ecdsa-binding'],['target-mode',['4.3.0']],['policy-mode',['encrypted']],['wrapping-key-algorithm',['rsa:2048','ec:secp256r1','rsa:4096','ec:secp384r1','ec:secp521r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
+const decryptUnsupported=[['with-assertion-verification-keys'],['session-key-algorithm',['rsa:2048','ec:secp256r1','rsa:4096','ec:secp384r1','ec:secp521r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
 
 function parseFlags(args,spec){
  const specs=new Map(spec.map(([name,bool])=>[name,Boolean(bool)]));

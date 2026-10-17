@@ -101,7 +101,7 @@ public sealed record TdfOptions
     /// WithDataAttributeValues: values with their definitions, read offline instead of looked up; they replace Attributes.
     public IReadOnlyList<OpenTDF.Protocol.Policy.Value> AttributeValues{get;init;}
     public bool DisableAutoconfigure{get;init;}public IReadOnlyList<KasInfo> KasInformation{get;init;}
-    /// WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build.
+    /// WithWrappingKeyAlg: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
     public string WrappingKeyAlgorithm{get;init;}public long SegmentSize{get;init;}public long InputSize{get;init;}public string MimeType{get;init;}public string Metadata{get;init;}
     public IReadOnlyList<AssertionConfig> Assertions{get;init;}public bool SystemMetadataAssertion{get;init;}public string TargetMode{get;init;}
     internal Generated.TDFOptions ToGenerated()=>new(){Attributes=Values.Encode(Attributes),AttributeValues=Values.Encode(AttributeValues?.Select(v=>JsonFormatter.Default.Format(v)).ToList()),DisableAutoconfigure=DisableAutoconfigure,
@@ -118,7 +118,7 @@ public sealed record ReaderOptions
     public bool DisableAssertionVerification{get;init;}
     /// WithKasAllowlist; null fetches the registry's list.
     public IReadOnlyList<string> KasAllowlist{get;init;}public bool IgnoreAllowlist{get;init;}public long MaxManifestSize{get;init;}public long SchemaValidation{get;init;}
-    /// WithSessionKeyType: rsa:2048 (default) or ec:secp256r1.
+    /// WithSessionKeyType: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
     public string SessionKeyType{get;init;}public IReadOnlyList<string> FulfillableObligationFqns{get;init;}
     internal Generated.ReaderOptions ToGenerated()=>new(){DisableAssertionVerification=DisableAssertionVerification,KasAllowlist=Values.Encode(KasAllowlist),IgnoreAllowlist=IgnoreAllowlist,MaxManifestSize=MaxManifestSize,SchemaValidation=SchemaValidation,SessionKeyType=Values.Encode(SessionKeyType),FulfillableObligationFQNs=Values.Encode(FulfillableObligationFqns)};
 }

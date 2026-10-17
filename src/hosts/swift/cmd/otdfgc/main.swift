@@ -11,10 +11,10 @@ let timeoutMillis: Int64 = 120_000
 let usage = """
   Usage:
     otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
-        [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]
+        [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
         [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-        [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]
+        [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
         [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc inspect <in>
     otdfgc supports <feature>
@@ -28,8 +28,8 @@ let encryptFlags = commonFlags.merging(["attr": false, "mime-type": false, "with
 let decryptFlags = commonFlags.merging(["with-assertion-verification-keys": false, "no-verify-assertions": true, "session-key-algorithm": false, "kas-allowlist": false]) { $1 }
 let dpopAlgorithms = ["ES256", "ES384", "ES512", "RS256", "RS384", "RS512"]
 // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
-let encryptUnsupported: [(String, [String]?)] = [("with-assertions", nil), ("ecdsa-binding", nil), ("target-mode", ["4.3.0"]), ("policy-mode", ["encrypted"]), ("wrapping-key-algorithm", ["rsa:2048", "ec:secp256r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
-let decryptUnsupported: [(String, [String]?)] = [("with-assertion-verification-keys", nil), ("session-key-algorithm", ["rsa:2048", "ec:secp256r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
+let encryptUnsupported: [(String, [String]?)] = [("with-assertions", nil), ("ecdsa-binding", nil), ("target-mode", ["4.3.0"]), ("policy-mode", ["encrypted"]), ("wrapping-key-algorithm", ["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
+let decryptUnsupported: [(String, [String]?)] = [("with-assertion-verification-keys", nil), ("session-key-algorithm", ["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
 
 struct Parsed {
   var values: [String: String] = [:]

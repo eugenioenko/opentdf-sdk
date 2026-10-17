@@ -14,10 +14,10 @@ const EXIT_USAGE: u8 = 2;
 const TARGET: &str = "rust";
 const USAGE: &str = "Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1]
+      [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1]
+      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -28,8 +28,8 @@ const ENCRYPT_FLAGS: &[(&str, bool)] = &[("attr", false), ("mime-type", false), 
 const DECRYPT_FLAGS: &[(&str, bool)] = &[("with-assertion-verification-keys", false), ("no-verify-assertions", true), ("session-key-algorithm", false), ("kas-allowlist", false)];
 const DPOP_ALGORITHMS: &[&str] = &["ES256", "ES384", "ES512", "RS256", "RS384", "RS512"];
 // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
-const ENCRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("with-assertions", &[]), ("ecdsa-binding", &[]), ("target-mode", &["4.3.0"]), ("policy-mode", &["encrypted"]), ("wrapping-key-algorithm", &["rsa:2048", "ec:secp256r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
-const DECRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("with-assertion-verification-keys", &[]), ("session-key-algorithm", &["rsa:2048", "ec:secp256r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
+const ENCRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("with-assertions", &[]), ("ecdsa-binding", &[]), ("target-mode", &["4.3.0"]), ("policy-mode", &["encrypted"]), ("wrapping-key-algorithm", &["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
+const DECRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("with-assertion-verification-keys", &[]), ("session-key-algorithm", &["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
 
 #[derive(Default)]
 struct Parsed {

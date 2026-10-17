@@ -59,7 +59,7 @@ public final class TDFOptions {
    return this;
   }
   public Builder kasInformation(KASInfo... kases) { return kasInformation(List.of(kases)); }
-  /** WithWrappingKeyAlg: rsa:2048 (default) or ec:secp256r1 in this build. */
+  /** WithWrappingKeyAlg: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1. */
   public Builder wrappingKeyAlgorithm(String keyType) { o.WrappingKeyAlgorithm = Values.encode(keyType); return this; }
   /** WithSegmentSize; 0 keeps the reference default. */
   public Builder segmentSize(long size) { o.SegmentSize = size; return this; }

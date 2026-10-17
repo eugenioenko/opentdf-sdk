@@ -98,14 +98,14 @@ var encryptUnsupported = []unsupportedRule{
 	{name: "ecdsa-binding"},
 	{name: "target-mode", allowed: []string{"4.3.0"}},
 	{name: "policy-mode", allowed: []string{"encrypted"}},
-	{name: "wrapping-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1"}},
+	{name: "wrapping-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"}},
 	{name: "dpop", allowed: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"}},
 	{name: "with-client-creds-file"},
 }
 
 var decryptUnsupported = []unsupportedRule{
 	{name: "with-assertion-verification-keys"},
-	{name: "session-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1"}},
+	{name: "session-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"}},
 	{name: "dpop", allowed: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"}},
 	{name: "with-client-creds-file"},
 }

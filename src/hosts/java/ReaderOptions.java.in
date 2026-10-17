@@ -26,7 +26,7 @@ public final class ReaderOptions {
   public Builder maxManifestSize(long size) { o.MaxManifestSize = size; return this; }
   /** WithSchemaValidation; unsupported in this build. */
   public Builder schemaValidation(long intensity) { o.SchemaValidation = intensity; return this; }
-  /** WithSessionKeyType: rsa:2048 (default) or ec:secp256r1. */
+  /** WithSessionKeyType: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1. */
   public Builder sessionKeyType(String keyType) { o.SessionKeyType = Values.encode(keyType); return this; }
   /** WithTDFFulfillableObligationFQNs */
   public Builder fulfillableObligationFqns(List<String> fqns) { o.FulfillableObligationFQNs = Values.encode(fqns); return this; }
