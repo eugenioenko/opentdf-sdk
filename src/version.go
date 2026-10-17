@@ -29,6 +29,8 @@ func SupportedFeatures() []string {
 		"hexless",              // TDF spec 4.3.0: base64 integrity values and schemaVersion
 		"kasallowlist",         // reader rejects KAS URLs outside the allowlist (test_tdf_with_malicious_kao)
 		"key_management",       // mapped KAS keys with kids (Phase 4 test_abac key mapping cells)
+		"mechanism-rsa-4096",   // RSA-4096 wrapped KAOs (test_key_mapping_extended_rsa_mechanisms)
+		"multikao",             // duplicate KAOs on one KAS and split (test_tdf_with_duplicate_kao_same_kas)
 		"ns_grants",            // namespace-level grants and keys (Phase 4 test_abac cells)
 	}
 }
