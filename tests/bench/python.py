@@ -1,9 +1,9 @@
-"""Native installed Python end-to-end public API benchmark."""
+"""Native installed Python handle-API benchmark: one SDK per process, as the reference consumer."""
 import json
 import sys
 import time
 from pathlib import Path
-from opentdf_tdf3 import Config, KASRoute, EncryptOptions, AccessToken, encrypt, decrypt
+from opentdf_tdf3 import SDK, AccessToken
 
 run = Path(sys.argv[1])
 op, size, n = sys.argv[2], sys.argv[3], int(sys.argv[4])
@@ -16,24 +16,23 @@ r = raw['Config']
 input = (run / (size + '.input')).read_bytes()
 bulk_input = (run / '50.input').read_bytes() if bulk_warmups and size != '50' else input
 
-cfg = Config(
-    platform_url=r['PlatformURL'], kas_url=r['KASURL'],
-    allowed_kas=[KASRoute(v['URL'], v['APIBaseURL']) for v in r['AllowedKAS']],
-    allow_http=True, kas_public_key_pem=r['KASPublicKeyPEM'], kid=r['KID'],
-    kas_algorithm='rsa:2048', session_algorithm='rsa:2048',
-    auth_algorithm='ES256', token_provider_name='access-token',
-)
-provider = lambda request: AccessToken(raw['Token'], 'Bearer', raw['Expires'])
-options = EncryptOptions(
+token, expires = raw['Token'], int(raw['Expires'])
+sdk = SDK(r['PlatformURL'], insecure_plaintext=True, token_endpoint=r['TokenURL'],
+          token_provider=lambda request: AccessToken(token, 'Bearer', expires))
+tdf_options = dict(
+    disable_autoconfigure=True,
+    kas_information=[{'url': r['KASURL'], 'public_key': r['KASPublicKeyPEM'], 'kid': r['KID'], 'algorithm': 'rsa:2048'}],
+    wrapping_key_algorithm='rsa:2048', segment_size=2 << 20,
     attributes=['https://example.com/attr/attr1/value/value1'],
-    segment_size=2 << 20, has_segment_size=True, segment_hash_algorithm='GMAC',
 )
+# load_tdf reuses the SDK's default RSA2048 session. Do not generate a replacement.
+reader_options = dict(kas_allowlist=[r['KASURL']])
 samples, warmup_history, bulk_history = [], [], []
 for i in range(-bulk_warmups - warmups, n):
     pair_input = bulk_input if i < -warmups else input
     start = time.perf_counter_ns()
-    archive = encrypt(cfg, pair_input, options, provider=provider).result(1800)
-    output = decrypt(cfg, archive, provider=provider).result(1800).payload
+    archive = sdk.encrypt_bytes(pair_input, timeout=1800, **tdf_options)
+    output = sdk.decrypt_bytes(archive, timeout=1800, **reader_options)
     elapsed = (time.perf_counter_ns() - start) / 1e6
     assert output == pair_input, 'plaintext mismatch'
     if i == -1 or i >= 0:
@@ -44,4 +43,5 @@ for i in range(-bulk_warmups - warmups, n):
         bulk_history.append(elapsed)
     else:
         warmup_history.append(elapsed)
+sdk.close()
 print(json.dumps({'samples_ms': samples, 'warmup_ms': warmup_history, 'bulk_warmup_ms': bulk_history, 'warmup_count': warmups, 'bulk_warmup_count': bulk_warmups, 'correct': True, 'kas_calls_expected': n + warmups + bulk_warmups}))
