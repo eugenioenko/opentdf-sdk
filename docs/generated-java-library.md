@@ -79,8 +79,8 @@ try (SDK sdk = SDK.builder("http://localhost:8080")
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `SDK.builder(endpoint)....build()`, `build(Duration)`, `buildAsync()` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection(true)` runs the health check first. |
-| `sdk.createTDF(byte[], TDFOptions)` → `TDFObject` (`bytes()`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
-| `sdk.loadTDF(byte[], ReaderOptions)` → `Reader` (`init`, `manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set, as in the reference. |
+| `sdk.createTDF(byte[], TDFOptions)` → `TDFObject` (`bytes()`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.loadTDF(byte[], ReaderOptions)` → `Reader` (`init`, `manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set, as in the reference. |
 | `sdk.isHealthy`, `platformConfiguration`, `getBaseKey`, `storeKASKeys`, `close` | same | `platformConfiguration()` returns the members as `Map<String, String>` (non-string members as compact JSON); `getBaseKey()` a map keyed `kasUri`, `publicKey{algorithm,kid,pem}`, `kasId`. |
 | `SDK.isValidTdf`, `getTdfType`, `isPlatformEndpointMalformed`, `keyTypeToPolicyAlgorithm`, `policyAlgorithmToKeyType`, `version`, `tdfSpecVersion`, `supportedFeatures` | same | Static methods; each is a library call. |
 
@@ -100,7 +100,7 @@ and replaces client credentials; the SDK then signs rewrap requests with the
 reference's ephemeral ES256 key unless `dpopKeyPem` is set. Options this
 build does not implement yet (`tokenExchange`, `certExchange`, `tls`,
 `unixSocket`, service endpoint overrides, assertions, target mode `4.2.2`,
-schema validation, RSA-4096 and P-384/P-521 keys) fail with kind
+schema validation, post-quantum key types) fail with kind
 `unsupported_feature` and the message `unsupported in this build: <option>`.
 
 Manifests and policies are returned as unmodifiable `Map<String, Object>`

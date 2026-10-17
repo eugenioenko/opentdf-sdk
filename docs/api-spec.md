@@ -569,6 +569,45 @@ tdf, err := s.CreateTDF(ctx, out, in, sdk.WithDataAttributes("https://example.co
 v, err := sdk.NewAttributeValueFQN(ctx, "https://example.com/attr/level/value/high")
 ```
 
+### Reader and extended mechanisms (Phase 4 part 2)
+
+`Reader.buildKey`, `createRewrapRequest` and `doPayloadKeyUnwrap` follow the
+reference's `tdf.go`:
+
+- the KAOs are grouped by KAS URL, in manifest order, and each KAS gets one
+  rewrap request carrying all of its KAOs (`kao-<index>` ids);
+- the DEK is the XOR of one unwrapped share per split id. Once a split is
+  satisfied its other KAOs are skipped, so an `anyOf` alternative may fail and
+  a duplicated KAO (same KAS and split, DSPX-3379) decrypts as the original;
+- when a split has no share the reader fails with the reference's
+  `splitKey.unable to reconstruct split key: map[{<kas> <sid>}:<error> ...]`,
+  joined with each failed KAO's `kao unwrap failed for split {<kas> <sid>}:
+  <error>` as `getKasErrorToReturn` classifies it (`tdf: rewrap request 403`,
+  `tdf: rewrap request 400`, `tdf: KAS request error`), sorted by KAS and
+  split id. The error takes the kind of the first of them.
+
+`TDFOptions.WrappingKeyAlgorithm` (`WithWrappingKeyAlg`) and
+`ReaderOptions.SessionKeyType` (`WithSessionKeyType`) take `rsa:2048`,
+`rsa:4096`, `ec:secp256r1`, `ec:secp384r1` and `ec:secp521r1` on every
+target, with the `lib/crypto` keys of that type; EC sessions use the curve of
+the session key, as the KAS answers on it. Mapped KAS keys of any of these
+types wrap as the reference does (`wrapped`, `ec-wrapped`).
+
+Post-quantum mechanisms are not planned ([full-sdk-plan.md](full-sdk-plan.md),
+"Not planned"):
+
+| Input | Error |
+| --- | --- |
+| `WrappingKeyAlgorithm` or `SessionKeyType` `mlkem:*` / `hpqt:*` | `unsupported_feature`: `unsupported in this build: WrappingKeyAlgorithm <type>: post-quantum mechanisms are not planned` (`SessionKeyType` likewise) |
+| a mapped key of a post-quantum type | `unsupported_feature`: `unsupported in this build: wrapping key algorithm <type>: post-quantum mechanisms are not planned` |
+| a `hybrid-wrapped` or `mlkem-wrapped` KAO | that KAO is not sent; it fails its split with `unsupported_key_access`: `unsupported key access type: <type>: post-quantum mechanisms are not planned`, so another KAO of the split still opens the TDF |
+
+Every target's `otdfgc` accepts the five key types for
+`--wrapping-key-algorithm` and `--session-key-algorithm`. `SupportedFeatures`
+adds `multikao` and `mechanism-rsa-4096`; `mechanism-ec-curves-384-521` and
+`attribute_traversal` wait for xtest cells the pinned harness runs (see
+[xtest-scoreboard.md](xtest-scoreboard.md)).
+
 ## Target idioms
 
 Each generated package exposes the same surface. The table is the binding
@@ -924,3 +963,20 @@ on every target would dominate Swift and Rust build times).
   `sort.Slice` for the short lists a plan has.
 - The exported FQN and resource locator constructors return the SDK's
   `Error` (kind `invalid_input`) with the reference's text.
+
+### Deviations recorded by Phase 4 part 2
+
+- Post-quantum KAOs are rejected by the reader before the rewrap request; the
+  reference sends them and its KAS unwraps them for an RSA or EC session.
+  Post-quantum session keys (`mlkem:*`) fail as `unsupported_feature`, where
+  the reference creates ML-KEM sessions. Both follow the plan's not-planned
+  decision; the part 1 wording for a post-quantum mapped key gains the reason.
+- The reference iterates its request map, so the order of its rewrap requests
+  and of the per-KAO errors after the first line is random; here both follow
+  the manifest's KAS order and the errors are sorted as `fmt` prints the
+  skipped-split map.
+- `experimental/tdf/keysplit` is ported in Phase 10 with `experimental/tdf`,
+  the only package that imports it, instead of Phase 4: the root writer and
+  reader use the `granter.go` and `key_splitter.go` ports, and the
+  subpackage's exports need the separate importable package Phase 10 builds
+  per target.

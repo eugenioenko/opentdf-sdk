@@ -68,8 +68,8 @@ async with await SDK.create_async('http://localhost:8080', client_id=..., client
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `SDK(endpoint, *, timeout=None, **options)`, `await SDK.create_async(endpoint, **options)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platform_configuration` is given; `validate_connection=True` runs the health check first. |
-| `sdk.create_tdf(plaintext, **options)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`, `with`), `sdk.encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Single-KAS templates; RSA-2048 and P-256 wrapping. Streams arrive in Phase 7. |
-| `sdk.load_tdf(ciphertext, **options)` → `Reader` (`init`, `manifest`, `policy`, `data_attributes`, `unencrypted_metadata`, `close`, `with`), `sdk.decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set, as in the reference. |
+| `sdk.create_tdf(plaintext, **options)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`, `with`), `sdk.encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.load_tdf(ciphertext, **options)` → `Reader` (`init`, `manifest`, `policy`, `data_attributes`, `unencrypted_metadata`, `close`, `with`), `sdk.decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set, as in the reference. |
 | `sdk.is_healthy`, `platform_configuration`, `get_base_key`, `store_kas_keys`, `close`, `with` | same | `platform_configuration()` returns the members as a `dict` of strings (non-string members as compact JSON). |
 | `is_valid_tdf`, `get_tdf_type`, `is_platform_endpoint_malformed`, `key_type_to_policy_algorithm`, `policy_algorithm_to_key_type`, `version`, `tdf_spec_version`, `supported_features` | same | Free functions. |
 
@@ -90,8 +90,8 @@ methods take `timeout=` seconds: when it expires the call is canceled and
 `OpenTDFError(kind='deadline_exceeded')` is raised; cancelling an awaiting
 task cancels the call. Options this build does not implement yet
 (`token_exchange`, `cert_exchange`, `tls`, `unix_socket`, service endpoint
-overrides, assertions, target mode `4.2.2`, schema validation, RSA-4096 and
-P-384/P-521 keys) fail with `kind == 'unsupported_feature'` and the message
+overrides, assertions, target mode `4.2.2`, schema validation, post-quantum
+key types) fail with `kind == 'unsupported_feature'` and the message
 `unsupported in this build: <option>`.
 
 Manifests and policies are dicts keyed by the reference's JSON tags

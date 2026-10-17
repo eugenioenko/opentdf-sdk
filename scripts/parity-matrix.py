@@ -315,12 +315,12 @@ for name in ['ErrAESGCMExhausted', 'ErrTampered', 'ErrRootSigValidation', 'ErrSe
     VALUE_PHASE[name] = 2
 
 SUBPACKAGE_PHASE = {'auth': 8, 'auth/oauth': 8, 'experimental/tdf': 10,
-                    'experimental/tdf/keysplit': 4, 'httputil': 8, 'sdkconnect': 3}
+                    'experimental/tdf/keysplit': 10, 'httputil': 8, 'sdkconnect': 3}
 SUBPACKAGE_EQUIV = {
     'auth': 'sdk/auth (token sources, DPoP proofs, signed request tokens)',
     'auth/oauth': 'sdk/auth built-in client-credentials, token-exchange and cert-exchange flows',
     'experimental/tdf': 'sdk/experimental/tdf',
-    'experimental/tdf/keysplit': 'sdk/experimental/tdf/keysplit (ported with granter.go and key_splitter.go)',
+    'experimental/tdf/keysplit': 'sdk/experimental/tdf/keysplit (with experimental/tdf, its only consumer)',
     'httputil': 'Options.TLS/InsecureSkipVerify over lib/http.DoWith; no separate package',
     'sdkconnect': 'sdk/protocol/<service> generated Connect clients',
 }
@@ -585,6 +585,11 @@ lines.append('`granter.go`, `key_splitter.go` and `resource_locator.go` and the 
 lines.append('the FQN types, `ResourceLocator`, the `KeySplitter` contract types and the')
 lines.append('`WithAutoconfigure`/`WithDataAttributes`/`WithDataAttributeValues` options are `done`;')
 lines.append('`DefaultKeySplitter` moves to phase 10 with the chunked writer that takes it.')
+lines.append('Part 2 completed the reader (split reconstruction, alternatives, duplicate KAOs,')
+lines.append('post-quantum KAOs rejected) and the RSA-4096, P-384 and P-521 mechanisms of')
+lines.append('`WithWrappingKeyAlg` and `WithSessionKeyType`. The `experimental/tdf/keysplit`')
+lines.append('subpackage moves to phase 10 with `experimental/tdf`, the only package that')
+lines.append('imports it; the root writer uses the `granter.go` and `key_splitter.go` ports.')
 lines.append('')
 lines.append('Goalchemy issues opened for the gaps the phases depend on, detailed in')
 lines.append('[goalchemy-gaps.md](goalchemy-gaps.md):')
