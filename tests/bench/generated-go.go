@@ -1,4 +1,5 @@
-// End-to-end native consumer of the accepted installed Go package.
+// Generated Go handle-API benchmark: one SDK per process, as the reference
+// consumer, with the pre-acquired token resolved by a provider callback.
 package main
 
 import (
@@ -6,11 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	g "goalchemyout"
 	"os"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	g "goalchemyout"
 )
 
 func must(err error) {
@@ -18,7 +20,13 @@ func must(err error) {
 		panic(err)
 	}
 }
-func read(path string) []byte { value, err := os.ReadFile(path); must(err); return value }
+
+func read(path string) []byte {
+	b, err := os.ReadFile(path)
+	must(err)
+	return b
+}
+
 func main() {
 	run, op, size := os.Args[1], os.Args[2], os.Args[3]
 	if op != "e2e" {
@@ -27,11 +35,11 @@ func main() {
 	n, err := strconv.Atoi(os.Args[4])
 	must(err)
 	warmups, bulkWarmups := 1, 0
-	if op == "e2e" && len(os.Args) > 5 {
+	if len(os.Args) > 5 {
 		warmups, err = strconv.Atoi(os.Args[5])
 		must(err)
 	}
-	if op == "e2e" && len(os.Args) > 6 {
+	if len(os.Args) > 6 {
 		bulkWarmups, err = strconv.Atoi(os.Args[6])
 		must(err)
 	}
@@ -50,10 +58,19 @@ func main() {
 		bulkInput = read(filepath.Join(run, "50.input"))
 	}
 	cfg := raw.Config
+	ctx := context.Background()
 	callbacks := g.TokenCallbacks(func(context.Context) (g.AccessToken, error) {
 		return g.AccessToken{Value: raw.Token, Scheme: "Bearer", ExpiresAt: raw.Expires}, nil
 	})
-	options := g.EncryptOptions{Attributes: []string{"https://example.com/attr/attr1/value/value1"}, SegmentSize: 2 << 20, HasSegmentSize: true, SegmentHashAlgorithm: "GMAC"}
+	client, err := g.New(ctx, cfg.PlatformURL, g.OptionsOf(g.WithTokenEndpoint(cfg.TokenURL), g.WithTokenProvider(), g.WithInsecurePlaintextConn()), callbacks)
+	must(err)
+	defer client.Close()
+	kas := g.KASInfo{URL: cfg.KASURL, PublicKey: cfg.KASPublicKeyPEM, KID: cfg.KID, Algorithm: "rsa:2048"}
+	tdfOptions, err := g.TDFOptionsOf(g.WithAutoconfigure(false), g.WithKasInformation(kas), g.WithWrappingKeyAlg(g.KeyType("rsa:2048")), g.WithSegmentSize(2<<20), g.WithDataAttributes("https://example.com/attr/attr1/value/value1"))
+	must(err)
+	// LoadTDF reuses New's default RSA2048 session. Do not generate a replacement.
+	readerOptions, err := g.ReaderOptionsOf(g.WithKasAllowlist([]string{cfg.KASURL}))
+	must(err)
 	samples, warmupHistory, bulkHistory := []float64{}, []float64{}, []float64{}
 	for i := -bulkWarmups - warmups; i < n; i++ {
 		pairInput := input
@@ -61,12 +78,15 @@ func main() {
 			pairInput = bulkInput
 		}
 		start := time.Now()
-		archive, err := g.Encrypt(context.Background(), cfg, pairInput, options, callbacks)
+		archive, obj, err := client.EncryptBytes(ctx, pairInput, tdfOptions, callbacks)
 		must(err)
-		result, err := g.Decrypt(context.Background(), cfg, archive, callbacks)
+		if obj != nil {
+			must(obj.Close())
+		}
+		result, err := client.DecryptBytes(ctx, archive, readerOptions, callbacks)
 		must(err)
 		elapsed := float64(time.Since(start).Nanoseconds()) / 1e6
-		if !bytes.Equal(pairInput, result.Payload) {
+		if !bytes.Equal(pairInput, result) {
 			panic("plaintext mismatch")
 		}
 		if i == -1 || i >= 0 {

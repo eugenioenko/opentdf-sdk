@@ -1,5 +1,18 @@
 # OpenTDF SDK implementation progress
 
+## Handle-API benchmark and Swift off the default CI matrix
+
+The bench consumers under `tests/bench/` moved from the stateless façade to the
+handle API, one SDK per process as the reference consumer; `benchmark-sdk.py`
+links the generated Go consumer with the interop consumer's module. A quick
+check with Goalchemy 0.7.2 native packages (five warmups, no bulk warmups, two
+sizes) puts generated Go at 20/52 ms against the reference's 40/96 ms; the
+table and the façade's three-keygens-per-pair diagnosis are in
+[benchmarks](benchmarks.md#handle-api-quick-check). The delivery workflow
+builds Swift only when the `swift` dispatch input is set: its two release
+builds exceed the 1800 s package timeout on the hosted runner, and Swift is
+gated only in Phase 11.
+
 ## Goalchemy 0.7.2 and native pausing: CI validation pending
 
 The compiler release pin is now v0.7.2 at

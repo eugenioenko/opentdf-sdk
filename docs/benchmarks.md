@@ -1,5 +1,52 @@
 # Native SDK end-to-end benchmark
 
+## Handle API quick check
+
+The README's leading table was measured on 2026-10-17 over the handle API
+(`SDK.New` once per process, `EncryptBytes`/`DecryptBytes` on that handle),
+the same client lifecycle the reference consumer uses. Packages were built with
+released Goalchemy **v0.7.2**, commit `cfc163ee5e9fa86dce7327864253074973ef9205`,
+with `--pause-model=native` for Go, TypeScript, Python, Java, C#, Rust and Swift
+and frames for C, at SDK commit `25fb6c0`. Same local BASIC platform, pinned
+platform `4d9e555`, AMD Ryzen 7 6800H, Linux x86_64.
+
+Policy: `--sizes 1MiB,10MiB --samples 5 --batches 3 --warmups 5 --bulk-warmups 0`.
+Each cell pools 15 timed pairs from three fresh processes; every process runs
+five size-specific warmups first and no 50 MiB bulk warmups. This is a quick
+check, not the steady-state policy below; 50 MiB, Web and Swift were not
+measured. The reference row used the same reduced policy.
+
+| SDK | 1 MiB | 10 MiB |
+| --- | ---: | ---: |
+| Original OpenTDF Go | 40.46 ms | 96.24 ms |
+| Generated Go | 20.42 ms | 51.58 ms |
+| TypeScript (Node) | 48.32 ms | 134.12 ms |
+| Java | 61.77 ms | 318.61 ms |
+| C# | 38.11 ms | 125.23 ms |
+| Python | 46.61 ms | 96.01 ms |
+| Rust | 28.10 ms | 72.81 ms |
+| C | 27.44 ms | 76.08 ms |
+
+Encrypt options match the reference consumer: autoconfigure off, one KAS with
+RSA-2048 wrapping, 2 MiB segments, one data attribute. Reader options carry only
+the KAS allowlist, so the reader reuses the SDK's session key. Java's 10 MiB
+cell is stable across its three processes (314–322 ms after warmups) and is a
+real cost to investigate, not warmup noise.
+
+The earlier bench consumers drove the stateless façade (`Encrypt`/`Decrypt`
+free functions), which since the Phase 2 handle-API port builds a client per
+call and so generates an RSA-2048 session key for the encrypt client, another
+for the decrypt client and, because the façade asks for `SessionKeyType`, a
+third for the reader: ~180 ms per pair on every target. A profile of the
+generated Go consumer showed 92% of CPU in `crypto/rsa.GenerateKey`. Measured
+through that façade on the same day, the same packages gave Go 237/264 ms,
+TypeScript 225/327, Java 369/632, C# 609/665, Python 262/306, Rust 231/289 and
+C 604/616 ms at 1/10 MiB; native and frames Go were within noise of each other
+(216 vs 238 ms at 1 MiB). The consumers under `tests/bench/` now use the handle
+API.
+
+## Historical steady-state campaign
+
 The historical README rows report **1 MiB, 10 MiB and 50 MiB** measurements
 from the 2026-10-04 steady-state campaign. Each cell is the median elapsed
 **milliseconds** across 15 complete encrypt/decrypt pairs: five samples in each
