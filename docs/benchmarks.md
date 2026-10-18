@@ -30,18 +30,39 @@ and warmup policy. The extension harness is `824ffc5`, based on main at
 Installed artifact hashes were verified before reusing these packages; they
 were not rebuilt for this extension. The earlier five columns are unchanged.
 
-Generated Go, Rust, C, and both upstream references accept 104,857,600-byte
-inputs through the measured APIs. TypeScript, Java, C#, and Python reject
-these inputs at Goalchemy's existing 64 MiB whole-buffer library boundary.
-Their cells show `64 MiB limit`, with no latency assigned. This is an API
-input limit, not a timeout or an out-of-memory result. Limits were not raised,
-and streaming APIs were not substituted for the byte APIs.
+The first extension measured generated Go, Rust, C, and both upstream
+references at 104,857,600 bytes. TypeScript, Java, C#, and Python rejected these
+inputs at Goalchemy's then-existing 64 MiB whole-buffer library boundary.
+Their original limit labels are now replaced by the follow-up measurements below.
 
 The five supported rows use three fresh processes and fifteen measured pairs
 per row. All 90 retained archives pass independent Go/KAS plaintext and ZIP CRC
 validation, with fifty 2 MiB segments, AES-256-GCM, and GMAC. Detailed samples
 and the four rejection probes remain under ignored local storage. No 100 MiB
 batch triggered the warmup warning; no samples or batches were replaced.
+
+## Complete the 100 MiB byte-API measurements
+
+The four remaining rows were measured on the same machine and date using
+Goalchemy PR #117 at `5d5edf0529455e856062fbc42e64437275930b51`, the v0.7.4
+candidate. This removes the fixed library value-size caps, including the
+TypeScript and C# output conversions. The same byte APIs now accept 100 MiB;
+streaming APIs were not substituted. Release adoption follows CI acceptance.
+
+TypeScript, Java, C#, and Python packages were rebuilt twice reproducibly from
+SDK `27cc668`, whose production source is identical to `948cf50`, and installed
+through independent native consumers. The compiler binary, references, toolchains,
+benchmark controller and native consumers were frozen before timing. The earlier
+Go, Rust, C and reference cells are unchanged, as are all five smaller columns.
+
+Each new row pools fifteen samples from three fresh processes under the same
+forty-bulk/twenty-size-specific warmup policy. All 60 timed pairs matched
+plaintext. All 72 retained archives passed independent Go/KAS decryption,
+plaintext, ZIP CRC and fifty-segment AES-256-GCM/GMAC validation. No warmup
+warnings triggered; no samples or batches were replaced. Frozen source, package,
+binary and archive hashes match. The temporary token setting was restored and
+a fresh token confirmed the original 300-second lifetime. Detailed evidence
+stays under ignored local storage.
 
 ## Measurement policy
 
@@ -161,9 +182,12 @@ from the identical SDK source at `948cf50`. Use new output directories and the
 same references and runtime versions. Run the native command with
 `--targets reference,go,rust,c --sizes 100MiB`, and the Web command with
 `--sizes 100MiB`. Keep all sample, process, and warmup arguments unchanged.
-The default size list stays within the common byte-API range; 100 MiB must be
-selected explicitly. TypeScript, Java, C#, and Python cannot run this size
-through their current byte boundary.
+For the four-row follow-up, use SDK `27cc668` and Goalchemy `5d5edf0` with the
+same controller. Regenerate and install TypeScript, Java, C# and Python;
+retain the earlier Go/Rust/C consumer receipts needed to prepare the controller.
+Select `--targets typescript,java,csharp,python --sizes 100MiB` with a new output
+directory and unchanged sample/process/warmup arguments. The default list stays
+at the original five sizes; 100 MiB is selected explicitly.
 
 `--build-only` prepares a campaign without timing. `--skip-build` reuses its
 frozen binaries and rejects changed controller or benchmark sources.

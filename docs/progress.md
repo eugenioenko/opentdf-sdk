@@ -3065,3 +3065,28 @@ the original 300-second lifetime. The twenty-one focused controller tests
 passed, including 100 MiB reporting and fifty-segment validation. Documentation
 links, README/sample consistency, raw-data exclusion, and whitespace are checked
 before publishing the new PR. Detailed samples and rejection probes stay local.
+
+### Complete the four blocked 100 MiB cells
+
+Merged PR #51 at 27cc668 to publish the original 100 MiB extension. Goalchemy
+PR #117 removes fixed library buffer/string/collection caps and the C byte
+budgets. The real C# SDK build exposed its use of the public length helper;
+the corrected compiler keeps that API while removing its fixed upper bound.
+
+At the user's request, built compiler 5d5edf0 while CI runs and froze its hash.
+TypeScript, Java, C# and Python packages built reproducibly from SDK 27cc668,
+whose production source is identical to 948cf50. Independent importers and all
+four 100 MiB KAS smoke checks passed. The full campaign retained the established
+three-process, fifteen-sample, forty-bulk/twenty-size-specific warmup policy.
+
+The new medians are 1,295.52 ms for TypeScript, 454.68 ms for Java, 678.67 ms for
+C#, and 1,531.23 ms for Python. All 60 timed pairs matched plaintext and all 72
+retained archives passed independent Go/KAS decryption, ZIP CRC, and fifty
+2 MiB AES-256-GCM/GMAC segment checks. No warmup warning triggered; no sample
+or batch was replaced. Frozen source, binary and archive hashes match. The
+temporary token setting was restored and a fresh token confirmed 300 seconds.
+
+README replaces the four limit labels while retaining every previous timing.
+Detailed samples, receipts, rejection/build diagnostics and archives remain
+local. Goalchemy CI, signed release publication, released compiler output
+verification and the SDK release pin remain the next acceptance steps.

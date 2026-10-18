@@ -585,3 +585,34 @@ and 90 independently validated fifty-segment archives. The four unsupported
 byte APIs are explicitly labeled at their 64 MiB boundary. No warmup flags
 triggered. Existing columns are unchanged, all frozen hashes match, and the
 temporary token setting was restored and verified. Pull request submission follows.
+
+## Remove library caps and finish 100 MiB measurements
+
+PR #51 published the five supported 100 MiB timings and four 64 MiB boundary
+outcomes. Goalchemy PR #117 removes the arbitrary library value-size caps and
+prepares v0.7.4. Adopt the accepted signed release, regenerate TypeScript,
+Java, C# and Python packages reproducibly, and install independent consumers.
+Keep native pausing, SDK source, reference revisions, toolchains and timing
+policy unchanged. Measure only the four previously blocked 100 MiB cells.
+
+Acceptance: each new cell has fifteen samples across three fresh processes,
+forty 10 MiB and twenty size-specific warmups per process, full plaintext
+comparison, and 72 independent Go/KAS archive validations with fifty 2 MiB
+segments. Review flags without choosing fast samples, verify frozen hashes,
+restore local token settings and retain detailed evidence under ignored storage.
+Replace the four boundary labels with measurements, preserve every previously
+published cell, document the per-campaign compiler provenance, and publish the
+SDK update after CI passes. Swift remains omitted as authorized.
+
+Status: baseline published. The corrected Goalchemy PR passed focused local
+checks and a real C# SDK build. At the user's request, SDK packages are being
+regenerated from its frozen PR build while CI runs. Verify the eventual release
+against this build before adopting its pin and publishing measurements.
+
+Measurement acceptance: all four rebuilt packages passed reproducibility and
+independent import checks, followed by 100 MiB real-KAS smoke checks. All 60
+timed pairs and 72 independently validated archives passed, without warmup
+warnings or replaced samples. README now contains the four new medians and
+preserves all 50 previously published timing cells. Temporary token settings
+are restored and frozen hashes match. Release adoption and publication remain
+gated on hosted CI and released-output equivalence verification.
