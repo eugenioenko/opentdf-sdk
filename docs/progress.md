@@ -3042,3 +3042,26 @@ passed 100 MiB probes. Keep the same public byte APIs and report those four
 limits explicitly. Measure the five supported rows; a separate streaming
 comparison or boundary-limit change requires its own scope decision. No
 production code or limits change in this benchmark PR.
+
+### Accept the 100 MiB extension
+
+Measured three fresh-process batches for generated Go, Rust, C, and both
+upstream references using the verified post-wipe packages. The medians are
+283.57 ms for generated Go, 739.85 ms for Rust, 801.35 ms for C, 346.76 ms for
+the Go reference, and 2,609.44 ms for the Web reference. Every one of the 75
+timed pairs matched plaintext. All 90 retained archives passed independent
+Go/KAS decryption, ZIP CRC, AES-256-GCM/GMAC, and fifty 2 MiB segment checks.
+No warmup flags triggered, and no samples or batches were replaced.
+
+TypeScript, Java, C#, and Python reject the same 100 MiB input at their
+existing 64 MiB whole-buffer boundary. The README reports these limits without
+inventing timings or switching APIs. No production limits or SDK source changed.
+The five earlier columns remain unchanged. Harness 824ffc5 identifies the
+extension; SDK packages retain build source 948cf50 and compiler 468ec24.
+
+Frozen sources, binaries, and archive hashes were checked against receipts.
+Temporary local token settings were restored, with a fresh token confirming
+the original 300-second lifetime. The twenty-one focused controller tests
+passed, including 100 MiB reporting and fifty-segment validation. Documentation
+links, README/sample consistency, raw-data exclusion, and whitespace are checked
+before publishing the new PR. Detailed samples and rejection probes stay local.

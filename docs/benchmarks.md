@@ -21,9 +21,32 @@ benchmark-only checkouts do not change the CI oracle pins in `references.lock.js
 The local BASIC platform uses `4d9e555bddf0c850190680807118fbac1851a9aa`
 and real KAS at `http://localhost:8080/kas`, with Keycloak at port 8888.
 
+## 100 MiB extension
+
+The 100 MiB column is a separate measurement on the same machine and date,
+using the same compiler, installed SDK packages, upstream references, toolchains,
+and warmup policy. The extension harness is `824ffc5`, based on main at
+`b786639`. Main's SDK source and host adapters are identical to `948cf50`.
+Installed artifact hashes were verified before reusing these packages; they
+were not rebuilt for this extension. The earlier five columns are unchanged.
+
+Generated Go, Rust, C, and both upstream references accept 104,857,600-byte
+inputs through the measured APIs. TypeScript, Java, C#, and Python reject
+these inputs at Goalchemy's existing 64 MiB whole-buffer library boundary.
+Their cells show `64 MiB limit`, with no latency assigned. This is an API
+input limit, not a timeout or an out-of-memory result. Limits were not raised,
+and streaming APIs were not substituted for the byte APIs.
+
+The five supported rows use three fresh processes and fifteen measured pairs
+per row. All 90 retained archives pass independent Go/KAS plaintext and ZIP CRC
+validation, with fifty 2 MiB segments, AES-256-GCM, and GMAC. Detailed samples
+and the four rejection probes remain under ignored local storage. No 100 MiB
+batch triggered the warmup warning; no samples or batches were replaced.
+
 ## Measurement policy
 
-Payloads are exactly 1,024, 10,240, 102,400, 1,048,576, and 10,485,760 bytes.
+Payloads in the original campaign are exactly 1,024, 10,240, 102,400,
+1,048,576, and 10,485,760 bytes. The extension adds 104,857,600 bytes.
 Each result is the median of all fifteen measured encrypt/decrypt pairs:
 five pairs in each of three fresh processes. Every process first performs
 forty full 10 MiB pairs, then twenty pairs at the measured size. The bulk
@@ -56,7 +79,7 @@ checked for AES-256-GCM, GMAC, and the expected segment count.
 
 The pre-fix campaign and earlier 50 MiB bulk-warmup diagnostics are retained
 separately. None of those timing cells are reused. Every reported cell was
-remeasured after the wipe fix using the common 10 MiB bulk-warmup policy.
+measured after the wipe fix using the common 10 MiB bulk-warmup policy.
 
 The controller preserves all samples and warmup histories. A cell is flagged
 when its last-ten-warmup median and measured median are both more than 20%
@@ -132,6 +155,15 @@ python3 scripts/benchmark-sdk.py --targets web --packages DELIVERY \
   --sizes 1KiB,10KiB,100KiB,1MiB,10MiB \
   --samples 5 --batches 3 --warmups 20 --bulk-warmups 40 --bulk-size 10MiB --fresh
 ```
+
+For the 100 MiB extension, use the harness at `824ffc5` with packages built
+from the identical SDK source at `948cf50`. Use new output directories and the
+same references and runtime versions. Run the native command with
+`--targets reference,go,rust,c --sizes 100MiB`, and the Web command with
+`--sizes 100MiB`. Keep all sample, process, and warmup arguments unchanged.
+The default size list stays within the common byte-API range; 100 MiB must be
+selected explicitly. TypeScript, Java, C#, and Python cannot run this size
+through their current byte boundary.
 
 `--build-only` prepares a campaign without timing. `--skip-build` reuses its
 frozen binaries and rejects changed controller or benchmark sources.

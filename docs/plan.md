@@ -580,4 +580,8 @@ all 90 retained archives through Go/KAS, ZIP CRC, and the fifty-segment profile.
 data under ignored storage, restore temporary token settings, and open a new PR.
 Swift remains omitted as authorized.
 
-Status: preparation and focused harness verification in progress.
+Status: accepted locally. All five supported rows passed, with 75 timed pairs
+and 90 independently validated fifty-segment archives. The four unsupported
+byte APIs are explicitly labeled at their 64 MiB boundary. No warmup flags
+triggered. Existing columns are unchanged, all frozen hashes match, and the
+temporary token setting was restored and verified. Pull request submission follows.
