@@ -2950,10 +2950,10 @@ No cell raised the sustained warmup-trend flag. Source and binary hashes stayed
 frozen, all targets used identical fixtures, and installed package members match
 their build receipts. No SDK or compiler implementation changed.
 
-Replaced both old README tables with the current results. Published the exact
-revisions, toolchains, timing boundaries, reproduction commands, and sanitized
-sample/warmup evidence in `docs/benchmark-results/2026-10-18.json`. Generated Go
-measured 43.31 ms at 10 MiB, against upstream Go's 96.15 ms and Web's 150.29 ms.
+Replaced both old README tables with the current results. Recorded the exact
+revisions, toolchains, timing boundaries, and reproduction commands in the
+methodology. Detailed sample/warmup evidence remains in ignored local storage.
+Generated Go measured 43.31 ms at 10 MiB, against upstream Go's 96.15 ms and Web's 150.29 ms.
 Python measured 4,199.39 ms; the user requested opening this results PR before
 investigating that slowdown. A same-source frames/native comparison has not run,
 and no cause is claimed. Swift timing remains omitted as authorized.
@@ -3000,15 +3000,23 @@ match; payload hashes match across all targets.
 
 At 10 MiB, Python changed from 4,199.39 to 167.77 ms, TypeScript from 504.98 to
 134.35 ms, Rust from 617.08 to 73.66 ms, and C from 373.98 to 83.06 ms. Fresh
-reference Go and Web measurements are 109.29 and 135.38 ms. The README and
-sanitized timing report replace every pre-fix cell. Diagnostic samples were
-not mixed in. Swift remains omitted as requested.
+reference Go and Web measurements are 109.29 and 135.38 ms. The README replaces
+every pre-fix cell; detailed timing evidence stays local. Diagnostic samples
+were not mixed in. Swift remains omitted as requested.
 
 Reviewed three warmup warnings: C# 1 KiB, Rust 10 MiB, and Web 100 KiB. The
-methodology and timing JSON retain the warning flags, exact histories, and
-review reasons. No measured samples or batches were discarded, replaced, or
-rerun. The local token-lifetime attribute was restored and a new token again
+methodology records the review reasons; local campaign reports retain the
+warning flags and exact histories. No measured samples or batches were
+discarded, replaced, or rerun. The local token-lifetime attribute was restored and a new token again
 reported a 300-second lifetime. Final checks verify evidence/table consistency,
 relative documentation links, secret exclusion, and whitespace before pushing
 the accepted update to PR #50. The benchmark harness remains the version that
 passed its twenty controller tests; no compiler or CI oracle pins changed.
+
+### Keep detailed benchmark evidence local
+
+Removed the large benchmark JSON from PR #50 at the user's request. The README
+retains the complete measured table and links to the methodology. Detailed
+samples, warmup histories, and receipts remain under ignored `.local/`.
+Removed the JSON links and updated the PR description; no implementation or
+measurement changed. Verified local documentation links and whitespace.

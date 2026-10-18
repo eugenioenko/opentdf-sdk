@@ -550,15 +550,15 @@ Acceptance: repeatable package builds and independent native importers pass;
 all forty-five measured target/size cells have three fresh-process batches;
 Swift can be omitted at the user's request to keep this campaign bounded; warmup flags are
 investigated; README contains only fresh results, with the removed facade
-comparison replaced by the current handle API. Publish a reproducible methodology
-and sanitized measurement evidence, restore temporary local token settings,
-and open a pull request.
+comparison replaced by the current handle API. Publish a reproducible methodology,
+keep detailed measurement evidence in ignored local storage, restore temporary
+token settings, and open a pull request.
 
 Status: accepted locally. The shared wipe helper uses `clear(data)` at
 948cf50. Focused Go wipe/streaming tests passed, as did all seven reproducible
 package builds and independent importers. The complete post-fix campaign passed
 forty-five cells, 675 timed pairs, and 810 independent archive checks. Three
 warmup warnings were reviewed with all original samples and flags retained.
-The README and timing evidence now contain only this rerun. Temporary token
-settings were restored and verified. Update the existing PR #50 with the fix
-and accepted results; Swift remains omitted as authorized.
+The README contains only this rerun; detailed evidence stays in ignored local
+storage. Temporary token settings were restored and verified. PR #50 contains
+the fix and accepted results; Swift remains omitted as authorized.

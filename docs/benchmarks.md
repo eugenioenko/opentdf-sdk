@@ -9,7 +9,9 @@ shared bulk buffer wiping fix, and the unchanged Goalchemy build at
 and Rust use native pausing; C uses frames. Rust uses a release build. Swift
 is omitted as described below. SDK source, compiler, and benchmark inputs
 remain frozen throughout measurement. The benchmark harness is pinned at
-`948cf50`; hashes and toolchain versions are included in the timing evidence.
+`948cf50`; source and artifact hashes are recorded in local campaign receipts.
+Toolchains: Go 1.25.14, Node 24.15.0, Python 3.10.12, Java 21.0.12.1,
+.NET SDK 8.0.425, Rust 1.98.0, and GCC 11.4.0.
 
 Both upstream references were source-built at these exact revisions and
 remeasured for this campaign:
@@ -67,7 +69,7 @@ median fell 20.14%. The final-ten warmup medians and measured medians agreed
 within 3% in every batch, and the three measured process medians were 21.11,
 21.18, and 21.54 ms. That agreement supports accepting the measured windows.
 All fifteen original samples are retained, with the original warning and its
-review recorded in the timing report. No samples or batches were replaced.
+review recorded in the local campaign report. No samples or batches were replaced.
 
 Rust at 10 MiB also warned in its first process, with a 27.88% warmup median
 fall. Its final-ten warmup median was 74.36 ms and measured median 73.80 ms.
@@ -86,10 +88,8 @@ alongside this spread, rather than treated as precise speed changes.
 
 For the seven reported SDKs, package receipts record the compiler hash,
 reproducible relative and absolute packages, installed members, and native
-importers. Raw tokens, keys,
-packages, binaries, and archives stay under ignored `.local/`. Sanitized timing
-evidence and exact versions are in
-[the timing report](benchmark-results/2026-10-18.json).
+importers. Detailed samples, warmup histories, receipts, tokens, keys, packages,
+binaries, and archives stay under ignored `.local/`; they are not committed.
 
 ## Reproduce
 

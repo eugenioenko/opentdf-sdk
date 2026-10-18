@@ -66,8 +66,8 @@ SDK handles are initialized once and reused. The upstream Web API generates
 a fresh RSA response key inside each decrypt; the other SDKs reuse theirs.
 File I/O, OAuth, discovery, and correctness checks are untimed. All retained
 archives pass independent Go/KAS decryption, plaintext, ZIP CRC, and segment
-checks. Sizes use 1,024-based units. See the [methodology and source revisions](docs/benchmarks.md)
-and [timing evidence](docs/benchmark-results/2026-10-18.json).
+checks. Sizes use 1,024-based units. See the
+[methodology and source revisions](docs/benchmarks.md).
 
 ## Build and run
 
