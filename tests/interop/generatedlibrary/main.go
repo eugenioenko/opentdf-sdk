@@ -43,9 +43,23 @@ func fail(label string, err error) {
 func read(path string) []byte     { b, e := os.ReadFile(path); fail("read", e); return b }
 func write(path string, b []byte) { fail("write", os.WriteFile(path, b, 0600)) }
 
-// consumerConfig is the run's config.json: the façade Config fields the
-// delivery scripts write, mapped onto the handle API's options.
-type consumerConfig = g.Config
+// consumerConfig is the run's config.json as the delivery scripts write it,
+// mapped onto the handle API's options.
+type consumerConfig struct {
+	PlatformURL, KASURL    string
+	AllowedKAS             []struct{ URL, APIBaseURL string }
+	IssuerURL, TokenURL    string
+	ClientID, ClientSecret string
+	TokenProviderName      string
+	AllowHTTP              bool
+	TimeoutMillis          int64
+	KASPublicKeyPEM, KID   string
+	KASAlgorithm           string
+	SessionAlgorithm       string
+	AuthPrivateKeyPEM      string
+	AuthAlgorithm          string
+	DPoP                   bool
+}
 
 func optionsOf(cfg consumerConfig) []g.Option {
 	opts := []g.Option{g.WithTokenEndpoint(cfg.TokenURL)}
@@ -337,7 +351,7 @@ func services(ctx context.Context, client *g.SDK, cfg consumerConfig, callbacks 
 	report, e := json.Marshal(map[string]any{
 		"namespace": name, "namespaces_before": len(before.GetNamespaces()), "namespaces_after": len(after.GetNamespaces()),
 		"attribute_fqn": a.GetFqn(), "values": values,
-		"not_found": map[string]any{"kind": missing.Kind, "connectCode": missing.ConnectCode, "httpStatus": missing.HTTPStatus, "message": missing.Message},
+		"not_found":     map[string]any{"kind": missing.Kind, "connectCode": missing.ConnectCode, "httpStatus": missing.HTTPStatus, "message": missing.Message},
 		"helpers":       helpers(ctx, client, cfg, callbacks, a.GetFqn()),
 		"autoconfigure": autoconfigure(ctx, client, cfg, callbacks, a),
 	})

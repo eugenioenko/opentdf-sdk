@@ -17,6 +17,7 @@ int main(int argc,char **argv){
  puts("first native entry is the public handle API; no consumer collector initialization/registration");
  check(otdf_sdk_new("http://localhost:8080",&o,NULL,&sdk,&e),&e);
  check(otdf_load_tdf(sdk,(otdf_bytes){archive,n},&r,NULL,&reader,&e),&e);
+ check(otdf_reader_init(reader,NULL,&e),&e);
  check(otdf_reader_manifest_json(reader,NULL,&manifest,&e),&e);
  bool has_metadata=strstr(manifest,"\"encryptedMetadata\"")!=NULL;
  if(has_metadata)check(otdf_reader_unencrypted_metadata(reader,NULL,&metadata,&e),&e);
