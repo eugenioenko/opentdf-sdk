@@ -81,8 +81,37 @@ def reader_options(cfg):
  if cfg.get('SessionAlgorithm'):options['session_key_type']=cfg['SessionAlgorithm']
  return options
 def report(e):
- if isinstance(e,OpenTDFError):return {'kind':e.kind,'op':e.op,'httpStatus':e.http_status,'connectCode':e.connect_code,'message':e.message}
+ if isinstance(e,OpenTDFError):return {'kind':e.kind,'op':e.op,'httpStatus':e.http_status,'connectCode':e.connect_code,'assertionId':e.assertion_id,'message':e.message}
  return {'untyped':type(e).__name__+': '+str(e)}
+
+def assertions(sdk,cfg):
+ """A TDF with an unsigned assertion (HS256 over the payload key) and one
+ signed with a caller HS256 secret, read with the right key by id, with a
+ wrong key and with no key (assertion_failure), and with verification off."""
+ secret='assertion-secret-'+secrets.token_hex(4)
+ configs=[
+  {'id':'unsigned','type':'handling','scope':'tdo','applies_to_state':'encrypted','statement':{'format':'json+stanag5636','schema':'urn:nato:stanag:5636:A:1:elements:json','value':'{"ocl":{"pol":"2ccf11cb-6c9a-4e49-9746-a7f0a295945d"}}'}},
+  {'id':'signed','type':'other','scope':'payload','applies_to_state':'unencrypted','statement':{'format':'json','schema':'urn:example:assertion:v1','value':'{"note":"independent consumer"}'},'signing_key':{'alg':'HS256','key':secret}},
+ ]
+ payload=b'assertion payload'
+ with sdk.create_tdf(payload,**tdf_options(cfg,assertions=configs)) as obj:
+  manifest=obj.manifest();archive=obj.bytes
+ found=manifest['assertions']
+ assert [a['id'] for a in found]==['unsigned','signed'] and found[1]['binding']['method']=='jws' and found[1]['binding']['signature'],'assertions in manifest'
+ assert found[0]['statement']['value']==configs[0]['statement']['value'],'statement value kept'
+ def with_keys(**keys):return dict(reader_options(cfg),assertion_verification_keys=keys)
+ assert sdk.decrypt_bytes(archive,**with_keys(keys={'signed':{'alg':'HS256','key':secret}}))==payload,'decrypt with the right key'
+ def fails(label,options,assertion_id):
+  try:sdk.decrypt_bytes(archive,**options)
+  except OpenTDFError as e:
+   assert e.kind=='assertion_failure' and e.assertion_id==assertion_id,label+': '+json.dumps(report(e));return report(e)
+  raise AssertionError(label+' returned plaintext')
+ wrong=fails('wrong key',with_keys(keys={'signed':{'alg':'HS256','key':'not the secret'}}),'signed')
+ missing=fails('missing key',reader_options(cfg),'signed')
+ fails('wrong default key',with_keys(default_key={'alg':'HS256','key':'not the secret'}),'unsigned')
+ assert sdk.decrypt_bytes(archive,**dict(reader_options(cfg),disable_assertion_verification=True))==payload,'decrypt with verification disabled'
+ (run/'assertions.generated.tdf').write_bytes(archive)
+ (run/'assertions.json').write_text(json.dumps({'assertions':[{'id':a['id'],'method':a['binding']['method']} for a in found],'wrong_key':wrong,'missing_key':missing}))
 
 def repeat(sdk,cfg):
  """100 encrypt and decrypt calls on one SDK, independent inputs and results,
@@ -297,6 +326,7 @@ try:
    elif mode=='negative':
     try:sdk.decrypt_bytes((run/(name+'.tdf')).read_bytes(),**reader_options(cfg));raise AssertionError('negative plaintext')
     except OpenTDFError as e:(run/(name+'.error.json')).write_text(json.dumps(report(e)))
+   elif mode=='assertions':assertions(sdk,cfg)
    elif mode=='repeat':repeat(sdk,cfg)
    elif mode=='services':services(sdk,cfg)
    else:raise AssertionError('unknown mode')

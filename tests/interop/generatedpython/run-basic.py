@@ -64,6 +64,7 @@ assert (run/'binary.go.out').read_bytes()==cases['binary'];print('PASS real nati
 config['TokenProviderName']='';config['ClientID']='opentdf-sdk';config['ClientSecret']='secret'
 (run/'config.json').write_text(json.dumps(config))
 new('repeat','ownership')
+if native_target=='python':new('assertions','assertions')
 # SDK failures must have useful typed fields and no plaintext.
 (run/'denied.input').write_bytes(b'denied');new('encrypt','denied');new('negative','denied.generated')
 error=json.loads((run/'denied.generated.error.json').read_text());assert error['code']=='rewrap_failed' and error['operation']=='rewrap' and error['httpStatus']==0
