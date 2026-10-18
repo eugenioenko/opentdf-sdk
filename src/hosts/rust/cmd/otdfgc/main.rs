@@ -2,7 +2,7 @@
 //! xtest CLI contract of docs/full-sdk-plan.md exactly as the Go otdfgc does:
 //! one SDK per invocation, created with --host and the client credentials;
 //! every flag this build cannot honour exits 2 as unsupported.
-use opentdf_tdf3::{self as tdf, Error, Kind, KasInfo, Options, ReaderOptions, Sdk, TdfOptions};
+use opentdf_tdf3::{self as tdf, AssertionConfig, AssertionKey, AssertionVerificationKeys, Error, Kind, KasInfo, Options, ReaderOptions, Sdk, Statement, TdfOptions};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::io::Write;
@@ -15,9 +15,9 @@ const TARGET: &str = "rust";
 const USAGE: &str = "Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
       [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-      [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+      [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+      [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -28,8 +28,8 @@ const ENCRYPT_FLAGS: &[(&str, bool)] = &[("attr", false), ("mime-type", false), 
 const DECRYPT_FLAGS: &[(&str, bool)] = &[("with-assertion-verification-keys", false), ("no-verify-assertions", true), ("session-key-algorithm", false), ("kas-allowlist", false)];
 const DPOP_ALGORITHMS: &[&str] = &["ES256", "ES384", "ES512", "RS256", "RS384", "RS512"];
 // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
-const ENCRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("with-assertions", &[]), ("ecdsa-binding", &[]), ("target-mode", &["4.3.0"]), ("policy-mode", &["encrypted"]), ("wrapping-key-algorithm", &["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
-const DECRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("with-assertion-verification-keys", &[]), ("session-key-algorithm", &["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
+const ENCRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("ecdsa-binding", &[]), ("target-mode", &["4.3.0"]), ("policy-mode", &["encrypted"]), ("wrapping-key-algorithm", &["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
+const DECRYPT_UNSUPPORTED: &[(&str, &[&str])] = &[("session-key-algorithm", &["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", DPOP_ALGORITHMS), ("with-client-creds-file", &[])];
 
 #[derive(Default)]
 struct Parsed {
@@ -490,6 +490,99 @@ fn inspect(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     EXIT_SUCCESS
 }
 
+// --with-assertions and --with-assertion-verification-keys take a file path or JSON text, as otdfctl does:
+// an object statement value is kept as compact JSON with sorted keys; HS256 keys are the string's bytes, RS256 keys PEM.
+fn file_or_json(arg: &str) -> Result<Json, String> {
+    if let Ok(v) = parse_json(arg.as_bytes()) {
+        return Ok(v);
+    }
+    let data = fs::read(arg).map_err(|e| format!("{arg} is neither JSON nor a readable file: {e}"))?;
+    parse_json(&data)
+}
+fn field<'a>(v: &'a Json, name: &str) -> Option<&'a Json> {
+    match v {
+        Json::Object(fields) => fields.iter().find(|(k, _)| k == name).map(|(_, v)| v),
+        _ => None,
+    }
+}
+fn str_field(v: &Json, name: &str) -> String {
+    match field(v, name) {
+        Some(Json::Str(s)) => s.clone(),
+        _ => String::new(),
+    }
+}
+fn sorted_json(v: &Json) -> Json {
+    match v {
+        Json::Object(fields) => {
+            let mut out: Vec<(String, Json)> = fields.iter().map(|(k, v)| (k.clone(), sorted_json(v))).collect();
+            out.sort_by(|a, b| a.0.cmp(&b.0));
+            Json::Object(out)
+        }
+        Json::List(items) => Json::List(items.iter().map(sorted_json).collect()),
+        Json::Null => Json::Null,
+        Json::Bool(b) => Json::Bool(*b),
+        Json::Number(n) => Json::Number(n.clone()),
+        Json::Str(s) => Json::Str(s.clone()),
+    }
+}
+fn assertion_key(v: &Json, label: &str) -> Result<AssertionKey, String> {
+    let alg = str_field(v, "alg");
+    if alg != "HS256" && alg != "RS256" {
+        return Err(format!("{label}: unsupported signing key algorithm {alg}"));
+    }
+    Ok(AssertionKey { alg, key: str_field(v, "key") })
+}
+fn parse_assertions(arg: &str) -> Result<Vec<AssertionConfig>, String> {
+    let items = match file_or_json(arg).map_err(|e| format!("assertions must be a JSON list: {e}"))? {
+        Json::List(items) => items,
+        _ => return Err("assertions must be a JSON list".into()),
+    };
+    let mut out = Vec::with_capacity(items.len());
+    for a in &items {
+        let id = str_field(a, "id");
+        let statement = field(a, "statement").unwrap_or(&Json::Null);
+        let value = match field(statement, "value") {
+            None | Some(Json::Null) => String::new(),
+            Some(Json::Str(s)) => s.clone(),
+            Some(object @ Json::Object(_)) => {
+                let mut text = String::new();
+                write_json(&mut text, &sorted_json(object), false, 0);
+                text
+            }
+            Some(_) => return Err(format!("assertion {id}: statement value is neither a string nor an object")),
+        };
+        let signing_key = match field(a, "signingKey") {
+            None | Some(Json::Null) => None,
+            Some(k) => Some(assertion_key(k, &format!("assertion {id}"))?),
+        };
+        out.push(AssertionConfig {
+            type_: str_field(a, "type"),
+            scope: str_field(a, "scope"),
+            applies_to_state: str_field(a, "appliesToState"),
+            statement: Statement { format: str_field(statement, "format"), schema: str_field(statement, "schema"), value },
+            signing_key,
+            id,
+        });
+    }
+    Ok(out)
+}
+fn parse_verification_keys(arg: &str) -> Result<AssertionVerificationKeys, String> {
+    let file = file_or_json(arg).map_err(|e| format!("assertion verification keys must be a JSON object: {e}"))?;
+    if !matches!(file, Json::Object(_)) {
+        return Err("assertion verification keys must be a JSON object".into());
+    }
+    let mut keys = AssertionVerificationKeys::default();
+    if let Some(d @ Json::Object(_)) = field(&file, "defaultKey") {
+        keys.default_key = Some(AssertionKey { alg: str_field(d, "alg"), key: str_field(d, "key") });
+    }
+    if let Some(Json::Object(entries)) = field(&file, "keys") {
+        for (id, k) in entries {
+            keys.keys.insert(id.clone(), AssertionKey { alg: str_field(k, "alg"), key: str_field(k, "key") });
+        }
+    }
+    Ok(keys)
+}
+
 fn encrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
     let p = match parse(args, ENCRYPT_FLAGS) {
         Ok(p) => p,
@@ -521,6 +614,18 @@ fn encrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
             return code;
         }
     };
+    let assertions = if p.value("with-assertions").is_empty() {
+        vec![]
+    } else {
+        match parse_assertions(p.value("with-assertions")) {
+            Ok(a) => a,
+            Err(e) => {
+                let _ = sdk.close();
+                let _ = writeln!(stderr, "Failed to read assertions: {e}");
+                return EXIT_USAGE;
+            }
+        }
+    };
     // As otdfctl: the platform's KAS is the default key access server and attributes drive autoconfigure.
     let options = TdfOptions {
         kas_information: vec![KasInfo::new(&format!("{host}/kas"))],
@@ -528,6 +633,7 @@ fn encrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
         attributes: split_list(p.value("attr")),
         wrapping_key_algorithm: p.value("wrapping-key-algorithm").to_owned(),
         target_mode: p.value("target-mode").to_owned(),
+        assertions,
         ..Default::default()
     };
     let result = sdk.encrypt_bytes(&input, &options);
@@ -580,8 +686,21 @@ fn decrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
     // otdfctl: "*" alone ignores the allowlist; any other list is explicit.
     let allowlist = split_list(p.value("kas-allowlist"));
     let ignore = allowlist.len() == 1 && allowlist[0] == "*";
+    let assertion_verification_keys = if p.value("with-assertion-verification-keys").is_empty() {
+        AssertionVerificationKeys::default()
+    } else {
+        match parse_verification_keys(p.value("with-assertion-verification-keys")) {
+            Ok(k) => k,
+            Err(e) => {
+                let _ = sdk.close();
+                let _ = writeln!(stderr, "Failed to read assertion verification keys: {e}");
+                return EXIT_USAGE;
+            }
+        }
+    };
     let options = ReaderOptions {
         disable_assertion_verification: p.flag("no-verify-assertions"),
+        assertion_verification_keys,
         session_key_type: p.value("session-key-algorithm").to_owned(),
         ignore_allowlist: ignore,
         kas_allowlist: if !ignore && !allowlist.is_empty() { Some(allowlist) } else { None },

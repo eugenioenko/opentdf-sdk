@@ -5,7 +5,7 @@
 //! Host OAuth/DPoP is native Rust.
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use opentdf_tdf3::protocol::policy::{attributes, namespaces, AttributeRuleTypeEnum};
-use opentdf_tdf3::{self as tdf, AccessToken, Error, KasInfo, Options, ProviderError, ProviderRequest, ReaderOptions, Sdk, TdfOptions};
+use opentdf_tdf3::{self as tdf, AccessToken, AssertionConfig, AssertionKey, AssertionVerificationKeys, Error, KasInfo, Options, ProviderError, ProviderRequest, ReaderOptions, Sdk, Statement, TdfOptions};
 use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
@@ -104,13 +104,62 @@ fn reader_options(cfg: &Value) -> ReaderOptions {
     ReaderOptions { kas_allowlist: Some(allow), session_key_type: text(cfg, "SessionAlgorithm"), ..Default::default() }
 }
 fn report(e: &Error) -> Value {
-    json!({"kind": e.kind.as_str(), "op": e.op, "httpStatus": e.http_status, "connectCode": e.connect_code, "message": e.message})
+    json!({"kind": e.kind.as_str(), "op": e.op, "httpStatus": e.http_status, "connectCode": e.connect_code, "assertionId": e.assertion_id, "message": e.message})
 }
 fn expect_failure<T>(label: &str, result: Result<T, Error>) -> Value {
     match result {
         Ok(_) => panic!("{label} returned successful output"),
         Err(e) => report(&e),
     }
+}
+/// A TDF with an unsigned assertion (HS256 over the payload key) and one signed with a caller HS256 secret,
+/// read with the right key by id, with a wrong key and with no key (assertion_failure), and with verification off.
+fn assertions(sdk: &Sdk, cfg: &Value, run: &Path) -> Result<(), Error> {
+    let secret = format!("assertion-secret-{:x}", now());
+    let first_value = r#"{"ocl":{"pol":"2ccf11cb-6c9a-4e49-9746-a7f0a295945d"}}"#;
+    let configs = vec![
+        AssertionConfig {
+            id: "unsigned".into(),
+            type_: "handling".into(),
+            scope: "tdo".into(),
+            applies_to_state: "encrypted".into(),
+            statement: Statement { format: "json+stanag5636".into(), schema: "urn:nato:stanag:5636:A:1:elements:json".into(), value: first_value.into() },
+            signing_key: None,
+        },
+        AssertionConfig {
+            id: "signed".into(),
+            type_: "other".into(),
+            scope: "payload".into(),
+            applies_to_state: "unencrypted".into(),
+            statement: Statement { format: "json".into(), schema: "urn:example:assertion:v1".into(), value: r#"{"note":"independent consumer"}"#.into() },
+            signing_key: Some(AssertionKey::hs256(&secret)),
+        },
+    ];
+    let payload = b"assertion payload".to_vec();
+    let object = sdk.create_tdf(&payload, &TdfOptions { assertions: configs, ..tdf_options(cfg) })?;
+    let found = object.manifest()?.assertions;
+    object.close()?;
+    let archive = object.bytes.clone();
+    check(found.len() == 2 && found[0].id == "unsigned" && found[1].id == "signed" && found[1].binding.method == "jws" && !found[1].binding.signature.is_empty(), "assertions in manifest");
+    check(found[0].statement.value == first_value, "statement value kept");
+    let with_keys = |default_key: Option<AssertionKey>, keys: &[(&str, AssertionKey)]| ReaderOptions {
+        assertion_verification_keys: AssertionVerificationKeys { default_key, keys: keys.iter().map(|(id, k)| (id.to_string(), k.clone())).collect() },
+        ..reader_options(cfg)
+    };
+    check(sdk.decrypt_bytes(&archive, &with_keys(None, &[("signed", AssertionKey::hs256(&secret))]))? == payload, "decrypt with the right key");
+    let fails = |label: &str, options: &ReaderOptions, id: &str| {
+        let error = expect_failure(label, sdk.decrypt_bytes(&archive, options));
+        check(error["kind"] == "assertion_failure" && error["assertionId"] == id, &format!("{label}: {error}"));
+        error
+    };
+    let wrong = fails("wrong key", &with_keys(None, &[("signed", AssertionKey::hs256("not the secret"))]), "signed");
+    let missing = fails("missing key", &reader_options(cfg), "signed");
+    fails("wrong default key", &with_keys(Some(AssertionKey::hs256("not the secret")), &[]), "unsigned");
+    check(sdk.decrypt_bytes(&archive, &ReaderOptions { disable_assertion_verification: true, ..reader_options(cfg) })? == payload, "decrypt with verification disabled");
+    fs::write(run.join("assertions.generated.tdf"), &archive).unwrap();
+    let ids: Vec<Value> = found.iter().map(|a| json!({"id": a.id, "method": a.binding.method})).collect();
+    fs::write(run.join("assertions.json"), json!({"assertions": ids, "wrong_key": wrong, "missing_key": missing}).to_string()).unwrap();
+    Ok(())
 }
 /// Polls a future for at most the duration, then drops it (the Rust cancellation idiom).
 fn poll_for<F: Future>(future: F, limit: Duration) -> Option<F::Output> {
@@ -380,6 +429,7 @@ fn main() {
                     let error = expect_failure("negative", sdk.decrypt_bytes(&fs::read(run.join(format!("{name}.tdf"))).unwrap(), &reader_options(&cfg)));
                     fs::write(run.join(format!("{name}.error.json")), error.to_string()).unwrap();
                 }
+                "assertions" => assertions(&sdk, &cfg, run)?,
                 "repeat" => {
                     repeat(&sdk, &cfg, name)?;
                     return Ok(());
