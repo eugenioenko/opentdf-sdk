@@ -211,6 +211,8 @@ type tdfWriter struct {
 	segments      []Segment
 	aggregateHash []byte
 	encryptions   uint64
+	assertions    []AssertionConfig
+	useHex        bool
 }
 
 // newTDFWriter resolves key access before any payload byte is encrypted, so
@@ -226,7 +228,15 @@ func (s *SDK) newTDFWriter(ctx context.Context, tdfConfig *TDFConfig) (*tdfWrite
 		return nil, fmt.Errorf("fail to create a new split key: %w", err)
 	}
 
-	return &tdfWriter{dek: dek, segmentSize: tdfConfig.defaultSegmentSize, policy: base64Policy, keyAccess: kaos}, nil
+	assertions := append([]AssertionConfig(nil), tdfConfig.assertions...)
+	if tdfConfig.addDefaultAssertion {
+		systemMeta, err := GetSystemMetadataAssertionConfig()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get default assertion config: %w", err)
+		}
+		assertions = append(assertions, systemMeta)
+	}
+	return &tdfWriter{dek: dek, segmentSize: tdfConfig.defaultSegmentSize, policy: base64Policy, keyAccess: kaos, assertions: assertions, useHex: tdfConfig.useHex}, nil
 }
 
 func (w *tdfWriter) writeSegment(data []byte) error {
@@ -269,6 +279,10 @@ func (w *tdfWriter) finalize(mimeType string) ([]byte, Manifest, error) {
 	if mimeType == "" {
 		mimeType = defaultMimeType
 	}
+	assertions, err := signAssertions(w.aggregateHash, w.assertions, w.dek, w.useHex)
+	if err != nil {
+		return nil, Manifest{}, err
+	}
 	manifest := Manifest{
 		EncryptionInformation: EncryptionInformation{
 			KeyAccessType: kSplitKeyType,
@@ -284,6 +298,7 @@ func (w *tdfWriter) finalize(mimeType string) ([]byte, Manifest, error) {
 			},
 		},
 		Payload:    Payload{Type: tdfZipReference, URL: tdf.PayloadEntry, Protocol: tdfAsZip, MimeType: mimeType, IsEncrypted: true},
+		Assertions: assertions,
 		TDFVersion: TDFSpecVersion,
 	}
 	manifestJSON, err := json.Marshal(manifest)
@@ -1094,9 +1109,10 @@ func (r *Reader) buildKey(_ context.Context, results []kaoResult) error {
 		return sentinelError(KindSegmentSize, ErrSegSizeMismatch)
 	}
 
-	// Validate assertions
-	if len(r.manifest.Assertions) > 0 && !r.config.disableAssertionVerification {
-		return unsupported("Init", "assertion verification")
+	if !r.config.disableAssertionVerification {
+		if err := r.verifyAssertions(aggregateHash, payloadKey); err != nil {
+			return err
+		}
 	}
 
 	r.unencryptedMetadata = unencryptedMetadata

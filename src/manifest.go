@@ -191,8 +191,8 @@ type EncryptedMetadata struct {
 	Iv     string `json:"iv"`
 }
 
-// Assertion types from the reference's assertion.go, carried so a manifest
-// with assertions parses; verification and creation arrive in Phase 5.
+// Assertion types from the reference's assertion.go; signing and verification
+// are in assertion.go.
 type AssertionType string
 
 type Scope string
