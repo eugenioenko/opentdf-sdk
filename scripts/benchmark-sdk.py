@@ -106,7 +106,9 @@ def setup(base, packages):
         directory.mkdir(exist_ok=True)
         shutil.copyfile(SRC / source, directory / 'main.go')
         if target == 'go':
-            (directory / 'go.mod').write_text('module benchmark-generated\n\ngo 1.25\nrequire goalchemyout v0.0.0\nreplace goalchemyout => ' + str((consumers / 'go/package').resolve()) + '\n')
+            module = (SDK / 'tests/interop/generatedlibrary/go.mod').read_text().replace('module opentdf-local/generated-library-consumer', 'module benchmark-generated').replace('../../../../goalchemy/out/go-tdf-library/sdk', str((consumers / 'go/package').resolve()))
+            (directory / 'go.mod').write_text(module)
+            shutil.copyfile(SDK / 'tests/interop/generatedlibrary/go.sum', directory / 'go.sum')
         else:
             module = (SDK / 'tests/interop/generatedreference/go.mod').read_text().replace('../../../../platform/', str(SDK.parent / 'platform') + '/')
             (directory / 'go.mod').write_text(module)

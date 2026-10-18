@@ -33,9 +33,28 @@ macOS/iOS integration remains unverified. Linux Swift performance measurements a
 
 ## End-to-end performance
 
-Median encrypt → decrypt time through **real KAS**, in milliseconds.
+Median encrypt → decrypt time through **real KAS**, in milliseconds, over the
+handle API: one SDK per process, as the reference consumer, built with Goalchemy
+**v0.7.2** and native pausing (C: frames). Quick-check policy: three fresh
+processes, five size-specific warmups and five timed pairs each, no 50 MiB bulk
+warmups. See the [methodology](docs/benchmarks.md#handle-api-quick-check).
+
+| SDK | 1 MiB | 10 MiB |
+| --- | ---: | ---: |
+| Original OpenTDF Go | 40.46 ms | 96.24 ms |
+| Generated Go | 20.42 ms | 51.58 ms |
+| TypeScript (Node) | 48.32 ms | 134.12 ms |
+| Java | 61.77 ms | 318.61 ms |
+| C# | 38.11 ms | 125.23 ms |
+| Python | 46.61 ms | 96.01 ms |
+| Rust | 28.10 ms | 72.81 ms |
+| C | 27.44 ms | 76.08 ms |
+
+### Historical stateless façade rows
+
 Original Go and the first seven generated rows retain historical Goalchemy
-**v0.2.1** results.\* Web SDK (Node) and Swift were remeasured in a fresh campaign.†
+**v0.2.1** results through the stateless façade, which builds a client and an
+RSA session key per call.\* Web SDK (Node) and Swift were remeasured in a fresh campaign.†
 
 | SDK | 1 MiB | 10 MiB | 50 MiB |
 | --- | ---: | ---: | ---: |
