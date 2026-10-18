@@ -7,9 +7,9 @@ DEST=${1:-"$SDK/out/swift-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative --pause-model=native -target swift -out "$DEST" ./src/library ./src)
+(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative --pause-model=native -target swift -out "$DEST" ./src)
 mkdir -p "$DEST/Sources/OpenTDFTDF3"
-cp "$SDK/src/hosts/swift/TDF3.swift.in" "$DEST/Sources/OpenTDFTDF3/TDF3.swift"
+cp "$SDK/src/hosts/swift/Token.swift.in" "$DEST/Sources/OpenTDFTDF3/Token.swift"
 cp "$SDK/src/hosts/swift/OpenTDF.swift.in" "$DEST/Sources/OpenTDFTDF3/OpenTDF.swift"
 cp "$SDK/src/hosts/swift/Services.swift.in" "$DEST/Sources/OpenTDFTDF3/Services.swift"
 rm -rf "$DEST/Sources/OpenTDFTDF3/Protocol"

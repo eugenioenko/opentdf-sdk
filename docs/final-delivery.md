@@ -6,7 +6,7 @@ All eight targets share the compiler revision recorded in
 [references.lock.json](../references.lock.json). See
 [Swift build/API/verification](generated-swift-library.md).
 
-The shared [Go façade](../src/library/library.go) is delivered as seven importable
+The shared [Go source](../src) is delivered as seven importable
 native libraries. Each executes its bundled lowered implementation and native
 crypto/HTTP capabilities. Production encryption and decryption require neither
 the compiler nor an original SDK/reference process. TypeScript supports Node

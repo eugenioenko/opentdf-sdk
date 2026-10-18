@@ -1,0 +1,25 @@
+import Foundation
+import GoalchemyGenerated
+
+// The handle API's host token provider and the generated call types it uses.
+public typealias GoString = GoalchemyGenerated.GoString
+public typealias CallOptions = GoalchemyGenerated.CallOptions
+public typealias CancellationToken = GoalchemyGenerated.CancellationToken
+public typealias CallbackRequest = GoalchemyGenerated.CallbackRequest
+
+public struct AccessToken {
+  public let value: String
+  public let scheme: String
+  public let expiresAt: Int64
+  public let confirmationJKT: String
+  public init(value: String, scheme: String, expiresAt: Int64, confirmationJKT: String = "") {
+    self.value = value
+    self.scheme = scheme
+    self.expiresAt = expiresAt
+    self.confirmationJKT = confirmationJKT
+  }
+}
+
+/// Complete once, including after cancellation; return an optional cleanup hook.
+public typealias TokenProvider = (CallbackRequest, @escaping (Result<AccessToken, Error>) -> Void)
+  -> (() -> Void)?

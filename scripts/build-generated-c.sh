@@ -7,7 +7,7 @@ DEST=${1:-"$ROOT/out/c-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative --pause-model=frames -target c -out "$DEST" ./src/library ./src)
+(cd "$SDK"; GOALCHEMY_ROOT="$ROOT" "$COMPILER" compile -gate cooperative --pause-model=frames -target c -out "$DEST" ./src)
 export GOALCHEMY_BDWGC=${GOALCHEMY_BDWGC:-"$ROOT/.toolchains/bdwgc"}
 CURL_PREFIX=${TDF3_CURL_PREFIX:-"$SDK/.local/root-c-development-prerequisites/prefix"}
 if [[ -d "$CURL_PREFIX/usr/lib/x86_64-linux-gnu/pkgconfig" ]]; then
@@ -20,17 +20,16 @@ CURL_CFLAGS=$(pkg-config --cflags libcurl)
 CURL_LIBS=$(pkg-config --libs libcurl)
 export CPPFLAGS="${CPPFLAGS:-} $CURL_CFLAGS"
 sh "$DEST/build.sh"
-cp "$SDK/src/hosts/c/tdf3.h" "$SDK/src/hosts/c/tdf3.c" "$SDK/src/hosts/c/opentdf.h" "$SDK/src/hosts/c/opentdf.c" "$SDK/src/hosts/c/opentdf_services.h" "$SDK/src/hosts/c/opentdf_services.c" "$DEST/"
-${CC:-cc} -std=c17 ${CFLAGS:--O2} -Wall -Wextra -Werror -I"$DEST" -c "$DEST/tdf3.c" -o "$DEST/obj/tdf3.o"
+cp "$SDK/src/hosts/c/opentdf.h" "$SDK/src/hosts/c/opentdf.c" "$SDK/src/hosts/c/opentdf_services.h" "$SDK/src/hosts/c/opentdf_services.c" "$DEST/"
 ${CC:-cc} -std=c17 ${CFLAGS:--O2} -Wall -Wextra -Werror -I"$DEST" -c "$DEST/opentdf.c" -o "$DEST/obj/opentdf.o"
 ${CC:-cc} -std=c17 ${CFLAGS:--O2} -Wall -Wextra -Werror -I"$DEST" -c "$DEST/opentdf_services.c" -o "$DEST/obj/opentdf_services.o"
 cp "$DEST/libgoalchemy.a" "$DEST/libtdf3.a"
-ar rcs "$DEST/libtdf3.a" "$DEST/obj/tdf3.o" "$DEST/obj/opentdf.o" "$DEST/obj/opentdf_services.o"
+ar rcs "$DEST/libtdf3.a" "$DEST/obj/opentdf.o" "$DEST/obj/opentdf_services.o"
 rm -rf "$DEST/package"
 mkdir -p "$DEST/package/include" "$DEST/package/lib" "$DEST/package/src"
-cp "$DEST/tdf3.h" "$DEST/opentdf.h" "$DEST/opentdf_services.h" "$DEST/goalchemy.h" "$DEST/library.h" "$DEST/package/include/"
+cp "$DEST/opentdf.h" "$DEST/opentdf_services.h" "$DEST/goalchemy.h" "$DEST/library.h" "$DEST/package/include/"
 cp "$DEST/libtdf3.a" "$DEST/package/lib/"
-cp "$DEST/build.sh" "$DEST/tdf3.c" "$DEST/opentdf.c" "$DEST/opentdf_services.c" "$DEST/package/src/"
+cp "$DEST/build.sh" "$DEST/opentdf.c" "$DEST/opentdf_services.c" "$DEST/package/src/"
 python3 - "$DEST" <<'PY'
 import json,pathlib,shutil,sys
 p=pathlib.Path(sys.argv[1]);manifest=json.loads((p/'goalchemy.manifest.json').read_text())
@@ -43,7 +42,7 @@ for name in sources:
  shutil.copyfile(source,destination)
 PY
 cp -r "$DEST/rt" "$DEST/package/src/"
-cp "$DEST/tdf3.h" "$DEST/opentdf.h" "$DEST/opentdf_services.h" "$DEST/library.h" "$DEST/goalchemy.h" "$DEST/package/src/"
+cp "$DEST/opentdf.h" "$DEST/opentdf_services.h" "$DEST/library.h" "$DEST/goalchemy.h" "$DEST/package/src/"
 cp "$SDK/src/hosts/c/dependencies.lock.json" "$DEST/package/"
 cp -r "$SDK/src/hosts/c/licenses" "$DEST/package/"
 cp "$SDK/docs/generated-c-library.md" "$DEST/package/README.md"

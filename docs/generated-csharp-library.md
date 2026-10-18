@@ -1,9 +1,9 @@
 # Generated C# library
 
 The shared source compiles into `OpenTDF.TDF3.dll` (namespace `OpenTDF`),
-emitted from the two export roots `src/library` (the deprecated `TDF3`
-façade) and `src` (the handle API of [api-spec.md](api-spec.md)). The
-hand-written [host adapter](../src/hosts/csharp/Sdk.cs.in) presents that API
+emitted from the export root `src` (the handle API of
+[api-spec.md](api-spec.md)). The hand-written
+[host adapter](../src/hosts/csharp/Sdk.cs.in) presents that API
 in C# idiom: it maps names, idioms and errors and implements no protocol.
 Crypto and HTTP use .NET 8 built-ins; IEEE CRC32 uses the official Microsoft
 `System.IO.Hashing` 8.0.0 package and the platform service clients
@@ -18,8 +18,8 @@ The .NET 8 SDK (the repository pins SDK 8.0.425 under
 `GOTOOLCHAIN=go1.25.14 go build -o out/csharp-tdf-library/goalchemy
 ./cmd/goalchemy`, then run `scripts/build-generated-csharp.sh [destination]`.
 `GOALCHEMY_BIN` selects a compiler binary, `GOALCHEMY_ROOT` the Goalchemy
-checkout and `DOTNET_BIN` another .NET 8 SDK. The script compiles both roots,
-adds `TDF3.cs` (façade), `Sdk.cs` (handle API), `Services.cs` (service
+checkout and `DOTNET_BIN` another .NET 8 SDK. The script compiles the root,
+adds `Sdk.cs` (handle API), `TDF3.cs` (token provider types), `Services.cs` (service
 clients) and the generated protobuf messages of `src/hosts/csharp/protocol`,
 restores `Google.Protobuf` in locked mode against its content hash, builds a
 deterministic `lib/OpenTDF.TDF3.dll` and ships `lib/System.IO.Hashing.dll`,
@@ -85,7 +85,7 @@ Options are records with `init` setters (`Options`, `TdfOptions`,
 using the shared field names in PascalCase; every unset member is the
 reference default. `Timeout` is a `TimeSpan?` (the shared `TimeoutMillis`),
 sizes are `long`, strings UTF-8 `string`s, payloads `byte[]`.
-`TokenProvider` takes the façade's `TDF3.TokenProvider` (or
+`TokenProvider` takes a `TDF3.TokenProvider` (or
 `TDF3.FromTask`) and replaces client credentials; the SDK then signs rewrap
 requests with the reference's ephemeral ES256 key unless `DpopKeyPem` is
 set. Options this build does not implement yet (`TokenExchange`,
@@ -152,17 +152,6 @@ runtime's kind: `canceled`, `deadline_exceeded`, `closed` (a call after
 close), `invalid_argument` (a null payload), `poisoned`, `host_fault`.
 Switch on `Kind`; the kinds are the `ErrorKind` list of
 [api-spec.md](api-spec.md).
-
-## Deprecated façade
-
-`TDF3.Encrypt`, `TDF3.Decrypt`, `TDF3.EncryptAsync`, `TDF3.DecryptAsync`,
-`TDF3.Config`, `TDF3.EncryptOptions`, `TDF3.Decrypted`, `TDF3.Operation` and
-`TDF3.TDFError` remain with their previous shapes for one release,
-implemented in the shared source as thin wrappers that construct an SDK per
-call. `TDFError.Code` is now the `Error.Kind` string; `PolicyBase64`,
-`Dissem` and `SegmentHashAlgorithm` other than `GMAC` are no longer
-supported, and empty metadata writes no `encryptedMetadata` entry, as the
-reference does.
 
 ## CLI
 

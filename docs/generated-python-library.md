@@ -1,9 +1,8 @@
 # Generated Python library
 
 The shared source compiles into the installable `opentdf-tdf3` wheel
-(import `opentdf_tdf3`), emitted from the two export roots `src/library`
-(the deprecated `encrypt`/`decrypt` façade) and `src` (the handle API of
-[api-spec.md](api-spec.md)). The hand-written
+(import `opentdf_tdf3`), emitted from the export root `src` (the handle API
+of [api-spec.md](api-spec.md)). The hand-written
 [host adapter](../src/hosts/python/__init__.py.in) presents that API in
 Python idiom: it maps names, idioms and errors and implements no protocol.
 Production calls use the generated Python, native `cryptography` and the
@@ -150,17 +149,6 @@ runtime's kind: `canceled`, `deadline_exceeded`, `closed` (a call after
 `close()`), `invalid_argument` (a wrong value type), `poisoned`,
 `host_fault`. Switch on `kind`; the kinds are the `ErrorKind` list of
 [api-spec.md](api-spec.md).
-
-## Deprecated façade
-
-`encrypt`, `decrypt`, `encrypt_sync`, `decrypt_sync`, `encrypt_async`,
-`decrypt_async`, `Config`, `KASRoute`, `EncryptOptions`, `Decrypted`,
-`Operation` and `TDFError` remain with their previous shapes for one release,
-implemented in the shared source as thin wrappers that construct an SDK per
-call. `TDFError.code` is now the `Error.kind` string; `policy_base64`,
-`dissem` and `segment_hash_algorithm` other than `GMAC` are no longer
-supported, and empty metadata writes no `encryptedMetadata` entry, as the
-reference does.
 
 ## CLI
 

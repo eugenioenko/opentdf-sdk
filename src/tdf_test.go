@@ -122,7 +122,7 @@ func Test_SimpleTDF(t *testing.T) {
 		}
 		m := obj.Manifest()
 		kao := m.EncryptionInformation.KeyAccessObjs[0]
-		if m.TDFVersion != TDFSpecVersion || m.Payload.MimeType != "text/plain" || kao.KasURL != f.kasURL() || kao.SchemaVersion != "1.0" || kao.Protocol != "kas" || m.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm != "GMAC" || m.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm != "HS256" {
+		if m.TDFVersion != TDFSpecVersion() || m.Payload.MimeType != "text/plain" || kao.KasURL != f.kasURL() || kao.SchemaVersion != "1.0" || kao.Protocol != "kas" || m.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm != "GMAC" || m.EncryptionInformation.IntegrityInformation.RootSignature.Algorithm != "HS256" {
 			t.Fatalf("%s: manifest %+v", tc.name, m)
 		}
 		if IsECKeyType(tc.wrapping) {

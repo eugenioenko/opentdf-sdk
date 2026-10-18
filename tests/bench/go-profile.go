@@ -21,7 +21,9 @@ import (
 )
 
 type configuration struct {
-	Config  g.Config
+	Config struct {
+		PlatformURL, KASURL, TokenURL, KASPublicKeyPEM, KID string
+	}
 	Token   string
 	Expires int64
 }
@@ -103,22 +105,44 @@ func operation(raw configuration, input, archive []byte, target, op string) ([]b
 		callbacks := g.TokenCallbacks(func(context.Context) (g.AccessToken, error) {
 			return g.AccessToken{Value: raw.Token, Scheme: "Bearer", ExpiresAt: raw.Expires}, nil
 		})
+		options := g.OptionsOf(g.WithTokenEndpoint(cfg.TokenURL), g.WithTokenProvider(), g.WithInsecurePlaintextConn())
 		report.ConfigMS = milliseconds(full)
+		var client *g.SDK
+		setup := time.Now()
+		pprof.Do(context.Background(), pprof.Labels("target", target, "operation", op, "phase", "client_setup"), func(ctx context.Context) {
+			client, err = g.New(ctx, cfg.PlatformURL, options, callbacks)
+		})
+		report.SetupMS = milliseconds(setup)
+		require(err)
 		start := time.Now()
 		pprof.Do(context.Background(), pprof.Labels("target", target, "operation", op, "phase", "public_operation"), func(ctx context.Context) {
 			if op == "encrypt" {
-				result, err = g.Encrypt(ctx, cfg, input, g.EncryptOptions{
-					Attributes:  []string{"https://example.com/attr/attr1/value/value1"},
-					SegmentSize: 2 << 20, HasSegmentSize: true, SegmentHashAlgorithm: "GMAC",
-				}, callbacks)
+				var tdfOptions g.TDFOptions
+				tdfOptions, err = g.TDFOptionsOf(g.WithAutoconfigure(false),
+					g.WithKasInformation(g.KASInfo{URL: cfg.KASURL, PublicKey: cfg.KASPublicKeyPEM, KID: cfg.KID, Algorithm: "rsa:2048"}),
+					g.WithWrappingKeyAlg(g.KeyType("rsa:2048")), g.WithSegmentSize(2<<20),
+					g.WithDataAttributes("https://example.com/attr/attr1/value/value1"))
+				if err == nil {
+					var object *g.TDFObject
+					result, object, err = client.EncryptBytes(ctx, input, tdfOptions, callbacks)
+					if object != nil {
+						require(object.Close())
+					}
+				}
 			} else {
-				var output g.Decrypted
-				output, err = g.Decrypt(ctx, cfg, archive, callbacks)
-				result = output.Payload
+				var readerOptions g.ReaderOptions
+				// Reuse the RSA2048 response-session key created by New.
+				readerOptions, err = g.ReaderOptionsOf(g.WithKasAllowlist([]string{cfg.KASURL}))
+				if err == nil {
+					result, err = client.DecryptBytes(ctx, archive, readerOptions, callbacks)
+				}
 			}
 		})
 		report.OperationMS = milliseconds(start)
 		require(err)
+		closeStart := time.Now()
+		require(client.Close())
+		report.CloseMS = milliseconds(closeStart)
 	}
 	report.FullMS = milliseconds(full)
 	return result, report
@@ -188,7 +212,7 @@ func main() {
 		"wall_loop_ms": wall, "operations": len(records), "warmups": 1,
 		"correct": true, "phase_timings": records,
 		"timing_scope":          "instrumented diagnostic loop; CPU sampling and labels active; not published benchmark samples",
-		"generated_setup_scope": "internal generated client creation is inside the generated public API; original_client_setup_ms applies only to reference SDK.New",
+		"generated_setup_scope": "both targets create one client per operation; original_client_setup_ms covers the reference's and the generated package's New",
 		"kas_calls_expected": func() int {
 			if op == "decrypt" {
 				return len(records) + 1

@@ -1,8 +1,7 @@
 # Generated TypeScript library
 
 The shared source compiles into an importable ESM package for Node and
-browsers, emitted from the two export roots `src/library` (the deprecated
-`encrypt`/`decrypt` façade) and `src` (the handle API of
+browsers, emitted from the export root `src` (the handle API of
 [api-spec.md](api-spec.md)). The hand-written
 [host adapter](../src/hosts/typescript/index.ts.in) presents that API in
 TypeScript idiom: it maps names, idioms and errors and implements no protocol.
@@ -142,18 +141,6 @@ runtime's kind: `canceled` (an aborted signal), `deadline_exceeded`,
 `closed` (a call after `close()`), `invalid_argument` (a wrong value type),
 `poisoned`, `host_fault`. Switch on `kind`; the kinds are the `ErrorKind`
 union of [api-spec.md](api-spec.md).
-
-## Deprecated façade
-
-`encrypt(config, payload, options?, call?)`, `decrypt(config, archive, call?)`
-and `TDFError` remain with their previous shapes for one release, implemented
-in the shared source as thin wrappers that construct an SDK per call
-(`Config.IssuerURL` becomes the provided platform configuration,
-`Config.KASURL` the KAS information and the allowlist, `Config.DPoP` the DPoP
-algorithm). `TDFError.code` is now the `Error.kind` string;
-`PolicyBase64`, `Dissem` and `SegmentHashAlgorithm` other than `GMAC` are no
-longer supported, and an empty `Metadata` writes no `encryptedMetadata`
-entry, as the reference does.
 
 ## CLI
 
