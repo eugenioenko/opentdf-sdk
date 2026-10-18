@@ -37,6 +37,8 @@ the generated reference. Delete `.local/docs/source.sha256` to force generation.
 - Edit API descriptions in the shared Go source. `scripts/check-api-docs.go`
   checks handwritten exports, interface methods, and fields. Generated protocol
   code and handwritten native adapters have separate documentation.
+  The reference uses `./src`, matching the SDK's single export root. Reachable
+  dependency types remain linked; the removed per-call facade is not published.
 - Edit native package guides in `docs/generated-<language>-library.md` and other
   canonical references in `docs/`. `scripts/prepare-docs.mjs` publishes them.
   Contributor-only CLI and validation sections are omitted from language pages;

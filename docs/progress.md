@@ -2677,6 +2677,38 @@ non-ASCII while the others write them literally, so the same input can give
 byte-different statement strings across CLIs for such values; verification is
 unaffected because the hash is over the string written.
 
+## Removal of the deprecated `library` façade
+
+Branch `chore/remove-library-facade`, from `main`.
+
+The per-call `Encrypt`/`Decrypt` façade (`src/library`, the Phase 4 library
+boundary) was kept for one release after the handle API replaced it
+(full-sdk-plan.md, decision 1). Nothing in the repository called it any
+more: the CLIs, bench consumers and interop consumers had moved to `sdk.New`
+and the `SDK` handle, and only the eight build scripts still compiled it as
+a second Goalchemy export root. It is removed.
+
+Shared source: `src/library/` is deleted; the one export root is `./src`.
+
+Hosts: the façade sections of every adapter are gone (`encrypt`/`decrypt`,
+`Config`, `KASRoute`, `EncryptOptions`, `Decrypted`, the façade's
+`TDFError`/`Operation`), and so are C's `tdf3.h`/`tdf3.c`. The token provider
+types the handle API shares with it stay where they were: `TDF3.AccessToken`,
+`TDF3.TokenProvider`, `TDF3.ProviderRequest` and `fromStage`/`FromTask` in
+Java and C#, `AccessToken`/`TokenProvider` in `Token.swift.in` (renamed from
+`TDF3.swift.in`), `AccessToken`/`token_provider` in the Rust crate root. The
+C package still ships as `libtdf3.a` with `opentdf.h` only.
+
+Tests: the Swift bench consumer and the C `no-preinit-consumer`
+(`forward-consumer.c`) now use the handle API; the façade-only checks
+(`first-caller.c`, the TypeScript `snapshot.mjs` Buffer check and the Python
+`buffer-boundary.py` check), which no harness ran, are deleted with the API
+they exercised. The TypeScript type consumer no longer imports `encrypt`,
+`decrypt` or `Config`.
+
+Docs: the "Deprecated façade" sections of the per-target guides, the
+two-roots wording in api-spec.md, README and the build descriptions.
+
 ## Public SDK documentation: source audit
 
 Added missing comments for 374 public declarations and members. The audit now
@@ -2752,3 +2784,19 @@ The existing documentation workflow now tracks platform pins and service-doc
 generators. It regenerates JSON, portable Markdown, task examples, and RPC pages
 in CI, validates pull requests, and publishes only main builds with GitHub Pages.
 Publication still awaits merging the SDK documentation PR.
+
+## Public SDK documentation: regenerate after facade removal
+
+Merged main at fc919c9, including PR #47's library-facade removal, into the
+documentation branch. Kept that removal and removed the superseded facade
+comments from this branch. Updated reference generation to use only `./src`,
+matching the current native build scripts. Dependency types remain reachable
+without advertising archive helpers as separate exported functions.
+
+Regenerated the site, JSON, and portable Markdown with the new Goalchemy
+format. The current catalog has 348 SDK symbols, no facade symbols, 131 RPC
+methods, 364 message types, and seven examples across all eight languages.
+Source documentation coverage passes for 492 public declarations and members.
+The build passes all local link, fragment, asset, and repository-base checks
+across 927 pages. Native language guides were reimported from the updated
+canonical files. No native suites or benchmarks ran locally.

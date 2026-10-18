@@ -94,7 +94,7 @@ def generate():
                 '-proto-services', ','.join(service['service'] for service in services),
                 '-content', str(STATE / 'content.json'),
                 '-format', format, '-title', 'OpenTDF SDK', '-out', str(output),
-                './src', './src/tdf', env=env)
+                './src', env=env)
     catalog = json.loads((SITE / 'public/api.json').read_text())
     unavailable = [target for target in catalog['targets'] if target['status'] != 'available']
     missing = [symbol['id'] for symbol in catalog['symbols'] if symbol['root'] and not symbol.get('description')]

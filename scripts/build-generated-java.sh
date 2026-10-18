@@ -7,7 +7,7 @@ DEST=${1:-"$ROOT/out/java-tdf-library/sdk"}
 mkdir -p "$DEST"
 DEST=$(cd "$DEST" && pwd)
 if [[ "$COMPILER" != /* ]]; then COMPILER="$(pwd)/$COMPILER"; fi
-(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native -target java -out "$DEST" ./src/library ./src)
+(cd "$SDK"; "$COMPILER" compile -gate cooperative --pause-model=native -target java -out "$DEST" ./src)
 cmp "$SDK/src/hosts/java/dependencies.lock.json" "$ROOT/targets/java/dependencies.lock.json"
 mkdir -p "$DEST/src/io/opentdf/tdf3" "$DEST/lib" "$DEST/licenses"
 for adapter in "$SDK"/src/hosts/java/*.java.in; do cp "$adapter" "$DEST/src/io/opentdf/tdf3/$(basename "${adapter%.in}")"; done

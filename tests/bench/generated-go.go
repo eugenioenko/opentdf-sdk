@@ -47,7 +47,9 @@ func main() {
 		panic("invalid warmup count")
 	}
 	var raw struct {
-		Config  g.Config
+		Config struct {
+			PlatformURL, KASURL, TokenURL, KASPublicKeyPEM, KID string
+		}
 		Token   string
 		Expires int64
 	}

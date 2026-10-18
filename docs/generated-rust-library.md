@@ -1,8 +1,7 @@
 # Generated Rust library
 
 The `opentdf-tdf3` Cargo library imports as `opentdf_tdf3`. It is emitted from
-the two export roots `src/library` (the deprecated `encrypt`/`decrypt`
-façade) and `src` (the handle API of [api-spec.md](api-spec.md)); the
+the export root `src` (the handle API of [api-spec.md](api-spec.md)); the
 hand-written [host adapter](../src/hosts/rust/sdk.rs.in) presents that API in
 Rust idiom and maps names, idioms and errors only. Production calls run
 generated Rust and maintained native dependencies without a compiler, Go
@@ -29,7 +28,8 @@ bash sdk/tests/interop/generatedrust/install-consumer.sh
 ```
 
 The first command prepares the compiler; the second emits the generated crate
-(`src/generated.rs`), adds `src/lib.rs` (façade), `src/sdk.rs` (handle API),
+(`src/generated.rs`), adds `src/lib.rs` (crate root and token provider),
+`src/sdk.rs` (handle API),
 `src/services.rs` (service clients) and the generated prost messages of
 `src/hosts/rust/protocol` as `src/protocol/`,
 `GOALCHEMY_ROOT` selecting the Goalchemy checkout, verifies dependency archives and notices, builds with
@@ -180,12 +180,6 @@ carries the runtime's kind for `closed`, `poisoned`, `invalid_argument`,
 [error-wording.md](error-wording.md)), `http_status`, `connect_code`,
 `service_message`, `kas_url`, `required_obligations` and `assertion_id`.
 
-The deprecated façade (`encrypt`, `decrypt`, `Config`, `EncryptOptions`,
-`Decrypted`, `Operation`, `LibraryError`) keeps its previous shape for one
-release, implemented in the shared source as thin wrappers that construct an
-SDK per call; its `Code` field is now the `Error.kind` string and empty
-metadata writes no `encryptedMetadata` entry, as the reference does.
-
 `src/hosts/rust/cmd/otdfgc/main.rs` is the native Rust CLI over this crate,
 built by `scripts/build-rust-cli.sh <package> <binary>` and driven by the
 xtest harness as the `gcrs` SDK type (see [xtest.md](xtest.md)); it
@@ -194,7 +188,8 @@ handle API with a provided platform configuration). The consumer in
 `tests/interop/generatedrust/main.rs` drives the real platform and, in
 `controlled` mode, the offline checks of
 `tests/interop/delivery/controlled_platform.py`. The verification evidence
-below predates the handle API and was gathered through the façade.
+below predates the handle API and was gathered through the since-removed
+per-call `encrypt`/`decrypt` façade.
 
 ## Verification and interoperability
 

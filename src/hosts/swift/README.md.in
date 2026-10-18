@@ -6,13 +6,17 @@ zlib and libcurl development packages. Linux x86_64 is the verified baseline;
 macOS and iOS integration have not been verified.
 
 Add this directory as a SwiftPM dependency and depend on its `OpenTDFTDF3`
-product. `encrypt(config, Data(...), options).wait()` returns encrypted `Data`;
-`decrypt(config, archive).wait()` returns owned payload, metadata and manifest
-bytes. Use `.value()` with `await` for asynchronous callers. Operations are lazy,
-serialized, and accept cancellation, deadlines and typed token providers.
+product. The module exports the OpenTDF handle API: `SDK(endpoint, Options(...))`
+creates a client; `sdk.encryptBytes(data, TDFOptions(...))` and
+`sdk.decryptBytes(data, ReaderOptions(...))` move payloads as `Data`;
+`createTDF` and `loadTDF` return `TDFObject` and `Reader` handles for the
+manifest, policy, attributes and unencrypted metadata; `sdk.attributes` and the
+other service clients take and return the SwiftProtobuf platform messages.
+Methods are `async throws` and honour Task cancellation.
 
-Configuration fields retain their Go names. Text uses `GoString`; literals are
-UTF-8, and `GoString(bytes: ...)` preserves arbitrary bytes. Slice fields are
-optional arrays so nil and empty remain distinct. Failures throw `TDFError`
-with code, operation, HTTP status, server fields and cancellation category.
-No Go runtime is invoked. Goalchemy's runtime license is included in `LICENSE`.
+Strings are Swift `String`s, sizes `Int64`, and every unset option is the
+reference default. `Options.tokenProvider` takes a `TokenProvider` closure that
+resolves an `AccessToken` and replaces client credentials. Failures throw
+`OpenTDFError` with a stable `kind`, the reference's message, HTTP status and
+service fields. No Go runtime is invoked. Goalchemy's runtime license is
+included in `LICENSE`.

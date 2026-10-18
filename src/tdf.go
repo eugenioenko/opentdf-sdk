@@ -307,7 +307,7 @@ func (w *tdfWriter) finalize(mimeType string) ([]byte, Manifest, error) {
 		},
 		Payload:    Payload{Type: tdfZipReference, URL: tdf.PayloadEntry, Protocol: tdfAsZip, MimeType: mimeType, IsEncrypted: true},
 		Assertions: assertions,
-		TDFVersion: TDFSpecVersion,
+		TDFVersion: TDFSpecVersion(),
 	}
 	manifestJSON, err := json.Marshal(manifest)
 	if err != nil {

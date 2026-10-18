@@ -1,10 +1,11 @@
 # Generated Java library
 
 The shared source compiles into `tdf3-java.jar` (package `io.opentdf.tdf3`),
-emitted from the two export roots `src/library` (the deprecated `TDF3`
-façade) and `src` (the handle API of [api-spec.md](api-spec.md)). The
-hand-written [host adapter](../src/hosts/java) (`SDK`, `Reader`, `TDFObject`,
-`TDFOptions`, `ReaderOptions`, `OpenTDFException`, `Values`) presents that API
+emitted from the export root `src` (the handle API of
+[api-spec.md](api-spec.md)). The hand-written
+[host adapter](../src/hosts/java) (`SDK`, `Reader`, `TDFObject`,
+`TDFOptions`, `ReaderOptions`, `OpenTDFException`, `Values`, and the token
+provider types in `TDF3`) presents that API
 in Java idiom: it maps names, idioms and errors and implements no protocol.
 Production calls use the generated Java, JDK 21 JCA, `java.net.http`, the
 pinned Bouncy Castle provider and, for the platform service clients,
@@ -95,7 +96,7 @@ shared-source structs (`SDK.Builder` for `Options`, `TDFOptions.Builder`,
 (`clientCredentials`, `insecurePlaintext`, `dpopAlgorithm`,
 `kasInformation`, `wrappingKeyAlgorithm`, `kasAllowlist`, `sessionKeyType`,
 ...); every unset field is the reference default. Sizes are `long`, strings
-UTF-8 `String`s, payloads `byte[]`. `tokenProvider` takes the façade's
+UTF-8 `String`s, payloads `byte[]`. `tokenProvider` takes a
 `TDF3.TokenProvider` (a `ProviderRequest` resolved with an `AccessToken`)
 and replaces client credentials; the SDK then signs rewrap requests with the
 reference's ephemeral ES256 key unless `dpopKeyPem` is set. Options this
@@ -164,18 +165,6 @@ Every failure is an `OpenTDFException` with `kind()`, `op()`,
 `deadline_exceeded` (a Duration expired), `closed` (a call after `close()`),
 `invalid_argument` (a null payload), `poisoned`, `host_fault`. Switch on
 `kind()`; the kinds are the `ErrorKind` list of [api-spec.md](api-spec.md).
-
-## Deprecated façade
-
-`TDF3.encrypt`, `TDF3.decrypt`, `TDF3.Config`, `TDF3.EncryptOptions`,
-`TDF3.Decrypted`, `TDF3.Operation` and `TDF3.TDFError` remain with their
-previous shapes for one release, implemented in the shared source as thin
-wrappers that construct an SDK per call. `TDFError.code` is now the
-`Error.kind` string; `PolicyBase64`, `Dissem` and `SegmentHashAlgorithm`
-other than `GMAC` are no longer supported, and empty metadata writes no
-`encryptedMetadata` entry, as the reference does. Its token provider types
-(`TDF3.TokenProvider`, `ProviderRequest`, `AccessToken`, `fromStage`) are
-shared with the handle API.
 
 ## CLI
 

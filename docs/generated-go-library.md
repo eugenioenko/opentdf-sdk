@@ -1,9 +1,8 @@
 # Generated Go library
 
 The shared source compiles into an importable Go package: module
-`goalchemyout`, package `generated`, emitted from the two export roots
-`src/library` (the deprecated `Encrypt`/`Decrypt` façade) and `src` (the
-handle API of [api-spec.md](api-spec.md)). The emitted package imports its
+`goalchemyout`, package `generated`, emitted from the export root `src`
+(the handle API of [api-spec.md](api-spec.md)). The emitted package imports its
 bundled standard-library capabilities; it never imports the original SDK
 implementation.
 
@@ -142,17 +141,6 @@ constants let callers write `errors.Is(err, sdk.ErrTampered)` or switch on
 `Kind`. The record carries no cause: interface fields do not cross the
 boundary. Cancellation of the native call itself is a `*LibraryError` with
 kind `canceled`, as before.
-
-## Deprecated façade
-
-`Encrypt(ctx, Config, []byte, EncryptOptions)` and `Decrypt(ctx, Config, []byte)`
-remain with their previous shapes for one release, implemented as thin
-wrappers that construct an SDK per call: `Config.IssuerURL` with
-`Config.TokenURL` becomes the provided platform configuration (alone, the
-SDK discovers both from the platform), `Config.KASURL` the KAS information
-and the allowlist, `Config.DPoP` the DPoP algorithm. Their `Failure.Code` is now the
-`Error.Kind` string. `PolicyBase64`, `Dissem` and `SegmentHashAlgorithm` other
-than `GMAC` are no longer supported.
 
 ## CLI
 

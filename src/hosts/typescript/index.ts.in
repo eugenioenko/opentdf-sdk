@@ -1,14 +1,13 @@
 // Host adapter over the generated package: the handle API of api-spec.md in
 // TypeScript idiom (camelCase options, UTF-8 strings, number sizes, one
-// OpenTDFError) plus the deprecated encrypt/decrypt façade. It maps names and
-// errors only; the TDF protocol executes in the compiler output.
+// OpenTDFError). It maps names and errors only; the TDF protocol executes in
+// the compiler output.
 import * as generated from './main.js';
 import { fromJsonString, toJsonString, create, type DescMessage, type DescMethodStreaming, type DescMethodUnary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError, type ContextValues, type StreamResponse, type Transport, type UnaryResponse } from '@connectrpc/connect';
 import { platformServices, type PlatformServices } from './services.js';
 import { AttributeSchema, ValueSchema, type Attribute, type Value } from './protocol/policy/objects_pb.js';
 import { EntitySchema, type Entity } from './protocol/authorization/authorization_pb.js';
-export type { Config, KASRoute, EncryptOptions, Failure } from './main.js';
 export type { PlatformServices } from './services.js';
 
 const utf8 = new TextDecoder('utf-8', { fatal: true });
@@ -595,71 +594,4 @@ export function version(): Promise<string> { return guard(async () => decode(awa
 export function tdfSpecVersion(): Promise<string> { return guard(async () => decode(await generated.TDFSpecVersion())); }
 export function supportedFeatures(): Promise<string[]> {
   return guard(async () => outValue('ss', await generated.SupportedFeatures()) as string[]);
-}
-
-// Deprecated façade: one SDK per call over Config and EncryptOptions.
-export interface Decrypted { Payload: Uint8Array; Metadata: Uint8Array; HasMetadata: boolean; ManifestJSON: string; }
-export interface FacadeCallOptions { signal?: AbortSignal; tokenProvider?: TokenProvider; }
-/** @deprecated the façade's error; the handle API throws OpenTDFError. */
-export class TDFError extends Error {
-  readonly kind: string; readonly code: string; readonly operation: string; readonly httpStatus: bigint;
-  readonly serverCode: string; readonly serverMessage: string; readonly requiredObligations: string[]; readonly causeCategory: string;
-  constructor(error: generated.LibraryError) {
-    const f = error.fields;
-    super('tdf: ' + decode(f.Operation) + ': ' + (f.Code === undefined ? error.kind : decode(f.Code)), error.cause === undefined ? undefined : { cause: error.cause });
-    this.name = 'TDFError';
-    this.kind = error.kind;
-    this.code = f.Code === undefined ? error.kind : decode(f.Code);
-    this.operation = decode(f.Operation);
-    this.httpStatus = typeof f.HTTPStatus === 'bigint' ? f.HTTPStatus : 0n;
-    this.serverCode = decode(f.ServerCode);
-    this.serverMessage = decode(f.ServerMessage);
-    this.requiredObligations = Array.isArray(f.RequiredObligations) ? copyArray(f.RequiredObligations, decode) : [];
-    this.causeCategory = decode(f.CauseCategory);
-  }
-}
-function configValue(input: generated.Config): generated.Config {
-  const c = { ...input };
-  for (const key of Object.keys(c) as (keyof generated.Config)[]) {
-    if (typeof c[key] === 'string') (c as Record<string, unknown>)[key] = encode(c[key] as string);
-  }
-  if (c.AllowedKAS) c.AllowedKAS = copyArray(c.AllowedKAS, r => ({ URL: r.URL === undefined ? undefined : encode(r.URL), APIBaseURL: r.APIBaseURL === undefined ? undefined : encode(r.APIBaseURL) }));
-  return c;
-}
-function optionValue(input: generated.EncryptOptions): generated.EncryptOptions {
-  const o = { ...input };
-  for (const key of ['PolicyBase64', 'SegmentHashAlgorithm', 'MimeType'] as const) if (o[key] !== undefined) o[key] = encode(o[key]!);
-  if (o.Attributes) o.Attributes = copyArray(o.Attributes, encode);
-  if (o.Dissem) o.Dissem = copyArray(o.Dissem, encode);
-  return o;
-}
-function facadeCallOptions(c: generated.Config, options: FacadeCallOptions): generated.CallOptions {
-  if (!options.tokenProvider) return { signal: options.signal };
-  c.TokenProviderName = TokenProviderName;
-  return { signal: options.signal, callbacks: providerCallbacks(options.tokenProvider) };
-}
-/** @deprecated use SDK.create and SDK.encryptBytes. */
-export async function encrypt(config: generated.Config, payload: Uint8Array, options: generated.EncryptOptions = {}, call: FacadeCallOptions = {}): Promise<Uint8Array> {
-  try {
-    const c = configValue(config);
-    const opts = facadeCallOptions(c, call);
-    const result = await generated.Encrypt(c, payload, optionValue(options), opts);
-    if (result === null) throw new Error('invalid generated result');
-    return result;
-  } catch (e) {
-    if (e instanceof generated.LibraryError) throw new TDFError(e);
-    throw e;
-  }
-}
-/** @deprecated use SDK.create and SDK.decryptBytes. */
-export async function decrypt(config: generated.Config, archive: Uint8Array, call: FacadeCallOptions = {}): Promise<Decrypted> {
-  try {
-    const c = configValue(config);
-    const opts = facadeCallOptions(c, call);
-    const result = await generated.Decrypt(c, archive, opts);
-    return { Payload: result.Payload ?? new Uint8Array(), Metadata: result.Metadata ?? new Uint8Array(), HasMetadata: result.HasMetadata!, ManifestJSON: utf8.decode(result.ManifestJSON!) };
-  } catch (e) {
-    if (e instanceof generated.LibraryError) throw new TDFError(e);
-    throw e;
-  }
 }

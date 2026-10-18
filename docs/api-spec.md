@@ -46,9 +46,9 @@ Shared source, `src/` (module `opentdf-local/sdk`, imported as
 | `sdk/protocol/...` | generated messages and Connect clients from the `../platform/service` protos | `sdkconnect/`, `protocol/go` |
 | `sdk/experimental/tdf` | experimental writer and reader | `experimental/tdf/` |
 
-The export root for Goalchemy is `src/library`, which re-exports the public
-handles and functions below and nothing else. Hand-written host adapters live
-in `src/hosts/<target>`.
+The export root for Goalchemy is `src`, the package that declares the public
+handles and functions below. Hand-written host adapters live in
+`src/hosts/<target>`.
 
 ## Core types
 
@@ -761,10 +761,11 @@ the reference behaviour unless noted.
 - `GetBaseKey` returns `SimpleKasKey` by value and `StoreKASKeys` takes
   `KasPublicKeySet` by value: a pointer to an exported root struct would be
   read as a handle.
-- The Goalchemy export roots are `./src/library` and `./src` together: a
-  handle must be an exported struct of a root package and only root value
-  types keep their names, so re-exporting through `src/library` alone would
-  have meant duplicating every type.
+- The Goalchemy export root is `./src` itself: a handle must be an exported
+  struct of a root package and only root value types keep their names, so
+  re-exporting through a separate package would have meant duplicating every
+  type. (`./src/library`, the deprecated per-call façade, was a second root
+  until its removal.)
 - The KAS allowlist is fetched in `LoadTDF`, as the reference does, rather
   than on the first decrypt.
 
@@ -815,8 +816,7 @@ a string map) apply to these targets too.
   are unmodifiable `Map<String, Object>` trees keyed by the JSON tags rather
   than typed classes. Blocking methods take an optional `Duration` and
   every method has an `*Async` twin returning a `CompletableFuture` whose
-  `cancel` cancels the call. Token providers reuse the façade's
-  `TDF3.TokenProvider`.
+  `cancel` cancels the call. Token providers are `TDF3.TokenProvider`s.
 - C#: the handle is `Sdk` and the error `OpenTdfException`, as this
   document's examples write them. `Options.Timeout` is a `TimeSpan?` for the
   shared `TimeoutMillis`. Manifests are `IReadOnlyDictionary<string, object>`
@@ -828,7 +828,7 @@ a string map) apply to these targets too.
   `Result` and block; `*_async` twins return futures, and dropping one
   cancels the call. Manifest types are typed structs whose fields are the
   JSON tags in snake_case.
-- C: the header is `opentdf.h` beside the façade's `tdf3.h`. Every call
+- C: the header is `opentdf.h`. Every call
   fills an optional `otdf_error *` out parameter instead of
   `otdf_error_get(sdk)`, and cancellation and deadlines travel in an
   `otdf_call` (an atomic flag and a millisecond deadline) instead of

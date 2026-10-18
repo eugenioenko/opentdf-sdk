@@ -2,8 +2,7 @@
 
 `opentdf.h` exposes the handle API of [api-spec.md](api-spec.md) in C idiom
 (`otdf_sdk_new`, `otdf_create_tdf`, `otdf_load_tdf`, `otdf_decrypt_bytes`,
-...), over the generated library compiled from the two export roots
-`src/library` (the deprecated façade, still exposed as `tdf3.h`) and `src`.
+...), over the generated library compiled from the export root `src`.
 The hand-written [adapter](../src/hosts/c/opentdf.c) maps names, values and
 errors onto `goalchemy_invoke` and implements no protocol. Production calls
 need no compiler, Go process or source SDK process. This delivery targets
@@ -132,12 +131,8 @@ expired request timeout as a transport failure, so the per-request timeout
 (`timeout_millis`) surfaces as kind `transport` or `deadline_exceeded`,
 whichever of libcurl's timeout and the call deadline fires first; a cancelled `otdf_call` flag is reported as `canceled`.
 
-The deprecated `tdf3.h` façade (`tdf3_encrypt`, `tdf3_decrypt`, the submit,
-drive, wake, cancel, take and destroy operations) keeps its previous shape
-for one release, implemented in the shared source as thin wrappers that
-construct an SDK per call; its `Code` field is now the `Error.kind` string.
-The sections below describe the package build and the façade's value and
-ownership rules, which the handle API shares.
+The sections below describe the package build and the library's value and
+ownership rules.
 
 ## Build and isolated import
 
@@ -147,7 +142,7 @@ so consumers must include `-lz` when linking the static SDK archive.
 
 From the SDK checkout, run `bash scripts/build-generated-c.sh /absolute/output`. `GOALCHEMY_BIN` selects a freshly built Goalchemy compiler; `GOALCHEMY_BDWGC` selects the threaded collector installation. `TDF3_CURL_PREFIX` optionally selects locally extracted matching libcurl development/runtime packages. The default development prefix is ignored `.local/root-c-development-prerequisites/prefix`. `CC`, `CFLAGS`, `CPPFLAGS`, and `AR` select native build tools/flags. The build emits `libtdf3.a`, public headers, `native-link.env`, content hashes, and a reproducibly ordered archive `opentdf-tdf3-c-0.1.0-linux-x86_64.tar.gz`.
 
-Extract that archive in a separate directory. A consumer includes only `opentdf.h` (or the façade `tdf3.h`) from its `include/` directory and links the SDK archive plus native dependencies:
+Extract that archive in a separate directory. A consumer includes only `opentdf.h` from its `include/` directory and links the SDK archive plus native dependencies:
 
 ```sh
 cc -std=c17 -I package/include consumer.c package/lib/libtdf3.a \
@@ -178,4 +173,4 @@ The libcurl adapter verifies TLS peer/hostname, permits bounded HTTP/HTTPS GET/P
 
 ## Validation evidence
 
-`tests/interop/generatedc/first-caller.sh` exercises fresh synchronous/asynchronous ordinary native callers, existing collector registration ownership, overlap, forced collection and recovery against real BASIC KAS. `http-contract.sh` exercises bounded actual local HTTP exchanges, gzip/explicit encoding/Range/header rejection and sorted duplicate headers. Named receipts are retained under ignored `.local/c-tdf-library` and `goalchemy/out/c-tdf-library`: actual independent crypto-free aggregate and accepted scalar importers; exact-int/binary values, cyclic-output rejection/recovery, forced GC, owned failure detachment; maintained native vectors and independent Go crypto proof; snapshot/queued-active cancellation/drive-wake-take-destroy; controlled HTTP/TLS/bounds/deadline/socket-release negatives; native archive/importer ASan+UBSan; C language/generic host/byte preservation; strict C conformance and generated-spec freshness. The target freeze records exact commands, statuses, hashes and original failed receipts. The real-KAS BASIC/EC/enforced-DPoP matrices cover all seven cases in both directions against pinned stock Go/Web references, with separately labeled stock Web nonce limitations and Bearer-format producer archives. Final seven-target clean-package/CI acceptance is a separate Phase7 gate.
+The delivery job's `no-preinit-consumer` (`tests/interop/generatedc/forward-consumer.c`) calls the public handle API against real BASIC KAS before any collector fixture setup. `http-contract.sh` exercises bounded actual local HTTP exchanges, gzip/explicit encoding/Range/header rejection and sorted duplicate headers. Named receipts are retained under ignored `.local/c-tdf-library` and `goalchemy/out/c-tdf-library`: actual independent crypto-free aggregate and accepted scalar importers; exact-int/binary values, cyclic-output rejection/recovery, forced GC, owned failure detachment; maintained native vectors and independent Go crypto proof; snapshot/queued-active cancellation/drive-wake-take-destroy; controlled HTTP/TLS/bounds/deadline/socket-release negatives; native archive/importer ASan+UBSan; C language/generic host/byte preservation; strict C conformance and generated-spec freshness. The target freeze records exact commands, statuses, hashes and original failed receipts. The real-KAS BASIC/EC/enforced-DPoP matrices cover all seven cases in both directions against pinned stock Go/Web references, with separately labeled stock Web nonce limitations and Bearer-format producer archives. Final seven-target clean-package/CI acceptance is a separate Phase7 gate.
