@@ -62,6 +62,10 @@ type Writer struct {
 	written  int64
 }
 
+// NewWriter streams a ZIP archive to out. With zip64 set every entry is
+// written in ZIP64 form from its first header, which is what an input of
+// unknown size needs; otherwise entries start as ZIP32 and switch to ZIP64 only
+// when they reach MaxNonZip64 (2 GiB).
 func NewWriter(out io.Writer, zip64 bool) *Writer {
 	return &Writer{out: out, zip64: zip64}
 }
