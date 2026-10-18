@@ -54,7 +54,14 @@ typedef struct {
 
 /* The reference's KASInfo: one key access server for the template. */
 typedef struct { const char *url, *public_key, *kid, *algorithm; bool is_default; } otdf_kas_info;
-typedef struct { const char *id, *type, *scope, *applies_to_state, *format, *schema, *value; } otdf_assertion_config;
+/* The reference's AssertionKey: alg "HS256" with the secret as text, or
+ * "RS256" with a PEM block (a private key signs; a public or private key
+ * verifies). Both NULL means unset. */
+typedef struct { const char *alg, *key; } otdf_assertion_key;
+/* The reference's AssertionConfig; an unset signing_key signs with HS256 over the payload key. */
+typedef struct { const char *id, *type, *scope, *applies_to_state, *format, *schema, *value; otdf_assertion_key signing_key; } otdf_assertion_config;
+/* One assertion id's verification key (WithAssertionVerificationKeys). */
+typedef struct { const char *assertion_id, *alg, *key; } otdf_assertion_key_entry;
 /* The reference's TDFConfig options (shared-source TDFOptions). */
 typedef struct {
     const char *const *attributes; size_t attribute_count;
@@ -76,6 +83,9 @@ typedef struct {
 /* The reference's TDFReaderConfig options (shared-source ReaderOptions). */
 typedef struct {
     bool disable_assertion_verification;
+    /* WithAssertionVerificationKeys: keys by assertion id, with a default for the rest. */
+    otdf_assertion_key assertion_default_key;
+    const otdf_assertion_key_entry *assertion_keys; size_t assertion_key_count;
     /* NULL fetches the registry's list. */
     const char *const *kas_allowlist; size_t kas_allowlist_count;
     bool ignore_allowlist;

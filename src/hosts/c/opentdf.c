@@ -58,13 +58,13 @@ static gxc_value options_value(arena *a, const otdf_options *o) {
 }
 static gxc_value tdf_options_value(arena *a, const otdf_tdf_options *o) {
     static char *names[] = {"Attributes", "AttributeValues", "DisableAutoconfigure", "KasInformation", "WrappingKeyAlgorithm", "SegmentSize", "InputSize", "MimeType", "Metadata", "Assertions", "SystemMetadataAssertion", "TargetMode"};
-    static char *kas[] = {"URL", "PublicKey", "KID", "Algorithm", "Default"}, *assertion[] = {"ID", "Type", "Scope", "AppliesToState", "Statement"}, *statement[] = {"Format", "Schema", "Value"};
+    static char *kas[] = {"URL", "PublicKey", "KID", "Algorithm", "Default"}, *assertion[] = {"ID", "Type", "Scope", "AppliesToState", "Statement", "SigningKey"}, *statement[] = {"Format", "Schema", "Value"}, *key[] = {"Alg", "Key"};
     static const otdf_tdf_options zero = OTDF_TDF_OPTIONS_INIT;
     if (!o) o = &zero;
     gxc_value *kases = keep(a, calloc(o->kas_information_count ? o->kas_information_count : 1, sizeof(*kases)));
     for (size_t i = 0; i < o->kas_information_count; i++) { const otdf_kas_info *k = &o->kas_information[i]; kases[i] = RECORD(a, kas, str(k->url), str(k->public_key), str(k->kid), str(k->algorithm), boolean(k->is_default)); }
     gxc_value *assertions = keep(a, calloc(o->assertion_count ? o->assertion_count : 1, sizeof(*assertions)));
-    for (size_t i = 0; i < o->assertion_count; i++) { const otdf_assertion_config *c = &o->assertions[i]; assertions[i] = RECORD(a, assertion, str(c->id), str(c->type), str(c->scope), str(c->applies_to_state), RECORD(a, statement, str(c->format), str(c->schema), str(c->value))); }
+    for (size_t i = 0; i < o->assertion_count; i++) { const otdf_assertion_config *c = &o->assertions[i]; assertions[i] = RECORD(a, assertion, str(c->id), str(c->type), str(c->scope), str(c->applies_to_state), RECORD(a, statement, str(c->format), str(c->schema), str(c->value)), RECORD(a, key, str(c->signing_key.alg), str(c->signing_key.key))); }
     return RECORD(a, names, strs(a, o->attributes, o->attribute_count), strs(a, o->attribute_values, o->attribute_value_count), boolean(o->disable_autoconfigure),
         o->kas_information ? (gxc_value){.kind = GXC_LIST, .items = kases, .length = o->kas_information_count} : (gxc_value){.kind = GXC_NIL},
         str(o->wrapping_key_algorithm), integer(o->segment_size), integer(o->input_size), str(o->mime_type), str(o->metadata),
@@ -72,10 +72,15 @@ static gxc_value tdf_options_value(arena *a, const otdf_tdf_options *o) {
         boolean(o->system_metadata_assertion), str(o->target_mode));
 }
 static gxc_value reader_options_value(arena *a, const otdf_reader_options *o) {
-    static char *names[] = {"DisableAssertionVerification", "KasAllowlist", "IgnoreAllowlist", "MaxManifestSize", "SchemaValidation", "SessionKeyType", "FulfillableObligationFQNs"};
+    static char *names[] = {"DisableAssertionVerification", "AssertionVerificationKeys", "KasAllowlist", "IgnoreAllowlist", "MaxManifestSize", "SchemaValidation", "SessionKeyType", "FulfillableObligationFQNs"};
+    static char *verification[] = {"DefaultKey", "Keys"}, *key[] = {"Alg", "Key"}, *entry[] = {"AssertionID", "Alg", "Key"};
     static const otdf_reader_options zero = OTDF_READER_OPTIONS_INIT;
     if (!o) o = &zero;
-    return RECORD(a, names, boolean(o->disable_assertion_verification), strs(a, o->kas_allowlist, o->kas_allowlist_count), boolean(o->ignore_allowlist), integer(o->max_manifest_size), integer(o->schema_validation), str(o->session_key_type), strs(a, o->fulfillable_obligation_fqns, o->fulfillable_obligation_fqn_count));
+    gxc_value *keys = keep(a, calloc(o->assertion_key_count ? o->assertion_key_count : 1, sizeof(*keys)));
+    for (size_t i = 0; i < o->assertion_key_count; i++) { const otdf_assertion_key_entry *k = &o->assertion_keys[i]; keys[i] = RECORD(a, entry, str(k->assertion_id), str(k->alg), str(k->key)); }
+    gxc_value verification_keys = RECORD(a, verification, RECORD(a, key, str(o->assertion_default_key.alg), str(o->assertion_default_key.key)),
+        o->assertion_keys ? (gxc_value){.kind = GXC_LIST, .items = keys, .length = o->assertion_key_count} : (gxc_value){.kind = GXC_NIL});
+    return RECORD(a, names, boolean(o->disable_assertion_verification), verification_keys, strs(a, o->kas_allowlist, o->kas_allowlist_count), boolean(o->ignore_allowlist), integer(o->max_manifest_size), integer(o->schema_validation), str(o->session_key_type), strs(a, o->fulfillable_obligation_fqns, o->fulfillable_obligation_fqn_count));
 }
 
 /* Output values. */
