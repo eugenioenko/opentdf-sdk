@@ -56,9 +56,9 @@ r.Close()
 | Generated symbol | Reference | Notes |
 | --- | --- | --- |
 | `New(ctx, endpoint, Options)`, `NewWithOptions(ctx, endpoint, ...Option)` | `New` | Fetches `/.well-known/opentdf-configuration` (Connect reply or the bare document) and the issuer's OpenID configuration unless `PlatformConfiguration` is given; `ValidateConnection` runs the health check first. |
-| `SDK.EncryptBytes`, `SDK.CreateTDF(ctx, io.Writer, io.Reader, TDFOptions)` | `CreateTDFContext` | `CreateTDF` reads the payload whole in this phase; Phase 7 streams it. Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. |
+| `SDK.EncryptBytes`, `SDK.CreateTDF(ctx, io.Writer, io.Reader, TDFOptions)` | `CreateTDFContext` | `CreateTDF` currently buffers the complete payload and archive. Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. |
 | `SDK.LoadTDF(ctx, io.ReadSeeker, ReaderOptions)`, `SDK.DecryptBytes` | `LoadTDF`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `KasAllowlist` or `IgnoreAllowlist` is set, as in the reference. |
-| `Reader.Init`, `Manifest`, `Policy`, `DataAttributes`, `UnencryptedMetadata`, `Close` | `Reader` | Stream methods arrive in Phase 7. |
+| `Reader.Init`, `Manifest`, `Policy`, `DataAttributes`, `UnencryptedMetadata`, `Close` | `Reader` | Payload streaming is not implemented. |
 | `WithAssertions`, `WithSystemMetadataAssertion`; `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | same | Assertions are signed into the manifest with HS256 over the payload key or the config's `SigningKey` (HS256 secret or RS256 private PEM) and verified on read by default, by assertion ID with a default key, or with the payload key. `GetSystemMetadataAssertionConfig` adds the `system-metadata` assertion. |
 | `TDFObject.Manifest`, `Size`, `Close` | `TDFObject` | |
 | `SDK.IsHealthy`, `PlatformConfiguration`, `GetBaseKey`, `StoreKASKeys`, `Close` | same | `GetBaseKey` returns `SimpleKasKey` by value. |
@@ -72,10 +72,9 @@ over a `map[string]any` and `WithPolicyFrom(ctx, reader)`. `WithLogger`
 installs the process-wide host log sink (`goalchemyout/cap/log`) for the
 given `*slog.Logger`; `Options.LogLevel` selects the level. Options this
 build does not implement yet (`TokenExchange`, `CertExchange`, `TLS`,
-`UnixSocket`, service endpoint overrides, target mode `4.2.2`,
+`UnixSocket`, target mode `4.2.2`,
 schema validation, post-quantum key types) fail with
-`Kind: unsupported_feature` and the message `unsupported in this build:
-<option>`.
+`Kind: unsupported_feature` and the message `unsupported in this build: <option>`.
 
 Authentication follows the reference: client credentials with HTTP Basic
 authentication, a DPoP proof on every token request (ephemeral ES256 key by

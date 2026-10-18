@@ -46,7 +46,7 @@ otdf_sdk_close(sdk, &e); otdf_sdk_free(sdk);
 | Function | Reference | Notes |
 | --- | --- | --- |
 | `otdf_sdk_new(endpoint, &options, call, &sdk, &error)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platform_configuration` is given; `validate_connection` runs the health check first. |
-| `otdf_create_tdf` → bytes and `otdf_tdf_object` (`otdf_tdf_object_manifest_json`, `_size`, `_close`, `_free`), `otdf_encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `otdf_create_tdf` → bytes and `otdf_tdf_object` (`otdf_tdf_object_manifest_json`, `_size`, `_close`, `_free`), `otdf_encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Payloads are currently buffered in memory. |
 | `otdf_load_tdf` → `otdf_reader` (`otdf_reader_init`, `_manifest_json`, `_policy_json`, `_data_attributes`, `_unencrypted_metadata`, `_close`, `_free`), `otdf_decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The reader keeps a copy of the bytes. The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set. |
 | `otdf_tdf_options.assertions` (`otdf_assertion_config` with an optional `signing_key {alg, key}`), `system_metadata_assertion`; `otdf_reader_options.assertion_default_key`, `assertion_keys`/`assertion_key_count` (`otdf_assertion_key_entry {assertion_id, alg, key}`), `disable_assertion_verification` | `WithAssertions`, `WithSystemMetadataAssertion`, `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | Keys are text: the HS256 secret or an RS256 PEM block. Assertions are signed into the manifest with HS256 over the payload key or the config's signing key and verified on read by default, by assertion id with a default key, or with the payload key; failures carry kind `assertion_failure` and `assertion_id`. |
 | `otdf_is_healthy`, `otdf_platform_configuration_json`, `otdf_get_base_key_json`, `otdf_store_kas_keys`, `otdf_sdk_close`, `otdf_sdk_free` | same | Configuration and keys are returned as JSON text. |
@@ -119,8 +119,7 @@ per-call deadline (NULL means neither). A host token source is a
 `{"value","scheme","expiresAt","confirmationJKT"}`. `*_close` runs the
 source Close and releases the instance (later calls fail with kind 7);
 `*_free` disposes of the handle. Options this build does not implement yet
-fail with kind `unsupported_feature` and `unsupported in this build:
-<option>`.
+fail with kind `unsupported_feature` and `unsupported in this build: <option>`.
 
 `src/hosts/c/cmd/otdfgc/otdfgc.c` is the native C CLI over this library,
 built by `scripts/build-c-cli.sh <package> <launcher>` (linking `libtdf3.a`

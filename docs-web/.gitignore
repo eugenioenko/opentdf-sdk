@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+.goalchemy-docs.json
+public/api.json
+public/reference/
+src/content/docs/api/
+src/content/docs/languages/
+src/content/docs/reference/

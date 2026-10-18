@@ -2690,3 +2690,31 @@ Verification: `go run scripts/check-api-docs.go` passed; a Go scanner comparison
 confirmed unchanged code tokens in edited source files, and `git diff --check`
 passed. No protocol, crypto, or runtime behavior changed. Site generation and
 publication verification follow this source-documentation phase.
+
+## Public SDK documentation: site and publication
+
+Added an Astro Starlight site using Goalchemy's consumer documentation template.
+The compiler pin is 2271b7c62e925f790b02c735c0c81f7e298c9e0e, introduced by
+Goalchemy PR #115. The docs-only pin leaves the SDK build compiler unchanged.
+Generation uses an isolated module, preserves customized site files, and checks
+all eight native projections and root-symbol descriptions. It emits 366 symbols
+as linked pages, portable Markdown, and a JSON catalog. Generated output stays
+ignored and is recreated automatically in CI.
+
+Added short task guides and published all eight canonical native adapter guides,
+with separate source and native API explanations. Corrected stale streaming
+promises, outdated endpoint restrictions, and malformed inline code in imported
+guides. Added llms.txt, package/type/method navigation, and search.
+
+Verification: source-comment coverage passed for 541 declarations and members.
+Astro checking reported zero errors, warnings, or hints. The static build passed
+link, fragment, asset, catalog, and base-path checks across 400 pages. Preview
+served the homepage, API, TypeScript guide, Markdown, llms.txt, and JSON at the
+repository base; SDK.EncryptBytes has descriptions and bindings for all eight
+targets. No SDK native builds or interoperability suites were run for these
+documentation-only changes.
+
+The documentation workflow validates pull requests and publishes relevant main
+pushes to https://eugenioenko.github.io/opentdf-sdk/. GitHub Pages was configured
+for workflow deployment. The site will be public after this PR merges and the
+publication workflow completes.

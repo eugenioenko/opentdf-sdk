@@ -1,0 +1,30 @@
+{
+  "name": "opentdf-sdk-docs",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "engines": { "node": ">=22.22.0" },
+  "scripts": {
+    "generate": "python3 ../scripts/generate-docs.py",
+    "prepare:docs": "pnpm generate && node scripts/prepare-docs.mjs",
+    "dev": "pnpm prepare:docs && astro dev",
+    "check": "pnpm prepare:docs && astro check",
+    "build": "pnpm prepare:docs && astro build && node scripts/check-links.mjs",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^7.4.0",
+    "@astrojs/starlight": "^0.42.6",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^5.9.3",
+    "parse5": "^8.0.0",
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-stringify": "^11.0.0",
+    "yaml": "^2.8.1"
+  }
+}
