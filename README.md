@@ -106,7 +106,7 @@ Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
 The build configuration pins released
-[Goalchemy v0.7.2](https://github.com/eugenioenko/goalchemy/releases/tag/v0.7.2)
+[Goalchemy v0.7.3](https://github.com/eugenioenko/goalchemy/releases/tag/v0.7.3)
 for package-based output across all eight targets. The exact release commit is
 recorded in [references.lock.json](references.lock.json).
 Build helpers explicitly select `--pause-model=native` for Go, TypeScript,
