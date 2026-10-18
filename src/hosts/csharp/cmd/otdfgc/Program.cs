@@ -109,9 +109,8 @@ static class Program
         try{return (await Run(ct=>Sdk.CreateAsync(host,options,ct)),host,ExitSuccess);}
         catch(Exception e)when(e is OpenTdfException||e is TimeoutException){stderr.WriteLine(DescribeNew(e,host));return (null,host,ExitError);}
     }
-    static void WriteOut(string path,byte[] data,UnixFileMode mode)
+    static void MoveInto(string tmp,string path,UnixFileMode mode)
     {
-        string tmp=path+".tmp";File.WriteAllBytes(tmp,data);
         try{File.SetUnixFileMode(tmp,mode);}catch(PlatformNotSupportedException){}
         try{File.Move(tmp,path,true);}catch(IOException){File.Delete(tmp);throw;}
     }
@@ -218,9 +217,10 @@ static class Program
         Parsed p;try{p=Parse(args,EncryptFlags);}catch(ArgumentException e){stderr.Write(e.Message+"\n"+Usage);return ExitUsage;}
         string reason=Unsupported(p,EncryptUnsupported);if(reason!=""){stderr.WriteLine("unsupported in this build: "+reason);return ExitUsage;}
         if(p.Positional.Count!=1||p.Value("out")==""){stderr.Write("encrypt needs exactly one input file and --out\n"+Usage);return ExitUsage;}
-        byte[] input;try{input=File.ReadAllBytes(p.Positional[0]);}catch(IOException e){stderr.WriteLine("Failed to read "+p.Positional[0]+": "+e.Message);return ExitError;}
-        var (sdk,host,code)=await NewSdk(p,stderr);if(code!=ExitSuccess)return code;
+        FileStream input;try{input=File.OpenRead(p.Positional[0]);}catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){stderr.WriteLine("Failed to read "+p.Positional[0]+": "+e.Message);return ExitError;}
+        var (sdk,host,code)=await NewSdk(p,stderr);if(code!=ExitSuccess){input.Dispose();return code;}
         await using(sdk)
+        await using(input)
         {
             // As otdfctl: the platform's KAS is the default key access server and attributes drive autoconfigure.
             var options=new TdfOptions{KasInformation=new[]{new KasInfo(host+"/kas")},MimeType=p.Value("mime-type")};
@@ -232,10 +232,14 @@ static class Program
                 try{options=options with{Assertions=ParseAssertions(p.Value("with-assertions"))};}
                 catch(Exception e)when(e is ArgumentException||e is IOException||e is JsonException){stderr.WriteLine("Failed to read assertions: "+e.Message);return ExitUsage;}
             }
-            byte[] data;
-            try{data=await Run(ct=>sdk.EncryptBytesAsync(input,options,ct));}
-            catch(Exception e)when(e is OpenTdfException||e is TimeoutException){stderr.WriteLine("Failed to encrypt: "+Describe(e));return ExitError;}
-            try{WriteOut(p.Value("out"),data,UnixFileMode.UserRead|UnixFileMode.UserWrite|UnixFileMode.GroupRead|UnixFileMode.OtherRead);}
+            string tmp=p.Value("out")+".tmp";
+            try
+            {
+                await using(var output=File.Create(tmp)){await using var obj=await Run(ct=>sdk.EncryptToAsync(output,input,options,ct));}
+            }
+            catch(Exception e)when(e is OpenTdfException||e is TimeoutException){File.Delete(tmp);stderr.WriteLine("Failed to encrypt: "+Describe(e));return ExitError;}
+            catch(IOException e){File.Delete(tmp);stderr.WriteLine("Failed to write encrypted file "+p.Value("out")+": "+e.Message);return ExitError;}
+            try{MoveInto(tmp,p.Value("out"),UnixFileMode.UserRead|UnixFileMode.UserWrite|UnixFileMode.GroupRead|UnixFileMode.OtherRead);}
             catch(IOException e){stderr.WriteLine("Failed to write encrypted file "+p.Value("out")+": "+e.Message);return ExitError;}
         }
         return ExitSuccess;
@@ -245,7 +249,7 @@ static class Program
         Parsed p;try{p=Parse(args,DecryptFlags);}catch(ArgumentException e){stderr.Write(e.Message+"\n"+Usage);return ExitUsage;}
         string reason=Unsupported(p,DecryptUnsupported);if(reason!=""){stderr.WriteLine("unsupported in this build: "+reason);return ExitUsage;}
         if(p.Positional.Count!=1||p.Value("out")==""){stderr.Write("decrypt needs exactly one input file and --out\n"+Usage);return ExitUsage;}
-        byte[] input;try{input=File.ReadAllBytes(p.Positional[0]);}catch(IOException e){stderr.WriteLine("Failed to read file: "+e.Message);return ExitError;}
+        if(!File.Exists(p.Positional[0])){stderr.WriteLine("Failed to read file: Could not find file '"+Path.GetFullPath(p.Positional[0])+"'.");return ExitError;}
         var (sdk,_,code)=await NewSdk(p,stderr);if(code!=ExitSuccess)return code;
         await using(sdk)
         {
@@ -260,11 +264,8 @@ static class Program
             var allowlist=SplitList(p.Value("kas-allowlist"));
             if(allowlist.Count==1&&allowlist[0]=="*")options=options with{IgnoreAllowlist=true};
             else if(allowlist.Count>0)options=options with{KasAllowlist=allowlist};
-            byte[] plaintext;
-            try{plaintext=await Run(ct=>sdk.DecryptBytesAsync(input,options,ct));}
+            try{await Run(async ct=>{await sdk.DecryptFileAsync(p.Positional[0],p.Value("out"),options,ct);return true;});}
             catch(Exception e)when(e is OpenTdfException||e is TimeoutException){stderr.WriteLine("Failed to decrypt file: "+Describe(e));return ExitError;}
-            try{WriteOut(p.Value("out"),plaintext,UnixFileMode.UserRead|UnixFileMode.UserWrite);}
-            catch(IOException e){stderr.WriteLine("Failed to write decrypted data to file: "+e.Message);return ExitError;}
         }
         return ExitSuccess;
     }

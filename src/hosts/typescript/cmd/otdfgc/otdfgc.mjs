@@ -3,7 +3,8 @@
 // implements the xtest CLI contract of docs/full-sdk-plan.md exactly as the
 // Go otdfgc does: one SDK per invocation, created with --host and the client
 // credentials; every flag this build cannot honour exits 2 as unsupported.
-import {readFile,writeFile,rename,unlink} from 'node:fs/promises';
+import {readFile,writeFile,rename,unlink,stat} from 'node:fs/promises';
+import {createReadStream,createWriteStream} from 'node:fs';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {inflateRawSync} from 'node:zlib';
@@ -142,11 +143,6 @@ async function newSDK(p,signal){
  try{return {sdk:await g.SDK.create(o.host,o.opts,{signal}),host:o.host};}
  catch(e){process.stderr.write(describeNew(e,o.host)+'\n');return {code:EXIT_ERROR};}
 }
-async function writeOut(path,data){
- const tmp=path+'.tmp';
- await writeFile(tmp,data);
- try{await rename(tmp,path);}catch(e){await unlink(tmp).catch(()=>{});throw e;}
-}
 
 async function versionInfo(){
  return {sdk_version:await g.version(),schema_version:await g.tdfSpecVersion(),supported_features:await g.supportedFeatures(),target:TARGET};
@@ -220,8 +216,8 @@ async function encrypt(args,signal){
  const reason=unsupported(p,encryptUnsupported);
  if(reason){process.stderr.write('unsupported in this build: '+reason+'\n');return EXIT_USAGE;}
  if(p.positional.length!==1||!p.value('out')){process.stderr.write('encrypt needs exactly one input file and --out\n'+USAGE);return EXIT_USAGE;}
- let input;
- try{input=new Uint8Array(await readFile(p.positional[0]));}catch(e){process.stderr.write('Failed to read '+p.positional[0]+': '+e.message+'\n');return EXIT_ERROR;}
+ let size;
+ try{size=(await stat(p.positional[0])).size;}catch(e){process.stderr.write('Failed to read '+p.positional[0]+': '+e.message+'\n');return EXIT_ERROR;}
  const created=await newSDK(p,signal);
  if(!created.sdk)return created.code;
  try{
@@ -232,9 +228,17 @@ async function encrypt(args,signal){
   if(p.value('wrapping-key-algorithm'))options.wrappingKeyAlgorithm=p.value('wrapping-key-algorithm');
   if(p.value('target-mode'))options.targetMode=p.value('target-mode');
   if(p.value('with-assertions')){try{options.assertions=await parseAssertions(p.value('with-assertions'));}catch(e){process.stderr.write('Failed to read assertions: '+e.message+'\n');return EXIT_USAGE;}}
-  let data;
-  try{data=await created.sdk.encryptBytes(input,options,{signal});}catch(e){process.stderr.write('Failed to encrypt: '+describe(e)+'\n');return EXIT_ERROR;}
-  try{await writeOut(p.value('out'),data);}catch(e){process.stderr.write('Failed to write encrypted file '+p.value('out')+': '+e.message+'\n');return EXIT_ERROR;}
+  // The payload streams from the input file into a temporary file beside
+  // the output, which takes the output's name once the archive is complete.
+  options.inputSize=size;
+  const tmp=p.value('out')+'.tmp';
+  const output=createWriteStream(tmp);
+  const finished=new Promise((res,rej)=>{output.on('close',res);output.on('error',rej);});
+  try{
+   const object=await created.sdk.encryptTo(output,createReadStream(p.positional[0]),options,{signal});
+   await object.close();
+  }catch(e){output.destroy();await unlink(tmp).catch(()=>{});process.stderr.write('Failed to encrypt: '+describe(e)+'\n');return EXIT_ERROR;}
+  try{output.end();await finished;await rename(tmp,p.value('out'));}catch(e){await unlink(tmp).catch(()=>{});process.stderr.write('Failed to write encrypted file '+p.value('out')+': '+e.message+'\n');return EXIT_ERROR;}
   return EXIT_SUCCESS;
  }finally{await created.sdk.close().catch(()=>{});}
 }
@@ -244,8 +248,7 @@ async function decrypt(args,signal){
  const reason=unsupported(p,decryptUnsupported);
  if(reason){process.stderr.write('unsupported in this build: '+reason+'\n');return EXIT_USAGE;}
  if(p.positional.length!==1||!p.value('out')){process.stderr.write('decrypt needs exactly one input file and --out\n'+USAGE);return EXIT_USAGE;}
- let input;
- try{input=new Uint8Array(await readFile(p.positional[0]));}catch(e){process.stderr.write('Failed to read file: '+e.message+'\n');return EXIT_ERROR;}
+ try{await stat(p.positional[0]);}catch(e){process.stderr.write('Failed to read file: '+e.message+'\n');return EXIT_ERROR;}
  const created=await newSDK(p,signal);
  if(!created.sdk)return created.code;
  try{
@@ -256,9 +259,9 @@ async function decrypt(args,signal){
   const allowlist=splitList(p.value('kas-allowlist'));
   if(allowlist.length===1&&allowlist[0]==='*')options.ignoreAllowlist=true;
   else if(allowlist.length>0)options.kasAllowlist=allowlist;
-  let plaintext;
-  try{plaintext=await created.sdk.decryptBytes(input,options,{signal});}catch(e){process.stderr.write('Failed to decrypt file: '+describe(e)+'\n');return EXIT_ERROR;}
-  try{await writeOut(p.value('out'),plaintext);}catch(e){process.stderr.write('Failed to write decrypted data to file: '+e.message+'\n');return EXIT_ERROR;}
+  // decryptFile streams the payload to a temporary file beside the output
+  // and renames it into place once the payload is verified and decrypted.
+  try{await created.sdk.decryptFile(p.positional[0],p.value('out'),options,{signal});}catch(e){process.stderr.write('Failed to decrypt file: '+describe(e)+'\n');return EXIT_ERROR;}
   return EXIT_SUCCESS;
  }finally{await created.sdk.close().catch(()=>{});}
 }

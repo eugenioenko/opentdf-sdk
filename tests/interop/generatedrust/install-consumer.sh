@@ -5,6 +5,8 @@ BASE=${TDF_RUST_CONSUMER_OUT:-"$SDK/.local/rust-tdf-library"}
 PACKAGE=${TDF_RUST_PACKAGE:-"$SDK/../goalchemy/out/rust-tdf-library/sdk/target/package/opentdf-tdf3-0.1.0.crate"}
 mkdir -p "$BASE/installed" "$BASE/consumer/src"
 tar -xzf "$PACKAGE" -C "$BASE/installed"
+# The crate's files carry a fixed mtime, so cargo would reuse a stale build of a previous package.
+find "$BASE/installed" -type f -exec touch {} +
 python3 - "$SDK" "$BASE" <<'PY'
 import sys,pathlib
 sdk,base=map(pathlib.Path,sys.argv[1:])

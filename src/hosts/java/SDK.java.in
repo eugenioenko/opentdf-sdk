@@ -181,6 +181,41 @@ public final class SDK extends PlatformServices implements AutoCloseable {
   return createTDFAsync(plaintext, options).thenCompose(o -> o.closeAsync().thenApply(v -> o.bytes()));
  }
 
+ /** The reference's CreateTDF over streams: encrypts plaintext (an InputStream, ReadableByteChannel or byte[]) into output
+  * (an OutputStream or WritableByteChannel) in segments; the TDFObject's bytes are empty. A SeekableByteChannel or byte[] input,
+  * or TDFOptions.inputSize, selects a ZIP32 archive when it fits; an unknown size writes ZIP64. */
+ public TDFObject encryptTo(Object output, Object plaintext, TDFOptions options) { return encryptTo(output, plaintext, options, null); }
+ public TDFObject encryptTo(Object output, Object plaintext, TDFOptions options, Duration timeout) { return new TDFObject(null, Values.await(startEncryptTo(output, plaintext, options), timeout), this); }
+ public CompletableFuture<TDFObject> encryptToAsync(Object output, Object plaintext, TDFOptions options) { return Values.future(startEncryptTo(output, plaintext, options), h -> new TDFObject(null, h, this)); }
+ private Library.Operation<Generated.TDFObject> startEncryptTo(Object output, Object plaintext, TDFOptions options) {
+  return Values.run(() -> handle.CreateTDF(output, plaintext, (options == null ? TDFOptions.builder().build() : options).toGenerated(), call()));
+ }
+
+ /** The reference's LoadTDF over a seekable stream (a SeekableByteChannel, or byte[]) the Reader keeps open and reads segment by segment. */
+ public Reader loadTDF(Object ciphertext, ReaderOptions options) { return loadTDF(ciphertext, options, null); }
+ public Reader loadTDF(Object ciphertext, ReaderOptions options, Duration timeout) { return new Reader(Values.await(startLoadStream(ciphertext, options), timeout), this); }
+ public CompletableFuture<Reader> loadTDFAsync(Object ciphertext, ReaderOptions options) { return Values.future(startLoadStream(ciphertext, options), r -> new Reader(r, this)); }
+ private Library.Operation<Generated.Reader> startLoadStream(Object ciphertext, ReaderOptions options) {
+  return Values.run(() -> handle.LoadTDF(ciphertext, (options == null ? ReaderOptions.defaults() : options).toGenerated(), call()));
+ }
+
+ /** The reference's DecryptTo: decrypts ciphertext (a SeekableByteChannel or byte[]) into output (an OutputStream or WritableByteChannel) in segments. */
+ public void decryptTo(Object output, Object ciphertext, ReaderOptions options) { decryptTo(output, ciphertext, options, null); }
+ public void decryptTo(Object output, Object ciphertext, ReaderOptions options, Duration timeout) { Values.await(startDecryptTo(output, ciphertext, options), timeout); }
+ public CompletableFuture<Void> decryptToAsync(Object output, Object ciphertext, ReaderOptions options) { return Values.future(startDecryptTo(output, ciphertext, options), v -> null); }
+ private Library.Operation<Void> startDecryptTo(Object output, Object ciphertext, ReaderOptions options) {
+  return Values.run(() -> handle.DecryptTo(output, ciphertext, (options == null ? ReaderOptions.defaults() : options).toGenerated(), call()));
+ }
+
+ /** The reference's DecryptFile: decrypts the TDF at inputPath into a temporary file beside outputPath and renames it into place,
+  * so a failure leaves any existing output untouched. */
+ public void decryptFile(String inputPath, String outputPath, ReaderOptions options) { decryptFile(inputPath, outputPath, options, null); }
+ public void decryptFile(String inputPath, String outputPath, ReaderOptions options, Duration timeout) { Values.await(startDecryptFile(inputPath, outputPath, options), timeout); }
+ public CompletableFuture<Void> decryptFileAsync(String inputPath, String outputPath, ReaderOptions options) { return Values.future(startDecryptFile(inputPath, outputPath, options), v -> null); }
+ private Library.Operation<Void> startDecryptFile(String inputPath, String outputPath, ReaderOptions options) {
+  return Values.run(() -> handle.DecryptFile(Values.encode(inputPath), Values.encode(outputPath), (options == null ? ReaderOptions.defaults() : options).toGenerated(), call()));
+ }
+
  /** The reference's LoadTDF over bytes. */
  public Reader loadTDF(byte[] ciphertext, ReaderOptions options) { return loadTDF(ciphertext, options, null); }
  public Reader loadTDF(byte[] ciphertext, ReaderOptions options, Duration timeout) { return new Reader(Values.await(startLoad(ciphertext, options), timeout), this); }

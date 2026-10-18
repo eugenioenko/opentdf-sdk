@@ -153,13 +153,22 @@ public sealed class TdfObject : IAsyncDisposable, IDisposable
     public void Dispose()=>CloseAsync().GetAwaiter().GetResult();
 }
 
-/// The reference's Reader over a loaded TDF; stream methods arrive in Phase 7.
+/// The reference's Reader over a loaded TDF. The payload streams in segments: AsStream, SeekAsync, ReadAtAsync and
+/// WriteToAsync decrypt on demand. Call InitAsync first when the Sdk uses a TokenProvider, since Stream reads carry no callbacks.
 public sealed class Reader : IAsyncDisposable, IDisposable
 {
     readonly Generated.Reader handle;readonly Sdk sdk;
     internal Reader(Generated.Reader handle,Sdk sdk){this.handle=handle;this.sdk=sdk;}
     /// Fetches and unwraps the payload key now, under this call's token.
     public Task InitAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Init(sdk.Call(ct)),v=>v);
+    /// The decrypted payload as a readable, seekable System.IO.Stream sharing this reader's position; disposing it closes the reader.
+    public System.IO.Stream AsStream()=>handle.AsStream();
+    /// The reference's Seek: moves the plaintext position.
+    public Task<long> SeekAsync(long offset,System.IO.SeekOrigin origin,CancellationToken ct=default)=>Values.Run(()=>handle.Seek(offset,(long)origin,sdk.Call(ct)),n=>n);
+    /// Decrypts length plaintext bytes at offset without moving the position.
+    public Task<byte[]> ReadAtAsync(long offset,long length,CancellationToken ct=default)=>Values.Run(()=>handle.ReadAt(offset,length,sdk.Call(ct)),b=>b??Array.Empty<byte>());
+    /// Decrypts the payload from the current position into output; returns the bytes written.
+    public Task<long> WriteToAsync(System.IO.Stream output,CancellationToken ct=default)=>Values.Run(()=>handle.WriteTo(output,sdk.Call(ct)),n=>n);
     public Task<IReadOnlyDictionary<string,object>> ManifestAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Manifest(sdk.Call(ct)),Values.Map);
     /// The policy keyed by the reference's JSON tags (uuid, body.dataAttributes, body.dissem).
     public Task<IReadOnlyDictionary<string,object>> PolicyAsync(CancellationToken ct=default)=>Values.Run(()=>handle.Policy(sdk.Call(ct)),Values.Map);
@@ -199,6 +208,16 @@ public sealed class Sdk : PlatformServices, IAsyncDisposable, IDisposable
     /// CreateTdf without keeping the handle: the TDF bytes only.
     public async Task<byte[]> EncryptBytesAsync(byte[] plaintext,TdfOptions options=null,CancellationToken ct=default)
     {var o=await CreateTdfAsync(plaintext,options,ct).ConfigureAwait(false);await o.CloseAsync().ConfigureAwait(false);return o.Bytes;}
+    /// The reference's CreateTDF over streams: encrypts plaintext into output in segments; the TdfObject's Bytes are empty.
+    /// A seekable input, or TdfOptions.InputSize, selects a ZIP32 archive when it fits; an unknown size writes ZIP64.
+    public Task<TdfObject> EncryptToAsync(System.IO.Stream output,System.IO.Stream plaintext,TdfOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.CreateTDF(output,plaintext,(options??new TdfOptions()).ToGenerated(),Call(ct)),h=>new TdfObject(null,h??throw new InvalidOperationException("invalid generated result"),this));
+    /// The reference's LoadTDF over a readable, seekable stream the Reader keeps open and reads segment by segment.
+    public Task<Reader> LoadTdfAsync(System.IO.Stream ciphertext,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.LoadTDF(ciphertext,(options??new ReaderOptions()).ToGenerated(),Call(ct)),r=>new Reader(r??throw new InvalidOperationException("invalid generated result"),this));
+    /// The reference's DecryptTo: decrypts a readable, seekable stream into output in segments.
+    public Task DecryptToAsync(System.IO.Stream output,System.IO.Stream ciphertext,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.DecryptTo(output,ciphertext,(options??new ReaderOptions()).ToGenerated(),Call(ct)),v=>v);
+    /// The reference's DecryptFile: decrypts the TDF at inputPath into a temporary file beside outputPath and renames it into place,
+    /// so a failure leaves any existing output untouched.
+    public Task DecryptFileAsync(string inputPath,string outputPath,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.DecryptFile(Values.Encode(inputPath),Values.Encode(outputPath),(options??new ReaderOptions()).ToGenerated(),Call(ct)),v=>v);
     public Task<Reader> LoadTdfAsync(byte[] ciphertext,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.LoadTDF(Values.Bytes(ciphertext),(options??new ReaderOptions()).ToGenerated(),Call(ct)),r=>new Reader(r??throw new InvalidOperationException("invalid generated result"),this));
     public Task<byte[]> DecryptBytesAsync(byte[] ciphertext,ReaderOptions options=null,CancellationToken ct=default)=>Values.Run(()=>handle.DecryptBytes(Values.Bytes(ciphertext),(options??new ReaderOptions()).ToGenerated(),Call(ct)),b=>b??Array.Empty<byte>());
     public Task<bool> IsHealthyAsync(CancellationToken ct=default)=>Values.Run(()=>handle.IsHealthy(Call(ct)),b=>b);

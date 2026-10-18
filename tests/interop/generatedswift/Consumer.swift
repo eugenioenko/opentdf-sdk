@@ -255,6 +255,54 @@ func helpers(_ sdk: SDK, _ raw: [String: Any], _ name: String, _ ns: String, _ f
 }
 
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
+/// A seekable host stream over an open FileHandle; the caller closes the handle.
+func fileStream(_ handle: FileHandle) -> HostStream {
+  HostStream(
+    read: { n in try handle.read(upToCount: n).map(Array.init) ?? [] },
+    write: { data in try handle.write(contentsOf: data); return data.count },
+    seek: { offset, whence in
+      let base: UInt64 = whence == 0 ? 0 : whence == 1 ? try handle.offset() : try handle.seekToEnd()
+      let target = Int64(base) + offset
+      if target < 0 { throw Failure(label: "seek: negative position") }
+      try handle.seek(toOffset: UInt64(target))
+      return target
+    })
+}
+final class Sink { var data = Data(); var stream: HostStream { HostStream(write: { [self] bytes in data.append(contentsOf: bytes); return bytes.count }) } }
+
+/// Phase 7: encryptTo from a file into a file (ZIP32 for a seekable input), loadTDF over the file with read/seek/readAt/writeTo, then decryptTo and decryptFile.
+func streams(_ sdk: SDK, _ raw: [String: Any], _ run: URL) async throws {
+  let payload = Data((0..<256 * 300).map { UInt8($0 & 255) })
+  let plain = run.appendingPathComponent("stream.plain"), encrypted = run.appendingPathComponent("stream.generated.tdf"), decrypted = run.appendingPathComponent("stream.decrypted")
+  try payload.write(to: plain)
+  var options = tdfOptions(raw); options.segmentSize = 16384
+  _ = FileManager.default.createFile(atPath: encrypted.path, contents: nil)
+  let input = try FileHandle(forReadingFrom: plain), output = try FileHandle(forWritingTo: encrypted)
+  let object = try await sdk.encryptTo(fileStream(output), fileStream(input), options)
+  let manifest = try await object.manifest()
+  try check(object.bytes.isEmpty && manifest.encryptionInformation.integrityInformation.segments[0].segmentSize == 16384, "streamed object")
+  try object.close(); try input.close(); try output.close()
+  try check(try await SDK.isValidTdf(Data(contentsOf: encrypted)), "streamed archive is a TDF")
+  let source = try FileHandle(forReadingFrom: encrypted)
+  let reader = try await sdk.loadTDF(fileStream(source), readerOptions(raw))
+  try await reader.initialize()
+  let head = try reader.read(5), tailPosition = try await reader.seek(-10, 2), tail = try reader.read(1 << 20)
+  try check(head == payload.prefix(5) && tailPosition == Int64(payload.count - 10) && tail == payload.suffix(10), "read and seek")
+  let at = try await reader.readAt(16380, 8), start = try await reader.seek(0)
+  try check(at == payload[16380..<16388] && start == 0, "readAt")
+  let all = Sink()
+  let written = try await reader.writeTo(all.stream)
+  try check(written == Int64(payload.count) && all.data == payload, "writeTo")
+  try reader.close(); try source.close()
+  let again = try FileHandle(forReadingFrom: encrypted), plainOut = Sink()
+  try await sdk.decryptTo(plainOut.stream, fileStream(again), readerOptions(raw))
+  try check(plainOut.data == payload, "decryptTo"); try again.close()
+  try await sdk.decryptFile(encrypted.path, decrypted.path, readerOptions(raw))
+  try check(try Data(contentsOf: decrypted) == payload, "decryptFile")
+  let notTdf = try await expectFailure("plain file") { try await sdk.decryptFile(plain.path, decrypted.path, readerOptions(raw)) }
+  try check(notTdf["kind"] as? String == "not_decryptable" && (try Data(contentsOf: decrypted)) == payload, "decryptFile keeps the output: \(notTdf)")
+}
+
 func repeatRounds(_ sdk: SDK, _ raw: [String: Any], _ name: String) async throws {
   let original = Data([0, 255, 128, 1])
   var archive = Data()
@@ -393,6 +441,7 @@ struct Consumer {
       case "assertions":
         try await assertions(sdk, raw, run)
       case "repeat":
+        try await streams(sdk, raw, run)
         try await repeatRounds(sdk, raw, name)
         print("PASS generated native library", mode, name)
         return

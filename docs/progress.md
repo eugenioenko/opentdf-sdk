@@ -1,5 +1,57 @@
 # OpenTDF SDK implementation progress
 
+## Phase 7: streaming payloads on the shared source and all eight hosts
+
+`CreateTDF(ctx, io.Writer, io.Reader, TDFOptions)` now encrypts one segment at
+a time into a streaming ZIP writer ported from the reference's
+`internal/zipstream` (`src/tdf/zipstream.go`): ZIP32 with the per-entry ZIP64
+switch at 2 GiB when the input is seekable or `InputSize` is set, ZIP64 from
+the first header when the size is unknown, data descriptors and CRC-32
+combine. `LoadTDF` keeps the seekable input open and the `Reader` decrypts
+segments on demand with `Read`, `Seek`, `ReadAt(ctx, offset, length)` and
+`WriteTo(ctx, w)`; `DecryptTo(ctx, out, in)` and `DecryptFile(ctx, in, out)`
+(a `.decrypt-*.tmp` beside the output, renamed into place, removed on every
+failure) complete the reference's decrypt surface. `EncryptBytes` and
+`DecryptBytes` are now thin wrappers over the streams, and the whole-buffer
+`zip.go` stays for the tests and interop clients. `DecryptFile` needs
+Goalchemy's `std/os` file handles, `CreateTemp`, `Rename` and `Remove`
+(goalchemy #73, PR #116), so the compiler pin moves to that merge.
+
+Every host adapter gained the stream forms beside the byte forms: Go
+`CreateTDF`/`DecryptTo`/`DecryptFile`, `Reader.IO()` and `ReaderAt(ctx)`;
+TypeScript `encryptTo`/`decryptTo`/`decryptFile`, `loadTdf` over a
+`HostStream`, `Reader.read`/`seek`/`readAt`/`writeTo`/`stream()`/`for await`;
+Python `encrypt_to`/`decrypt_to`/`decrypt_file`, file-like `load_tdf`,
+`Reader.read`/`seek`/`read_at`/`write_to`/`as_file()`; Java `encryptTo`/
+`decryptTo`/`decryptFile`, `loadTDF(Object)`, `Reader.asInputStream()`/`io()`/
+`seek`/`readAt`/`writeTo`; C# `EncryptToAsync`/`DecryptToAsync`/
+`DecryptFileAsync`, `LoadTdfAsync(Stream)`, `Reader.AsStream()`/`SeekAsync`/
+`ReadAtAsync`/`WriteToAsync`; Rust `encrypt_to`/`decrypt_to`/`decrypt_file`/
+`load_tdf_stream`, `Reader.io()`/`seek`/`read_at`/`write_to` (`Stream` and
+`SourceStream` re-exported); C `otdf_encrypt_to`/`otdf_decrypt_to`/
+`otdf_decrypt_file`/`otdf_load_tdf_stream`, `otdf_reader_read`/`_seek`/
+`_read_at`/`_write_to` and `otdf_stream_file(FILE *)`; Swift `encryptTo`/
+`decryptTo`/`decryptFile`, `loadTDF(HostStream)`, `Reader.read`/`seek`/
+`readAt`/`writeTo`/`io()`. The eight `otdfgc` CLIs encrypt file to file
+through the streams and decrypt with `DecryptFile`; every interop consumer
+runs a `streams` round trip (file in, ZIP32 out, stream reader with seek,
+`ReadAt` and `WriteTo`, `DecryptTo`, `DecryptFile` keeping the output on a
+failed decrypt). The api-spec records the Phase 7 deviations: `ReadAt` and
+`WriteTo` take a context and return the bytes or count instead of the
+reference's `io.ReaderAt`/`io.WriterTo`, `DecryptTo` takes an `io.ReadSeeker`,
+`DecryptFile` compares paths as strings and relies on the POSIX rename,
+unknown-size input writes ZIP64, and the lazy `Init` behind `Read` and
+`UnencryptedMetadata` runs under the background context: the first Real KAS
+runs failed on Java, C#, Python and TypeScript with `foreign context owner`
+when the stream view's read observed the `LoadTDF` call's context, reproduced
+against the local platform and fixed in the shared source. The docs site's
+own compiler pin (`docs-web/goalchemy.lock.json`) moved to the same Goalchemy
+merge, since the reference generator reads `std/os`. The plan's two Phase 7
+PRs landed as one.
+Still open from the plan: xtest `chunky`, `medium` and `large` runs,
+`zip64-at-2gib`, `UnsafePayloadKeyRetrieval` and the 2.1 GiB benchmark with
+peak memory per target.
+
 ## Handle-API benchmark and Swift off the default CI matrix
 
 The bench consumers under `tests/bench/` moved from the stateless façade to the

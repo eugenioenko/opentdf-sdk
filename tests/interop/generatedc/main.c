@@ -187,6 +187,43 @@ static void services(otdf_sdk *sdk,J *cfg,provider_state *ps,const char *run){
  j_set(report_,"attribute_fqn",j_cstr(fqn));j_set(report_,"values",values);j_set(report_,"not_found",missing);j_set(report_,"helpers",helpers(sdk,cfg,ps,ns,fqn));j_set(report_,"autoconfigure",autoconfigure(sdk,cfg,attribute,fqn));write_json(run,"services.json",report_);
 }
 
+typedef struct{uint8_t *data;size_t length;}sink;
+static int64_t sink_write(void *state,const uint8_t *data,size_t length,char *message){(void)message;sink *s=state;s->data=realloc(s->data,s->length+length+1);assert(s->data);memcpy(s->data+s->length,data,length);s->length+=length;return (int64_t)length;}
+/* Phase 7: otdf_encrypt_to from a FILE into a FILE (ZIP32 for a seekable input), otdf_load_tdf_stream with read/seek/read_at/write_to, then otdf_decrypt_to and otdf_decrypt_file. */
+static void streams(otdf_sdk *sdk,J *cfg,const char *run){
+ size_t n=256*300;uint8_t *payload=malloc(n);assert(payload);for(size_t i=0;i<n;i++)payload[i]=(uint8_t)i;
+ char plain[4096],encrypted[4096],decrypted[4096];snprintf(plain,sizeof plain,"%s/stream.plain",run);snprintf(encrypted,sizeof encrypted,"%s/stream.generated.tdf",run);snprintf(decrypted,sizeof decrypted,"%s/stream.decrypted",run);
+ writefile(plain,payload,n);
+ otdf_kas_info kas;otdf_tdf_options o=tdf_options(cfg,&kas);o.segment_size=16384;
+ FILE *in=fopen(plain,"rb"),*out=fopen(encrypted,"wb");assert(in&&out);
+ gxc_stream input=otdf_stream_file(in),output=otdf_stream_file(out);otdf_tdf_object *object=NULL;otdf_error e={0};
+ if(otdf_encrypt_to(sdk,&output,&input,&o,NULL,&object,&e))fail("encrypt_to",&e);
+ char *manifest=NULL;if(otdf_tdf_object_manifest_json(object,NULL,&manifest,&e))fail("streamed manifest",&e);check(strstr(manifest,"\"segmentSize\":16384")!=NULL,"streamed object");free(manifest);
+ otdf_tdf_object_close(object,NULL);otdf_tdf_object_free(object);assert(!fclose(in)&&!fclose(out));
+ size_t archive_length=0;uint8_t *archive=readfile(encrypted,&archive_length);assert(archive);bool valid=false;if(otdf_is_valid_tdf((otdf_bytes){archive,archive_length},NULL,&valid,&e))fail("is_valid_tdf",&e);check(valid,"streamed archive is a TDF");free(archive);
+ FILE *src=fopen(encrypted,"rb");assert(src);gxc_stream source=otdf_stream_file(src);otdf_reader *reader=NULL;otdf_reader_options ro=reader_options(cfg);
+ if(otdf_load_tdf_stream(sdk,&source,&ro,NULL,&reader,&e))fail("load stream",&e);
+ if(otdf_reader_init(reader,NULL,&e))fail("init",&e);
+ uint8_t head[5];size_t got=0;if(otdf_reader_read(reader,head,5,&got,&e))fail("read",&e);check(got==5&&!memcmp(head,payload,5),"read");
+ int64_t position=0;if(otdf_reader_seek(reader,-10,2,NULL,&position,&e))fail("seek",&e);check(position==(int64_t)n-10,"seek");
+ uint8_t tail[64];if(otdf_reader_read(reader,tail,sizeof tail,&got,&e))fail("read tail",&e);check(got==10&&!memcmp(tail,payload+n-10,10),"tail");
+ if(otdf_reader_read(reader,tail,sizeof tail,&got,&e))fail("read end",&e);
+ check(got==0,"end of payload");
+ otdf_owned_bytes at={0};if(otdf_reader_read_at(reader,16380,8,NULL,&at,&e))fail("read_at",&e);check(at.length==8&&!memcmp(at.data,payload+16380,8),"read_at");otdf_bytes_free(&at);
+ if(otdf_reader_seek(reader,0,0,NULL,&position,&e))fail("seek start",&e);
+ check(position==0,"seek start");
+ sink all={0};gxc_stream collector={.state=&all,.write=sink_write};int64_t written=0;
+ if(otdf_reader_write_to(reader,&collector,NULL,&written,&e))fail("write_to",&e);
+ check(written==(int64_t)n&&all.length==n&&!memcmp(all.data,payload,n),"write_to");free(all.data);
+ otdf_reader_close(reader,NULL);otdf_reader_free(reader);assert(!fclose(src));
+ src=fopen(encrypted,"rb");assert(src);source=otdf_stream_file(src);sink plain_out={0};collector=(gxc_stream){.state=&plain_out,.write=sink_write};ro=reader_options(cfg);
+ if(otdf_decrypt_to(sdk,&collector,&source,&ro,NULL,&e))fail("decrypt_to",&e);
+ check(plain_out.length==n&&!memcmp(plain_out.data,payload,n),"decrypt_to");free(plain_out.data);assert(!fclose(src));
+ ro=reader_options(cfg);if(otdf_decrypt_file(sdk,encrypted,decrypted,&ro,NULL,&e))fail("decrypt_file",&e);
+ size_t dn=0;uint8_t *d=readfile(decrypted,&dn);assert(d);check(dn==n&&!memcmp(d,payload,n),"decrypt_file");free(d);
+ ro=reader_options(cfg);J *not_tdf=EXPECT("plain file",otdf_decrypt_file(sdk,plain,decrypted,&ro,NULL,&e_));
+ d=readfile(decrypted,&dn);assert(d);check(same_kind(not_tdf,"not_decryptable")&&dn==n&&!memcmp(d,payload,n),"decrypt_file keeps the output");free(d);free(payload);
+}
 /* 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail. */
 static void repeat(otdf_sdk *sdk,J *cfg,const char *name){
  uint8_t original[]={0,255,128,1};otdf_owned_bytes archive={0};otdf_kas_info kas;
@@ -291,7 +328,7 @@ int main(int argc,char **argv){assert(argc==5);GC_INIT();GC_allow_register_threa
   snprintf(path,sizeof path,"%s/%s.tdf",run,name);uint8_t *input=readfile(path,&n);assert(input);otdf_owned_bytes out={0};otdf_reader_options ro=reader_options(cfg);
   J *error=EXPECT("negative",otdf_decrypt_bytes(sdk,(otdf_bytes){input,n},&ro,NULL,&out,&e_));char file[256];snprintf(file,sizeof file,"%s.error.json",name);write_json(run,file,error);free(input);
  }else if(!strcmp(mode,"assertions"))assertions(sdk,cfg,run);
- else if(!strcmp(mode,"repeat")){repeat(sdk,cfg,name);sdk=NULL;}
+ else if(!strcmp(mode,"repeat")){streams(sdk,cfg,run);repeat(sdk,cfg,name);sdk=NULL;}
  else if(!strcmp(mode,"services"))services(sdk,cfg,&ps,run);
  else{fprintf(stderr,"unknown mode\n");return 1;}
  if(sdk){otdf_sdk_close(sdk,NULL);otdf_sdk_free(sdk);}

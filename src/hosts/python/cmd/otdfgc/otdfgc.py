@@ -121,15 +121,9 @@ def new_sdk(p, stderr):
         print(describe_new(e, host), file=stderr); return None, host, EXIT_ERROR
 
 
-def write_out(path, data, mode):
-    tmp = path + '.tmp'
-    with open(tmp, 'wb') as f: f.write(data)
-    os.chmod(tmp, mode)
-    try: os.replace(tmp, path)
-    except OSError:
-        try: os.unlink(tmp)
-        except OSError: pass
-        raise
+def remove_quietly(path):
+    try: os.unlink(path)
+    except OSError: pass
 
 
 def version_info():
@@ -238,13 +232,12 @@ def encrypt(args, stderr):
         print('unsupported in this build: ' + reason, file=stderr); return EXIT_USAGE
     if len(p.positional) != 1 or not p.value('out'):
         print('encrypt needs exactly one input file and --out\n' + USAGE, end='', file=stderr); return EXIT_USAGE
-    try:
-        with open(p.positional[0], 'rb') as f: data = f.read()
+    try: data = open(p.positional[0], 'rb')
     except OSError as e:
         print('Failed to read %s: %s' % (p.positional[0], e), file=stderr); return EXIT_ERROR
     sdk, host, code = new_sdk(p, stderr)
-    if sdk is None: return code
-    with sdk:
+    if sdk is None: data.close(); return code
+    with sdk, data:
         # As otdfctl: the platform's KAS is the default key access server and
         # attributes drive autoconfigure.
         opts = {'kas_information': [{'url': host + '/kas'}], 'mime_type': p.value('mime-type')}
@@ -255,11 +248,19 @@ def encrypt(args, stderr):
             try: opts['assertions'] = parse_assertions(p.value('with-assertions'))
             except ValueError as e:
                 print('Failed to read assertions: %s' % e, file=stderr); return EXIT_USAGE
-        try: out = sdk.encrypt_bytes(data, timeout=TIMEOUT_SECONDS, **opts)
-        except tdf.OpenTDFError as e:
-            print('Failed to encrypt: ' + describe(e), file=stderr); return EXIT_ERROR
-        try: write_out(p.value('out'), out, 0o644)
+        tmp = p.value('out') + '.tmp'
+        try: out = open(tmp, 'wb')
         except OSError as e:
+            print('Failed to write encrypted file %s: %s' % (p.value('out'), e), file=stderr); return EXIT_ERROR
+        try:
+            with out: sdk.encrypt_to(out, data, timeout=TIMEOUT_SECONDS, **opts).close()
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, p.value('out'))
+        except tdf.OpenTDFError as e:
+            remove_quietly(tmp)
+            print('Failed to encrypt: ' + describe(e), file=stderr); return EXIT_ERROR
+        except OSError as e:
+            remove_quietly(tmp)
             print('Failed to write encrypted file %s: %s' % (p.value('out'), e), file=stderr); return EXIT_ERROR
     return EXIT_SUCCESS
 
@@ -273,8 +274,7 @@ def decrypt(args, stderr):
         print('unsupported in this build: ' + reason, file=stderr); return EXIT_USAGE
     if len(p.positional) != 1 or not p.value('out'):
         print('decrypt needs exactly one input file and --out\n' + USAGE, end='', file=stderr); return EXIT_USAGE
-    try:
-        with open(p.positional[0], 'rb') as f: data = f.read()
+    try: os.stat(p.positional[0])
     except OSError as e:
         print('Failed to read file: %s' % e, file=stderr); return EXIT_ERROR
     sdk, host, code = new_sdk(p, stderr)
@@ -290,12 +290,9 @@ def decrypt(args, stderr):
         allowlist = split_list(p.value('kas-allowlist'))
         if len(allowlist) == 1 and allowlist[0] == '*': opts['ignore_allowlist'] = True
         elif allowlist: opts['kas_allowlist'] = allowlist
-        try: plaintext = sdk.decrypt_bytes(data, timeout=TIMEOUT_SECONDS, **opts)
+        try: sdk.decrypt_file(p.positional[0], p.value('out'), timeout=TIMEOUT_SECONDS, **opts)
         except tdf.OpenTDFError as e:
             print('Failed to decrypt file: ' + describe(e), file=stderr); return EXIT_ERROR
-        try: write_out(p.value('out'), plaintext, 0o600)
-        except OSError as e:
-            print('Failed to write decrypted data to file: %s' % e, file=stderr); return EXIT_ERROR
     return EXIT_SUCCESS
 
 

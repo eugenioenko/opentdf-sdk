@@ -10,7 +10,7 @@ pub use sdk::*;
 pub use services::*;
 pub use generated::{
     CallOptions, Cancellation, ErrorKind, HostWire, LibraryError, Operation, Provider, ProviderError,
-    ProviderRequest,
+    ProviderRequest, SourceStream, Stream,
 };
 use std::sync::Arc;
 #[derive(Clone, Debug)]

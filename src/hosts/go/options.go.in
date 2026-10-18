@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log/slog"
 
 	"github.com/opentdf/platform/protocol/go/policy"
@@ -421,4 +422,26 @@ func WithTDFFulfillableObligationFQNs(fqns []string) TDFReaderOption {
 		o.FulfillableObligationFQNs = fqns
 		return nil
 	}
+}
+
+// ReaderAt adapts a Reader to io.ReaderAt over Reader.ReadAt, as the
+// reference's Reader implements it; a read past the end returns the bytes
+// available with io.EOF. ctx bounds the lazy Init of each read.
+func (r *Reader) ReaderAt(ctx context.Context) io.ReaderAt { return readerAt{ctx: ctx, r: r} }
+
+type readerAt struct {
+	ctx context.Context
+	r   *Reader
+}
+
+func (a readerAt) ReadAt(p []byte, off int64) (int, error) {
+	data, err := a.r.ReadAt(a.ctx, off, len(p))
+	n := copy(p, data)
+	if err != nil {
+		return n, err
+	}
+	if n < len(p) {
+		return n, io.EOF
+	}
+	return n, nil
 }

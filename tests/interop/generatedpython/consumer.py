@@ -113,6 +113,30 @@ def assertions(sdk,cfg):
  (run/'assertions.generated.tdf').write_bytes(archive)
  (run/'assertions.json').write_text(json.dumps({'assertions':[{'id':a['id'],'method':a['binding']['method']} for a in found],'wrong_key':wrong,'missing_key':missing}))
 
+def streams(sdk,cfg):
+ """Phase 7: encrypt_to from a file into a file (ZIP32 for a seekable
+ input), load_tdf over the file with as_file/seek/read_at/write_to, then
+ decrypt_to and decrypt_file."""
+ payload=bytes(range(256))*300
+ plain=run/'stream.plain';plain.write_bytes(payload);encrypted=run/'stream.generated.tdf'
+ with open(plain,'rb') as src,open(encrypted,'wb') as dst,sdk.encrypt_to(dst,src,**tdf_options(cfg,segment_size=16384)) as obj:
+  assert obj.bytes==b'' and obj.manifest()['encryptionInformation']['integrityInformation']['segments'][0]['segmentSize']==16384,'streamed object'
+ assert is_valid_tdf(encrypted.read_bytes()),'streamed archive is a TDF'
+ with open(encrypted,'rb') as src,sdk.load_tdf(src,**reader_options(cfg)) as reader:
+  reader.init();f=reader.as_file()
+  assert f.read(5)==payload[:5] and reader.seek(-10,2)==len(payload)-10 and f.read()==payload[-10:],'read and seek'
+  assert reader.read_at(16380,8)==payload[16380:16388] and reader.seek(0)==0,'read_at'
+  out=bytearray()
+  class Sink:
+   def write(self,b):out.extend(b);return len(b)
+  assert reader.write_to(Sink())==len(payload) and bytes(out)==payload,'write_to'
+ with open(encrypted,'rb') as src:
+  sink=Sink();out=bytearray();sdk.decrypt_to(sink,src,**reader_options(cfg));assert bytes(out)==payload,'decrypt_to'
+ decrypted=run/'stream.decrypted';sdk.decrypt_file(str(encrypted),str(decrypted),**reader_options(cfg))
+ assert decrypted.read_bytes()==payload,'decrypt_file'
+ try:sdk.decrypt_file(str(plain),str(decrypted),**reader_options(cfg));raise AssertionError('plain file decrypted')
+ except OpenTDFError as e:assert e.kind=='not_decryptable' and decrypted.read_bytes()==payload,report(e)
+
 def repeat(sdk,cfg):
  """100 encrypt and decrypt calls on one SDK, independent inputs and results,
  every reader closed; then the SDK is closed and later calls fail."""
@@ -125,6 +149,7 @@ def repeat(sdk,cfg):
   payload[0]=9
   with sdk.load_tdf(archive,**reader_options(cfg)) as reader:assert len(reader.data_attributes())==1
   plain=sdk.decrypt_bytes(archive,**reader_options(cfg));assert plain==original+bytes([i]),'round trip'
+ streams(sdk,cfg)
  try:
   with SDK(cfg['PlatformURL'],**{**options_of(cfg),'client_secret':'wrong'}) as s:s.decrypt_bytes(archive,**reader_options(cfg))
   raise AssertionError('wrong credentials accepted')

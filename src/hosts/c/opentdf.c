@@ -1,5 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "opentdf.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -296,6 +297,41 @@ int otdf_create_tdf(otdf_sdk *sdk, otdf_bytes plaintext, const otdf_tdf_options 
 int otdf_encrypt_bytes(otdf_sdk *sdk, otdf_bytes plaintext, const otdf_tdf_options *options, const otdf_call *call, otdf_owned_bytes *tdf, otdf_error *error) {
     return otdf_create_tdf(sdk, plaintext, options, call, tdf, NULL, error);
 }
+int otdf_encrypt_to(otdf_sdk *sdk, const gxc_stream *output, const gxc_stream *plaintext, const otdf_tdf_options *options, const otdf_call *call, otdf_tdf_object **object, otdf_error *error) {
+    if (!sdk || !output || !plaintext) return invalid(error);
+    if (object) *object = NULL;
+    arena a = {0};
+    gxc_value args[] = {handle(sdk->h), {.kind = GXC_STREAM, .stream = output}, {.kind = GXC_STREAM, .stream = plaintext}, tdf_options_value(&a, options)}, result = {0};
+    int rc = invoke("SDK.CreateTDF", args, 4, call, sdk, &result, error);
+    release(&a);
+    if (rc) return rc;
+    if (object) {
+        otdf_tdf_object *o = calloc(1, sizeof(*o));
+        if (!o) abort();
+        o->h = result.handle;
+        o->sdk = sdk;
+        *object = o;
+    } else { gxc_error ignored = {0}; gxc_handle_close(result.handle, &ignored); gxc_error_free(&ignored); gxc_handle_free(result.handle); }
+    return 0;
+}
+static int64_t file_read(void *state, uint8_t *buffer, size_t length, char *message) {
+    FILE *f = state;
+    size_t n = fread(buffer, 1, length, f);
+    if (n == 0 && ferror(f)) { snprintf(message, 255, "read: %s", strerror(errno)); clearerr(f); return -1; }
+    return (int64_t)n;
+}
+static int64_t file_write(void *state, const uint8_t *data, size_t length, char *message) {
+    FILE *f = state;
+    size_t n = fwrite(data, 1, length, f);
+    if (n < length) { snprintf(message, 255, "write: %s", strerror(errno)); clearerr(f); return -1; }
+    return (int64_t)n;
+}
+static int64_t file_seek(void *state, int64_t offset, int whence, char *message) {
+    FILE *f = state;
+    if (fseeko(f, (off_t)offset, whence == 0 ? SEEK_SET : whence == 1 ? SEEK_CUR : SEEK_END)) { snprintf(message, 255, "seek: %s", strerror(errno)); return -1; }
+    return (int64_t)ftello(f);
+}
+gxc_stream otdf_stream_file(FILE *file) { return (gxc_stream){.state = file, .read = file_read, .write = file_write, .seek = file_seek}; }
 int otdf_tdf_object_manifest_json(otdf_tdf_object *o, const otdf_call *call, char **json, otdf_error *error) {
     if (!o) return invalid(error);
     gxc_value args[] = {handle(o->h)};
@@ -337,6 +373,52 @@ int otdf_load_tdf(otdf_sdk *sdk, otdf_bytes ciphertext, const otdf_reader_option
     *reader = r;
     return 0;
 }
+int otdf_load_tdf_stream(otdf_sdk *sdk, const gxc_stream *ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_reader **reader, otdf_error *error) {
+    if (!sdk || !ciphertext || !reader) return invalid(error);
+    *reader = NULL;
+    otdf_reader *r = calloc(1, sizeof(*r));
+    if (!r) abort();
+    r->sdk = sdk;
+    r->data = malloc(1);
+    if (!r->data) abort();
+    r->stream = *ciphertext;
+    arena a = {0};
+    gxc_value args[] = {handle(sdk->h), {.kind = GXC_STREAM, .stream = &r->stream}, reader_options_value(&a, options)}, result = {0};
+    int rc = invoke("SDK.LoadTDF", args, 3, call, sdk, &result, error);
+    release(&a);
+    if (rc) { free(r->data); free(r); return rc; }
+    r->h = result.handle;
+    *reader = r;
+    return 0;
+}
+int otdf_reader_read(otdf_reader *r, uint8_t *buffer, size_t length, size_t *count, otdf_error *error) {
+    if (!r || !buffer || !count) return invalid(error);
+    gxc_error failure = {0};
+    int rc = gxc_stream_read(r->h, buffer, length, count, &failure);
+    if (rc) rc = take_error(error, &failure, rc);
+    return rc;
+}
+int otdf_reader_seek(otdf_reader *r, int64_t offset, int whence, const otdf_call *call, int64_t *position, otdf_error *error) {
+    if (!r || !position) return invalid(error);
+    gxc_value args[] = {handle(r->h), integer(offset), integer(whence)}, result = {0};
+    int rc = invoke("Reader.Seek", args, 3, call, r->sdk, &result, error);
+    if (!rc) { *position = result.integer; gxc_value_free(&result); }
+    return rc;
+}
+int otdf_reader_read_at(otdf_reader *r, int64_t offset, int64_t length, const otdf_call *call, otdf_owned_bytes *data, otdf_error *error) {
+    if (!r || !data) return invalid(error);
+    gxc_value args[] = {handle(r->h), integer(offset), integer(length)}, result = {0};
+    int rc = invoke("Reader.ReadAt", args, 3, call, r->sdk, &result, error);
+    if (!rc) { *data = dup_bytes(&result); gxc_value_free(&result); }
+    return rc;
+}
+int otdf_reader_write_to(otdf_reader *r, const gxc_stream *output, const otdf_call *call, int64_t *written, otdf_error *error) {
+    if (!r || !output) return invalid(error);
+    gxc_value args[] = {handle(r->h), {.kind = GXC_STREAM, .stream = output}}, result = {0};
+    int rc = invoke("Reader.WriteTo", args, 2, call, r->sdk, &result, error);
+    if (!rc) { if (written) *written = result.integer; gxc_value_free(&result); }
+    return rc;
+}
 int otdf_reader_init(otdf_reader *r, const otdf_call *call, otdf_error *error) {
     if (!r) return invalid(error);
     gxc_value args[] = {handle(r->h)};
@@ -374,6 +456,22 @@ int otdf_reader_close(otdf_reader *r, otdf_error *error) {
     return rc;
 }
 void otdf_reader_free(otdf_reader *r) { if (!r) return; gxc_handle_free(r->h); free(r->data); free(r); }
+int otdf_decrypt_to(otdf_sdk *sdk, const gxc_stream *output, const gxc_stream *ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_error *error) {
+    if (!sdk || !output || !ciphertext) return invalid(error);
+    arena a = {0};
+    gxc_value args[] = {handle(sdk->h), {.kind = GXC_STREAM, .stream = output}, {.kind = GXC_STREAM, .stream = ciphertext}, reader_options_value(&a, options)};
+    int rc = invoke("SDK.DecryptTo", args, 4, call, sdk, NULL, error);
+    release(&a);
+    return rc;
+}
+int otdf_decrypt_file(otdf_sdk *sdk, const char *input_path, const char *output_path, const otdf_reader_options *options, const otdf_call *call, otdf_error *error) {
+    if (!sdk || !input_path || !output_path) return invalid(error);
+    arena a = {0};
+    gxc_value args[] = {handle(sdk->h), str(input_path), str(output_path), reader_options_value(&a, options)};
+    int rc = invoke("SDK.DecryptFile", args, 4, call, sdk, NULL, error);
+    release(&a);
+    return rc;
+}
 int otdf_decrypt_bytes(otdf_sdk *sdk, otdf_bytes ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_owned_bytes *plaintext, otdf_error *error) {
     if (!sdk || !plaintext) return invalid(error);
     arena a = {0};

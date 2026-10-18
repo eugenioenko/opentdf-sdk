@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: be2bf10c48234ea74f254823a18f9137c41a3f0f
+          ref: 468ec2482d3a70f304f9a06c2186c9aff6cc28a3
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -79,7 +79,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           repository: eugenioenko/goalchemy
-          ref: be2bf10c48234ea74f254823a18f9137c41a3f0f
+          ref: 468ec2482d3a70f304f9a06c2186c9aff6cc28a3
           path: goalchemy
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

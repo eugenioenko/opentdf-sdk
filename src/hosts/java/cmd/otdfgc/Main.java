@@ -7,11 +7,14 @@ import io.opentdf.tdf3.SDK;
 import io.opentdf.tdf3.TDFOptions;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -152,9 +155,7 @@ public final class Main {
   catch (OpenTDFException e) { stderr.println(describeNew(e, host)); return new Opened(null, host, EXIT_ERROR); }
  }
 
- static void writeOut(String path, byte[] data, String permissions) throws IOException {
-  Path tmp = Path.of(path + ".tmp");
-  Files.write(tmp, data);
+ static void moveInto(Path tmp, String path, String permissions) throws IOException {
   try { Files.setPosixFilePermissions(tmp, PosixFilePermissions.fromString(permissions)); } catch (UnsupportedOperationException ignored) {}
   try { Files.move(tmp, Path.of(path), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
   catch (IOException e) { Files.deleteIfExists(tmp); throw e; }
@@ -265,12 +266,12 @@ public final class Main {
   String reason = unsupported(p, ENCRYPT_UNSUPPORTED);
   if (!reason.isEmpty()) { stderr.println("unsupported in this build: " + reason); return EXIT_USAGE; }
   if (p.positional.size() != 1 || p.value("out").isEmpty()) { stderr.print("encrypt needs exactly one input file and --out\n" + USAGE); return EXIT_USAGE; }
-  byte[] input;
-  try { input = Files.readAllBytes(Path.of(p.positional.get(0))); }
+  FileChannel input;
+  try { input = FileChannel.open(Path.of(p.positional.get(0)), StandardOpenOption.READ); }
   catch (IOException e) { stderr.println("Failed to read " + p.positional.get(0) + ": " + e.getMessage()); return EXIT_ERROR; }
   Opened opened = newSDK(p, stderr);
-  if (opened.code() != EXIT_SUCCESS) return opened.code();
-  try (SDK sdk = opened.sdk()) {
+  if (opened.code() != EXIT_SUCCESS) { input.close(); return opened.code(); }
+  try (SDK sdk = opened.sdk(); FileChannel in = input) {
    // As otdfctl: the platform's KAS is the default key access server and attributes drive autoconfigure.
    TDFOptions.Builder options = TDFOptions.builder().kasInformation(new TDFOptions.KASInfo(opened.host() + "/kas")).mimeType(p.value("mime-type"));
    if (!p.value("attr").isEmpty()) options.attributes(splitList(p.value("attr")));
@@ -280,10 +281,11 @@ public final class Main {
     try { options.assertions(parseAssertions(p.value("with-assertions"))); }
     catch (IllegalArgumentException | IOException e) { stderr.println("Failed to read assertions: " + e.getMessage()); return EXIT_USAGE; }
    }
-   byte[] data;
-   try { data = sdk.encryptBytes(input, options.build(), TIMEOUT); }
-   catch (OpenTDFException e) { stderr.println("Failed to encrypt: " + describe(e)); return EXIT_ERROR; }
-   try { writeOut(p.value("out"), data, "rw-r--r--"); }
+   Path tmp = Path.of(p.value("out") + ".tmp");
+   try (OutputStream out = Files.newOutputStream(tmp)) { sdk.encryptTo(out, in, options.build(), TIMEOUT).close(); }
+   catch (OpenTDFException e) { Files.deleteIfExists(tmp); stderr.println("Failed to encrypt: " + describe(e)); return EXIT_ERROR; }
+   catch (IOException e) { Files.deleteIfExists(tmp); stderr.println("Failed to write encrypted file " + p.value("out") + ": " + e.getMessage()); return EXIT_ERROR; }
+   try { moveInto(tmp, p.value("out"), "rw-r--r--"); }
    catch (IOException e) { stderr.println("Failed to write encrypted file " + p.value("out") + ": " + e.getMessage()); return EXIT_ERROR; }
   }
   return EXIT_SUCCESS;
@@ -295,8 +297,7 @@ public final class Main {
   String reason = unsupported(p, DECRYPT_UNSUPPORTED);
   if (!reason.isEmpty()) { stderr.println("unsupported in this build: " + reason); return EXIT_USAGE; }
   if (p.positional.size() != 1 || p.value("out").isEmpty()) { stderr.print("decrypt needs exactly one input file and --out\n" + USAGE); return EXIT_USAGE; }
-  byte[] input;
-  try { input = Files.readAllBytes(Path.of(p.positional.get(0))); }
+  try { Files.size(Path.of(p.positional.get(0))); }
   catch (IOException e) { stderr.println("Failed to read file: " + e.getMessage()); return EXIT_ERROR; }
   Opened opened = newSDK(p, stderr);
   if (opened.code() != EXIT_SUCCESS) return opened.code();
@@ -311,11 +312,8 @@ public final class Main {
    List<String> allowlist = splitList(p.value("kas-allowlist"));
    if (allowlist.size() == 1 && allowlist.get(0).equals("*")) options.ignoreAllowlist(true);
    else if (!allowlist.isEmpty()) options.kasAllowlist(allowlist);
-   byte[] plaintext;
-   try { plaintext = sdk.decryptBytes(input, options.build(), TIMEOUT); }
+   try { sdk.decryptFile(p.positional.get(0), p.value("out"), options.build(), TIMEOUT); }
    catch (OpenTDFException e) { stderr.println("Failed to decrypt file: " + describe(e)); return EXIT_ERROR; }
-   try { writeOut(p.value("out"), plaintext, "rw-------"); }
-   catch (IOException e) { stderr.println("Failed to write decrypted data to file: " + e.getMessage()); return EXIT_ERROR; }
   }
   return EXIT_SUCCESS;
  }

@@ -189,11 +189,12 @@ func encrypt(ctx context.Context, args []string, stderr *os.File) int {
 		fmt.Fprintf(stderr, "encrypt needs exactly one input file and --out\n%s", usage)
 		return exitUsage
 	}
-	input, err := os.ReadFile(p.positional[0])
+	input, err := os.Open(p.positional[0])
 	if err != nil {
 		fmt.Fprintf(stderr, "Failed to read %s: %s\n", p.positional[0], err)
 		return exitError
 	}
+	defer input.Close()
 	sdk, host, code := newSDK(ctx, p, stderr)
 	if code != exitSuccess {
 		return code
@@ -224,13 +225,29 @@ func encrypt(ctx context.Context, args []string, stderr *os.File) int {
 		fmt.Fprintf(stderr, "Failed to encrypt: %s\n", err)
 		return exitError
 	}
-	data, obj, err := sdk.EncryptBytes(ctx, input, options)
+	// The TDF streams to a temporary file beside the output, which takes
+	// the output's name only once the archive is complete.
+	tmp := p.value("out") + ".tmp"
+	out, err := os.OpenFile(tmp, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
+		fmt.Fprintf(stderr, "Failed to write encrypted file %s: %s\n", p.value("out"), err)
+		return exitError
+	}
+	obj, err := sdk.CreateTDF(ctx, out, input, options)
+	if err != nil {
+		out.Close()
+		os.Remove(tmp)
 		fmt.Fprintf(stderr, "Failed to encrypt: %s\n", describe(err))
 		return exitError
 	}
 	obj.Close()
-	if err := writeFile(p.value("out"), data, 0o644); err != nil {
+	if err := out.Close(); err != nil {
+		os.Remove(tmp)
+		fmt.Fprintf(stderr, "Failed to write encrypted file %s: %s\n", p.value("out"), err)
+		return exitError
+	}
+	if err := os.Rename(tmp, p.value("out")); err != nil {
+		os.Remove(tmp)
 		fmt.Fprintf(stderr, "Failed to write encrypted file %s: %s\n", p.value("out"), err)
 		return exitError
 	}
@@ -251,8 +268,7 @@ func decrypt(ctx context.Context, args []string, stderr *os.File) int {
 		fmt.Fprintf(stderr, "decrypt needs exactly one input file and --out\n%s", usage)
 		return exitUsage
 	}
-	input, err := os.ReadFile(p.positional[0])
-	if err != nil {
+	if _, err := os.Stat(p.positional[0]); err != nil {
 		fmt.Fprintf(stderr, "Failed to read file: %s\n", err)
 		return exitError
 	}
@@ -284,28 +300,13 @@ func decrypt(ctx context.Context, args []string, stderr *os.File) int {
 		fmt.Fprintf(stderr, "Failed to decrypt file: %s\n", err)
 		return exitError
 	}
-	plaintext, err := sdk.DecryptBytes(ctx, input, options)
-	if err != nil {
+	// DecryptFile streams from the TDF to a temporary file beside the output
+	// and renames it into place once the payload is verified and decrypted.
+	if err := sdk.DecryptFile(ctx, p.positional[0], p.value("out"), options); err != nil {
 		fmt.Fprintf(stderr, "Failed to decrypt file: %s\n", describe(err))
 		return exitError
 	}
-	if err := writeFile(p.value("out"), plaintext, 0o600); err != nil {
-		fmt.Fprintf(stderr, "Failed to write decrypted data to file: %s\n", err)
-		return exitError
-	}
 	return exitSuccess
-}
-
-func writeFile(path string, data []byte, mode os.FileMode) error {
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, mode); err != nil {
-		return err
-	}
-	if err := os.Rename(tmp, path); err != nil {
-		os.Remove(tmp)
-		return err
-	}
-	return nil
 }
 
 func splitList(s string) []string {
