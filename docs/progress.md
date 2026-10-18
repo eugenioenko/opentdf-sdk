@@ -2630,3 +2630,35 @@ the reference reader also fails without):
 
 Deviations are recorded in [api-spec.md](api-spec.md) (Phase 5 part 1).
 Part 2 exposes the options on the other seven hosts and CLIs.
+
+## Full SDK plan, Phase 5 part 2: assertions on the other seven hosts
+
+Branch `feat/phase5-part2-hosts`, from `feat/phase5-part1-assertions`.
+
+Hosts: every adapter exposes `assertions` with an optional signing key,
+`systemMetadataAssertion`, and the reader's `assertionVerificationKeys`
+(default key plus keys by assertion id) next to
+`disableAssertionVerification`, in the host's idiom (see the per-target
+guides). The Rust and C adapters, which enumerate the generated option
+fields explicitly, now fill `SigningKey` and `AssertionVerificationKeys`,
+which the shared source added in part 1 (the Rust package did not compile
+without them).
+
+CLIs: `--with-assertions` and `--with-assertion-verification-keys` on all
+seven `otdfgc` builds, file or JSON text with the Go CLI's semantics, and
+removed from the unsupported lists.
+
+Interop consumers: an `assertions` mode on every consumer (one unsigned and
+one HS256-signed assertion; decrypt with the right key, a wrong key, no key
+and a wrong default key as `assertion_failure` with the failing id, and with
+verification disabled), wired into the `run-basic.py` matrices.
+
+Verification is recorded in the phase report of the PR (local, throttled,
+against the platform from `otdf-local`): per target the generated package
+and CLI built, the consumer's `assertions` mode passed, the CLI round trip
+with an object statement value and an HS256 signing key passed with the
+right key and failed with a wrong or missing key, and the TypeScript CLI
+read every other target's TDF with the same keys.
+
+Deviations are recorded in [api-spec.md](api-spec.md) (Phase 5 part 2).
+

@@ -1015,3 +1015,29 @@ noted.
   accept a file path or JSON text, as otdfctl does; a statement `value` that
   is a JSON object is kept as its compact text, HS256 keys are used as the
   bytes of the string and RS256 keys as PEM, as the web SDK's CLI does.
+
+### Deviations recorded by Phase 5 part 2
+
+Found while exposing the assertion options on the seven other hosts and
+their `otdfgc` CLIs; the shared source is unchanged.
+
+- Verification keys are a map by assertion id in each host's idiom
+  (TypeScript `Record<string, AssertionKey>`, Python `dict`, Java `Map`, C#
+  `IReadOnlyDictionary`, Rust `BTreeMap`, Swift `[String: AssertionKey]`)
+  and an entry array in C (`otdf_assertion_key_entry`); every adapter
+  flattens the map to the shared source's `AssertionVerificationKeys.Keys`
+  list. Swift sorts the entries by id, the others keep the map's order; the
+  lookup is by id, so the order does not matter.
+- A signing key is optional on every host (`undefined`, `None`, `null`,
+  `Option`, `nil`; both members `NULL` in C) and crosses as the shared
+  source's empty `AssertionKey`, which signs with HS256 over the payload
+  key.
+- Every CLI writes an object statement value as compact JSON with sorted
+  keys, as the Go CLI's `json.Marshal` of a `map` does, so the same input
+  file produces the same statement on every target. The C CLI carries a
+  small JSON reader for the two flags; no dependency was added.
+- `GetSystemMetadataAssertionConfig` is reachable only through the Go
+  host's generated package; the other hosts add the system-metadata
+  assertion with the `systemMetadataAssertion` option and do not expose the
+  config builder.
+
