@@ -9,10 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
 	gbytes "github.com/eugenioenko/goalchemy/std/bytes"
+	gio "github.com/eugenioenko/goalchemy/std/io"
 	gstrings "github.com/eugenioenko/goalchemy/std/strings"
 )
 
@@ -229,31 +231,187 @@ func Test_DefaultTDF(t *testing.T) {
 	}
 }
 
-// CreateTDF over host streams reads the payload whole and writes the TDF.
+// readOnly hides Seek, as a pipe or a non-seekable host stream would.
+type readOnly struct{ r io.Reader }
+
+func (r readOnly) Read(p []byte) (int, error) { return r.r.Read(p) }
+
+func zip64Records(b []byte) bool { return bytes.Contains(b, []byte{0x50, 0x4b, 0x06, 0x06}) }
+
+// CreateTDF streams the payload segment by segment: an unmeasurable input
+// gets a ZIP64 archive, a measurable one ZIP32; the Reader's Read, Seek,
+// ReadAt and WriteTo decrypt by segment; DecryptTo and DecryptFile stream.
 func Test_CreateTDF_Streams(t *testing.T) {
 	f := newFakePlatform(t)
 	s := f.newSDK(t, f.options())
-	var out bytes.Buffer
-	obj, err := s.CreateTDF(context.Background(), &out, gstrings.NewReader("streamed"), kasOptions(f, RSA2048Key))
-	if err != nil || obj.Size() != int64(out.Len()) {
-		t.Fatal(err)
-	}
-	plain, err := s.DecryptBytes(context.Background(), out.Bytes(), ReaderOptions{})
-	if err != nil || string(plain) != "streamed" {
-		t.Fatal(err)
-	}
+	ctx := context.Background()
+	plain := bytes.Repeat([]byte("0123456789abcdef"), 6000)
 	opts := kasOptions(f, RSA2048Key)
-	opts.InputSize = 3
-	data, _, err := s.EncryptBytes(context.Background(), []byte("abcdef"), opts)
+	opts.SegmentSize = 16 * 1024
+	var unknown bytes.Buffer
+	obj, err := s.CreateTDF(ctx, &unknown, readOnly{gbytes.NewReader(plain)}, opts)
+	if err != nil || obj.Size() != int64(unknown.Len()) {
+		t.Fatal(err)
+	}
+	if segments := obj.Manifest().EncryptionInformation.IntegrityInformation.Segments; len(segments) != 6 || segments[5].Size != int64(len(plain)-5*16*1024) {
+		t.Fatal("segments", len(segments))
+	}
+	if !zip64Records(unknown.Bytes()) {
+		t.Fatal("an unmeasurable payload is written as ZIP64")
+	}
+	if zr, err := zip.NewReader(bytes.NewReader(unknown.Bytes()), int64(unknown.Len())); err != nil || len(zr.File) != 2 || zr.File[0].Name != "0.payload" || zr.File[0].UncompressedSize64 != uint64(len(plain)+6*(gcmIvSize+aesBlockSize)) {
+		t.Fatal("archive/zip reads the ZIP64 archive", err)
+	}
+	var known bytes.Buffer
+	if _, err := s.CreateTDF(ctx, &known, gbytes.NewReader(plain), opts); err != nil {
+		t.Fatal(err)
+	}
+	if zip64Records(known.Bytes()) {
+		t.Fatal("a seekable payload is measured and written as ZIP32")
+	}
+	for _, data := range [][]byte{unknown.Bytes(), known.Bytes()} {
+		if got, err := s.DecryptBytes(ctx, data, ReaderOptions{}); err != nil || !bytes.Equal(got, plain) {
+			t.Fatal(err)
+		}
+		if valid, err := IsValidTdf(gbytes.NewReader(data)); err != nil || !valid {
+			t.Fatal(err)
+		}
+	}
+
+	r, err := s.LoadTDF(ctx, gbytes.NewReader(unknown.Bytes()), ReaderOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plain, err := s.DecryptBytes(context.Background(), data, ReaderOptions{}); err != nil || string(plain) != "abc" {
+	buf := make([]byte, 1000)
+	if n, err := r.Read(buf); n != 1000 || err != nil || !bytes.Equal(buf, plain[:1000]) {
+		t.Fatal("first read", n, err)
+	}
+	if rest, err := gio.ReadAll(r); err != nil || !bytes.Equal(rest, plain[1000:]) {
+		t.Fatal("read all", len(rest), err)
+	}
+	if n, err := r.Read(buf); n != 0 || !errors.Is(err, gio.EOF) {
+		t.Fatal("eof", n, err)
+	}
+	if pos, err := r.Seek(-5, gio.SeekEnd); err != nil || pos != int64(len(plain))-5 {
+		t.Fatal("seek end", pos, err)
+	}
+	if n, err := r.Read(buf); n != 5 || err != nil || !bytes.Equal(buf[:5], plain[len(plain)-5:]) {
+		t.Fatal("tail read", n, err)
+	}
+	if _, err := r.Seek(1, gio.SeekEnd); err == nil {
+		t.Fatal("seek past the end")
+	}
+	if _, err := r.Seek(0, 7); err == nil {
+		t.Fatal("unknown whence")
+	}
+	if _, err := r.Seek(20000, gio.SeekStart); err != nil {
+		t.Fatal(err)
+	}
+	var mid bytes.Buffer
+	if n, err := r.WriteTo(ctx, &mid); err != nil || n != int64(len(plain)-20000) || !bytes.Equal(mid.Bytes(), plain[20000:]) {
+		t.Fatal("write to from the middle", n, err)
+	}
+	if pos, _ := r.Seek(0, gio.SeekCurrent); pos != int64(len(plain)) {
+		t.Fatal("cursor after WriteTo", pos)
+	}
+	for _, c := range []struct{ off, n int }{{16*1024 - 10, 20}, {0, 1}, {len(plain) - 3, 10}, {len(plain), 10}, {5, 0}, {0, len(plain) + 100}} {
+		want := plain[c.off:]
+		if c.n < len(want) {
+			want = want[:c.n]
+		}
+		if got, err := r.ReadAt(ctx, int64(c.off), c.n); err != nil || !bytes.Equal(got, want) {
+			t.Fatal("read at", c, len(got), err)
+		}
+	}
+	if _, err := r.ReadAt(ctx, -1, 1); !errors.Is(err, ErrTDFPayloadInvalidOffset) {
+		t.Fatal("negative offset", err)
+	}
+	if _, err := r.ReadAt(ctx, int64(len(plain))+1, 1); !errors.Is(err, ErrTDFPayloadReadFail) {
+		t.Fatal("offset past the end", err)
+	}
+	r.Close()
+	if _, err := r.Read(buf); err == nil {
+		t.Fatal("read after close")
+	}
+
+	var streamed bytes.Buffer
+	if err := s.DecryptTo(ctx, &streamed, gbytes.NewReader(known.Bytes()), ReaderOptions{}); err != nil || !bytes.Equal(streamed.Bytes(), plain) {
+		t.Fatal("DecryptTo", err)
+	}
+	dir := t.TempDir()
+	in, out := dir+"/in.tdf", dir+"/out.txt"
+	if err := os.WriteFile(in, unknown.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DecryptFile(ctx, in, out, ReaderOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(out); err != nil || !bytes.Equal(got, plain) {
+		t.Fatal("DecryptFile", err)
+	}
+	if err := s.DecryptFile(ctx, in, out, ReaderOptions{}); err != nil {
+		t.Fatal("replacing an existing output", err)
+	}
+	bad := dir + "/bad.tdf"
+	if err := os.WriteFile(bad, rewriteTDF(t, known.Bytes(), nil, flipLastThree), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(out, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DecryptFile(ctx, bad, out, ReaderOptions{}); !errors.Is(err, ErrSegSigValidation) {
+		t.Fatal("tampered input", err)
+	}
+	if kept, _ := os.ReadFile(out); string(kept) != "keep" {
+		t.Fatal("a failed decrypt must not touch the output")
+	}
+	if err := s.DecryptFile(ctx, dir+"/missing.tdf", out, ReaderOptions{}); err == nil || !strings.Contains(err.Error(), "failed to open input TDF") {
+		t.Fatal("missing input", err)
+	}
+	if err := s.DecryptFile(ctx, in, dir, ReaderOptions{}); err == nil || !strings.Contains(err.Error(), "is a directory") {
+		t.Fatal("directory output", err)
+	}
+	if err := s.DecryptFile(ctx, in, in, ReaderOptions{}); err == nil || !strings.Contains(err.Error(), "must not be the same file") {
+		t.Fatal("same file", err)
+	}
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), ".decrypt-") {
+			t.Fatal("temporary file left behind", e.Name())
+		}
+	}
+
+	var empty bytes.Buffer
+	if _, err := s.CreateTDF(ctx, &empty, readOnly{gbytes.NewReader(nil)}, opts); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.DecryptBytes(ctx, empty.Bytes(), ReaderOptions{}); err != nil || len(got) != 0 {
+		t.Fatal("empty payload", err)
+	}
+	er, err := s.LoadTDF(ctx, gbytes.NewReader(empty.Bytes()), ReaderOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, err := er.Read(buf); n != 0 || !errors.Is(err, gio.EOF) {
+		t.Fatal("empty read", n, err)
+	}
+	er.Close()
+
+	// A declared length is exact and bounds the input.
+	opts.InputSize = 3
+	data, _, err := s.EncryptBytes(ctx, []byte("abcdef"), opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain, err := s.DecryptBytes(ctx, data, ReaderOptions{}); err != nil || string(plain) != "abc" {
 		t.Fatal("declared size bounds the input", err)
 	}
 	opts.InputSize = 10
-	if _, _, err := s.EncryptBytes(context.Background(), []byte("abcdef"), opts); !errors.Is(err, errInputShorterThanDeclared) {
+	if _, _, err := s.EncryptBytes(ctx, []byte("abcdef"), opts); !errors.Is(err, errInputShorterThanDeclared) {
 		t.Fatal("short input", err)
+	}
+	if _, err := s.CreateTDF(ctx, &unknown, gstrings.NewReader("x"), opts); !errors.Is(err, errInputShorterThanDeclared) {
+		t.Fatal("short stream", err)
 	}
 }
 
@@ -745,11 +903,12 @@ func encryptWithSplitPlan(t *testing.T, s *SDK, plaintext []byte, plan []keySpli
 		t.Fatal(err)
 	}
 	tdfConfig.splitPlan = plan
-	data, obj, err := s.encryptBytes(context.Background(), plaintext, tdfConfig)
+	var out gbytes.Buffer
+	obj, err := s.createTDF(context.Background(), &out, gbytes.NewReader(plaintext), tdfConfig)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return data, obj
+	return out.Bytes(), obj
 }
 
 // Ported from Test_KeySplits: shared, split and mixed plans over three KAS

@@ -4,6 +4,7 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/context"
 	"github.com/eugenioenko/goalchemy/lib/crypto"
 	"github.com/eugenioenko/goalchemy/lib/encoding"
+	"github.com/eugenioenko/goalchemy/std/bytes"
 	"github.com/eugenioenko/goalchemy/std/encoding/hex"
 	"github.com/eugenioenko/goalchemy/std/encoding/json"
 	"github.com/eugenioenko/goalchemy/std/errors"
@@ -46,15 +47,14 @@ const (
 	maxAESGCMSegmentsPerDEK uint64 = 1<<32 - 1
 )
 
-// Reader holds a parsed TDF archive and lazily requests its payload key from KAS.
-// Close the reader before closing the SDK that created it.
+// Loads and reads ZTDF files
 type Reader struct {
 	rewrapper           Rewrapper
 	logger              *slog.Logger
 	ctx                 context.Context
 	manifest            Manifest
 	unencryptedMetadata []byte
-	payload             []byte
+	archive             *tdf.Reader
 	cursor              int64
 	payloadSize         int64
 	payloadKey          []byte
@@ -63,6 +63,10 @@ type Reader struct {
 	ownsSessionKey      bool
 	config              TDFReaderConfig
 	requiredObligations *RequiredObligations
+	// cached is the plaintext of the segment the last read decrypted, so
+	// that host reads smaller than a segment do not decrypt it again.
+	cached      []byte
+	cachedIndex int
 }
 
 // RequiredObligations holds the obligation FQNs returned by key access services.
@@ -88,26 +92,22 @@ func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
 
-// CreateTDF encrypts reader and writes the complete archive to writer. It buffers
-// the plaintext and archive in memory. It does not close reader or writer and
-// reports a short write as an error.
+// CreateTDF encrypts the payload read from reader and writes a TDF to writer,
+// segment by segment: memory stays bounded by the segment size whatever the
+// payload's length. The input is measured through opts.InputSize or, when the
+// reader can seek, by seeking; an unmeasurable payload gets a ZIP64 archive,
+// since the choice is baked into the first bytes written. A declared length
+// is exact: the input is bounded to it and a shorter input fails rather than
+// producing a TDF that is silently short.
 func (s *SDK) CreateTDF(ctx context.Context, writer io.Writer, reader io.Reader, opts TDFOptions) (*TDFObject, error) {
-	plaintext, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, wrapError(KindInvalidInput, "CreateTDF", "io.Reader.Read failed", err)
-	}
-	data, obj, err := s.EncryptBytes(ctx, plaintext, opts)
-	if err != nil {
+	if err := s.check("CreateTDF"); err != nil {
 		return nil, err
 	}
-	n, err := writer.Write(data)
+	tdfConfig, err := newTDFConfig(opts)
 	if err != nil {
-		return nil, wrapError(KindInvalidInput, "CreateTDF", "io.writer.Write failed", err)
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "NewTDFConfig failed", err)
 	}
-	if n != len(data) {
-		return nil, sentinelError(KindInvalidInput, errWriteFailed)
-	}
-	return obj, nil
+	return s.createTDF(ctx, writer, reader, tdfConfig)
 }
 
 func (s *SDK) defaultKases(c *TDFConfig) []string {
@@ -138,9 +138,8 @@ func uuidSplitIDGenerator() string {
 	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
 }
 
-// EncryptBytes returns an encrypted TDF archive and its manifest summary.
-// It buffers the result in memory. ctx bounds policy discovery and KAS requests;
-// opts controls attributes, key wrapping, metadata, and assertions.
+// EncryptBytes is CreateTDF over a payload held in memory: the TDF bytes
+// with their TDFObject.
 func (s *SDK) EncryptBytes(ctx context.Context, plaintext []byte, opts TDFOptions) ([]byte, *TDFObject, error) {
 	if err := s.check("CreateTDF"); err != nil {
 		return nil, nil, err
@@ -149,73 +148,154 @@ func (s *SDK) EncryptBytes(ctx context.Context, plaintext []byte, opts TDFOption
 	if err != nil {
 		return nil, nil, wrapError(KindInvalidInput, "CreateTDF", "NewTDFConfig failed", err)
 	}
-	return s.encryptBytes(ctx, plaintext, tdfConfig)
+	out := bytes.NewBuffer(make([]byte, 0, len(plaintext)+4096))
+	obj, err := s.createTDF(ctx, out, bytes.NewReader(plaintext), tdfConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	return out.Bytes(), obj, nil
 }
 
-func (s *SDK) encryptBytes(ctx context.Context, plaintext []byte, tdfConfig *TDFConfig) ([]byte, *TDFObject, error) {
+// zip64MagicVal is the 32-bit ZIP field ceiling: an archive whose encrypted
+// payload may reach it is written as ZIP64 from the first header.
+const zip64MagicVal int64 = 4294967295
+
+func (s *SDK) createTDF(ctx context.Context, writer io.Writer, reader io.Reader, tdfConfig *TDFConfig) (*TDFObject, error) {
 	err := tdfConfig.initKAOTemplate(ctx, s)
 	if err != nil {
-		return nil, nil, wrapError(KindKASRequest, "CreateTDF", "", err)
+		return nil, wrapError(KindKASRequest, "CreateTDF", "", err)
 	}
 
 	segmentSize := tdfConfig.defaultSegmentSize
 	if segmentSize > maxSegmentSize {
-		return nil, nil, newError(KindInvalidInput, "CreateTDF", fmt.Sprintf("segment size too large: %d", segmentSize))
+		return nil, newError(KindInvalidInput, "CreateTDF", fmt.Sprintf("segment size too large: %d", segmentSize))
 	} else if segmentSize < minSegmentSize {
-		return nil, nil, newError(KindInvalidInput, "CreateTDF", fmt.Sprintf("segment size too small: %d", segmentSize))
+		return nil, newError(KindInvalidInput, "CreateTDF", fmt.Sprintf("segment size too small: %d", segmentSize))
 	}
 
-	// A declared length is exact: the input is bounded to it and a shorter
-	// input fails rather than producing a TDF that is silently short.
-	if tdfConfig.inputSize != inputSizeUnknown {
-		if int64(len(plaintext)) < tdfConfig.inputSize {
-			return nil, nil, wrapError(KindInvalidInput, "CreateTDF", "", fmt.Errorf("%w: read %d of %d bytes", errInputShorterThanDeclared, len(plaintext), tdfConfig.inputSize))
-		}
-		plaintext = plaintext[:tdfConfig.inputSize]
+	// A payload whose length cannot be known before it is read gets a ZIP64
+	// archive and whole-segment reads; a measurable one replaces these.
+	declaredSize := int64(inputSizeUnknown)
+	zip64 := true
+	readBufSize := segmentSize
+	inputSize, err := resolveInputSize(tdfConfig, reader)
+	if err != nil {
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
 	}
-	if _, err := segmentCount(int64(len(plaintext)), segmentSize); err != nil {
-		return nil, nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
+	if inputSize != inputSizeUnknown {
+		segments, err := segmentCount(inputSize, segmentSize)
+		if err != nil {
+			return nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
+		}
+		declaredSize = inputSize
+		// ZIP32 is only safe when the encrypted payload, the plaintext plus a
+		// per-segment IV and tag, stays under the 32-bit ceiling; subtracting
+		// the overhead keeps the comparison honest near the int64 limit.
+		encryptionOverhead := int64(segments) * (gcmIvSize + aesBlockSize)
+		if inputSize < zip64MagicVal-encryptionOverhead {
+			zip64 = false
+		}
+		// The known length doubles as a read limit, and the buffer is only
+		// as large as the payload needs; it never shrinks to zero, so an
+		// empty read always means EOF.
+		reader = io.LimitReader(reader, inputSize)
+		if inputSize < readBufSize {
+			readBufSize = inputSize
+		}
+		if readBufSize < 1 {
+			readBufSize = 1
+		}
 	}
 
 	w, err := s.newTDFWriter(ctx, tdfConfig)
 	if err != nil {
-		return nil, nil, wrapError(KindKASRequest, "CreateTDF", "", err)
+		return nil, wrapError(KindKASRequest, "CreateTDF", "", err)
 	}
+	archive := tdf.NewWriter(writer, zip64)
 
+	var bytesRead int64
+	readBuf := make([]byte, readBufSize)
 	for index := 0; ; index++ {
-		end := int64(index+1) * segmentSize
-		if end > int64(len(plaintext)) {
-			end = int64(len(plaintext))
+		// ReadFull retries until the segment is filled or the input runs
+		// out; a short final segment surfaces as io.ErrUnexpectedEOF.
+		n, readErr := io.ReadFull(reader, readBuf)
+		if readErr != nil && !errors.Is(readErr, io.EOF) && !errors.Is(readErr, io.ErrUnexpectedEOF) {
+			return nil, wrapError(KindInvalidInput, "CreateTDF", "io.Reader.Read failed", readErr)
 		}
-		start := int64(index) * segmentSize
-		// An empty payload still gets one empty segment.
-		if start >= end && index > 0 {
+		// A payload that is an exact multiple of the segment size reports
+		// EOF with nothing read. An empty payload still gets one empty segment.
+		if n == 0 && index > 0 {
 			break
 		}
-		if err := w.writeSegment(plaintext[start:end]); err != nil {
-			return nil, nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
+		bytesRead += int64(n)
+		segment, err := w.writeSegment(readBuf[:n])
+		if err != nil {
+			return nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
 		}
-		if end == int64(len(plaintext)) {
+		if err := archive.WritePayload(segment); err != nil {
+			return nil, wrapError(KindInvalidInput, "CreateTDF", "io.writer.Write failed", err)
+		}
+		if readErr != nil {
 			break
 		}
 	}
 
-	data, manifest, err := w.finalize(tdfConfig.mimeType)
-	if err != nil {
-		return nil, nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
+	// The archive is already partly written, so a reader that ran dry before
+	// the declared length fails rather than yielding a truncated TDF.
+	if declaredSize != inputSizeUnknown && bytesRead != declaredSize {
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "", fmt.Errorf("%w: read %d of %d bytes", errInputShorterThanDeclared, bytesRead, declaredSize))
 	}
-	return data, &TDFObject{manifest: manifest, size: int64(len(data))}, nil
+
+	manifest, manifestJSON, err := w.finalize(tdfConfig.mimeType)
+	if err != nil {
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "", err)
+	}
+	size, err := archive.Finish(manifestJSON)
+	if err != nil {
+		return nil, wrapError(KindInvalidInput, "CreateTDF", "io.writer.Write failed", err)
+	}
+	return &TDFObject{manifest: manifest, size: size}, nil
+}
+
+// resolveInputSize reports the payload length in bytes, or inputSizeUnknown
+// when it cannot be established without consuming the reader. An explicit
+// InputSize wins over what the reader can report about itself. A reader may
+// have a Seek method and still refuse to seek (a pipe, a host stream that is
+// not seekable), so a failed probe means an unmeasurable payload rather than
+// an error; failing to restore the position is an error, since the payload
+// can no longer be read in full.
+func resolveInputSize(tdfConfig *TDFConfig, reader io.Reader) (int64, error) {
+	if tdfConfig.inputSize != inputSizeUnknown {
+		return tdfConfig.inputSize, nil
+	}
+	seeker, ok := reader.(io.Seeker)
+	if !ok {
+		return inputSizeUnknown, nil
+	}
+	start, err := seeker.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return inputSizeUnknown, nil
+	}
+	end, err := seeker.Seek(0, io.SeekEnd)
+	if err != nil {
+		return inputSizeUnknown, nil
+	}
+	if _, err := seeker.Seek(start, io.SeekStart); err != nil {
+		return 0, fmt.Errorf("seeker.Seek failed to restore reader position: %w", err)
+	}
+	if end < start {
+		return 0, nil
+	}
+	return end - start, nil
 }
 
 // tdfWriter encrypts a payload segment by segment under one DEK and builds
-// the manifest. This phase collects the ciphertext in memory; Phase 7 feeds
-// the segments to the streaming archive writer instead.
+// the manifest; the caller streams each encrypted segment to the archive.
 type tdfWriter struct {
 	dek           []byte
 	segmentSize   int64
 	policy        string
 	keyAccess     []KeyAccess
-	payload       []byte
 	segments      []Segment
 	aggregateHash []byte
 	encryptions   uint64
@@ -247,49 +327,52 @@ func (s *SDK) newTDFWriter(ctx context.Context, tdfConfig *TDFConfig) (*tdfWrite
 	return &tdfWriter{dek: dek, segmentSize: tdfConfig.defaultSegmentSize, policy: base64Policy, keyAccess: kaos, assertions: assertions, useHex: tdfConfig.useHex}, nil
 }
 
-func (w *tdfWriter) writeSegment(data []byte) error {
+// writeSegment encrypts one plaintext segment, records its hash and size in
+// the manifest, and returns the encrypted segment (nonce then ciphertext).
+func (w *tdfWriter) writeSegment(data []byte) ([]byte, error) {
 	if w.encryptions >= maxAESGCMSegmentsPerDEK {
-		return ErrAESGCMExhausted
+		return nil, ErrAESGCMExhausted
 	}
 	w.encryptions++
 	nonce, err := crypto.Random(gcmIvSize)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	cipherText, err := crypto.AES256GCMEncrypt(w.dek, nonce, data, nil)
 	if err != nil {
-		return fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
+		return nil, fmt.Errorf("ocrypto.AesGcm.encrypt failed:%w", err)
 	}
 	segment := append(nonce, cipherText...)
 	payloadSig, err := segmentIntegrity(segment, w.dek, SegmentGMAC, false)
 	if err != nil {
-		return fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+		return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
 	}
 	hash, err := encoding.Base64Encode([]byte(payloadSig))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	w.segments = append(w.segments, Segment{Hash: hash, Size: int64(len(data)), EncryptedSize: int64(len(segment))})
 	w.aggregateHash = append(w.aggregateHash, payloadSig...)
-	w.payload = append(w.payload, segment...)
-	return nil
+	return segment, nil
 }
 
-func (w *tdfWriter) finalize(mimeType string) ([]byte, Manifest, error) {
+// finalize signs the aggregate hash and the assertions and returns the
+// manifest with its JSON encoding, for the archive's manifest entry.
+func (w *tdfWriter) finalize(mimeType string) (Manifest, []byte, error) {
 	rootSig, err := rootIntegrity(w.aggregateHash, w.dek, RootHS256, false)
 	if err != nil {
-		return nil, Manifest{}, fmt.Errorf("splitkey.getSignature failed:%w", err)
+		return Manifest{}, nil, fmt.Errorf("splitkey.getSignature failed:%w", err)
 	}
 	sig, err := encoding.Base64Encode([]byte(rootSig))
 	if err != nil {
-		return nil, Manifest{}, err
+		return Manifest{}, nil, err
 	}
 	if mimeType == "" {
 		mimeType = defaultMimeType
 	}
 	assertions, err := signAssertions(w.aggregateHash, w.assertions, w.dek, w.useHex)
 	if err != nil {
-		return nil, Manifest{}, err
+		return Manifest{}, nil, err
 	}
 	manifest := Manifest{
 		EncryptionInformation: EncryptionInformation{
@@ -311,13 +394,9 @@ func (w *tdfWriter) finalize(mimeType string) ([]byte, Manifest, error) {
 	}
 	manifestJSON, err := json.Marshal(manifest)
 	if err != nil {
-		return nil, Manifest{}, fmt.Errorf("json.Marshal failed: %w", err)
+		return Manifest{}, nil, fmt.Errorf("json.Marshal failed: %w", err)
 	}
-	data, err := tdf.WriteArchive(w.payload, manifestJSON, tdf.DefaultArchiveLimits())
-	if err != nil {
-		return nil, Manifest{}, fmt.Errorf("archive write failed: %w", err)
-	}
-	return data, manifest, nil
+	return manifest, manifestJSON, nil
 }
 
 // segmentCount returns the number of segments a payload of inputSize bytes occupies,
@@ -725,9 +804,10 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 	return kasAllowlist, nil
 }
 
-// LoadTDF buffers and parses an archive, resolves its KAS allowlist, and returns
-// a reader. It does not unwrap the payload key or verify payload integrity yet.
-// Close the returned reader before its SDK; reader remains caller-owned.
+// LoadTDF opens the TDF on reader: it reads the central directory and the
+// manifest and keeps reader for the payload, which Read, ReadAt, WriteTo and
+// DecryptTo decrypt segment by segment. reader must stay open and unused by
+// the caller while the Reader lives.
 func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOptions) (*Reader, error) {
 	if err := s.check("LoadTDF"); err != nil {
 		return nil, err
@@ -737,7 +817,7 @@ func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOpti
 		return nil, wrapError(KindInvalidInput, "LoadTDF", "newTDFReaderConfig failed", err)
 	}
 
-	archive, err := readArchive(reader, config.maxManifestSize)
+	archive, err := tdf.NewReader(reader, archiveLimits(config.maxManifestSize))
 	if err != nil {
 		config.closeSessionKey()
 		return nil, wrapError(KindNotDecryptable, "LoadTDF", "zipstream.NewTDFReader failed", err)
@@ -753,10 +833,8 @@ func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOpti
 		return nil, wrapError(KindTransport, "LoadTDF", "", err)
 	}
 
-	manifest := string(archive.Manifest)
-
 	manifestObj := &Manifest{}
-	err = json.Unmarshal([]byte(manifest), manifestObj)
+	err = json.Unmarshal(archive.Manifest(), manifestObj)
 	if err != nil {
 		config.closeSessionKey()
 		return nil, wrapError(KindInvalidInput, "LoadTDF", "json.Unmarshal failed", err)
@@ -776,14 +854,25 @@ func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOpti
 		rewrapper:         s.rewrapper,
 		logger:            s.cfg.logger,
 		ctx:               ctx,
-		payload:           archive.Payload,
+		archive:           archive,
 		manifest:          *manifestObj,
 		kasSessionKey:     config.kasSessionKey,
 		kasSessionKeyType: config.kasSessionKeyType,
 		ownsSessionKey:    config.ownsSessionKey,
 		config:            *config,
 		payloadSize:       payloadSize,
+		cachedIndex:       -1,
 	}, nil
+}
+
+// archiveLimits bounds the archive reader; maxManifestSize lowers the
+// manifest limit when set.
+func archiveLimits(maxManifestSize int64) tdf.ArchiveLimits {
+	limits := tdf.DefaultArchiveLimits()
+	if maxManifestSize > 0 && maxManifestSize < int64(limits.ManifestBytes) {
+		limits.ManifestBytes = int(maxManifestSize)
+	}
+	return limits
 }
 
 func (c *TDFReaderConfig) closeSessionKey() {
@@ -803,7 +892,8 @@ func (r *Reader) Init(ctx context.Context) error {
 	return boundaryError(KindDecryptFailed, "Init", r.doPayloadKeyUnwrap(ctx))
 }
 
-// Close releases the reader's session key and payload key.
+// Close releases the reader's session key, payload key and decrypted
+// segment; the host stream given to LoadTDF is the caller's to close.
 func (r *Reader) Close() error {
 	if r == nil {
 		return nil
@@ -814,7 +904,10 @@ func (r *Reader) Close() error {
 	r.kasSessionKey = nil
 	wipe(r.payloadKey)
 	r.payloadKey = nil
-	r.payload = nil
+	wipe(r.cached)
+	r.cached = nil
+	r.cachedIndex = -1
+	r.archive = nil
 	return nil
 }
 
@@ -829,56 +922,205 @@ func (r *Reader) callContext() context.Context {
 	return context.Background()
 }
 
-// readAll decrypts the whole payload, verifying every segment: the
-// reference's WriteTo from cursor 0, over the in-memory payload.
-func (r *Reader) readAll() ([]byte, error) {
-	if r.payloadKey == nil {
-		err := r.doPayloadKeyUnwrap(r.callContext())
-		if err != nil {
-			return nil, fmt.Errorf("reader.WriteTo failed: %w", err)
-		}
+// ensureKey runs the lazy Init before a payload operation.
+func (r *Reader) ensureKey(ctx context.Context, op string) error {
+	if r.payloadKey != nil {
+		return nil
 	}
+	if r.archive == nil {
+		return newError(KindInvalidInput, op, "reader."+op+" failed: reader is closed")
+	}
+	if err := r.doPayloadKeyUnwrap(ctx); err != nil {
+		return wrapError(KindDecryptFailed, op, "reader."+op+" failed", err)
+	}
+	return nil
+}
 
-	isLegacyTDF := r.manifest.TDFVersion == ""
+// Read reads up to len(p) bytes of plaintext from the cursor and advances it.
+// It returns io.EOF once the payload is exhausted; a read that reaches the
+// end returns the bytes it got with a nil error. Init runs lazily with the
+// LoadTDF context.
+func (r *Reader) Read(p []byte) (int, error) {
+	if err := r.ensureKey(r.callContext(), "Read"); err != nil {
+		return 0, err
+	}
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if r.cursor >= r.payloadSize {
+		return 0, io.EOF
+	}
+	n, err := r.readAt(p, r.cursor)
+	r.cursor += int64(n)
+	if n > 0 && errors.Is(err, io.EOF) {
+		err = nil
+	}
+	return n, err
+}
+
+// Seek sets the cursor Read and WriteTo continue from, in plaintext bytes.
+func (r *Reader) Seek(offset int64, whence int) (int64, error) {
+	var newPos int64
+	switch whence {
+	case io.SeekStart:
+		newPos = 0
+	case io.SeekEnd:
+		newPos = r.payloadSize
+	case io.SeekCurrent:
+		newPos = r.cursor
+	default:
+		return 0, newError(KindInvalidInput, "Seek", fmt.Sprintf("reader.Seek failed: unknown whence: %d", whence))
+	}
+	newPos += offset
+	if newPos < 0 || newPos > r.payloadSize {
+		return 0, newError(KindInvalidInput, "Seek", fmt.Sprintf("reader.Seek failed: index if out of range %d", newPos))
+	}
+	r.cursor = newPos
+	return r.cursor, nil
+}
+
+// ReadAt returns up to length plaintext bytes starting at offset, fewer when
+// the payload ends first; the cursor does not move. The reference's
+// io.ReaderAt form fills a caller's buffer, which cannot cross the boundary,
+// so the bytes are returned instead. A negative offset fails with
+// ErrTDFPayloadInvalidOffset and one past the end with ErrTDFPayloadReadFail.
+func (r *Reader) ReadAt(ctx context.Context, offset int64, length int) ([]byte, error) {
+	if err := r.ensureKey(ctx, "ReadAt"); err != nil {
+		return nil, err
+	}
+	if offset < 0 {
+		return nil, sentinelError(KindInvalidOffset, ErrTDFPayloadInvalidOffset)
+	}
+	if offset > r.payloadSize {
+		return nil, sentinelError(KindPayloadRead, ErrTDFPayloadReadFail)
+	}
+	if length < 0 {
+		return nil, newError(KindInvalidInput, "ReadAt", "reader.ReadAt failed: negative length")
+	}
+	if int64(length) > r.payloadSize-offset {
+		length = int(r.payloadSize - offset)
+	}
+	buf := make([]byte, length)
+	n, err := r.readAt(buf, offset)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return nil, err
+	}
+	return buf[:n], nil
+}
+
+// WriteTo decrypts the payload from the cursor to its end into w, one
+// segment at a time, advancing the cursor. It returns the bytes written.
+func (r *Reader) WriteTo(ctx context.Context, w io.Writer) (int64, error) {
+	if err := r.ensureKey(ctx, "WriteTo"); err != nil {
+		return 0, err
+	}
 	integrity := r.manifest.EncryptionInformation.IntegrityInformation
-
-	out := make([]byte, 0, r.payloadSize)
-	var payloadReadOffset int64
-	for _, seg := range integrity.Segments {
-		_, encryptedSegSize, err := integrity.resolveSegmentSizes(seg)
+	var total int64
+	var cipherOffset int64
+	var plainOffset int64
+	for index, seg := range integrity.Segments {
+		size, encryptedSize, err := integrity.resolveSegmentSizes(seg)
 		if err != nil {
-			return nil, err
+			return total, boundaryError(KindSegmentSize, "WriteTo", err)
 		}
-
-		if payloadReadOffset+encryptedSegSize > int64(len(r.payload)) {
-			return nil, sentinelError(KindSegmentSize, ErrSegSizeMismatch)
+		if plainOffset+size <= r.cursor {
+			plainOffset += size
+			cipherOffset += encryptedSize
+			continue
 		}
-		readBuf := r.payload[payloadReadOffset : payloadReadOffset+encryptedSegSize]
-
-		sigAlg := manifestSegmentIntegrityAlg(integrity.SegmentHashAlgorithm)
-		payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
+		plain, err := r.segment(index, seg, cipherOffset, encryptedSize)
 		if err != nil {
-			return nil, fmt.Errorf("splitKey.GetSignaturefailed: %w", err)
+			return total, err
 		}
-
-		encoded, err := encoding.Base64Encode([]byte(payloadSig))
+		if plainOffset < r.cursor {
+			plain = plain[r.cursor-plainOffset:]
+		}
+		n, err := w.Write(plain)
+		total += int64(n)
+		r.cursor += int64(n)
 		if err != nil {
-			return nil, err
+			return total, wrapError(KindInvalidInput, "WriteTo", "io.writer.write failed", err)
 		}
-		if seg.Hash != encoded {
-			return nil, sentinelError(KindSegmentSignature, ErrSegSigValidation)
+		if n != len(plain) {
+			return total, sentinelError(KindInvalidInput, errWriteFailed)
 		}
-
-		writeBuf, err := crypto.AES256GCMDecrypt(r.payloadKey, readBuf[:gcmIvSize], readBuf[gcmIvSize:], nil)
-		if err != nil {
-			return nil, wrapError(KindDecryptFailed, "", "splitKey.decrypt failed", err)
-		}
-
-		out = append(out, writeBuf...)
-		payloadReadOffset += encryptedSegSize
+		plainOffset += size
+		cipherOffset += encryptedSize
 	}
+	return total, nil
+}
 
-	return out, nil
+// readAt fills p from plaintext offset, decrypting the segments it spans,
+// and reports io.EOF when the payload ends before p is full.
+func (r *Reader) readAt(p []byte, offset int64) (int, error) {
+	integrity := r.manifest.EncryptionInformation.IntegrityInformation
+	end := offset + int64(len(p))
+	n := 0
+	var cipherOffset int64
+	var plainOffset int64
+	for index, seg := range integrity.Segments {
+		size, encryptedSize, err := integrity.resolveSegmentSizes(seg)
+		if err != nil {
+			return n, boundaryError(KindSegmentSize, "Read", err)
+		}
+		segEnd := plainOffset + size
+		if plainOffset >= end {
+			break
+		}
+		if segEnd > offset+int64(n) {
+			plain, err := r.segment(index, seg, cipherOffset, encryptedSize)
+			if err != nil {
+				return n, err
+			}
+			n += copy(p[n:], plain[offset+int64(n)-plainOffset:])
+		}
+		plainOffset = segEnd
+		cipherOffset += encryptedSize
+	}
+	if n < len(p) {
+		return n, io.EOF
+	}
+	return n, nil
+}
+
+// segment returns the plaintext of segment index, read from the archive at
+// cipherOffset, verified against its manifest hash and decrypted. The last
+// segment decrypted stays cached for the next read into it.
+func (r *Reader) segment(index int, seg Segment, cipherOffset int64, encryptedSize int64) ([]byte, error) {
+	if index == r.cachedIndex && r.cached != nil {
+		return r.cached, nil
+	}
+	if r.archive == nil {
+		return nil, newError(KindInvalidInput, "Read", "reader.Read failed: reader is closed")
+	}
+	if cipherOffset > r.archive.PayloadSize() || encryptedSize > r.archive.PayloadSize()-cipherOffset {
+		return nil, sentinelError(KindSegmentSize, ErrSegSizeMismatch)
+	}
+	readBuf, err := r.archive.ReadPayload(cipherOffset, encryptedSize)
+	if err != nil {
+		return nil, wrapError(KindPayloadRead, "Read", "TDFReader.ReadPayload failed", err)
+	}
+	isLegacyTDF := r.manifest.TDFVersion == ""
+	sigAlg := manifestSegmentIntegrityAlg(r.manifest.EncryptionInformation.IntegrityInformation.SegmentHashAlgorithm)
+	payloadSig, err := segmentIntegrity(readBuf, r.payloadKey, sigAlg, isLegacyTDF)
+	if err != nil {
+		return nil, wrapError(KindDecryptFailed, "Read", "splitKey.GetSignaturefailed", err)
+	}
+	encoded, err := encoding.Base64Encode([]byte(payloadSig))
+	if err != nil {
+		return nil, wrapError(KindDecryptFailed, "Read", "", err)
+	}
+	if seg.Hash != encoded {
+		return nil, sentinelError(KindSegmentSignature, ErrSegSigValidation)
+	}
+	plain, err := crypto.AES256GCMDecrypt(r.payloadKey, readBuf[:gcmIvSize], readBuf[gcmIvSize:], nil)
+	if err != nil {
+		return nil, wrapError(KindDecryptFailed, "Read", "splitKey.decrypt failed", err)
+	}
+	wipe(r.cached)
+	r.cached = plain
+	r.cachedIndex = index
+	return plain, nil
 }
 
 // UnencryptedMetadata returns decrypted metadata, requesting the payload key if

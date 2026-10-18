@@ -357,35 +357,18 @@ func GetTdfType(reader io.ReadSeeker) TdfType {
 // Some invalid manifests are still usable, so this file may still be usable.
 var ErrInvalidPerSchema = errors.New("manifest was not valid")
 
-// readArchive reads the whole TDF from reader and returns it with the reader
-// rewound, so repeated validation on one reader sees the same bytes.
-func readArchive(reader io.ReadSeeker, maxManifestSize int64) (tdf.Archive, error) {
-	if _, err := reader.Seek(0, io.SeekStart); err != nil {
-		return tdf.Archive{}, err
-	}
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return tdf.Archive{}, err
-	}
-	if _, err := reader.Seek(0, io.SeekStart); err != nil {
-		return tdf.Archive{}, err
-	}
-	limits := tdf.DefaultArchiveLimits()
-	if maxManifestSize > 0 && maxManifestSize < int64(limits.ManifestBytes) {
-		limits.ManifestBytes = int(maxManifestSize)
-	}
-	return tdf.ReadArchive(data, limits)
-}
-
 // IsValidTdf checks archive structure and required manifest fields, leaving
 // reader at offset zero after a successful archive read. It does not authorize
 // access, decrypt the payload, or verify cryptographic integrity.
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
-	archive, err := readArchive(reader, 0)
+	archive, err := tdf.NewReader(reader, tdf.DefaultArchiveLimits())
 	if err != nil {
 		return false, wrapError(KindNotDecryptable, "IsValidTdf", "zipstream.NewTDFReader failed", err)
 	}
-	valid, err := isValidManifest(string(archive.Manifest), Lax)
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		return false, wrapError(KindInvalidInput, "IsValidTdf", "readSeeker.Seek failed", err)
+	}
+	valid, err := isValidManifest(string(archive.Manifest()), Lax)
 	return valid, boundaryError(KindInvalidInput, "IsValidTdf", err)
 }
 
