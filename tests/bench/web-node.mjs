@@ -32,7 +32,7 @@ async function main() {
   assert(operation === 'e2e');
   const raw = JSON.parse(await readFile(join(run, 'private.json')));
   const input = await readFile(join(run, size + '.input'));
-  const bulkInput = Number(bulk) && size !== '50' ? await readFile(join(run, '50.input')) : input;
+  const bulkInput = Number(bulk) ? await readFile(join(run, 'bulk.input')) : input;
   const require = createRequire(join(resolve(process.env.TDF_WEB_PACKAGE), 'package.json'));
   const { TDF3Client, authTokenInterceptor } = require('@opentdf/sdk');
   const { WebCryptoService } = require('@opentdf/sdk/singlecontainer');

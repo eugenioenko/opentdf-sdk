@@ -56,8 +56,8 @@ func main() {
 	must(json.Unmarshal(read(filepath.Join(run, "private.json")), &raw))
 	input := read(filepath.Join(run, size+".input"))
 	bulkInput := input
-	if bulkWarmups > 0 && size != "50" {
-		bulkInput = read(filepath.Join(run, "50.input"))
+	if bulkWarmups > 0 {
+		bulkInput = read(filepath.Join(run, "bulk.input"))
 	}
 	cfg := raw.Config
 	ctx := context.Background()

@@ -163,6 +163,30 @@ class BenchmarkPolicyTests(unittest.TestCase):
             with self.subTest(size=size):
                 self.assertEqual(BENCH.validate_manifest(manifest, size)['segment_count'], 1)
 
+    def test_bulk_fixture_is_independent_of_the_measured_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            BENCH.prepare_inputs(base, ['1KiB', '10KiB'], '10KiB')
+            expected = bytes((i * 131 + (i >> 8) * 17) & 255 for i in range(10240))
+            for label in ['1KiB', '10KiB']:
+                output = base / label
+                output.mkdir()
+                fixture, length = BENCH.SIZES[label]
+                BENCH.link_inputs(base, output, fixture, '10KiB')
+                self.assertEqual((output / (fixture + '.input')).read_bytes(), expected[:length])
+                self.assertEqual((output / 'bulk.input').read_bytes(), expected)
+            no_bulk = base / 'no-bulk'
+            no_bulk.mkdir()
+            BENCH.link_inputs(base, no_bulk, '1k')
+            self.assertFalse((no_bulk / 'bulk.input').exists())
+
+    def test_wrong_length_cached_fixture_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            (base / '1k.input').write_bytes(b'truncated')
+            with self.assertRaisesRegex(ValueError, 'wrong byte length'):
+                BENCH.prepare_inputs(base, ['1KiB'])
+
     def test_stock_go_reference_rejects_tracked_source_changes_before_building(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

@@ -23,7 +23,7 @@ public final class Benchmark {
         Map<String,Object> raw = (Map<String,Object>)Json.parse(Files.readString(run.resolve("private.json")));
         Map<String,Object> cfg = (Map<String,Object>)raw.get("Config");
         byte[] input = Files.readAllBytes(run.resolve(size + ".input"));
-        byte[] bulkInput = bulkWarmups == 0 || size.equals("50") ? input : Files.readAllBytes(run.resolve("50.input"));
+        byte[] bulkInput = bulkWarmups == 0 ? input : Files.readAllBytes(run.resolve("bulk.input"));
         String token = (String)raw.get("Token");
         long expires = Long.parseLong(raw.get("Expires").toString());
         String kasURL = text(cfg, "KASURL");

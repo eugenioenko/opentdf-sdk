@@ -53,8 +53,8 @@ func main() {
 	}
 	input := read(filepath.Join(run, inputSize+".input"))
 	bulkInput := input
-	if bulkWarmups > 0 && size != "50" {
-		bulkInput = read(filepath.Join(run, "50.input"))
+	if bulkWarmups > 0 {
+		bulkInput = read(filepath.Join(run, "bulk.input"))
 	}
 	accessToken := &oauth2.Token{AccessToken: raw.Token, TokenType: "Bearer", Expiry: time.Unix(raw.Expires, 0)}
 	platformURL, kasURL, tokenURL := raw.Config.PlatformURL, raw.Config.KASURL, raw.Config.TokenURL

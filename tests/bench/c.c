@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     uint8_t *input = readfile(path, &n);
     size_t bulk_n = n;
     uint8_t *bulk_input = input;
-    if (bulk_warmups && strcmp(size, "50")) { snprintf(path, sizeof path, "%s/50.input", run); bulk_input = readfile(path, &bulk_n); }
+    if (bulk_warmups) { snprintf(path, sizeof path, "%s/bulk.input", run); bulk_input = readfile(path, &bulk_n); }
     snprintf(path, sizeof path, "%s/kas.pem", run);
     uint8_t *pem = readfile(path, &pn);
     snprintf(path, sizeof path, "%s/kid", run);

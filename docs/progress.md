@@ -2911,3 +2911,25 @@ Verification: all 18 benchmark controller tests passed, including small-payload
 pooling, manifest segmentation, reference-source cleanliness, and the stock-Web
 stream timing tests. Package preparation and measurement are still in progress;
 no new README performance claims are accepted in this phase.
+
+### Benchmark preparation: payload-specific warmup
+
+All eight latest-source SDK packages were generated. Swift's first optimized
+release library took 1,207 seconds. Reused that fresh static archive and compiled
+modules for a separate optimized native benchmark importer; its archive hash
+remained unchanged. Swift source packages generated at relative and absolute
+output paths matched byte for byte. No SDK optimizer settings changed.
+
+The legacy 50 MiB bulk warmup is outside the new measured range and took about
+two minutes per TypeScript process. Stopped that initial campaign and retained
+it separately as diagnostics, excluding every cell from the README refresh.
+The new common policy uses forty 10 MiB bulk warmups followed by twenty actual-size
+warmups, five timed pairs, and three fresh processes. Added an explicit
+`--bulk-size` option and a separate `bulk.input` fixture for every consumer,
+including when the measured size equals the bulk size.
+
+Verification: all twenty benchmark controller tests passed. New checks cover
+byte-exact small inputs, distinct or identical measured and bulk sizes, and
+rejection of truncated cached fixtures. Native benchmark importers will be
+rebuilt and every target's smoke check repeated before the new timing campaign.
+SDK packages and their compiler pin remain frozen.

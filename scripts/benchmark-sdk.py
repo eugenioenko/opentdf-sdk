@@ -275,7 +275,7 @@ def setup_swift(base, package, reference_environment=None):
     return commands, env
 
 
-def configure(base, warmups=20, bulk_warmups=40, batches=3, platform_url='http://localhost:8080', issuer_url='http://localhost:8888/auth/realms/opentdf'):
+def configure(base, warmups=20, bulk_warmups=40, batches=3, platform_url='http://localhost:8080', issuer_url='http://localhost:8888/auth/realms/opentdf', bulk_size_bytes=10 * 1024 * 1024):
     form = urllib.parse.urlencode({'grant_type': 'client_credentials', 'client_id': 'opentdf-sdk', 'client_secret': 'secret'}).encode()
     token_url = issuer_url.rstrip('/') + '/protocol/openid-connect/token'
     platform_url = platform_url.rstrip('/')
@@ -296,7 +296,7 @@ def configure(base, warmups=20, bulk_warmups=40, batches=3, platform_url='http:/
     response = base / 'token-response.json'
     response.write_text(json.dumps({'value': token['access_token'], 'scheme': 'Bearer', 'expiresAt': str(expires), 'confirmationJKT': ''}))
     response.chmod(384)
-    safe = {**cfg, 'plaintext': 'byte[i] = (i * 131 + (i >> 8) * 17) & 255', 'segment_bytes': 2 << 20, 'oauth_setup': 'pre-acquired long-lived Bearer; native provider per operation', 'token_lifetime_seconds': int(token['expires_in']), 'warmups': warmups, 'bulk_warmups': bulk_warmups, 'bulk_warmup_size_mib': 50, 'fresh_process_batches': batches}
+    safe = {**cfg, 'plaintext': 'byte[i] = (i * 131 + (i >> 8) * 17) & 255', 'segment_bytes': 2 << 20, 'oauth_setup': 'pre-acquired long-lived Bearer; native provider per operation', 'token_lifetime_seconds': int(token['expires_in']), 'warmups': warmups, 'bulk_warmups': bulk_warmups, 'bulk_size_bytes': bulk_size_bytes, 'fresh_process_batches': batches}
     (base / 'configuration.json').write_text(json.dumps(safe, indent=2) + '\n')
 
 def record(base, event):
@@ -344,6 +344,24 @@ def tables(base):
     (base / 'tables.md').write_text('\n'.join(parts) + '\n')
     (base / 'summary.json').write_text(json.dumps(list(latest.values()), indent=2) + '\n')
 
+def prepare_inputs(base, labels, bulk_size=None):
+    needed = set(labels + ([bulk_size] if bulk_size else []))
+    for label in needed:
+        size, size_bytes = SIZES[label]
+        fixture = base / (size + '.input')
+        if not fixture.exists():
+            chunk = bytes((i * 131 + (i >> 8) * 17 & 255 for i in range(1 << 20)))
+            fixture.write_bytes((chunk * ((size_bytes + len(chunk) - 1) // len(chunk)))[:size_bytes])
+        elif fixture.stat().st_size != size_bytes:
+            raise ValueError('existing fixture has the wrong byte length: ' + str(fixture))
+
+
+def link_inputs(base, directory, size, bulk_size=None):
+    os.link(base / (size + '.input'), directory / (size + '.input'))
+    if bulk_size:
+        os.link(base / (SIZES[bulk_size][0] + '.input'), directory / 'bulk.input')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
@@ -362,6 +380,7 @@ def main():
     parser.add_argument('--batches', type=int, default=3)
     parser.add_argument('--warmups', type=int, default=20)
     parser.add_argument('--bulk-warmups', type=int, default=40)
+    parser.add_argument('--bulk-size', choices=SIZES, default='10MiB', help='payload size for common bulk warmups, independent of measured size')
     parser.add_argument('--timeout', type=int, default=1800)
     parser.add_argument('--build-only', action='store_true')
     parser.add_argument('--skip-build', action='store_true')
@@ -434,7 +453,8 @@ def main():
         env['TDF_WEB_PACKAGE'] = json.loads((base / 'environment.json').read_text())['web']['package_path']
     if 'java' in commands and (len(commands['java']) != 4 or commands['java'][1] != '-cp'):
         raise RuntimeError('normal benchmark JVM command must contain only the classpath and main class')
-    policy = {'bulk_warmups': args.bulk_warmups, 'bulk_size_bytes': 50 * 1024 * 1024,
+    bulk_size_bytes = SIZES[args.bulk_size][1]
+    policy = {'bulk_warmups': args.bulk_warmups, 'bulk_size_bytes': bulk_size_bytes,
               'actual_size_warmups': args.warmups, 'fresh_process_batches': args.batches, 'samples_per_batch': args.samples,
               'convergence_investigation': 'actual last10 and measured median both more than20% below actual first10; preserve all samples and investigate, never select fastest'}
     (base / 'policy.json').write_text(json.dumps(policy, indent=2) + '\n')
@@ -443,13 +463,7 @@ def main():
         return
     accepted = normalized_results(base) if (base / 'raw.jsonl').exists() else {}
     labels = args.sizes.split(',')
-    needed = set(labels + (['50MiB'] if args.bulk_warmups else []))
-    for label in needed:
-        size, size_bytes = SIZES[label]
-        fixture = base / (size + '.input')
-        if not fixture.exists():
-            chunk = bytes((i * 131 + (i >> 8) * 17 & 255 for i in range(1 << 20)))
-            fixture.write_bytes((chunk * ((size_bytes + len(chunk) - 1) // len(chunk)))[:size_bytes])
+    prepare_inputs(base, labels, args.bulk_size if args.bulk_warmups else None)
     for label in labels:
         size, size_bytes = SIZES[label]
         fixture = base / (size + '.input')
@@ -464,16 +478,16 @@ def main():
                 batch_id = target + '-' + size + '-' + str(batch) + attempt
                 directory = base / 'batches' / batch_id
                 directory.mkdir(parents=True, exist_ok=False)
-                for input_size in set([size] + (['50'] if args.bulk_warmups else [])):
-                    os.link(base / (input_size + '.input'), directory / (input_size + '.input'))
-                configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url)
+                link_inputs(base, directory, size, args.bulk_size if args.bulk_warmups else None)
+                configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url, bulk_size_bytes)
                 command = commands[target] + [str(directory), 'e2e', size, str(args.samples), str(args.warmups), str(args.bulk_warmups)]
                 started = time.time()
                 print('START', target, label, 'batch', batch + 1, flush=True)
                 event = {'record_type': 'batch', 'batch_id': batch_id, 'batch_index': batch, 'batches_requested': args.batches,
                          'target': target, 'operation': 'e2e', 'fixture_id': size, 'size_bytes': size_bytes, 'size_label': label,
                          'samples_requested': args.samples, 'warmup_count': args.warmups, 'bulk_warmup_count': args.bulk_warmups,
-                         'payload_sha256': sha(fixture), 'bulk_payload_sha256': sha(base / '50.input') if args.bulk_warmups else None,
+                         'bulk_size_bytes': bulk_size_bytes,
+                         'payload_sha256': sha(fixture), 'bulk_payload_sha256': sha(base / (SIZES[args.bulk_size][0] + '.input')) if args.bulk_warmups else None,
                          'command': command, 'configuration_sha256': sha(directory / 'configuration.json'),
                          'harness_sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()},
                          'timing_scope': 'contiguous public encryption then same-archive public decryption; full owned plaintext materialized before timer stops; equality/archive persistence/validation untimed'}
@@ -495,7 +509,7 @@ def main():
                                     while stream.read(1 << 20):
                                         pass
                             manifest_profile = validate_manifest(json.loads(zipped.read('0.manifest.json')), size_bytes)
-                        configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url)
+                        configure(directory, args.warmups, args.bulk_warmups, args.batches, args.platform_url, args.issuer_url, bulk_size_bytes)
                         check = json.loads(invoke(commands['reference'] + [str(directory), 'validate', str(archive), '0', size], SDK, env, 180))
                         if check.get('correct') is not True:
                             raise ValueError('independent stock Go plaintext mismatch')

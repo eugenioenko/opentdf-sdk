@@ -10,7 +10,7 @@ const [run, op, size, n, warmups = "1", bulkWarmups = "0"] = process.argv.slice(
     op === "decrypt"
       ? new Uint8Array(await readFile(join(run, size + ".reference.tdf")))
       : null;
-const bulkInput = Number(bulkWarmups) && size !== "50" ? new Uint8Array(await readFile(join(run, "50.input"))) : input;
+const bulkInput = Number(bulkWarmups) ? new Uint8Array(await readFile(join(run, "bulk.input"))) : input;
 
 console.log(
   JSON.stringify(
