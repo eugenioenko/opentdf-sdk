@@ -516,3 +516,23 @@ and publishes on main. SDK native builds and interoperability remain CI work.
 Status: accepted locally. Goalchemy merged as
 17b435e0d1ba5cb92ba27b7ac7205d5e333eb5fa after all PR checks passed. The SDK
 documentation PR contains adoption and publication integration.
+
+## Documentation navigation and authentication experience
+
+Separate SDK API Reference from RPC API Reference. Build the RPC navigation
+tree from generated service indexes, grouped by authorization, entity resolution,
+policy domains, and configuration, with version branches where applicable. Keep
+SDK symbols reachable through package indexes and search.
+
+Add a Languages authentication page with native examples for client credentials,
+application token providers, and DPoP in all eight languages. Reuse reviewed
+snippets in generated JSON, Markdown, and API pages, and link every native guide
+to authentication setup. Preserve authored language pages during regeneration.
+
+Acceptance: docs source checking and Astro checking pass; production links work
+under `/opentdf-sdk/`; every RPC method is reachable through its tree; browser
+checks confirm expandable branches and synchronized language tabs. Complete
+with a separate documentation PR. No native suites or benchmarks are required
+for this documentation-only work.
+
+Status: accepted locally; PR submission follows.

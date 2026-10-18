@@ -44,6 +44,9 @@ the generated reference. Delete `.local/docs/source.sha256` to force generation.
   Contributor-only CLI and validation sections are omitted from language pages;
   local test infrastructure and evidence have their own Contributing section.
 - Edit the homepage and task guides under `src/content/docs/`.
+- Edit the native authentication guide in
+  `src/content/docs/languages/authentication.mdx`. Language imports preserve this
+  authored page and link to it from each generated native guide.
 - Edit reviewed examples in `examples.json`. Each includes eight native snippets
   and can attach to an SDK symbol or RPC method. Request and response JSON is
   checked against the protobuf schema; application validation is the server's
@@ -58,10 +61,11 @@ the generated reference. Delete `.local/docs/source.sha256` to force generation.
 
 The generator's Starlight template supplies the scaffold, language tabs, and
 expandable RPC field viewer, preserving customized site files. The site explains
-the shared source API and native host adapters. Type and method pages link to
-their related declarations. The sidebar
-uses section headings, and individual symbols remain accessible through package
-indexes and search.
+the shared source API and native host adapters. SDK API Reference and RPC API
+Reference have separate sidebar headings. The RPC tree groups services by their
+protobuf packages, with policy domains and API versions below them. Its links
+come from generated service indexes instead of duplicated filename hashes.
+Individual SDK symbols remain accessible through package indexes and search.
 
 The published JSON catalog is `api.json`; portable Markdown is under
 `reference/`. `llms.txt` links agents to both. The build checks local URLs,

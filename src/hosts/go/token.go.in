@@ -15,7 +15,7 @@ import (
 type TokenProvider func(context.Context) (AccessToken,error)
 const TokenProviderName = "access-token"
 // TokenCallbacks binds a provider for one generated operation. Set
-// Config.TokenProviderName to TokenProviderName and pass these callbacks.
+// Options.TokenProviderName to TokenProviderName and pass these callbacks.
 func TokenCallbacks(provider TokenProvider) Callbacks {
  return Callbacks{TokenProviderName:func(ctx context.Context,_ []byte,settle func([]byte,error))func(){
   token,err:=provider(ctx)

@@ -1,0 +1,100 @@
+---
+title: Authentication
+description: Configure client credentials, application token providers, and DPoP in your language.
+sidebar:
+  order: 0
+---
+
+import UsageExample from '../../../components/UsageExample.astro';
+
+Use the same authenticated SDK client for encryption and
+[platform service calls](../../guides/platform-services/). Choose your language
+in any example; the selection carries across the site.
+
+## Choose an authentication option
+
+| Application | Start with |
+| --- | --- |
+| Trusted backend, service, or CLI | Client credentials stored in application configuration. |
+| Browser or application with an existing login | A token provider connected to your login and refresh flow. |
+| Platform requiring proof-bound tokens | DPoP with matching identity-provider configuration. |
+
+First [build and install](../../getting-started/) the native package. The examples
+use your `platformUrl`, credentials, and a normal function or async entry point.
+Go uses your `ctx`; C# uses your `cancellationToken`. Use your language's naming
+conventions for those application variables.
+
+## Client credentials
+
+Supply your platform URL, client ID, and client secret. The SDK discovers the
+identity provider and token endpoint. Calling the Auth client acquires a token
+and checks authentication; a successful health check alone does not check your
+credentials.
+
+<UsageExample id="auth-client-credentials" />
+
+Keep the client open and reuse it for subsequent operations. These short examples
+close it after checking authentication. Print the scheme when diagnosing setup;
+keep the token value and client secret out of logs. Browser applications should
+use their login flow instead of embedding a client secret.
+
+## Application token provider
+
+Connect the SDK to your existing login and refresh code. In these examples,
+`obtainToken`, `obtainTokenAsync`, `obtain_token`, `ObtainTokenAsync`, and
+`provide_access_token` are **application functions**, not SDK methods. Implement
+them to retrieve a current token, refresh it when needed, and observe the
+cancellation signal or request they receive.
+
+<UsageExample id="auth-token-provider" />
+
+Each helper supplies the token shape its adapter accepts:
+
+| Language | Application helper result |
+| --- | --- |
+| Go | `(sdk.AccessToken, error)` from `obtainToken(ctx)`. |
+| TypeScript | `{ value, expiresAtUnixSeconds }` from `obtainToken(signal)`; the example converts expiry to the SDK's `bigint`. |
+| Python | An awaitable `AccessToken` from `obtain_token(request)`. |
+| Java | `CompletionStage<TDF3.AccessToken>` from `obtainTokenAsync(request)`. |
+| C# | `Task<TDF3.AccessToken>` from `ObtainTokenAsync(request)`. |
+| Rust | `Result<AccessToken, ProviderError>` from `obtain_token(request)`. |
+| Swift | A `TokenProvider` function that completes once with `Result<AccessToken, Error>` and returns an optional cleanup hook. |
+| C | A `gxc_provider` function returning `0` with malloc-owned UTF-8 token JSON in a `GXC_BYTES` response. Keep `auth_state` alive until the SDK closes. |
+
+The token value excludes the `Bearer` prefix. Set the scheme to `Bearer` and
+the expiry to **absolute UTC Unix seconds**, not milliseconds or a lifetime such
+as `expires_in`. Convert a lifetime by adding it to the current Unix time.
+For C, the JSON fields are `value`, `scheme`, `expiresAt` as a decimal string,
+and `confirmationJKT` as an empty string for Bearer tokens.
+
+Go callbacks are supplied per operation: pass `callbacks` to authentication and
+encryption methods, and use accessors such as `client.Attributes(callbacks)`
+for platform calls. The other native adapters retain their provider on the SDK.
+Complete asynchronous callbacks even after cancellation so cleanup can finish.
+
+## DPoP with client credentials
+
+When your platform and identity provider support DPoP, the SDK can generate an
+ephemeral key, obtain a bound token, and sign requests. This example selects
+ES256; the identity provider must allow that algorithm.
+
+<UsageExample id="auth-dpop" />
+
+An application-supplied DPoP token needs its matching private key in the SDK's
+DPoP key option and its key thumbprint in the token's confirmation field.
+Changing a Bearer token's scheme does not bind it to a key. The
+[platform setup guide](../../contributing/secure-profiles/) has local DPoP
+configuration examples.
+
+## Troubleshoot access failures
+
+- Authentication errors concern credentials, token expiry, or key binding.
+- Permission denials concern what the authenticated identity may do. Policy
+  administration and decrypting a protected file can require different grants.
+- Discovery uses your platform URL. Override the token endpoint only when your
+  deployment requires it.
+
+See [errors and cleanup](../../guides/errors-and-lifetimes/) and
+[trusted KAS endpoints](../../guides/authentication/#trusted-endpoints) for
+cancellation, resource ownership, and allowlists. Token exchange, certificate
+exchange, custom TLS settings, and Unix sockets are currently unsupported.

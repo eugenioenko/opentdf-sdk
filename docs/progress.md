@@ -2865,3 +2865,34 @@ module through `-C`. The production SDK module and compiler pin are unchanged.
 Verification: regenerated site, JSON, and Markdown with all eight declaration
 projections available. The production build and link checks passed for 927
 pages. This is a docs-generation fix; no native SDK suites ran locally.
+
+## Documentation: RPC tree and native authentication examples
+
+Started from main at 7e97d2a after the streaming payload merge. Split the sidebar
+into SDK API Reference and RPC API Reference. RPC groups cover authorization
+and entity resolution with v1/v2 branches, policy with eleven domain branches,
+and well-known configuration. All 131 methods are links beneath their service
+group. Navigation reads links from generated indexes so it does not duplicate
+Goalchemy's filename hashing. SDK symbols remain available through their package
+index and search; task examples have a guide-section link.
+
+Added a Languages authentication page with client credentials, application token
+providers, and DPoP examples in all eight languages. Each native language guide
+links to it. Authored language MDX is preserved during guide imports. The three
+new examples join the reviewed content catalog and its JSON/Markdown exports.
+Examples cover token acquisition, expiry units, cancellation contracts, cleanup,
+Go per-operation callbacks, and TypeScript bigint expiry. Application login and
+refresh functions are explicitly identified as application-owned integration
+points. Corrected the Go callback comment's removed Config name to Options.
+Updated the package and encryption guide's stale buffering statement to match
+the current stream APIs. All SDK source changes in this PR are comments.
+
+Verification: source coverage passed for 509 public declarations and members.
+Astro reported zero errors, warnings, and hints. The production build passed
+local links, anchors, assets, repository-base paths, RPC coverage, and
+eight-language example coverage across 937 pages and ten reviewed examples.
+Browser checks confirmed Policy > Registered resources expands to actual
+methods, selecting CreateRegisteredResource keeps its parent branches open,
+and all three authentication tab sets synchronize. The Go guide's authentication
+link returned HTTP 200. No native SDK builds, live auth requests, interoperability
+suites, or benchmarks ran locally. CI will validate the PR.

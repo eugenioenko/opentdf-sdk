@@ -26,9 +26,10 @@ and full OpenTDF SDK parity is outside the verified scope.
 - [Build and install](./getting-started/) the SDK for your language.
 - [Encrypt and decrypt](./guides/encrypt-and-decrypt/) with a persistent client.
 - [Configure authentication](./guides/authentication/) and [handle failures](./guides/errors-and-lifetimes/).
+- [Authenticate in your language](./languages/authentication/) with client credentials, an application token provider, or DPoP.
 - [Call platform services](./guides/platform-services/) with examples in every language.
-- Browse [types, functions, and methods](./api/) from the implemented source.
-- Explore [RPC requests and responses](./api/rpc/), including nested fields and enums.
+- Browse the [SDK API Reference](./api/) for types, functions, and methods.
+- Explore the [RPC API Reference](./api/rpc/) by service, with nested request and response fields and enums.
 
 ## Find the API you need
 
