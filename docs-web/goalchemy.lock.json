@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/eugenioenko/goalchemy.git",
-  "revision": "17b435e0d1ba5cb92ba27b7ac7205d5e333eb5fa",
+  "revision": "468ec2482d3a70f304f9a06c2186c9aff6cc28a3",
   "go_toolchain": "go1.27.1",
   "buf_version": "1.70.0"
 }
