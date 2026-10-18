@@ -2800,3 +2800,16 @@ Source documentation coverage passes for 492 public declarations and members.
 The build passes all local link, fragment, asset, and repository-base checks
 across 927 pages. Native language guides were reimported from the updated
 canonical files. No native suites or benchmarks ran locally.
+
+## Documentation CI import resolution
+
+The earlier documentation CI run failed while validating Goalchemy's context
+contracts: Go's source importer resolved nested capability imports from the
+SDK checkout and followed its development-only `../goalchemy` replacement.
+That sibling checkout does not exist on a clean runner. Run documentation
+generation from the pinned compiler checkout while retaining the isolated SDK
+module through `-C`. The production SDK module and compiler pin are unchanged.
+
+Verification: regenerated site, JSON, and Markdown with all eight declaration
+projections available. The production build and link checks passed for 927
+pages. This is a docs-generation fix; no native SDK suites ran locally.
