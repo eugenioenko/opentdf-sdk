@@ -226,9 +226,12 @@ func (r *Reader) UnsafePayloadKeyRetrieval() ([]byte, error)
 func (r *Reader) Close() error
 ```
 
-`TDFReader` is the interface with this method set. `Read`, `ReadAt`, `Seek`
-and `WriteTo` run `Init` lazily with the context given to `LoadTDF`; hosts
-that need a different context call `Init` first. The Go adapter adds
+`TDFReader` is the interface with this method set. `ReadAt` and `WriteTo`
+run `Init` lazily under their own context; `Read` and `UnencryptedMetadata`,
+which take none, run it under the background context rather than the one
+given to `LoadTDF` (a generated host's call context belongs to the call that
+made it and faults when a later call observes it). Callers that need
+cancellation or a deadline on the key request call `Init` first. The Go adapter adds
 `ReaderAt(ctx) io.ReaderAt` over `ReadAt`; the reference's `io.ReaderAt` and
 `io.WriterTo` shapes cannot cross the boundary (see the Phase 7 deviations).
 
@@ -788,6 +791,12 @@ parameters) and `std/os` file handles.
   the host stream views expose) and the only one that returns the real
   `io.EOF`; `Seek` and `ReadAt` return `*Error` of kind `invalid_offset` and
   `payload_read` carrying the reference's texts.
+- The lazy `Init` behind `Read` and `UnencryptedMetadata` runs under the
+  background context, not the `LoadTDF` context the reference keeps: a
+  generated host's call context is owned by the call that created it, and a
+  stream view read or a later metadata call that observed it faulted on
+  Java, C#, Python and TypeScript (`foreign context owner`). `Init` first
+  gives the key request a context.
 - `SDK.DecryptTo` takes the ciphertext as an `io.ReadSeeker`, not `[]byte`:
   the reference's byte form is `DecryptBytes`, and a byte input defeats the
   purpose of a streaming decrypt.

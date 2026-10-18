@@ -51,7 +51,6 @@ const (
 type Reader struct {
 	rewrapper           Rewrapper
 	logger              *slog.Logger
-	ctx                 context.Context
 	manifest            Manifest
 	unencryptedMetadata []byte
 	archive             *tdf.Reader
@@ -853,7 +852,6 @@ func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOpti
 	return &Reader{
 		rewrapper:         s.rewrapper,
 		logger:            s.cfg.logger,
-		ctx:               ctx,
 		archive:           archive,
 		manifest:          *manifestObj,
 		kasSessionKey:     config.kasSessionKey,
@@ -911,14 +909,12 @@ func (r *Reader) Close() error {
 	return nil
 }
 
-// callContext is the context for a lazily run Init: the LoadTDF context
-// while it lives, as in the reference. A generated host's call context ends
-// with its call, so a later lazy operation falls back to the background
-// context; hosts that need cancellation call Init first.
+// callContext is the context for a lazily run Init. The reference keeps the
+// LoadTDF context for it; a generated host's call context is owned by the call
+// that created it and faults when a later call observes it, so lazy
+// operations run under the background context on every target. Callers that
+// need cancellation or a deadline on the key request call Init first.
 func (r *Reader) callContext() context.Context {
-	if r.ctx != nil && r.ctx.Err() == nil {
-		return r.ctx
-	}
 	return context.Background()
 }
 
@@ -938,8 +934,8 @@ func (r *Reader) ensureKey(ctx context.Context, op string) error {
 
 // Read reads up to len(p) bytes of plaintext from the cursor and advances it.
 // It returns io.EOF once the payload is exhausted; a read that reaches the
-// end returns the bytes it got with a nil error. Init runs lazily with the
-// LoadTDF context.
+// end returns the bytes it got with a nil error. Init runs lazily under the
+// background context; call Init first to govern the key request.
 func (r *Reader) Read(p []byte) (int, error) {
 	if err := r.ensureKey(r.callContext(), "Read"); err != nil {
 		return 0, err

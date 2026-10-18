@@ -39,8 +39,15 @@ runs a `streams` round trip (file in, ZIP32 out, stream reader with seek,
 failed decrypt). The api-spec records the Phase 7 deviations: `ReadAt` and
 `WriteTo` take a context and return the bytes or count instead of the
 reference's `io.ReaderAt`/`io.WriterTo`, `DecryptTo` takes an `io.ReadSeeker`,
-`DecryptFile` compares paths as strings and relies on the POSIX rename, and
-unknown-size input writes ZIP64. The plan's two Phase 7 PRs landed as one.
+`DecryptFile` compares paths as strings and relies on the POSIX rename,
+unknown-size input writes ZIP64, and the lazy `Init` behind `Read` and
+`UnencryptedMetadata` runs under the background context: the first Real KAS
+runs failed on Java, C#, Python and TypeScript with `foreign context owner`
+when the stream view's read observed the `LoadTDF` call's context, reproduced
+against the local platform and fixed in the shared source. The docs site's
+own compiler pin (`docs-web/goalchemy.lock.json`) moved to the same Goalchemy
+merge, since the reference generator reads `std/os`. The plan's two Phase 7
+PRs landed as one.
 Still open from the plan: xtest `chunky`, `medium` and `large` runs,
 `zip64-at-2gib`, `UnsafePayloadKeyRetrieval` and the 2.1 GiB benchmark with
 peak memory per target.
