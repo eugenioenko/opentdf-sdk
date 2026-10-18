@@ -455,7 +455,5 @@ func (s *SDK) getPublicKey(ctx context.Context, kasurl, algorithm, kidToFind str
 }
 
 func wipe(data []byte) {
-	for i := range data {
-		data[i] = 0
-	}
+	clear(data)
 }

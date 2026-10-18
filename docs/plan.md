@@ -554,7 +554,9 @@ comparison replaced by the current handle API. Publish a reproducible methodolog
 and sanitized measurement evidence, restore temporary local token settings,
 and open a pull request.
 
-Status: accepted locally. All forty-five cells passed, with 675 timed pairs
-and 810 independent archive checks. No warmup flags remain. The README,
-methodology, and sanitized evidence are ready; temporary token settings were
-restored. PR submission follows. Python regression investigation is deferred.
+Status: PR #50 contains the initial campaign. Research traced Python and
+TypeScript's large-payload slowdown to per-byte wiping of decrypted segments.
+Replace the shared wipe loop with `clear(data)`, verify alias and slice-bound
+semantics, rebuild the seven measured SDK packages, and rerun both references
+and all forty-five cells under the same policy. Replace the PR's published
+results with this new campaign. Swift timing remains omitted as authorized.

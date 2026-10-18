@@ -15,6 +15,24 @@ import (
 	"opentdf-local/sdk/src/protocol/kas"
 )
 
+func TestWipe(t *testing.T) {
+	backing := []byte("secret")
+	alias := backing
+	wipe(backing[1:4:6])
+	if string(alias) != "s\x00\x00\x00et" {
+		t.Fatalf("wipe changed bytes outside the slice or lost its backing: %q", alias)
+	}
+	wipe(backing[:0])
+	wipe(nil)
+	if string(alias) != "s\x00\x00\x00et" {
+		t.Fatalf("empty wipe changed the backing: %q", alias)
+	}
+	wipe(backing)
+	if string(alias) != strings.Repeat("\x00", len(alias)) {
+		t.Fatalf("wipe left nonzero bytes through an alias: %q", alias)
+	}
+}
+
 // Ported from TestCreatingRequest: the signed request token carries the
 // protojson rewrap request with the KAO's fields.
 func TestCreatingRequest(t *testing.T) {

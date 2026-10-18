@@ -2965,3 +2965,19 @@ Keycloak client's original token-lifetime attribute and verified that new tokens
 again expire after 300 seconds. Documentation links, table/evidence consistency,
 secret exclusion, and whitespace are checked before committing. No extra native
 suites or performance-fix experiments ran.
+
+### Bulk buffer wiping and a new benchmark campaign
+
+Research isolated the large-payload slowdown to the streaming reader wiping
+cached plaintext a byte at a time. A same-source Python comparison measured
+4,231 ms with native pausing and 4,191 ms with frames at 10 MiB. Changing only
+the wipe helper to `clear(data)` measured 166 ms. A focused TypeScript comparison
+measured 567 ms before and 140 ms after. These short diagnostic runs are not
+substituted into the published benchmark table. Their retained archives passed
+independent Go/KAS, ZIP CRC, and manifest checks; sub-slice and alias checks
+confirmed that bulk clearing preserves in-place wiping.
+
+The shared helper now uses `clear(data)`. Add focused coverage for nil and empty
+slices, aliases, and bytes outside the slice length, then rebuild packages and
+remeasure all forty-five cells before updating PR #50. Keep the compiler,
+reference revisions, toolchains, timing boundaries, and warmup policy fixed.
