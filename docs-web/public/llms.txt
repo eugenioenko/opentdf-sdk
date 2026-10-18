@@ -1,0 +1,36 @@
+# OpenTDF SDK
+
+> A proof-of-concept TDF3 SDK with one shared Go implementation and native adapters for Go, TypeScript, Python, Java, C#, Rust, C, and Swift.
+
+Documentation: https://eugenioenko.github.io/opentdf-sdk/
+Repository: https://github.com/eugenioenko/opentdf-sdk
+
+Start with the native language guide for the package an application imports. The generated reference describes shared source and compiler declarations beneath those adapters. Do not assume their names are interchangeable. Packages use development identities and are not published to registries. Consult current compatibility limits; planned APIs in design documents are not proof of implemented support.
+
+## Guides
+
+- [Build and install](https://eugenioenko.github.io/opentdf-sdk/getting-started/): Choose a language and find its native package instructions.
+- [Encrypt and decrypt](https://eugenioenko.github.io/opentdf-sdk/guides/encrypt-and-decrypt/): Client reuse, policy, binary archives, and cleanup.
+- [Authentication](https://eugenioenko.github.io/opentdf-sdk/guides/authentication/): Token providers, client credentials, DPoP, and KAS allowlists.
+- [Errors and lifetimes](https://eugenioenko.github.io/opentdf-sdk/guides/errors-and-lifetimes/): Stable error kinds, cancellation, and ownership.
+- [Platform services](https://eugenioenko.github.io/opentdf-sdk/guides/platform-services/): Native examples for pagination, namespace and attribute administration, FQN lookup, and Connect errors in eight languages.
+
+## API reference
+
+- [Portable Markdown index](https://eugenioenko.github.io/opentdf-sdk/reference/index.md): Package indexes link to types, methods, parameters, fields, and native declarations.
+- [JSON catalog](https://eugenioenko.github.io/opentdf-sdk/api.json): Machine-readable symbols, documentation, cross-references, and target availability.
+- [Browsable API](https://eugenioenko.github.io/opentdf-sdk/api/): The same reference rendered in Astro Starlight.
+- [RPC reference](https://eugenioenko.github.io/opentdf-sdk/api/rpc/): Native service methods with request and response fields, nested message types, enums, and protobuf validation options from the pinned platform revision. Reviewed examples are schema checked; authorization and server validation still apply.
+- [Usage examples](https://eugenioenko.github.io/opentdf-sdk/api/examples/): Native language tabs for SDK encryption and platform service calls, with the same snippets included in the JSON and Markdown exports.
+- [Compatibility](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/compatibility.md): Supported profiles and restrictions.
+
+## Native adapters
+
+- [Go](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-go-library.md): Native API and setup.
+- [TypeScript](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-typescript-library.md): Node and browser APIs.
+- [Python](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-python-library.md): Wheel installation and Python API.
+- [Java](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-java-library.md): JVM API and dependencies.
+- [C#](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-csharp-library.md): .NET API and cancellation.
+- [Rust](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-rust-library.md): Crate API and resource ownership.
+- [C](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-c-library.md): Headers, builds, and ownership.
+- [Swift](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/generated-swift-library.md): Experimental SwiftPM API and platform limits.

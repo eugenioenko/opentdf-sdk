@@ -63,6 +63,8 @@ const (
 	identifier32ByteLength int = 32
 )
 
+// NewResourceLocator parses an HTTP or HTTPS URL into a compact resource locator.
+// Invalid input returns KindInvalidInput.
 func NewResourceLocator(url string) (*ResourceLocator, error) {
 	rl, err := newResourceLocator(url)
 	if err != nil {
@@ -82,6 +84,8 @@ func newResourceLocator(url string) (*ResourceLocator, error) {
 	return rl, err
 }
 
+// NewResourceLocatorFromReader reads one binary resource locator from reader.
+// Malformed or truncated input returns KindInvalidInput.
 func NewResourceLocatorFromReader(reader io.Reader) (*ResourceLocator, error) {
 	rl := &ResourceLocator{}
 	err := rl.readResourceLocator(reader)
@@ -121,6 +125,7 @@ func (rl ResourceLocator) GetURL() (string, error) {
 	}
 }
 
+// Less compares locators for the SDK's deterministic key ordering. y must not be nil.
 func (rl ResourceLocator) Less(y *ResourceLocator) bool {
 	pa := rl.protocol & 0xF
 	pb := y.protocol & 0xF
@@ -136,6 +141,8 @@ func (rl ResourceLocator) Less(y *ResourceLocator) bool {
 	return false
 }
 
+// KASURI returns the URL without its key identifier, or an empty string for an empty
+// locator.
 func (rl ResourceLocator) KASURI() string {
 	if rl.body == "" {
 		return ""
@@ -150,6 +157,7 @@ func (rl ResourceLocator) KASURI() string {
 	}
 }
 
+// String returns the KAS URL followed by # and the key identifier when present.
 func (rl ResourceLocator) String() string {
 	url := rl.KASURI()
 	if rl.identifier == "" {
@@ -158,6 +166,7 @@ func (rl ResourceLocator) String() string {
 	return fmt.Sprintf("%s#%s", url, rl.identifier)
 }
 
+// Equals compares the protocol, URL body, and key identifier.
 func (rl ResourceLocator) Equals(r2 ResourceLocator) bool {
 	if rl.protocol != r2.protocol {
 		return false
@@ -171,6 +180,7 @@ func (rl ResourceLocator) Equals(r2 ResourceLocator) bool {
 	return true
 }
 
+// ID returns the stored key identifier, including any binary-format padding.
 func (rl ResourceLocator) ID() string {
 	return rl.identifier
 }

@@ -5,19 +5,30 @@ import (
 	"github.com/eugenioenko/goalchemy/lib/errors"
 )
 
+// PayloadEntry is the encrypted payload entry name written by this SDK.
 const PayloadEntry = "0.payload"
+
+// ManifestEntry is the legacy manifest entry name written by this SDK.
 const ManifestEntry = "0.manifest.json"
+
+// SpecManifestEntry is the alternative manifest name accepted when reading archives.
 const SpecManifestEntry = "manifest.json"
 
 // ArchiveLimits are hard resource bounds applied before slicing or allocation.
 // The initial implementation supports single-disk, stored, in-memory archives.
 type ArchiveLimits struct {
-	ArchiveBytes  int
-	PayloadBytes  int
+	// ArchiveBytes bounds the complete archive length in bytes.
+	ArchiveBytes int
+	// PayloadBytes bounds the payload entry length in bytes.
+	PayloadBytes int
+	// ManifestBytes bounds the manifest entry length in bytes.
 	ManifestBytes int
-	Entries       int
+	// Entries bounds the number of ZIP entries.
+	Entries int
 }
 
+// DefaultArchiveLimits allows 128 MiB archives, 64 MiB payloads, 10 MiB manifests, and
+// at most 64 entries.
 func DefaultArchiveLimits() ArchiveLimits {
 	return ArchiveLimits{128 * 1024 * 1024, 64 * 1024 * 1024, 10 * 1024 * 1024, 64}
 }
@@ -27,8 +38,11 @@ func archiveLimitsOK(l ArchiveLimits) bool {
 
 // Archive contains independent copies; CRC validation is not cryptographic integrity.
 type Archive struct {
-	Payload      []byte
-	Manifest     []byte
+	// Payload contains an independent copy of the stored payload bytes.
+	Payload []byte
+	// Manifest contains an independent copy of the manifest JSON bytes.
+	Manifest []byte
+	// ManifestName identifies which supported manifest entry name was read.
 	ManifestName string
 }
 type zipEntry struct {
@@ -190,6 +204,9 @@ func safe32(v uint32, max int) (int, error) {
 }
 func cloneBytes(b []byte) []byte { out := make([]byte, len(b)); copy(out, b); return out }
 
+// ReadArchive reads a bounded, stored ZIP archive and verifies its structure and CRCs.
+// It accepts supported ZIP32 and ZIP64 records; CRC checks do not establish TDF
+// authenticity.
 func ReadArchive(b []byte, l ArchiveLimits) (Archive, error) {
 	if !archiveLimitsOK(l) || len(b) > l.ArchiveBytes || len(b) < 22 {
 		return Archive{}, errors.New("zip: resource limit or truncated archive")

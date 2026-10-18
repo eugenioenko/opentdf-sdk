@@ -20,6 +20,12 @@ BASIC, EC and enforced DPoP, plus integrity and transport rejection checks.
 Its SwiftPM source package built reproducibly and was imported independently.
 macOS/iOS integration remains unverified. Linux Swift performance measurements are reported below.
 
+Browse the [SDK documentation](https://eugenioenko.github.io/opentdf-sdk/) for
+getting-started guides, native package APIs, and the generated
+[type and method reference](https://eugenioenko.github.io/opentdf-sdk/api/).
+The [documentation maintenance guide](docs-web/README.md) explains generation
+and automatic GitHub Pages publishing.
+
 | SDK | Package | API and prerequisites |
 | --- | --- | --- |
 | Go | Importable Go module | [Go](docs/generated-go-library.md) |

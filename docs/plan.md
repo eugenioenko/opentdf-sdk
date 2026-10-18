@@ -1,5 +1,20 @@
 # OpenTDF SDK implementation plan
 
+## Public SDK documentation
+
+Document the implemented shared API before generating a consumer site. Cover
+functions, methods, types, fields, defaults, errors, and ownership with short,
+plain comments. Keep planned features separate and preserve implementation
+behavior. Check comment coverage and verify that edited Go code tokens match
+the base revision.
+
+Use Goalchemy's JSON, Markdown, and Astro Starlight documentation generator.
+Publish source references alongside the eight native adapter guides, with clear
+labels for each API layer. Keep generated references ignored and regenerate in
+the documentation workflow. Build, check links, and open a publication PR for
+GitHub Pages at the repository path. Do not run SDK interoperability suites for
+documentation-only changes.
+
 ## Goalchemy 0.7.2 native pausing adoption
 
 Pin the SDK module, nested test modules, reference lock and both CI compiler
@@ -485,3 +500,19 @@ No wall-clock estimate is committed yet. The compiler host/library work and per-
 - [OpenTDF documentation index](https://opentdf.io/llms.txt)
 - [Official quickstart](https://opentdf.io/quickstart)
 - [Official quickstart Compose](https://opentdf.io/quickstart/docker-compose.yaml)
+
+## Public SDK documentation follow-up
+
+Adopt Goalchemy PR #115 after its full CI passes and it merges. Generate SDK
+reference pages, portable Markdown, and JSON together with the native clients'
+RPC methods and their reachable protobuf schemas. Keep examples in one reviewed
+content file and reuse language tabs in task guides and generated pages.
+
+Acceptance: every exposed RPC has request/response types and eight native
+declarations; reviewed examples cover all eight languages; the Astro build and
+local links pass under `/opentdf-sdk/`; the documentation workflow regenerates
+and publishes on main. SDK native builds and interoperability remain CI work.
+
+Status: accepted locally. Goalchemy merged as
+17b435e0d1ba5cb92ba27b7ac7205d5e333eb5fa after all PR checks passed. The SDK
+documentation PR contains adoption and publication integration.

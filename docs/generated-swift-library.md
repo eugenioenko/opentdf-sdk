@@ -26,7 +26,7 @@ cd goalchemy
 git checkout "$(python3 -c 'import json;print(json.load(open("../sdk/references.lock.json"))["repositories"]["goalchemy"]["revision"])')"
 bash scripts/fetch-toolchains.sh swift
 export PATH="$PWD/.toolchains/swift-6.4.0/usr/bin:$PATH"
-GOTOOLCHAIN=go1.25.14 go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy
+go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy
 cd ../sdk
 GOALCHEMY_BIN=../goalchemy/out/swift-tdf-library/goalchemy \
     bash scripts/build-generated-swift.sh out/swift-tdf-library/sdk
@@ -101,7 +101,7 @@ try sdk.close()
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `try await SDK(endpoint, Options)`, `SDK.create` (synchronous) | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection` runs the health check first. |
-| `sdk.createTDF(Data, TDFOptions)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.createTDF(Data, TDFOptions)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Payloads are currently buffered in memory. |
 | `sdk.loadTDF(Data, ReaderOptions)` → `Reader` (`initialize()`, `manifest()`, `policy()`, `dataAttributes()`, `unencryptedMetadata()`, `close()`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. `Reader.Init` is `initialize()` (`init` is reserved for initializers in Swift). The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set. |
 | `TDFOptions.assertions` (`AssertionConfig` with `signingKey: AssertionKey?`), `TDFOptions.systemMetadataAssertion`; `ReaderOptions.assertionVerificationKeys` (`AssertionVerificationKeys(defaultKey:, keys: [assertionId: AssertionKey])`), `ReaderOptions.disableAssertionVerification` | `WithAssertions`, `WithSystemMetadataAssertion`, `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | `AssertionKey.hs256(secret)` / `.rs256(pem)`: assertions are signed into the manifest with HS256 over the payload key or the config's signing key and verified on read by default, by assertion id with a default key, or with the payload key; failures are `.assertionFailure` with `assertionId`. |
 | `sdk.isHealthy()`, `platformConfiguration()`, `getBaseKey()`, `storeKASKeys`, `close()` | same | `platformConfiguration()` returns `[String: String]` (non-string members as compact JSON). |

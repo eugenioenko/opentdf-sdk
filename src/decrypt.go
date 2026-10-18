@@ -10,13 +10,10 @@ import (
 // memory.
 var maxDecryptBytesSize int64 = 1 << 30 // 1 GiB
 
-// DecryptBytes decrypts a TDF payload held in memory and returns the
-// plaintext. A thin wrapper over [SDK.LoadTDF] + the reader's payload read:
-//
-//	plaintext, err := sdk.DecryptBytes(ctx, ciphertext, ReaderOptions{})
-//
-// ctx governs the KAS rewrap request (the only network call this method
-// makes) and is honored for cancellation/timeout.
+// DecryptBytes loads ciphertext, authorizes key access through KAS, and returns
+// plaintext after integrity and enabled assertion checks. It buffers the archive
+// and plaintext in memory and closes its temporary reader. ctx bounds registry
+// discovery, authentication, and KAS requests.
 func (s *SDK) DecryptBytes(ctx context.Context, ciphertext []byte, opts ReaderOptions) ([]byte, error) {
 	reader, err := s.LoadTDF(ctx, bytes.NewReader(ciphertext), opts)
 	if err != nil {

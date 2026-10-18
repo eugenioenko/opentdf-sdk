@@ -12,6 +12,7 @@ import (
 	"opentdf-local/sdk/src/protocol/policy/attributes"
 )
 
+// ErrInvalid reports an invalid attribute FQN or related value.
 var ErrInvalid = errors.New("invalid type")
 
 // Attribute rule types: operators!
@@ -42,6 +43,8 @@ type kaoTpl struct {
 // unexported url and key are exported so the value crosses the Goalchemy
 // boundary; construct it with NewAttributeNameFQN.
 type AttributeNameFQN struct {
+	// URL preserves the parsed attribute FQN's original spelling. Key is the lowercase
+	// lookup key for the FQN.
 	URL, Key string
 }
 
@@ -86,19 +89,23 @@ func newAttributeNameFQN(u string) (AttributeNameFQN, error) {
 	return AttributeNameFQN{u, strings.ToLower(u)}, nil
 }
 
+// String returns the original FQN.
 func (a AttributeNameFQN) String() string {
 	return a.URL
 }
 
+// Select creates a value FQN by URL-escaping v and appending it to the attribute name.
 func (a AttributeNameFQN) Select(v string) AttributeValueFQN {
 	u := fmt.Sprintf("%s/value/%s", a.URL, url.PathEscape(v))
 	return AttributeValueFQN{u, strings.ToLower(u)}
 }
 
+// Prefix returns the attribute-name FQN.
 func (a AttributeNameFQN) Prefix() string {
 	return a.URL
 }
 
+// Authority returns the namespace URL. It panics if the FQN is invalid.
 func (a AttributeNameFQN) Authority() string {
 	m := matchAttributeNameFQN(a.URL)
 	if m == nil {
@@ -107,6 +114,7 @@ func (a AttributeNameFQN) Authority() string {
 	return m[1]
 }
 
+// Name returns the decoded attribute name. It panics if the FQN is invalid.
 func (a AttributeNameFQN) Name() string {
 	m := matchAttributeNameFQN(a.URL)
 	if m == nil {
@@ -122,6 +130,8 @@ func (a AttributeNameFQN) Name() string {
 // AttributeValueFQN is a utility type to represent an FQN for an attribute value.
 // Construct it with NewAttributeValueFQN.
 type AttributeValueFQN struct {
+	// URL preserves the parsed attribute-value FQN's original spelling. Key is the
+	// lowercase lookup key for the FQN.
 	URL, Key string
 }
 
@@ -154,10 +164,12 @@ func newAttributeValueFQN(u string) (AttributeValueFQN, error) {
 	return AttributeValueFQN{u, strings.ToLower(u)}, nil
 }
 
+// String returns the original FQN.
 func (a AttributeValueFQN) String() string {
 	return a.URL
 }
 
+// Authority returns the namespace URL. It panics if the FQN is invalid.
 func (a AttributeValueFQN) Authority() string {
 	m := matchAttributeValueFQN(a.URL)
 	if m == nil {
@@ -166,6 +178,7 @@ func (a AttributeValueFQN) Authority() string {
 	return m[1]
 }
 
+// Prefix returns the attribute-name FQN. It panics if the value FQN is invalid.
 func (a AttributeValueFQN) Prefix() AttributeNameFQN {
 	m := matchAttributeValueFQN(a.URL)
 	if m == nil {
@@ -178,6 +191,7 @@ func (a AttributeValueFQN) Prefix() AttributeNameFQN {
 	return p
 }
 
+// Value returns the decoded attribute value. It panics if the FQN is invalid.
 func (a AttributeValueFQN) Value() string {
 	m := matchAttributeValueFQN(a.String())
 	if m == nil {
@@ -190,6 +204,7 @@ func (a AttributeValueFQN) Value() string {
 	return v
 }
 
+// Name returns the decoded attribute name. It panics if the FQN is invalid.
 func (a AttributeValueFQN) Name() string {
 	m := matchAttributeValueFQN(a.URL)
 	if m == nil {

@@ -18,12 +18,15 @@ const (
 // Transport is one bounded HTTP exchange: the reference's *http.Client. The
 // default runs on lib/http; tests and wrappers supply replacements.
 type Transport interface {
+	// Do performs a bounded HTTP exchange and returns status, headers, and body. Headers
+	// are alternating name/value strings; ctx and timeoutMillis bound the request.
 	Do(ctx context.Context, method, url string, headers []string, body []byte, maxResponseBytes int, timeoutMillis int64) (int, []string, []byte, error)
 }
 
 // Clock supplies Unix seconds for token expiry, JWT claims and the KAS key
 // cache; the default reads the host clock.
 type Clock interface {
+	// Now returns the current UTC time in Unix seconds.
 	Now() int64
 }
 

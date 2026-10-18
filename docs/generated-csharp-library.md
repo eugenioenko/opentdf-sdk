@@ -15,7 +15,7 @@ production path has no Go process, compiler or reference SDK.
 
 The .NET 8 SDK (the repository pins SDK 8.0.425 under
 `goalchemy/.toolchains/dotnet`), Bash and Python 3. From `goalchemy/`, build
-`GOTOOLCHAIN=go1.25.14 go build -o out/csharp-tdf-library/goalchemy
+`go build -o out/csharp-tdf-library/goalchemy
 ./cmd/goalchemy`, then run `scripts/build-generated-csharp.sh [destination]`.
 `GOALCHEMY_BIN` selects a compiler binary, `GOALCHEMY_ROOT` the Goalchemy
 checkout and `DOTNET_BIN` another .NET 8 SDK. The script compiles the root,
@@ -71,7 +71,7 @@ catch (OpenTdfException e) { Console.WriteLine($"{e.Kind} {e.HttpStatus} {e.Mess
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `await Sdk.CreateAsync(endpoint, Options, ct)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `PlatformConfiguration` is given; `ValidateConnection` runs the health check first. |
-| `sdk.CreateTdfAsync(byte[], TdfOptions, ct)` → `TdfObject` (`Bytes`, `ManifestAsync`, `SizeAsync`, `CloseAsync`), `sdk.EncryptBytesAsync` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.CreateTdfAsync(byte[], TdfOptions, ct)` → `TdfObject` (`Bytes`, `ManifestAsync`, `SizeAsync`, `CloseAsync`), `sdk.EncryptBytesAsync` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Payloads are currently buffered in memory. |
 | `sdk.LoadTdfAsync(byte[], ReaderOptions, ct)` → `Reader` (`InitAsync`, `ManifestAsync`, `PolicyAsync`, `DataAttributesAsync`, `UnencryptedMetadataAsync`, `CloseAsync`), `sdk.DecryptBytesAsync` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `KasAllowlist` or `IgnoreAllowlist` is set, as in the reference. |
 | `TdfOptions.Assertions` (`AssertionConfig` with an optional `SigningKey`), `TdfOptions.SystemMetadataAssertion`; `ReaderOptions.AssertionVerificationKeys` (`{DefaultKey, Keys: IReadOnlyDictionary<assertionId, AssertionKey>}`), `ReaderOptions.DisableAssertionVerification` | `WithAssertions`, `WithSystemMetadataAssertion`, `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | `AssertionKey.Hs256(secret)` / `Rs256(pem)`: assertions are signed into the manifest with HS256 over the payload key or the config's signing key and verified on read by default, by assertion id with a default key, or with the payload key; failures carry kind `assertion_failure` and `AssertionId`. |
 | `sdk.IsHealthyAsync`, `PlatformConfigurationAsync`, `GetBaseKeyAsync`, `StoreKasKeysAsync`, `CloseAsync` | same | `PlatformConfigurationAsync` returns the members as strings (non-string members as compact JSON); `GetBaseKeyAsync` a dictionary keyed `kasUri`, `publicKey{algorithm,kid,pem}`, `kasId`. |
@@ -89,10 +89,9 @@ sizes are `long`, strings UTF-8 `string`s, payloads `byte[]`.
 `TDF3.FromTask`) and replaces client credentials; the SDK then signs rewrap
 requests with the reference's ephemeral ES256 key unless `DpopKeyPem` is
 set. Options this build does not implement yet (`TokenExchange`,
-`CertExchange`, `Tls`, `UnixSocket`, service endpoint overrides, target
+`CertExchange`, `Tls`, `UnixSocket`, target
 mode `4.2.2`, schema validation, post-quantum key types) fail
-with kind `unsupported_feature` and the message `unsupported in this build:
-<option>`.
+with kind `unsupported_feature` and the message `unsupported in this build: <option>`.
 
 Manifests and policies are returned as read-only
 `IReadOnlyDictionary<string, object>` trees keyed by the reference's JSON

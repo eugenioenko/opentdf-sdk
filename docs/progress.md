@@ -2708,3 +2708,108 @@ they exercised. The TypeScript type consumer no longer imports `encrypt`,
 
 Docs: the "Deprecated façade" sections of the per-target guides, the
 two-roots wording in api-spec.md, README and the build descriptions.
+
+## Public SDK documentation: source audit
+
+Added missing comments for 374 public declarations and members. The audit now
+covers all 541 handwritten exported declarations, interface methods, and fields
+in the shared SDK, deprecated facade, and archive package. Added package guides
+and clarified unsupported options, buffering, allowlists, integrity checks, and
+resource ownership. Public comments no longer promise future implementation
+phases. The reachable internal rewrap-result type is also described.
+
+Verification: `go run scripts/check-api-docs.go` passed; a Go scanner comparison
+confirmed unchanged code tokens in edited source files, and `git diff --check`
+passed. No protocol, crypto, or runtime behavior changed. Site generation and
+publication verification follow this source-documentation phase.
+
+## Public SDK documentation: site and publication
+
+Added an Astro Starlight site using Goalchemy's consumer documentation template.
+The compiler pin is 2271b7c62e925f790b02c735c0c81f7e298c9e0e, introduced by
+Goalchemy PR #115. The docs-only pin leaves the SDK build compiler unchanged.
+Generation uses an isolated module, preserves customized site files, and checks
+all eight native projections and root-symbol descriptions. It emits 366 symbols
+as linked pages, portable Markdown, and a JSON catalog. Generated output stays
+ignored and is recreated automatically in CI.
+
+Added short task guides and published all eight canonical native adapter guides,
+with separate source and native API explanations. Corrected stale streaming
+promises, outdated endpoint restrictions, and malformed inline code in imported
+guides. Added llms.txt, package/type/method navigation, and search.
+
+Verification: source-comment coverage passed for 541 declarations and members.
+Astro checking reported zero errors, warnings, or hints. The static build passed
+link, fragment, asset, catalog, and base-path checks across 400 pages. Preview
+served the homepage, API, TypeScript guide, Markdown, llms.txt, and JSON at the
+repository base; SDK.EncryptBytes has descriptions and bindings for all eight
+targets. No SDK native builds or interoperability suites were run for these
+documentation-only changes.
+
+The documentation workflow validates pull requests and publishes relevant main
+pushes to https://eugenioenko.github.io/opentdf-sdk/. GitHub Pages was configured
+for workflow deployment. The site will be public after this PR merges and the
+publication workflow completes.
+
+## Public SDK documentation: language tabs and platform RPC reference
+
+Goalchemy PR #115 passed full CI and merged as
+17b435e0d1ba5cb92ba27b7ac7205d5e333eb5fa. Updated the documentation compiler
+pin and adopted its reusable language tabs and expandable RPC field viewer.
+The SDK build compiler pin is unchanged.
+
+Generation reads platform source at the references.lock.json revision, builds
+source-info descriptors with pinned Buf, and derives native declarations from
+the checked-in host adapters and existing service inventory. The reference now
+covers 356 SDK symbols, 16 services, 131 methods, and 364 reachable messages.
+The generated package reference covers the SDK and archive packages.
+
+Added seven examples, each in all eight languages: SDK encryption/decryption,
+namespace listing and creation, attribute listing and creation, FQN lookup, and
+not_found handling. Task guides and generated API pages reuse the same snippets.
+RPC JSON examples are checked against protobuf schemas. Native snippets were
+reviewed against host APIs and generated message definitions; documentation
+generation does not compile or execute them or claim server-side validation.
+Replaced three placeholder FQN examples with concrete URLs that render in MDX.
+Only source comments changed in the SDK implementation.
+
+Verification: source coverage passed for 541 public declarations and members.
+Astro reported zero errors, warnings, and hints. The production build passed
+links, anchors, assets, RPC/example coverage, and repository-base checks across
+936 pages. Browser checks confirmed synchronized language selection between
+pages and expandable nested response schemas. Regeneration reused cached output
+for unchanged inputs. No native SDK tests or benchmarks ran locally.
+
+The existing documentation workflow now tracks platform pins and service-doc
+generators. It regenerates JSON, portable Markdown, task examples, and RPC pages
+in CI, validates pull requests, and publishes only main builds with GitHub Pages.
+Publication still awaits merging the SDK documentation PR.
+
+## Public SDK documentation: regenerate after facade removal
+
+Merged main at fc919c9, including PR #47's library-facade removal, into the
+documentation branch. Kept that removal and removed the superseded facade
+comments from this branch. Updated reference generation to use only `./src`,
+matching the current native build scripts. Dependency types remain reachable
+without advertising archive helpers as separate exported functions.
+
+Regenerated the site, JSON, and portable Markdown with the new Goalchemy
+format. The current catalog has 348 SDK symbols, no facade symbols, 131 RPC
+methods, 364 message types, and seven examples across all eight languages.
+Source documentation coverage passes for 492 public declarations and members.
+The build passes all local link, fragment, asset, and repository-base checks
+across 927 pages. Native language guides were reimported from the updated
+canonical files. No native suites or benchmarks ran locally.
+
+## Documentation CI import resolution
+
+The earlier documentation CI run failed while validating Goalchemy's context
+contracts: Go's source importer resolved nested capability imports from the
+SDK checkout and followed its development-only `../goalchemy` replacement.
+That sibling checkout does not exist on a clean runner. Run documentation
+generation from the pinned compiler checkout while retaining the isolated SDK
+module through `-C`. The production SDK module and compiler pin are unchanged.
+
+Verification: regenerated site, JSON, and Markdown with all eight declaration
+projections available. The production build and link checks passed for 927
+pages. This is a docs-generation fix; no native SDK suites ran locally.

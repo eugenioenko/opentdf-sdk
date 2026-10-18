@@ -68,9 +68,8 @@ func (s *SDK) ListAttributes(ctx context.Context, namespace ...string) ([]*polic
 // AttributeExists reports whether the attribute definition identified by attributeFqn
 // exists on the platform.
 //
-// attributeFqn should be an attribute-level FQN (no /value/ segment):
-//
-//	https://<namespace>/attr/<attribute_name>
+// attributeFqn should be an attribute-level FQN, for example
+// https://example.com/attr/classification, without a /value/ segment.
 //
 // Returns (true, nil) if the attribute exists, (false, nil) if it does not,
 // and (false, err) if a service error occurs.
@@ -96,9 +95,8 @@ func (s *SDK) AttributeExists(ctx context.Context, attributeFqn string) (bool, e
 
 // AttributeValueExists reports whether the attribute value FQN exists on the platform.
 //
-// fqn should be a full attribute value FQN (with /value/ segment):
-//
-//	https://<namespace>/attr/<attribute_name>/value/<value>
+// fqn should be a full attribute value FQN, for example
+// https://example.com/attr/classification/value/confidential.
 //
 // Returns (true, nil) if the value exists, (false, nil) if it does not,
 // and (false, err) if a service error occurs.
@@ -128,9 +126,8 @@ func (s *SDK) AttributeValueExists(ctx context.Context, fqn string) (bool, error
 // This provides fail-fast behavior: validate attributes before calling CreateTDF() to avoid
 // late-stage decryption failures caused by missing or misspelled attributes.
 //
-// fqns should be full attribute value FQNs in the form:
-//
-//	https://<namespace>/attr/<attribute_name>/value/<value>
+// fqns should be full attribute value FQNs, for example
+// https://example.com/attr/classification/value/confidential.
 //
 // Returns ErrAttributeNotFound if any FQNs are missing, with the missing FQNs listed in
 // the error message. The reference takes the FQNs variadically; a slice

@@ -8,7 +8,7 @@ TypeScript idiom: it maps names, idioms and errors and implements no protocol.
 
 ## Build and import
 
-From `goalchemy/`, build `GOTOOLCHAIN=go1.25.14 go build -o
+From `goalchemy/`, build `go build -o
 out/typescript-tdf-library/goalchemy ./cmd/goalchemy`, then run
 `scripts/build-generated-typescript.sh`. An optional destination argument
 selects the package directory; `GOALCHEMY_BIN` selects a compiler binary and
@@ -62,7 +62,7 @@ try {
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `SDK.create(endpoint, options?, call?)` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection` runs the health check first. |
-| `sdk.createTdf(plaintext, options?, call?)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.createTdf(plaintext, options?, call?)` → `TDFObject` (`bytes`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Payloads are currently buffered in memory. |
 | `sdk.loadTdf(ciphertext, options?, call?)` → `Reader` (`init`, `manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close`, `Symbol.asyncDispose`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set, as in the reference. |
 | `TDFOptions.assertions` (`AssertionConfig` with an optional `signingKey: {alg, key}`), `TDFOptions.systemMetadataAssertion`; `ReaderOptions.assertionVerificationKeys` (`{defaultKey?, keys?: Record<assertionId, {alg, key}>}`), `ReaderOptions.disableAssertionVerification` | `WithAssertions`, `WithSystemMetadataAssertion`, `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | Assertions are signed into the manifest with HS256 over the payload key or the config's `signingKey` (HS256 secret or RS256 private PEM as text) and verified on read by default, by assertion id with a default key, or with the payload key; failures are `kind: 'assertion_failure'` with `assertionId`. |
 | `sdk.isHealthy`, `platformConfiguration`, `getBaseKey`, `storeKasKeys`, `close`, `Symbol.asyncDispose` | same | `platformConfiguration()` returns the members as `Record<string, string>` (non-string members as compact JSON). |
@@ -77,8 +77,7 @@ replaces client credentials (the SDK then signs rewrap requests with the
 reference's ephemeral ES256 key unless `dpopKeyPem` is set). Every method
 takes an optional trailing `{ signal }`; aborting cancels the active call
 (`kind: 'canceled'`). Options this build does not implement yet
-(`tokenExchange`, `certExchange`, `tls`, `unixSocket`, service endpoint
-overrides, target mode `4.2.2`, schema validation, post-quantum key types) fail with `kind: 'unsupported_feature'` and the message
+(`tokenExchange`, `certExchange`, `tls`, `unixSocket`, target mode `4.2.2`, schema validation, post-quantum key types) fail with `kind: 'unsupported_feature'` and the message
 `unsupported in this build: <option>`.
 
 Manifests and policies are returned keyed by the reference's JSON tags

@@ -21,7 +21,7 @@ failures are outside managed cleanup guarantees.
 From the workspace root:
 
 ```sh
-(cd goalchemy; GOTOOLCHAIN=go1.25.14 go build \
+(cd goalchemy; go build \
   -o out/rust-tdf-library/goalchemy ./cmd/goalchemy)
 bash sdk/scripts/build-generated-rust.sh
 bash sdk/tests/interop/generatedrust/install-consumer.sh
@@ -103,7 +103,7 @@ sdk.close()?;
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `Sdk::new(endpoint, Options)`, `Sdk::new_async` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platform_configuration` is given; `validate_connection` runs the health check first. |
-| `sdk.create_tdf(&[u8], &TdfOptions)` → `TdfObject` (`bytes`, `manifest`, `size`, `close`), `sdk.encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.create_tdf(&[u8], &TdfOptions)` → `TdfObject` (`bytes`, `manifest`, `size`, `close`), `sdk.encrypt_bytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Payloads are currently buffered in memory. |
 | `sdk.load_tdf(&[u8], &ReaderOptions)` → `Reader` (`init`, `manifest`, `policy`, `data_attributes`, `unencrypted_metadata`, `close`), `sdk.decrypt_bytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `kas_allowlist` or `ignore_allowlist` is set, as in the reference. |
 | `TdfOptions::assertions` (`AssertionConfig` with `signing_key: Option<AssertionKey>`), `TdfOptions::system_metadata_assertion`; `ReaderOptions::assertion_verification_keys` (`AssertionVerificationKeys { default_key: Option<AssertionKey>, keys: BTreeMap<assertion id, AssertionKey> }`), `ReaderOptions::disable_assertion_verification` | `WithAssertions`, `WithSystemMetadataAssertion`, `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | `AssertionKey::hs256(secret)` / `rs256(pem)`: assertions are signed into the manifest with HS256 over the payload key or the config's signing key and verified on read by default, by assertion id with a default key, or with the payload key; failures are `Kind::AssertionFailure` with `assertion_id`. |
 | `sdk.is_healthy`, `platform_configuration`, `get_base_key`, `store_kas_keys`, `close` | same | `platform_configuration()` returns a `BTreeMap<String, String>` (non-string members as compact JSON). |
@@ -121,10 +121,9 @@ in snake_case; every default is the reference default. Strings are UTF-8
 credentials; the SDK then signs rewrap requests with the reference's
 ephemeral ES256 key unless `dpop_key_pem` is set. Options this build does
 not implement yet (`token_exchange`, `cert_exchange`, `tls`, `unix_socket`,
-service endpoint overrides, target mode `4.2.2`, schema validation,
+target mode `4.2.2`, schema validation,
 post-quantum key types) fail with
-`Kind::UnsupportedFeature` and the message `unsupported in this build:
-<option>`. `Manifest`, `PolicyObject`, `KeyAccess`, `SimpleKasKey` and the
+`Kind::UnsupportedFeature` and the message `unsupported in this build: <option>`. `Manifest`, `PolicyObject`, `KeyAccess`, `SimpleKasKey` and the
 other manifest types are typed structs whose fields are the reference's JSON
 tags in snake_case (`encryption_information.key_access[0].url`,
 `payload.mime_type`).

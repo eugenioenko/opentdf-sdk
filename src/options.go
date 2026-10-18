@@ -27,46 +27,75 @@ const (
 // than the api-spec's pointers because pointers do not cross the Goalchemy
 // boundary; their zero value means unset.
 type Options struct {
-	// Authentication. Client credentials or a host token provider; none means
-	// an uncredentialed client, which can still read the well-known
-	// configuration.
-	ClientID          string
-	ClientSecret      string
-	Scopes            []string
-	TokenEndpoint     string
-	TokenExchange     TokenExchange
-	CertExchange      CertExchange
+	// ClientID identifies the OAuth client. Leave credentials and
+	// TokenProviderName empty for unauthenticated discovery only.
+	ClientID string
+	// ClientSecret is the secret paired with ClientID for client-credentials
+	// authentication.
+	ClientSecret string
+	// Scopes lists the OAuth scopes requested with client credentials.
+	Scopes []string
+	// TokenEndpoint overrides the discovered OAuth token endpoint when nonempty.
+	TokenEndpoint string
+	// TokenExchange reserves token-exchange settings. Nonzero values are currently
+	// rejected as unsupported.
+	TokenExchange TokenExchange
+	// CertExchange reserves certificate-exchange settings. Nonzero values are currently
+	// rejected as unsupported.
+	CertExchange CertExchange
+	// TokenProviderName names the host callback that supplies tokens instead of client
+	// credentials.
 	TokenProviderName string
 
-	// Platform configuration. Empty means fetch /.well-known.
+	// PlatformConfiguration skips platform discovery when nonempty. Values
+	// must include the configuration needed by the selected authentication.
 	PlatformConfiguration PlatformConfiguration
-	ValidateConnection    bool
+	// ValidateConnection checks platform health during construction when true.
+	ValidateConnection bool
 
-	// Transport.
-	InsecurePlaintext  bool
+	// InsecurePlaintext permits HTTP endpoints for trusted development services.
+	InsecurePlaintext bool
+	// InsecureSkipVerify disables TLS certificate verification. Use only with trusted
+	// development services.
 	InsecureSkipVerify bool
-	TLS                TLSOptions
-	UnixSocket         string
-	TimeoutMillis      int64
+	// TLS reserves custom TLS settings. Nonzero values are currently rejected as
+	// unsupported.
+	TLS TLSOptions
+	// UnixSocket reserves a Unix socket transport path. Nonempty values are currently
+	// unsupported.
+	UnixSocket string
+	// TimeoutMillis limits each HTTP request in milliseconds. Zero uses 30 seconds;
+	// negative values are rejected.
+	TimeoutMillis int64
 
-	// Service endpoints (WithCustom*Connection), reached through the SDK's
-	// transport. CoreEndpoint replaces the platform endpoint for every
-	// service; the others replace it for their own services (policy.*,
-	// authorization, entity resolution, well-known).
-	CoreEndpoint             string
-	PolicyEndpoint           string
-	AuthorizationEndpoint    string
+	// CoreEndpoint overrides the base URL for all platform services. More
+	// specific service endpoints take precedence.
+	CoreEndpoint string
+	// PolicyEndpoint overrides the endpoint for policy services.
+	PolicyEndpoint string
+	// AuthorizationEndpoint overrides the endpoint for authorization services.
+	AuthorizationEndpoint string
+	// EntityResolutionEndpoint overrides the endpoint for entity resolution services.
 	EntityResolutionEndpoint string
-	WellknownEndpoint        string
+	// WellknownEndpoint overrides the endpoint for the well-known configuration service.
+	WellknownEndpoint string
 
-	// Keys.
+	// SessionEncryptionRSAPEM supplies the response-session private key.
+	// Empty generates a new RSA-2048 key owned by this SDK.
 	SessionEncryptionRSAPEM string
-	SessionSignerRSAPEM     string
-	DPoPAlgorithm           SigningAlgorithm
-	DPoPKeyPEM              string
-	NoKIDInKAO              bool
+	// SessionSignerRSAPEM supplies a signing key when DPoPKeyPEM is empty.
+	SessionSignerRSAPEM string
+	// DPoPAlgorithm selects the DPoP signing algorithm. With no supplied key, the default
+	// is ES256.
+	DPoPAlgorithm SigningAlgorithm
+	// DPoPKeyPEM supplies the PEM signing key for DPoP proofs. Empty generates an
+	// ephemeral key.
+	DPoPKeyPEM string
+	// NoKIDInKAO omits key identifiers from newly created key access objects for legacy
+	// compatibility.
+	NoKIDInKAO bool
 
-	// Policy.
+	// FulfillableObligationFQNs declares obligations the application can fulfill.
 	FulfillableObligationFQNs []string
 
 	// Logging. 0 = the host sink's default level; otherwise a slog level
@@ -74,29 +103,45 @@ type Options struct {
 	LogLevel int
 }
 
+// TokenExchange holds reserved OAuth token-exchange settings. This build rejects
+// nonzero settings.
 type TokenExchange struct {
+	// SubjectToken is the token to exchange.
 	SubjectToken string
-	Audience     []string
+	// Audience lists the requested token audiences.
+	Audience []string
 }
 
+// CertExchange holds reserved certificate-exchange settings. This build rejects
+// nonzero settings.
 type CertExchange struct {
+	// ClientCertPEM is the PEM client certificate.
 	ClientCertPEM string
-	ClientKeyPEM  string
-	Audience      []string
+	// ClientKeyPEM is the matching PEM private key.
+	ClientKeyPEM string
+	// Audience lists the requested token audiences.
+	Audience []string
 }
 
+// TLSOptions holds reserved TLS configuration. This build rejects nonzero settings.
 type TLSOptions struct {
+	// ClientCertPEM is the PEM certificate for client authentication.
 	ClientCertPEM string
-	ClientKeyPEM  string
-	RootCAsPEM    string
-	Audience      []string
+	// ClientKeyPEM is the matching PEM private key.
+	ClientKeyPEM string
+	// RootCAsPEM contains PEM certificates to trust as roots.
+	RootCAsPEM string
+	// Audience lists the intended service audiences.
+	Audience []string
 }
 
 // PlatformConfigurationEntry is one top-level member of the well-known
 // configuration. A string member keeps its value; any other member (the idp
 // and base_key objects, booleans) carries its compact JSON text.
 type PlatformConfigurationEntry struct {
-	Key   string
+	// Key is the top-level configuration member name.
+	Key string
+	// Value holds a string member directly, or compact JSON for other member types.
 	Value string
 }
 
@@ -105,6 +150,8 @@ type PlatformConfigurationEntry struct {
 // the members are a list of entries; the accessors read them as the
 // reference does. Structure is subject to change; consume via the accessors.
 type PlatformConfiguration struct {
+	// Entries contains the configuration members. Prefer Get and Set over direct
+	// mutation.
 	Entries []PlatformConfigurationEntry
 }
 
@@ -137,6 +184,7 @@ type config struct {
 // services. Every connection uses the SDK's authenticated transport, so the
 // endpoint is all a caller chooses.
 type ConnectRPCConnection struct {
+	// Endpoint is the service base URL used through the SDK's authenticated transport.
 	Endpoint string
 }
 

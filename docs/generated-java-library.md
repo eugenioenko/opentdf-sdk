@@ -15,7 +15,7 @@ protobuf-java; no compiler, Go process or external executable.
 
 JDK 21 (the repository pins Temurin 21.0.12.1+1 under
 `goalchemy/.toolchains`), Bash and Python 3. From `goalchemy/`, build
-`GOTOOLCHAIN=go1.25.14 go build -o out/java-tdf-library/goalchemy
+`go build -o out/java-tdf-library/goalchemy
 ./cmd/goalchemy`, then run `scripts/build-generated-java.sh [destination]`.
 `GOALCHEMY_BIN` selects a compiler binary, `GOALCHEMY_ROOT` the Goalchemy
 checkout (toolchains, the Java target's dependency lock) and `JAVA_HOME` a
@@ -80,7 +80,7 @@ try (SDK sdk = SDK.builder("http://localhost:8080")
 | Adapter symbol | Reference | Notes |
 | --- | --- | --- |
 | `SDK.builder(endpoint)....build()`, `build(Duration)`, `buildAsync()` | `New` | Fetches `/.well-known/opentdf-configuration` and the issuer's OpenID configuration unless `platformConfiguration` is given; `validateConnection(true)` runs the health check first. |
-| `sdk.createTDF(byte[], TDFOptions)` → `TDFObject` (`bytes()`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Streams arrive in Phase 7. |
+| `sdk.createTDF(byte[], TDFOptions)` → `TDFObject` (`bytes()`, `manifest()`, `size()`, `close()`), `sdk.encryptBytes` | `CreateTDFContext` over bytes, `TDFObject` | Key access templates from autoconfigure or explicit KAS information, split across KAS; RSA-2048/4096 and P-256/384/521 wrapping. Payloads are currently buffered in memory. |
 | `sdk.loadTDF(byte[], ReaderOptions)` → `Reader` (`init`, `manifest`, `policy`, `dataAttributes`, `unencryptedMetadata`, `close`), `sdk.decryptBytes` | `LoadTDF`, `Reader`, `DecryptBytes` | One rewrap request per KAS; the DEK is the XOR of one share per split id, any KAO of a split will do, duplicates are skipped; post-quantum KAOs fail as `unsupported_key_access`. RSA and EC sessions of every non-PQ key type. The KAS allowlist comes from the registry unless `kasAllowlist` or `ignoreAllowlist` is set, as in the reference. |
 | `TDFOptions.Builder.assertions(List<AssertionConfig>)` (`AssertionConfig` with an optional `AssertionKey signingKey`), `systemMetadataAssertion(true)`; `ReaderOptions.Builder.assertionVerificationKeys(AssertionKey defaultKey, Map<String, AssertionKey> keys)`, `disableAssertionVerification(true)` | `WithAssertions`, `WithSystemMetadataAssertion`, `WithAssertionVerificationKeys`, `WithDisableAssertionVerification` | `AssertionKey.hs256(secret)` / `rs256(pem)`: assertions are signed into the manifest with HS256 over the payload key or the config's signing key and verified on read by default, by assertion id with a default key, or with the payload key; failures carry kind `assertion_failure` and `assertionId()`. |
 | `sdk.isHealthy`, `platformConfiguration`, `getBaseKey`, `storeKASKeys`, `close` | same | `platformConfiguration()` returns the members as `Map<String, String>` (non-string members as compact JSON); `getBaseKey()` a map keyed `kasUri`, `publicKey{algorithm,kid,pem}`, `kasId`. |
@@ -101,7 +101,7 @@ UTF-8 `String`s, payloads `byte[]`. `tokenProvider` takes a
 and replaces client credentials; the SDK then signs rewrap requests with the
 reference's ephemeral ES256 key unless `dpopKeyPem` is set. Options this
 build does not implement yet (`tokenExchange`, `certExchange`, `tls`,
-`unixSocket`, service endpoint overrides, target mode `4.2.2`, schema
+`unixSocket`, target mode `4.2.2`, schema
 validation, post-quantum key types) fail with kind
 `unsupported_feature` and the message `unsupported in this build: <option>`.
 

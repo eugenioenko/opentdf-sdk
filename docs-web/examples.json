@@ -1,0 +1,372 @@
+{
+  "examples": [
+    {
+      "id": "list-namespaces",
+      "title": "List namespaces",
+      "for": "policy.namespaces.NamespaceService/ListNamespaces",
+      "description": "List one page of active namespaces. Follow pagination.nextOffset while it is nonzero to retrieve further pages.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    \"github.com/opentdf/platform/protocol/go/policy/namespaces\"\n    \"github.com/opentdf/platform/protocol/go/policy\"\n)\n\nrequest := &namespaces.ListNamespacesRequest{\n    Pagination: &policy.PageRequest{Limit: 25, Offset: 0},\n}\nresponse, err := client.Namespaces().ListNamespaces(ctx, request)\nif err != nil {\n    return err\n}\nfmt.Println(response)"
+        },
+        {
+          "target": "typescript",
+          "code": "const response = await client.namespaces.listNamespaces({\n  \"pagination\": {\n    \"limit\": 25,\n    \"offset\": 0\n  }\n});\nconsole.log(response);"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3.protocol.policy.namespaces import namespaces_pb2\nfrom opentdf_tdf3.protocol.policy import selectors_pb2\n\nrequest = namespaces_pb2.ListNamespacesRequest(\n    pagination=selectors_pb2.PageRequest(limit=25, offset=0),\n)\nresponse = await client.namespaces.list_namespaces_async(request)\nprint(response)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.protocol.policy.namespaces.ListNamespacesRequest;\nimport io.opentdf.tdf3.protocol.policy.PageRequest;\n\nvar request = ListNamespacesRequest.newBuilder()\n    .setPagination(PageRequest.newBuilder().setLimit(25).setOffset(0).build())\n    .build();\nvar response = client.namespaces().listNamespaces(request);\nSystem.out.println(response);"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF.Protocol.Policy.Namespaces;\nusing OpenTDF.Protocol.Policy;\n\nvar request = new ListNamespacesRequest\n{\n    Pagination = new PageRequest { Limit = 25, Offset = 0 },\n};\nvar response = await client.Namespaces.ListNamespacesAsync(request, cancellationToken);\nConsole.WriteLine(response);"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::protocol;\n\nlet request = protocol::policy::namespaces::ListNamespacesRequest {\n    pagination: Some(protocol::policy::PageRequest { limit: 25, offset: 0 }),\n    ..Default::default()\n};\nlet response = client.namespaces().list_namespaces_async(&request).await?;\nprintln!(\"{response:?}\");"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nvar request = Policy_Namespaces_ListNamespacesRequest()\nrequest.pagination.limit = 25\nrequest.pagination.offset = 0\nlet response = try await client.namespaces.listNamespaces(request)\nprint(response)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf_services.h\"\n#include <stdio.h>\n\nchar *response_json = NULL;\notdf_error error = {0};\nint status = otdf_namespaces_list_namespaces(\n    client, \"{\\\"pagination\\\":{\\\"limit\\\":25,\\\"offset\\\":0}}\",\n    NULL, &response_json, &error);\nif (status == 0) {\n    puts(response_json);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_string_free(response_json);\notdf_error_free(&error);"
+        }
+      ],
+      "request": {
+        "pagination": {
+          "limit": 25,
+          "offset": 0
+        }
+      },
+      "response": {
+        "namespaces": [
+          {
+            "id": "11111111-1111-4111-8111-111111111111",
+            "name": "example.com",
+            "fqn": "https://example.com",
+            "active": true
+          }
+        ],
+        "pagination": {
+          "currentOffset": 0,
+          "nextOffset": 0,
+          "total": 1
+        }
+      }
+    },
+    {
+      "id": "create-namespace",
+      "title": "Create a namespace",
+      "for": "policy.namespaces.NamespaceService/CreateNamespace",
+      "description": "Create a policy namespace with an administrative identity. The example response illustrates a server-assigned ID; retain the actual returned ID for later requests.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    \"github.com/opentdf/platform/protocol/go/policy/namespaces\"\n)\n\nrequest := &namespaces.CreateNamespaceRequest{\n    Name: \"example.com\",\n}\nresponse, err := client.Namespaces().CreateNamespace(ctx, request)\nif err != nil {\n    return err\n}\nfmt.Println(response)"
+        },
+        {
+          "target": "typescript",
+          "code": "const response = await client.namespaces.createNamespace({\n  \"name\": \"example.com\"\n});\nconsole.log(response);"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3.protocol.policy.namespaces import namespaces_pb2\n\nrequest = namespaces_pb2.CreateNamespaceRequest(\n    name=\"example.com\",\n)\nresponse = await client.namespaces.create_namespace_async(request)\nprint(response)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.protocol.policy.namespaces.CreateNamespaceRequest;\n\nvar request = CreateNamespaceRequest.newBuilder()\n    .setName(\"example.com\")\n    .build();\nvar response = client.namespaces().createNamespace(request);\nSystem.out.println(response);"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF.Protocol.Policy.Namespaces;\n\nvar request = new CreateNamespaceRequest\n{\n    Name = \"example.com\",\n};\nvar response = await client.Namespaces.CreateNamespaceAsync(request, cancellationToken);\nConsole.WriteLine(response);"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::protocol;\n\nlet request = protocol::policy::namespaces::CreateNamespaceRequest {\n    name: \"example.com\".into(),\n    ..Default::default()\n};\nlet response = client.namespaces().create_namespace_async(&request).await?;\nprintln!(\"{response:?}\");"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nvar request = Policy_Namespaces_CreateNamespaceRequest()\nrequest.name = \"example.com\"\nlet response = try await client.namespaces.createNamespace(request)\nprint(response)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf_services.h\"\n#include <stdio.h>\n\nchar *response_json = NULL;\notdf_error error = {0};\nint status = otdf_namespaces_create_namespace(\n    client, \"{\\\"name\\\":\\\"example.com\\\"}\",\n    NULL, &response_json, &error);\nif (status == 0) {\n    puts(response_json);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_string_free(response_json);\notdf_error_free(&error);"
+        }
+      ],
+      "request": {
+        "name": "example.com"
+      },
+      "response": {
+        "namespace": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "example.com",
+          "fqn": "https://example.com",
+          "active": true
+        }
+      }
+    },
+    {
+      "id": "list-attributes",
+      "title": "List attributes in a namespace",
+      "for": "policy.attributes.AttributesService/ListAttributes",
+      "description": "List one page of attributes in an existing namespace. Replace example.com with your namespace name or ID.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    \"github.com/opentdf/platform/protocol/go/policy/attributes\"\n    \"github.com/opentdf/platform/protocol/go/policy\"\n)\n\nrequest := &attributes.ListAttributesRequest{\n    Namespace: \"example.com\",\n    Pagination: &policy.PageRequest{Limit: 25, Offset: 0},\n}\nresponse, err := client.Attributes().ListAttributes(ctx, request)\nif err != nil {\n    return err\n}\nfmt.Println(response)"
+        },
+        {
+          "target": "typescript",
+          "code": "const response = await client.attributes.listAttributes({\n  \"namespace\": \"example.com\",\n  \"pagination\": {\n    \"limit\": 25,\n    \"offset\": 0\n  }\n});\nconsole.log(response);"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3.protocol.policy.attributes import attributes_pb2\nfrom opentdf_tdf3.protocol.policy import selectors_pb2\n\nrequest = attributes_pb2.ListAttributesRequest(\n    namespace=\"example.com\",\n    pagination=selectors_pb2.PageRequest(limit=25, offset=0),\n)\nresponse = await client.attributes.list_attributes_async(request)\nprint(response)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.protocol.policy.attributes.ListAttributesRequest;\nimport io.opentdf.tdf3.protocol.policy.PageRequest;\n\nvar request = ListAttributesRequest.newBuilder()\n    .setNamespace(\"example.com\")\n    .setPagination(PageRequest.newBuilder().setLimit(25).setOffset(0).build())\n    .build();\nvar response = client.attributes().listAttributes(request);\nSystem.out.println(response);"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF.Protocol.Policy.Attributes;\nusing OpenTDF.Protocol.Policy;\n\nvar request = new ListAttributesRequest\n{\n    Namespace = \"example.com\",\n    Pagination = new PageRequest { Limit = 25, Offset = 0 },\n};\nvar response = await client.Attributes.ListAttributesAsync(request, cancellationToken);\nConsole.WriteLine(response);"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::protocol;\n\nlet request = protocol::policy::attributes::ListAttributesRequest {\n    namespace: \"example.com\".into(),\n    pagination: Some(protocol::policy::PageRequest { limit: 25, offset: 0 }),\n    ..Default::default()\n};\nlet response = client.attributes().list_attributes_async(&request).await?;\nprintln!(\"{response:?}\");"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nvar request = Policy_Attributes_ListAttributesRequest()\nrequest.namespace = \"example.com\"\nrequest.pagination.limit = 25\nrequest.pagination.offset = 0\nlet response = try await client.attributes.listAttributes(request)\nprint(response)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf_services.h\"\n#include <stdio.h>\n\nchar *response_json = NULL;\notdf_error error = {0};\nint status = otdf_attributes_list_attributes(\n    client, \"{\\\"namespace\\\":\\\"example.com\\\",\\\"pagination\\\":{\\\"limit\\\":25,\\\"offset\\\":0}}\",\n    NULL, &response_json, &error);\nif (status == 0) {\n    puts(response_json);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_string_free(response_json);\notdf_error_free(&error);"
+        }
+      ],
+      "request": {
+        "namespace": "example.com",
+        "pagination": {
+          "limit": 25,
+          "offset": 0
+        }
+      },
+      "response": {
+        "attributes": [],
+        "pagination": {
+          "currentOffset": 0,
+          "nextOffset": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "id": "create-attribute",
+      "title": "Create an attribute and its values",
+      "for": "policy.attributes.AttributesService/CreateAttribute",
+      "description": "Use the actual namespace ID returned by CreateNamespace. This creates policy objects; associating usable KAS keys and authorizing subjects are separate platform administration tasks.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    \"github.com/opentdf/platform/protocol/go/policy/attributes\"\n    \"github.com/opentdf/platform/protocol/go/policy\"\n)\n\nrequest := &attributes.CreateAttributeRequest{\n    NamespaceId: \"11111111-1111-4111-8111-111111111111\",\n    Name: \"classification\",\n    Rule: policy.AttributeRuleTypeEnum_ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,\n    Values: []string{\"confidential\"},\n}\nresponse, err := client.Attributes().CreateAttribute(ctx, request)\nif err != nil {\n    return err\n}\nfmt.Println(response)"
+        },
+        {
+          "target": "typescript",
+          "code": "import { AttributeRuleTypeEnum } from '@opentdf-local/tdf3/protocol/policy/objects_pb.js';\n\nconst response = await client.attributes.createAttribute({\n  \"namespaceId\": \"11111111-1111-4111-8111-111111111111\",\n  \"name\": \"classification\",\n  \"rule\": AttributeRuleTypeEnum.ANY_OF,\n  \"values\": [\n    \"confidential\"\n  ]\n});\nconsole.log(response);"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3.protocol.policy.attributes import attributes_pb2\nfrom opentdf_tdf3.protocol.policy import objects_pb2\n\nrequest = attributes_pb2.CreateAttributeRequest(\n    namespace_id=\"11111111-1111-4111-8111-111111111111\",\n    name=\"classification\",\n    rule=objects_pb2.ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF,\n    values=[\"confidential\"],\n)\nresponse = await client.attributes.create_attribute_async(request)\nprint(response)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.protocol.policy.attributes.CreateAttributeRequest;\nimport io.opentdf.tdf3.protocol.policy.AttributeRuleTypeEnum;\n\nvar request = CreateAttributeRequest.newBuilder()\n    .setNamespaceId(\"11111111-1111-4111-8111-111111111111\")\n    .setName(\"classification\")\n    .setRule(AttributeRuleTypeEnum.ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF)\n    .addValues(\"confidential\")\n    .build();\nvar response = client.attributes().createAttribute(request);\nSystem.out.println(response);"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF.Protocol.Policy.Attributes;\nusing OpenTDF.Protocol.Policy;\n\nvar request = new CreateAttributeRequest\n{\n    NamespaceId = \"11111111-1111-4111-8111-111111111111\",\n    Name = \"classification\",\n    Rule = AttributeRuleTypeEnum.AnyOf,\n    Values = { \"confidential\" },\n};\nvar response = await client.Attributes.CreateAttributeAsync(request, cancellationToken);\nConsole.WriteLine(response);"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::protocol;\n\nlet request = protocol::policy::attributes::CreateAttributeRequest {\n    namespace_id: \"11111111-1111-4111-8111-111111111111\".into(),\n    name: \"classification\".into(),\n    rule: protocol::policy::AttributeRuleTypeEnum::AnyOf as i32,\n    values: vec![\"confidential\".into()],\n    ..Default::default()\n};\nlet response = client.attributes().create_attribute_async(&request).await?;\nprintln!(\"{response:?}\");"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nvar request = Policy_Attributes_CreateAttributeRequest()\nrequest.namespaceID = \"11111111-1111-4111-8111-111111111111\"\nrequest.name = \"classification\"\nrequest.rule = .anyOf\nrequest.values = [\"confidential\"]\nlet response = try await client.attributes.createAttribute(request)\nprint(response)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf_services.h\"\n#include <stdio.h>\n\nchar *response_json = NULL;\notdf_error error = {0};\nint status = otdf_attributes_create_attribute(\n    client, \"{\\\"namespaceId\\\":\\\"11111111-1111-4111-8111-111111111111\\\",\\\"name\\\":\\\"classification\\\",\\\"rule\\\":\\\"ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF\\\",\\\"values\\\":[\\\"confidential\\\"]}\",\n    NULL, &response_json, &error);\nif (status == 0) {\n    puts(response_json);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_string_free(response_json);\notdf_error_free(&error);"
+        }
+      ],
+      "request": {
+        "namespaceId": "11111111-1111-4111-8111-111111111111",
+        "name": "classification",
+        "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+        "values": [
+          "confidential"
+        ]
+      },
+      "response": {
+        "attribute": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "namespace": {
+            "id": "11111111-1111-4111-8111-111111111111",
+            "name": "example.com"
+          },
+          "name": "classification",
+          "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+          "fqn": "https://example.com/attr/classification",
+          "values": [
+            {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "value": "confidential",
+              "fqn": "https://example.com/attr/classification/value/confidential"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "get-attribute-by-fqn",
+      "title": "Look up an attribute by FQN",
+      "for": "policy.attributes.AttributesService/GetAttribute",
+      "description": "The protobuf JSON request places fqn at the top level. It belongs to the identifier oneof; do not also supply attributeId or the deprecated id field.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    \"github.com/opentdf/platform/protocol/go/policy/attributes\"\n)\n\nrequest := &attributes.GetAttributeRequest{\n    Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: \"https://example.com/attr/classification\"},\n}\nresponse, err := client.Attributes().GetAttribute(ctx, request)\nif err != nil {\n    return err\n}\nfmt.Println(response)"
+        },
+        {
+          "target": "typescript",
+          "code": "const response = await client.attributes.getAttribute({\n  \"identifier\": {\n    \"case\": \"fqn\",\n    \"value\": \"https://example.com/attr/classification\"\n  }\n});\nconsole.log(response);"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3.protocol.policy.attributes import attributes_pb2\n\nrequest = attributes_pb2.GetAttributeRequest(\n    fqn=\"https://example.com/attr/classification\",\n)\nresponse = await client.attributes.get_attribute_async(request)\nprint(response)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.protocol.policy.attributes.GetAttributeRequest;\n\nvar request = GetAttributeRequest.newBuilder()\n    .setFqn(\"https://example.com/attr/classification\")\n    .build();\nvar response = client.attributes().getAttribute(request);\nSystem.out.println(response);"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF.Protocol.Policy.Attributes;\n\nvar request = new GetAttributeRequest\n{\n    Fqn = \"https://example.com/attr/classification\",\n};\nvar response = await client.Attributes.GetAttributeAsync(request, cancellationToken);\nConsole.WriteLine(response);"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::protocol;\n\nlet request = protocol::policy::attributes::GetAttributeRequest {\n    identifier: Some(protocol::policy::attributes::get_attribute_request::Identifier::Fqn(\"https://example.com/attr/classification\".into())),\n    ..Default::default()\n};\nlet response = client.attributes().get_attribute_async(&request).await?;\nprintln!(\"{response:?}\");"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nvar request = Policy_Attributes_GetAttributeRequest()\nrequest.fqn = \"https://example.com/attr/classification\"\nlet response = try await client.attributes.getAttribute(request)\nprint(response)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf_services.h\"\n#include <stdio.h>\n\nchar *response_json = NULL;\notdf_error error = {0};\nint status = otdf_attributes_get_attribute(\n    client, \"{\\\"fqn\\\":\\\"https://example.com/attr/classification\\\"}\",\n    NULL, &response_json, &error);\nif (status == 0) {\n    puts(response_json);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_string_free(response_json);\notdf_error_free(&error);"
+        }
+      ],
+      "request": {
+        "fqn": "https://example.com/attr/classification"
+      },
+      "response": {
+        "attribute": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "classification",
+          "rule": "ATTRIBUTE_RULE_TYPE_ENUM_ANY_OF",
+          "fqn": "https://example.com/attr/classification"
+        }
+      }
+    },
+    {
+      "id": "encrypt-and-decrypt",
+      "title": "Encrypt and decrypt a note",
+      "for": "opentdf-local/sdk/src#SDK.EncryptBytes",
+      "description": "Run inside your language's normal function or async entry point. Supply a platform URL, client credentials, and an existing attribute-value FQN from application configuration. Use client credentials only in trusted applications; browser applications should use a token provider. The attribute must have usable KAS mappings and the identity must be entitled to decrypt. The returned archive is binary TDF data. Keep the SDK open and reuse it for subsequent operations.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    sdk \"goalchemyout\"\n)\n\nclient, err := sdk.New(ctx, platformURL, sdk.Options{\n    ClientID: clientID, ClientSecret: clientSecret,\n})\nif err != nil {\n    return err\n}\ndefer client.Close()\n\narchive, object, err := client.EncryptBytes(ctx, []byte(\"A confidential note\"), sdk.TDFOptions{\n    Attributes: []string{attributeFQN},\n    MimeType: \"text/plain\",\n    Metadata: `{\"name\":\"note.txt\"}`,\n})\nif err != nil {\n    return err\n}\ndefer object.Close()\n\nplaintext, err := client.DecryptBytes(ctx, archive, sdk.ReaderOptions{})\nif err != nil {\n    return err\n}\nfmt.Println(string(plaintext))"
+        },
+        {
+          "target": "typescript",
+          "code": "import { SDK } from '@opentdf-local/tdf3';\n\nconst client = await SDK.create(platformUrl, { clientId, clientSecret });\ntry {\n  const archive = await client.encryptBytes(\n    new TextEncoder().encode('A confidential note'),\n    {\n      attributes: [attributeFqn],\n      mimeType: 'text/plain',\n      metadata: JSON.stringify({ name: 'note.txt' }),\n    },\n  );\n  const plaintext = await client.decryptBytes(archive);\n  console.log(new TextDecoder().decode(plaintext));\n} finally {\n  await client.close();\n}"
+        },
+        {
+          "target": "python",
+          "code": "import json\nfrom opentdf_tdf3 import SDK\n\nasync with await SDK.create_async(\n    platform_url, client_id=client_id, client_secret=client_secret,\n) as client:\n    archive = await client.encrypt_bytes_async(\n        b\"A confidential note\",\n        attributes=[attribute_fqn],\n        mime_type=\"text/plain\",\n        metadata=json.dumps({\"name\": \"note.txt\"}),\n    )\n    plaintext = await client.decrypt_bytes_async(archive)\n    print(plaintext.decode(\"utf-8\"))"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.SDK;\nimport io.opentdf.tdf3.TDFOptions;\nimport io.opentdf.tdf3.ReaderOptions;\nimport java.nio.charset.StandardCharsets;\n\ntry (var client = SDK.builder(platformUrl)\n        .clientCredentials(clientId, clientSecret).build()) {\n    var options = TDFOptions.builder()\n        .attributes(attributeFqn)\n        .mimeType(\"text/plain\")\n        .metadata(\"{\\\"name\\\":\\\"note.txt\\\"}\")\n        .build();\n    byte[] archive = client.encryptBytes(\n        \"A confidential note\".getBytes(StandardCharsets.UTF_8), options);\n    byte[] plaintext = client.decryptBytes(archive, ReaderOptions.defaults());\n    System.out.println(new String(plaintext, StandardCharsets.UTF_8));\n}"
+        },
+        {
+          "target": "csharp",
+          "code": "using System.Text;\nusing OpenTDF;\n\nawait using var client = await Sdk.CreateAsync(platformUrl, new Options\n{\n    ClientId = clientId,\n    ClientSecret = clientSecret,\n}, cancellationToken);\nvar options = new TdfOptions\n{\n    Attributes = new[] { attributeFqn },\n    MimeType = \"text/plain\",\n    Metadata = \"{\\\"name\\\":\\\"note.txt\\\"}\",\n};\nbyte[] archive = await client.EncryptBytesAsync(\n    Encoding.UTF8.GetBytes(\"A confidential note\"), options, cancellationToken);\nbyte[] plaintext = await client.DecryptBytesAsync(\n    archive, new ReaderOptions(), cancellationToken);\nConsole.WriteLine(Encoding.UTF8.GetString(plaintext));"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::{Options, ReaderOptions, Sdk, TdfOptions};\n\nlet client = Sdk::new_async(platform_url, Options {\n    client_id: client_id.into(),\n    client_secret: client_secret.into(),\n    ..Default::default()\n}).await?;\nlet options = TdfOptions {\n    attributes: vec![attribute_fqn.into()],\n    mime_type: \"text/plain\".into(),\n    metadata: r#\"{\"name\":\"note.txt\"}\"#.into(),\n    ..Default::default()\n};\nlet result = async {\n    let archive = client.encrypt_bytes_async(b\"A confidential note\", &options).await?;\n    client.decrypt_bytes_async(&archive, &ReaderOptions::default()).await\n}.await;\nlet closed = client.close();\nlet plaintext = result?;\nclosed?;\nprintln!(\"{}\", String::from_utf8(plaintext)?);"
+        },
+        {
+          "target": "swift",
+          "code": "import Foundation\nimport OpenTDFTDF3\n\nlet client = try await SDK(platformUrl, Options(\n    clientId: clientId, clientSecret: clientSecret))\ndefer { try? client.close() }\nlet archive = try await client.encryptBytes(\n    Data(\"A confidential note\".utf8),\n    TDFOptions(\n        attributes: [attributeFqn],\n        mimeType: \"text/plain\",\n        metadata: #\"{\"name\":\"note.txt\"}\"#))\nlet plaintext = try await client.decryptBytes(archive)\nprint(String(decoding: plaintext, as: UTF8.self))"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf.h\"\n#include <stdio.h>\n#include <string.h>\n\notdf_options options = OTDF_OPTIONS_INIT;\noptions.client_id = client_id;\noptions.client_secret = client_secret;\notdf_sdk *client = NULL;\notdf_error error = {0};\notdf_owned_bytes archive = {0}, plaintext = {0};\nint status = otdf_sdk_new(platform_url, &options, NULL, &client, &error);\nif (status == 0) {\n    const char *attributes[] = {attribute_fqn};\n    otdf_tdf_options encryption = OTDF_TDF_OPTIONS_INIT;\n    encryption.attributes = attributes;\n    encryption.attribute_count = 1;\n    encryption.mime_type = \"text/plain\";\n    encryption.metadata = \"{\\\"name\\\":\\\"note.txt\\\"}\";\n    const char *note = \"A confidential note\";\n    status = otdf_encrypt_bytes(client,\n        (otdf_bytes){(const uint8_t *)note, strlen(note)},\n        &encryption, NULL, &archive, &error);\n}\nif (status == 0) {\n    status = otdf_decrypt_bytes(client,\n        (otdf_bytes){archive.data, archive.length},\n        NULL, NULL, &plaintext, &error);\n}\nif (status == 0) {\n    fwrite(plaintext.data, 1, plaintext.length, stdout);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_bytes_free(&plaintext);\notdf_bytes_free(&archive);\notdf_error_free(&error);\nif (client != NULL) {\n    otdf_sdk_close(client, NULL);\n    otdf_sdk_free(client);\n}"
+        }
+      ]
+    },
+    {
+      "id": "handle-missing-attribute",
+      "title": "Handle a missing attribute",
+      "for": "policy.attributes.AttributesService/GetAttribute",
+      "description": "Supply an attribute FQN from your application. Handle only the not_found service code as an absent attribute; preserve other errors, including authentication and permission failures. The C example uses an illustrative fixed FQN and reports other failures to stderr; return or propagate its status according to your application.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"errors\"\n    \"fmt\"\n    sdk \"goalchemyout\"\n    \"github.com/opentdf/platform/protocol/go/policy/attributes\"\n)\n\nrequest := &attributes.GetAttributeRequest{\n    Identifier: &attributes.GetAttributeRequest_Fqn{Fqn: attributeFQN},\n}\nresponse, err := client.Attributes().GetAttribute(ctx, request)\nif err != nil {\n    var serviceError *sdk.Error\n    if errors.As(err, &serviceError) && serviceError.ConnectCode == \"not_found\" {\n        fmt.Println(\"Attribute does not exist\")\n        return nil\n    }\n    return err\n}\nfmt.Println(response.Attribute.Name)"
+        },
+        {
+          "target": "typescript",
+          "code": "import { Code, ConnectError } from '@connectrpc/connect';\n\ntry {\n  const response = await client.attributes.getAttribute({\n    identifier: { case: 'fqn', value: attributeFqn },\n  });\n  console.log(response.attribute?.name);\n} catch (error) {\n  if (error instanceof ConnectError && error.code === Code.NotFound) {\n    console.log('Attribute does not exist');\n  } else {\n    throw error;\n  }\n}"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3 import OpenTDFError\nfrom opentdf_tdf3.protocol.policy.attributes import attributes_pb2\n\ntry:\n    response = await client.attributes.get_attribute_async(\n        attributes_pb2.GetAttributeRequest(fqn=attribute_fqn),\n    )\n    print(response.attribute.name)\nexcept OpenTDFError as error:\n    if error.connect_code != \"not_found\":\n        raise\n    print(\"Attribute does not exist\")"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.OpenTDFException;\nimport io.opentdf.tdf3.protocol.policy.attributes.GetAttributeRequest;\n\ntry {\n    var request = GetAttributeRequest.newBuilder().setFqn(attributeFqn).build();\n    var response = client.attributes().getAttribute(request);\n    System.out.println(response.getAttribute().getName());\n} catch (OpenTDFException error) {\n    if (!\"not_found\".equals(error.connectCode())) {\n        throw error;\n    }\n    System.out.println(\"Attribute does not exist\");\n}"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF;\nusing OpenTDF.Protocol.Policy.Attributes;\n\ntry\n{\n    var request = new GetAttributeRequest { Fqn = attributeFqn };\n    var response = await client.Attributes.GetAttributeAsync(request, cancellationToken);\n    Console.WriteLine(response.Attribute.Name);\n}\ncatch (OpenTdfException error) when (error.ConnectCode == \"not_found\")\n{\n    Console.WriteLine(\"Attribute does not exist\");\n}"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::protocol::policy::attributes::{\n    get_attribute_request::Identifier, GetAttributeRequest,\n};\n\nlet request = GetAttributeRequest {\n    identifier: Some(Identifier::Fqn(attribute_fqn.into())),\n    ..Default::default()\n};\nmatch client.attributes().get_attribute_async(&request).await {\n    Ok(response) => println!(\"{:?}\", response.attribute),\n    Err(error) if error.connect_code == \"not_found\" => {\n        println!(\"Attribute does not exist\");\n    }\n    Err(error) => return Err(error.into()),\n}"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nvar request = Policy_Attributes_GetAttributeRequest()\nrequest.fqn = attributeFqn\ndo {\n    let response = try await client.attributes.getAttribute(request)\n    print(response.attribute.name)\n} catch let error as OpenTDFError where error.connectCode == \"not_found\" {\n    print(\"Attribute does not exist\")\n}"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf_services.h\"\n#include <stdio.h>\n#include <string.h>\n\nconst char *request_json = \"{\\\"fqn\\\":\\\"https://example.com/attr/classification\\\"}\";\nchar *response_json = NULL;\notdf_error error = {0};\nint status = otdf_attributes_get_attribute(\n    client, request_json, NULL, &response_json, &error);\nif (status == 0) {\n    puts(response_json);\n} else if (error.connect_code != NULL && strcmp(error.connect_code, \"not_found\") == 0) {\n    puts(\"Attribute does not exist\");\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_string_free(response_json);\notdf_error_free(&error);"
+        }
+      ],
+      "request": {
+        "fqn": "https://example.com/attr/classification"
+      }
+    }
+  ]
+}

@@ -13,8 +13,12 @@ import (
 )
 
 const (
+	// SystemMetadataAssertionID is the identifier used for the default system-metadata
+	// assertion.
 	SystemMetadataAssertionID = "system-metadata"
-	SystemMetadataSchemaV1    = "system-metadata-v1"
+	// SystemMetadataSchemaV1 is the schema identifier for the default system-metadata
+	// statement.
+	SystemMetadataSchemaV1 = "system-metadata-v1"
 
 	kAssertionSignature = "assertionSig"
 	kAssertionHash      = "assertionHash"
@@ -27,7 +31,9 @@ var errAssertionVerifyKeyFailure = errors.New("assertion: failed to verify with 
 // the Goalchemy boundary: the raw HS256 secret, or a PEM block for RS256 (a
 // private key to sign, a public or private key to verify).
 type AssertionKey struct {
+	// Alg selects HS256 or RS256 for this key.
 	Alg AssertionKeyAlg
+	// Key holds an HS256 secret or a PEM RSA key. Treat it as sensitive material.
 	Key string
 }
 
@@ -39,17 +45,22 @@ func (k AssertionKey) IsEmpty() bool { return k.Key == "" && k.Alg == "" }
 
 // AssertionKeyEntry names the verification key of one assertion ID.
 type AssertionKeyEntry struct {
+	// AssertionID selects the assertion verified with this key.
 	AssertionID string
-	Alg         AssertionKeyAlg
-	Key         string
+	// Alg selects the verification algorithm.
+	Alg AssertionKeyAlg
+	// Key holds an HS256 secret or a PEM RSA verification key.
+	Key string
 }
 
 // AssertionVerificationKeys holds the reader's verification keys: the
 // reference's map of assertion ID to key is a list of entries here, because
 // maps do not cross the Goalchemy boundary.
 type AssertionVerificationKeys struct {
+	// DefaultKey is used when no entry matches an assertion ID.
 	DefaultKey AssertionKey
-	Keys       []AssertionKeyEntry
+	// Keys contains per-assertion verification keys, matched by AssertionID.
+	Keys []AssertionKeyEntry
 }
 
 // Get returns the key for the given assertion ID or the default key if the

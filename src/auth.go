@@ -16,14 +16,21 @@ import (
 // expiry as UTC Unix seconds (0 = never) and, for opaque DPoP tokens from a
 // host provider, the attested JWK thumbprint.
 type AccessToken struct {
-	Value           string
-	Scheme          string
-	ExpiresAt       int64
+	// Value is the raw token without an Authorization scheme prefix. Treat it as a
+	// credential.
+	Value string
+	// Scheme selects Bearer or DPoP authorization.
+	Scheme string
+	// ExpiresAt is the expiry time in UTC Unix seconds. Zero means no known expiry.
+	ExpiresAt int64
+	// ConfirmationJKT is the attested JWK thumbprint for an opaque DPoP token.
 	ConfirmationJKT string
 }
 
 // TokenSource supplies access tokens: the reference's auth.AccessTokenSource.
 type TokenSource interface {
+	// Token returns a usable access token or an authentication error, honoring ctx
+	// cancellation.
 	Token(ctx context.Context) (AccessToken, error)
 }
 

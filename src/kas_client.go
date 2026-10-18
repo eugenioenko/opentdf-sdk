@@ -25,6 +25,8 @@ const (
 // Rewrapper unwraps key access objects at a KAS: the reference's KASClient.
 // New wires KASClient; tests supply a fake KAS.
 type Rewrapper interface {
+	// Unwrap requests and decrypts a KAS key share for the policy. ctx controls the
+	// request; sessionKey is caller-owned.
 	Unwrap(ctx context.Context, sessionKey *crypto.Key, sessionKeyType KeyType, requests []*kas.UnsignedRewrapRequest_WithPolicyRequest) (map[string][]kaoResult, error)
 }
 
@@ -40,10 +42,15 @@ type KASClient struct {
 	fulfillableObligations      []string
 }
 
+// kaoResult holds one key-access outcome returned by a Rewrapper.
 type kaoResult struct {
-	SymmetricKey        []byte
-	Error               error
-	KeyAccessObjectID   string
+	// SymmetricKey is the unwrapped key share. Treat it as sensitive material.
+	SymmetricKey []byte
+	// Error reports failure for this key access object, if any.
+	Error error
+	// KeyAccessObjectID identifies the requested key access object.
+	KeyAccessObjectID string
+	// RequiredObligations lists obligations returned by the KAS.
 	RequiredObligations []string
 }
 
