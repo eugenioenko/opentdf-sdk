@@ -1,7 +1,7 @@
 // Package library is the deprecated value-only TDF3 façade: Encrypt and
 // Decrypt construct an SDK per call over the handle API in package sdk.
-// Deprecated: use sdk.New, SDK.EncryptBytes and SDK.DecryptBytes; this
-// façade stays for one release.
+//
+// Deprecated: use sdk.New, SDK.EncryptBytes and SDK.DecryptBytes.
 package library
 
 import (
@@ -16,46 +16,81 @@ import (
 // KASRoute is kept for source compatibility; the SDK now routes through the
 // KAS URL in the manifest and the platform's KAS allowlist.
 type KASRoute struct {
-	URL        string
+	// URL identifies an extra KAS URL allowed during decryption.
+	URL string
+	// APIBaseURL is retained for source compatibility and is not used for routing.
 	APIBaseURL string
 }
 
+// Config configures the deprecated per-call facade. Prefer the persistent SDK and
+// sdk.Options.
 type Config struct {
-	PlatformURL  string
-	KASURL       string
-	AllowedKAS   []KASRoute
-	IssuerURL    string
-	TokenURL     string
-	ClientID     string
+	// PlatformURL is the OpenTDF platform base URL.
+	PlatformURL string
+	// KASURL overrides the default KAS endpoint at PlatformURL/kas.
+	KASURL string
+	// AllowedKAS adds KAS URLs to the decryption allowlist.
+	AllowedKAS []KASRoute
+	// IssuerURL supplies an issuer override when TokenURL is also set.
+	IssuerURL string
+	// TokenURL overrides the discovered OAuth token endpoint.
+	TokenURL string
+	// ClientID identifies the OAuth client.
+	ClientID string
+	// ClientSecret is the OAuth client secret.
 	ClientSecret string
 	// TokenProviderName resolves solely in this call's host callback registry.
 	TokenProviderName string
-	AllowHTTP         bool
-	TimeoutMillis     int64
-	KASPublicKeyPEM   string
-	KID               string
-	KASAlgorithm      string
-	SessionAlgorithm  string
+	// AllowHTTP permits plaintext HTTP for trusted development platforms.
+	AllowHTTP bool
+	// TimeoutMillis bounds HTTP requests in milliseconds. Zero uses the SDK default.
+	TimeoutMillis int64
+	// KASPublicKeyPEM supplies the KAS public key for encryption instead of fetching it.
+	KASPublicKeyPEM string
+	// KID identifies the supplied KAS public key.
+	KID string
+	// KASAlgorithm selects the KAS key-wrapping algorithm.
+	KASAlgorithm string
+	// SessionAlgorithm selects the decryption response-session key algorithm.
+	SessionAlgorithm string
+	// AuthPrivateKeyPEM supplies the signing key used when DPoP is enabled.
 	AuthPrivateKeyPEM string
-	AuthAlgorithm     string
-	DPoP              bool
+	// AuthAlgorithm selects the DPoP signing algorithm when DPoP is enabled.
+	AuthAlgorithm string
+	// DPoP enables DPoP configuration for this call.
+	DPoP bool
 }
 
+// EncryptOptions configures encryption through the deprecated facade.
 type EncryptOptions struct {
-	PolicyBase64         string
-	Attributes           []string
-	Dissem               []string
-	SegmentSize          int64
-	HasSegmentSize       bool
+	// PolicyBase64 is retained for compatibility. Nonempty values are unsupported.
+	PolicyBase64 string
+	// Attributes lists attribute-value FQNs to include in the policy.
+	Attributes []string
+	// Dissem is retained for compatibility. Nonempty lists are unsupported.
+	Dissem []string
+	// SegmentSize sets plaintext segment bytes, subject to the SDK's bounds.
+	SegmentSize int64
+	// HasSegmentSize makes an explicit zero SegmentSize select the minimum segment size.
+	HasSegmentSize bool
+	// SegmentHashAlgorithm accepts empty or GMAC. Other values are unsupported.
 	SegmentHashAlgorithm string
-	MimeType             string
-	Metadata             []byte
-	IncludeMetadata      bool
+	// MimeType sets the payload media type.
+	MimeType string
+	// Metadata contains the metadata bytes to encrypt.
+	Metadata []byte
+	// IncludeMetadata requests metadata handling even when Metadata is empty.
+	IncludeMetadata bool
 }
 
+// Decrypted contains owned plaintext, decrypted metadata, and the decoded archive
+// manifest.
 type Decrypted struct {
-	Payload     []byte
-	Metadata    []byte
+	// Payload contains the verified plaintext.
+	Payload []byte
+	// Metadata contains decrypted metadata when HasMetadata is true.
+	Metadata []byte
+	// HasMetadata reports whether the archive included encrypted metadata.
 	HasMetadata bool
 	// ManifestJSON contains the manifest as read from the TDF.
 	ManifestJSON []byte
@@ -63,20 +98,30 @@ type Decrypted struct {
 
 // Failure is the façade's error record: Code is the sdk.Error kind.
 type Failure struct {
-	Code                string
-	Operation           string
-	HTTPStatus          int
-	ServerCode          string
-	ServerMessage       string
+	// Code is the stable SDK error kind.
+	Code string
+	// Operation identifies the failed operation.
+	Operation string
+	// HTTPStatus is the service response status when available.
+	HTTPStatus int
+	// ServerCode is the service's structured error code when available.
+	ServerCode string
+	// ServerMessage contains service-supplied diagnostic text and may be sensitive.
+	ServerMessage string
+	// RequiredObligations lists obligation FQNs returned by the service.
 	RequiredObligations []string
-	CauseCategory       string
+	// CauseCategory classifies cancellation, deadline, or source failures.
+	CauseCategory string
 }
 
+// Error returns the facade's operation and stable error code.
 func (e *Failure) Error() string { return "sdk: " + e.Operation + ": " + e.Code }
 
 // Version is the SDK version; TDFSpecVersion is the spec version new files
 // target.
-func Version() string        { return sdk.Version }
+func Version() string { return sdk.Version }
+
+// TDFSpecVersion returns the TDF specification version used for newly written files.
 func TDFSpecVersion() string { return sdk.TDFSpecVersion }
 
 func wrap(op string, err error) error {

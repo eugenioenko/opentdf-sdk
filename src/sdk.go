@@ -20,22 +20,39 @@ import (
 var (
 	// Failure while connecting to a service.
 	// Check your configuration and/or retry.
-	ErrGrpcDialFailed      = errors.New("failed to dial grpc endpoint")
-	ErrShutdownFailed      = errors.New("failed to shutdown sdk")
+	ErrGrpcDialFailed = errors.New("failed to dial grpc endpoint")
+	// ErrShutdownFailed reports failure to close SDK resources.
+	ErrShutdownFailed = errors.New("failed to shutdown sdk")
+	// ErrPlatformUnreachable reports failure to reach the platform health endpoint.
 	ErrPlatformUnreachable = errors.New("platform unreachable or not responding")
 	// ErrHealthCheckUnsupported is returned by SDK.IsHealthy when the SDK is configured
 	// in IPC mode, which does not support the gRPC Health protocol.
-	ErrHealthCheckUnsupported        = errors.New("health check not supported in IPC mode")
-	ErrPlatformConfigFailed          = errors.New("failed to retrieve platform configuration")
-	ErrPlatformEndpointMalformed     = errors.New("platform endpoint is malformed")
-	ErrPlatformIssuerNotFound        = errors.New("issuer not found in well-known idp configuration")
+	ErrHealthCheckUnsupported = errors.New("health check not supported in IPC mode")
+	// ErrPlatformConfigFailed reports failure to retrieve platform configuration.
+	ErrPlatformConfigFailed = errors.New("failed to retrieve platform configuration")
+	// ErrPlatformEndpointMalformed reports an invalid platform or service endpoint.
+	ErrPlatformEndpointMalformed = errors.New("platform endpoint is malformed")
+	// ErrPlatformIssuerNotFound reports a missing identity-provider issuer in platform
+	// configuration.
+	ErrPlatformIssuerNotFound = errors.New("issuer not found in well-known idp configuration")
+	// ErrPlatformAuthzEndpointNotFound reports a missing authorization endpoint in
+	// platform configuration.
 	ErrPlatformAuthzEndpointNotFound = errors.New("authorization_endpoint not found in well-known idp configuration")
+	// ErrPlatformTokenEndpointNotFound reports a missing token endpoint in platform
+	// configuration.
 	ErrPlatformTokenEndpointNotFound = errors.New("token_endpoint not found in well-known idp configuration")
-	ErrPlatformEndpointNotFound      = errors.New("platform_endpoint not found in well-known configuration")
-	ErrAccessTokenInvalid            = errors.New("access token is invalid")
-	ErrNoAccessTokenSource           = errors.New("no access token source configured; SDK was created without credentials")
-	ErrWellKnowConfigEmpty           = errors.New("well-known configuration is empty")
-	ErrAttributeNotFound             = errors.New("attribute not found")
+	// ErrPlatformEndpointNotFound reports a missing platform endpoint in platform
+	// configuration.
+	ErrPlatformEndpointNotFound = errors.New("platform_endpoint not found in well-known configuration")
+	// ErrAccessTokenInvalid reports an empty or invalid access token.
+	ErrAccessTokenInvalid = errors.New("access token is invalid")
+	// ErrNoAccessTokenSource reports an operation that needs credentials when no token
+	// source is configured.
+	ErrNoAccessTokenSource = errors.New("no access token source configured; SDK was created without credentials")
+	// ErrWellKnowConfigEmpty reports an empty well-known configuration response.
+	ErrWellKnowConfigEmpty = errors.New("well-known configuration is empty")
+	// ErrAttributeNotFound reports a policy attribute that could not be found.
+	ErrAttributeNotFound = errors.New("attribute not found")
 )
 
 // SDK is the persistent client handle. Every collaborator hangs off it:
@@ -144,6 +161,8 @@ func (s *SDK) init(ctx context.Context) error {
 	return nil
 }
 
+// IsPlatformEndpointMalformed reports whether e fails the SDK's endpoint checks. It
+// does not contact the endpoint.
 func IsPlatformEndpointMalformed(e string) bool {
 	u, err := url.ParseRequestURI(e)
 	if err != nil || u.Hostname() == "" || strings.Contains(u.Hostname(), ":") {
@@ -219,7 +238,8 @@ func defaultDPoPSigner() (*dpopSigner, error) {
 	return dpop, nil
 }
 
-// Close releases the session and DPoP keys. It is idempotent.
+// Close releases the SDK's session and DPoP keys. It is idempotent. Finish active
+// operations and close readers before calling Close.
 func (s *SDK) Close() error {
 	if s == nil {
 		return nil
@@ -285,14 +305,18 @@ func (s *SDK) IsHealthy(ctx context.Context) (bool, error) {
 	return healthy, nil
 }
 
+// TdfType identifies the container type detected by GetTdfType.
 type TdfType string
 
 const (
-	Invalid  TdfType = "Invalid"
+	// Invalid indicates an unrecognized container or a failed signature read.
+	Invalid TdfType = "Invalid"
+	// Standard indicates a ZIP container signature, not proof of a valid or authentic
+	// TDF.
 	Standard TdfType = "Standard"
 )
 
-// String returns the string representation of the applies to state.
+// String returns the container type name.
 func (t TdfType) String() string {
 	return string(t)
 }
@@ -300,8 +324,9 @@ func (t TdfType) String() string {
 // ZIP file Signature
 var zipSignature = []byte{0x50, 0x4B, 0x03, 0x04}
 
-// GetTdfType returns the type of TDF based on the reader.
-// Reader is reset after the check.
+// GetTdfType checks the next four bytes for a ZIP signature and seeks to offset
+// zero after a successful read. It returns Invalid on read or seek errors and
+// does not validate the manifest or establish authenticity.
 func GetTdfType(reader io.ReadSeeker) TdfType {
 	numBytes := 4
 	buffer := make([]byte, numBytes)
@@ -352,9 +377,9 @@ func readArchive(reader io.ReadSeeker, maxManifestSize int64) (tdf.Archive, erro
 	return tdf.ReadArchive(data, limits)
 }
 
-// Detects whether, or not the reader is a valid TDF. It first checks if it can "open" it
-// Then attempts to extract a manifest, then finally it validates the manifest.
-// If any of the checks fail, it will return false.
+// IsValidTdf checks archive structure and required manifest fields, leaving
+// reader at offset zero after a successful archive read. It does not authorize
+// access, decrypt the payload, or verify cryptographic integrity.
 func IsValidTdf(reader io.ReadSeeker) (bool, error) {
 	archive, err := readArchive(reader, 0)
 	if err != nil {

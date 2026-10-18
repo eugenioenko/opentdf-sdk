@@ -11,34 +11,65 @@ import (
 type ErrorKind string
 
 const (
-	KindTampered                    ErrorKind = "tampered"
-	KindRootSignature               ErrorKind = "root_signature"
-	KindSegmentSize                 ErrorKind = "segment_size"
-	KindSegmentSignature            ErrorKind = "segment_signature"
-	KindPayloadRead                 ErrorKind = "payload_read"
-	KindInvalidOffset               ErrorKind = "invalid_offset"
-	KindRewrapBadRequest            ErrorKind = "rewrap_bad_request"
-	KindUnsupportedRootIntegrity    ErrorKind = "unsupported_root_integrity"
+	// KindTampered reports a general integrity or tamper-detection failure.
+	KindTampered ErrorKind = "tampered"
+	// KindRootSignature reports a root signature verification failure.
+	KindRootSignature ErrorKind = "root_signature"
+	// KindSegmentSize reports invalid or inconsistent segment lengths.
+	KindSegmentSize ErrorKind = "segment_size"
+	// KindSegmentSignature reports a segment integrity verification failure.
+	KindSegmentSignature ErrorKind = "segment_signature"
+	// KindPayloadRead reports failure to read the encrypted payload.
+	KindPayloadRead ErrorKind = "payload_read"
+	// KindInvalidOffset reports an invalid payload offset.
+	KindInvalidOffset ErrorKind = "invalid_offset"
+	// KindRewrapBadRequest reports a rejected KAS rewrap request that may indicate
+	// tampering.
+	KindRewrapBadRequest ErrorKind = "rewrap_bad_request"
+	// KindUnsupportedRootIntegrity reports an unsupported root integrity algorithm.
+	KindUnsupportedRootIntegrity ErrorKind = "unsupported_root_integrity"
+	// KindUnsupportedSegmentIntegrity reports an unsupported segment integrity algorithm.
 	KindUnsupportedSegmentIntegrity ErrorKind = "unsupported_segment_integrity"
-	KindNotDecryptable              ErrorKind = "not_decryptable"
-	KindDecryptFailed               ErrorKind = "decrypt_failed"
-	KindAESGCMExhausted             ErrorKind = "aes_gcm_exhausted"
-	KindKASRequest                  ErrorKind = "kas_request"
-	KindRewrapForbidden             ErrorKind = "rewrap_forbidden"
-	KindRewrapUnauthorized          ErrorKind = "rewrap_unauthorized"
-	KindAssertionFailure            ErrorKind = "assertion_failure"
-	KindObligationsRequired         ErrorKind = "obligations_required"
-	KindBaseKeyNotFound             ErrorKind = "base_key_not_found"
-	KindBaseKeyInvalid              ErrorKind = "base_key_invalid"
-	KindAllowlistRejected           ErrorKind = "allowlist_rejected"
-	KindUnsupportedKeyAccess        ErrorKind = "unsupported_key_access"
-	KindUnsupportedFeature          ErrorKind = "unsupported_feature"
-	KindInvalidInput                ErrorKind = "invalid_input"
-	KindAuth                        ErrorKind = "auth"
-	KindTransport                   ErrorKind = "transport"
-	KindCanceled                    ErrorKind = "canceled"
-	KindDeadlineExceeded            ErrorKind = "deadline_exceeded"
-	KindBulk                        ErrorKind = "bulk"
+	// KindNotDecryptable reports an archive that cannot be loaded for decryption.
+	KindNotDecryptable ErrorKind = "not_decryptable"
+	// KindDecryptFailed reports a payload decryption or key-unwrapping failure.
+	KindDecryptFailed ErrorKind = "decrypt_failed"
+	// KindAESGCMExhausted reports that a writer reached its per-key encryption limit.
+	KindAESGCMExhausted ErrorKind = "aes_gcm_exhausted"
+	// KindKASRequest reports a KAS request or configuration failure.
+	KindKASRequest ErrorKind = "kas_request"
+	// KindRewrapForbidden reports a KAS authorization denial.
+	KindRewrapForbidden ErrorKind = "rewrap_forbidden"
+	// KindRewrapUnauthorized reports a KAS authentication failure.
+	KindRewrapUnauthorized ErrorKind = "rewrap_unauthorized"
+	// KindAssertionFailure reports an assertion validation or verification failure.
+	KindAssertionFailure ErrorKind = "assertion_failure"
+	// KindObligationsRequired reports obligations the caller must satisfy before access
+	// is granted.
+	KindObligationsRequired ErrorKind = "obligations_required"
+	// KindBaseKeyNotFound reports a missing platform base key.
+	KindBaseKeyNotFound ErrorKind = "base_key_not_found"
+	// KindBaseKeyInvalid reports an invalid platform base-key record.
+	KindBaseKeyInvalid ErrorKind = "base_key_invalid"
+	// KindAllowlistRejected reports a manifest KAS endpoint outside the allowed origins.
+	KindAllowlistRejected ErrorKind = "allowlist_rejected"
+	// KindUnsupportedKeyAccess reports an unsupported key access scheme.
+	KindUnsupportedKeyAccess ErrorKind = "unsupported_key_access"
+	// KindUnsupportedFeature reports an option or operation not implemented by this
+	// build.
+	KindUnsupportedFeature ErrorKind = "unsupported_feature"
+	// KindInvalidInput reports invalid arguments or configuration.
+	KindInvalidInput ErrorKind = "invalid_input"
+	// KindAuth reports token acquisition or authentication configuration failure.
+	KindAuth ErrorKind = "auth"
+	// KindTransport reports an HTTP, connection, or discovery failure.
+	KindTransport ErrorKind = "transport"
+	// KindCanceled reports cancellation of an operation.
+	KindCanceled ErrorKind = "canceled"
+	// KindDeadlineExceeded reports expiry of an operation's deadline.
+	KindDeadlineExceeded ErrorKind = "deadline_exceeded"
+	// KindBulk reserves the error classification for bulk operations.
+	KindBulk ErrorKind = "bulk"
 )
 
 // Error is the one error type of the SDK. Message is the reference SDK's
@@ -47,17 +78,28 @@ const (
 // the SDK. The record holds only copied values so it crosses the Goalchemy
 // boundary unchanged.
 type Error struct {
-	Kind                ErrorKind
-	Op                  string
-	Message             string
-	HTTPStatus          int
-	ConnectCode         string
-	ServiceMessage      string
-	KASURL              string
+	// Kind is the stable category to use for programmatic error handling.
+	Kind ErrorKind
+	// Op names the operation that failed.
+	Op string
+	// Message is the human-readable error text, including wrapped causes.
+	Message string
+	// HTTPStatus is the service's HTTP status, or zero when none is available.
+	HTTPStatus int
+	// ConnectCode is the Connect or OAuth error code when provided by the service.
+	ConnectCode string
+	// ServiceMessage contains bounded service-supplied diagnostic text. Handle it as
+	// potentially sensitive.
+	ServiceMessage string
+	// KASURL identifies the KAS associated with the failure, when known.
+	KASURL string
+	// RequiredObligations lists obligation FQNs reported by the service.
 	RequiredObligations []string
-	AssertionID         string
+	// AssertionID identifies the assertion that failed, when known.
+	AssertionID string
 }
 
+// Error returns the human-readable Message.
 func (e *Error) Error() string { return e.Message }
 
 // Is reports whether target is one of the sentinels in this error's chain. The

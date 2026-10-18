@@ -29,27 +29,37 @@ const (
 
 // SimpleKasPublicKey is the policy.SimpleKasPublicKey message.
 type SimpleKasPublicKey struct {
+	// Algorithm is the policy algorithm enum's JSON name, such as ALGORITHM_RSA_2048.
 	Algorithm string `json:"algorithm"`
-	Kid       string `json:"kid"`
-	Pem       string `json:"pem"`
+	// Kid identifies this public key at the KAS.
+	Kid string `json:"kid"`
+	// Pem contains the PEM public key.
+	Pem string `json:"pem"`
 }
 
 // SimpleKasKey is the policy.SimpleKasKey message.
 type SimpleKasKey struct {
-	KasURI    string             `json:"kasUri"`
+	// KasURI is the KAS endpoint associated with PublicKey.
+	KasURI string `json:"kasUri"`
+	// PublicKey contains the key material, identifier, and algorithm.
 	PublicKey SimpleKasPublicKey `json:"publicKey"`
-	KasID     string             `json:"kasId"`
+	// KasID is the platform registry identifier for the KAS.
+	KasID string `json:"kasId"`
 }
 
 // KasPublicKey is the policy.KasPublicKey message.
 type KasPublicKey struct {
+	// Pem contains the PEM public key.
 	Pem string `json:"pem"`
+	// Kid identifies this public key at the KAS.
 	Kid string `json:"kid"`
+	// Alg is the policy KAS public-key algorithm enum's JSON name.
 	Alg string `json:"alg"`
 }
 
 // KasPublicKeySet is the policy.KasPublicKeySet message.
 type KasPublicKeySet struct {
+	// Keys lists the public keys to store in the SDK's KAS cache.
 	Keys []KasPublicKey `json:"keys"`
 }
 

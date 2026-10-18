@@ -58,6 +58,8 @@ func (c PlatformConfiguration) getIdpConfig() jsonvalue.Value {
 	return idpCfg
 }
 
+// Issuer returns the configured identity-provider issuer, or
+// ErrPlatformIssuerNotFound.
 func (c PlatformConfiguration) Issuer() (string, error) {
 	idpCfg := c.getIdpConfig()
 	value, ok := idpCfg.Get("issuer").AsString()
@@ -67,6 +69,8 @@ func (c PlatformConfiguration) Issuer() (string, error) {
 	return value, nil
 }
 
+// AuthzEndpoint returns the configured authorization endpoint, or
+// ErrPlatformAuthzEndpointNotFound.
 func (c PlatformConfiguration) AuthzEndpoint() (string, error) {
 	idpCfg := c.getIdpConfig()
 	value, ok := idpCfg.Get("authorization_endpoint").AsString()
@@ -76,6 +80,8 @@ func (c PlatformConfiguration) AuthzEndpoint() (string, error) {
 	return value, nil
 }
 
+// TokenEndpoint returns the configured token endpoint, or
+// ErrPlatformTokenEndpointNotFound.
 func (c PlatformConfiguration) TokenEndpoint() (string, error) {
 	idpCfg := c.getIdpConfig()
 	value, ok := idpCfg.Get("token_endpoint").AsString()

@@ -24,16 +24,26 @@ var (
 	ErrAESGCMExhausted = errors.New("tdf: AES-GCM IV collision limit reached for this data encryption key")
 
 	// Exposed tamper detection errors, Catch all possible tamper errors with errors.Is(ErrTampered)
-	ErrTampered                = errors.New("tamper detected")
-	ErrRootSigValidation       = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)
-	ErrSegSizeMismatch         = fmt.Errorf("[%w] tdf: mismatch encrypted segment size in manifest", ErrTampered)
-	ErrSegSizeUnresolved       = fmt.Errorf("[%w] tdf: segment size invalid or missing from manifest, with no default to fall back on", ErrTampered)
-	ErrSegSigValidation        = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
-	ErrGMACSignatureFailed     = fmt.Errorf("[%w] tdf: ciphertext too short for a gmac signature", ErrTampered)
-	ErrTDFPayloadReadFail      = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
+	ErrTampered = errors.New("tamper detected")
+	// ErrRootSigValidation reports an invalid root signature and matches ErrTampered.
+	ErrRootSigValidation = fmt.Errorf("[%w] tdf: failed integrity check on root signature", ErrTampered)
+	// ErrSegSizeMismatch reports inconsistent plaintext and encrypted segment lengths.
+	ErrSegSizeMismatch = fmt.Errorf("[%w] tdf: mismatch encrypted segment size in manifest", ErrTampered)
+	// ErrSegSizeUnresolved reports missing or invalid segment sizes with no usable
+	// defaults.
+	ErrSegSizeUnresolved = fmt.Errorf("[%w] tdf: segment size invalid or missing from manifest, with no default to fall back on", ErrTampered)
+	// ErrSegSigValidation reports a segment hash mismatch and matches ErrTampered.
+	ErrSegSigValidation = fmt.Errorf("[%w] tdf: failed integrity check on segment hash", ErrTampered)
+	// ErrGMACSignatureFailed reports ciphertext too short to contain an AES-GCM tag.
+	ErrGMACSignatureFailed = fmt.Errorf("[%w] tdf: ciphertext too short for a gmac signature", ErrTampered)
+	// ErrTDFPayloadReadFail reports a payload read failure and matches ErrTampered.
+	ErrTDFPayloadReadFail = fmt.Errorf("[%w] tdf: fail to read payload from tdf", ErrTampered)
+	// ErrTDFPayloadInvalidOffset reports a negative payload offset.
 	ErrTDFPayloadInvalidOffset = fmt.Errorf("[%w] sdk.Reader.ReadAt: negative offset", ErrTampered)
-	ErrRootSignatureFailure    = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
-	ErrRewrapBadRequest        = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
+	// ErrRootSignatureFailure reports failure to verify the root signature.
+	ErrRootSignatureFailure = fmt.Errorf("[%w] tdf: issue verifying root signature", ErrTampered)
+	// ErrRewrapBadRequest reports a KAS bad-request response that may indicate tampering.
+	ErrRewrapBadRequest = fmt.Errorf("[%w] tdf: rewrap request 400", ErrTampered)
 
 	// ErrUnsupportedRootIntegrityAlgorithm rejects any root signature algorithm
 	// other than HS256, on both the write and the read path.
@@ -48,20 +58,24 @@ var (
 	// "bad request" message in service/kas/access/rewrap.go.
 	kasGenericBadRequest = "desc = bad request"
 
-	// KAS request errors — client/configuration issues, not integrity failures
+	// ErrKASRequestError reports a KAS request or configuration failure.
 	ErrKASRequestError = errors.New("tdf: KAS request error")
+	// ErrRewrapForbidden reports a forbidden KAS rewrap request.
 	ErrRewrapForbidden = errors.New("tdf: rewrap request 403")
 )
 
 // Custom error struct for Assertion errors
 type ErrAssertionFailure struct {
+	// ID identifies the assertion that failed verification.
 	ID string
 }
 
+// Error returns the failed assertion ID with the tamper-detection message.
 func (e ErrAssertionFailure) Error() string {
 	return fmt.Errorf("[%w] tdf: issue verifying assertions, id: %s", ErrTampered, e.ID).Error()
 }
 
+// Unwrap returns ErrTampered so callers can match assertion failures as tampering.
 func (e ErrAssertionFailure) Unwrap() error {
 	return ErrTampered
 }

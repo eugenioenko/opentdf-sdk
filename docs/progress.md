@@ -2676,3 +2676,17 @@ sorted keys, but Go's `json.Marshal` escapes `<>&` and Python's `json.dumps`
 non-ASCII while the others write them literally, so the same input can give
 byte-different statement strings across CLIs for such values; verification is
 unaffected because the hash is over the string written.
+
+## Public SDK documentation: source audit
+
+Added missing comments for 374 public declarations and members. The audit now
+covers all 541 handwritten exported declarations, interface methods, and fields
+in the shared SDK, deprecated facade, and archive package. Added package guides
+and clarified unsupported options, buffering, allowlists, integrity checks, and
+resource ownership. Public comments no longer promise future implementation
+phases. The reachable internal rewrap-result type is also described.
+
+Verification: `go run scripts/check-api-docs.go` passed; a Go scanner comparison
+confirmed unchanged code tokens in edited source files, and `git diff --check`
+passed. No protocol, crypto, or runtime behavior changed. Site generation and
+publication verification follow this source-documentation phase.

@@ -46,7 +46,8 @@ const (
 	maxAESGCMSegmentsPerDEK uint64 = 1<<32 - 1
 )
 
-// Loads and reads ZTDF files
+// Reader holds a parsed TDF archive and lazily requests its payload key from KAS.
+// Close the reader before closing the SDK that created it.
 type Reader struct {
 	rewrapper           Rewrapper
 	logger              *slog.Logger
@@ -64,26 +65,32 @@ type Reader struct {
 	requiredObligations *RequiredObligations
 }
 
+// RequiredObligations holds the obligation FQNs returned by key access services.
 type RequiredObligations struct {
+	// FQNs lists the obligations associated with the access decision.
 	FQNs []string
 }
 
+// TDFObject summarizes a successfully created archive without retaining its plaintext.
 type TDFObject struct {
 	manifest Manifest
 	size     int64
 }
 
+// Size returns the encrypted archive length in bytes.
 func (t *TDFObject) Size() int64 {
 	return t.size
 }
 
+// Manifest returns the manifest recorded during encryption. Treat nested slices as
+// read-only.
 func (t *TDFObject) Manifest() Manifest {
 	return t.manifest
 }
 
-// CreateTDF encrypts the payload read from reader and writes a TDF to writer.
-// This phase reads the payload whole and runs EncryptBytes; the streaming
-// writer of Phase 7 replaces the byte path behind the same signature.
+// CreateTDF encrypts reader and writes the complete archive to writer. It buffers
+// the plaintext and archive in memory. It does not close reader or writer and
+// reports a short write as an error.
 func (s *SDK) CreateTDF(ctx context.Context, writer io.Writer, reader io.Reader, opts TDFOptions) (*TDFObject, error) {
 	plaintext, err := io.ReadAll(reader)
 	if err != nil {
@@ -131,8 +138,9 @@ func uuidSplitIDGenerator() string {
 	return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
 }
 
-// EncryptBytes encrypts plaintext into a TDF held in memory, subject to the
-// given options: the reference's CreateTDFContext over bytes.
+// EncryptBytes returns an encrypted TDF archive and its manifest summary.
+// It buffers the result in memory. ctx bounds policy discovery and KAS requests;
+// opts controls attributes, key wrapping, metadata, and assertions.
 func (s *SDK) EncryptBytes(ctx context.Context, plaintext []byte, opts TDFOptions) ([]byte, *TDFObject, error) {
 	if err := s.check("CreateTDF"); err != nil {
 		return nil, nil, err
@@ -432,6 +440,8 @@ func (s *SDK) newGranter(ctx context.Context, tdfConfig *TDFConfig) (granter, er
 	return g, nil
 }
 
+// Manifest returns the parsed manifest without a KAS request. Treat nested slices as
+// read-only.
 func (r *Reader) Manifest() Manifest {
 	return r.manifest
 }
@@ -715,7 +725,9 @@ func allowListFromKASRegistry(ctx context.Context, logger *slog.Logger, kasRegis
 	return kasAllowlist, nil
 }
 
-// LoadTDF loads the tdf and prepare for reading the payload from TDF
+// LoadTDF buffers and parses an archive, resolves its KAS allowlist, and returns
+// a reader. It does not unwrap the payload key or verify payload integrity yet.
+// Close the returned reader before its SDK; reader remains caller-owned.
 func (s *SDK) LoadTDF(ctx context.Context, reader io.ReadSeeker, opts ReaderOptions) (*Reader, error) {
 	if err := s.check("LoadTDF"); err != nil {
 		return nil, err
@@ -781,8 +793,9 @@ func (c *TDFReaderConfig) closeSessionKey() {
 	}
 }
 
-// Do any network based operations required.
-// This allows making the requests cancellable
+// Init requests the payload key from KAS using ctx for cancellation and deadlines.
+// It returns immediately if the key is already available. It does not decrypt
+// or verify every payload segment.
 func (r *Reader) Init(ctx context.Context) error {
 	if r.payloadKey != nil {
 		return nil
@@ -868,7 +881,8 @@ func (r *Reader) readAll() ([]byte, error) {
 	return out, nil
 }
 
-// UnencryptedMetadata return decrypted metadata in manifest.
+// UnencryptedMetadata returns decrypted metadata, requesting the payload key if
+// needed. Call Init first to provide an explicit context for that request.
 func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	if r.payloadKey == nil {
 		err := r.doPayloadKeyUnwrap(r.callContext())
@@ -880,8 +894,8 @@ func (r *Reader) UnencryptedMetadata() ([]byte, error) {
 	return r.unencryptedMetadata, nil
 }
 
-// Policy returns a copy of the policy object in manifest, if it is valid.
-// Otherwise, returns an error.
+// Policy decodes the manifest's policy. It returns an error for invalid policy
+// data and does not contact KAS or verify payload integrity.
 func (r *Reader) Policy() (PolicyObject, error) {
 	policyObj := PolicyObject{}
 	policy, err := encoding.Base64Decode(r.manifest.EncryptionInformation.Policy)
@@ -897,7 +911,8 @@ func (r *Reader) Policy() (PolicyObject, error) {
 	return policyObj, nil
 }
 
-// DataAttributes return the data attributes present in tdf.
+// DataAttributes returns the attribute FQNs recorded in the decoded policy.
+// It does not contact KAS or verify payload integrity.
 func (r *Reader) DataAttributes() ([]string, error) {
 	policy, err := encoding.Base64Decode(r.manifest.EncryptionInformation.Policy)
 	if err != nil {
