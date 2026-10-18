@@ -51,26 +51,26 @@ Goalchemy issues opened for the gaps the phases depend on, detailed in
 
 | Status | Symbols |
 | --- | --- |
-| `done` | 380 |
+| `done` | 421 |
 | `phase 1` | 2 |
-| `phase 5` | 41 |
+| `done` | 421 |
 | `phase 6` | 15 |
 | `phase 7` | 7 |
 | `phase 8` | 54 |
 | `phase 9` | 20 |
 | `phase 10` | 149 |
-| `not planned` | 1 |
+| `not planned` | 0 |
 | total | 669 |
 
 | Package | Rows |
 | --- | --- |
-| `sdk` | 339 |
-| `auth` | 17 |
+| `sdk` | 0 |
+| `auth` | 0 |
 | `auth/oauth` | 8 |
 | `experimental/tdf` | 79 |
 | `experimental/tdf/keysplit` | 44 |
-| `httputil` | 3 |
-| `sdkconnect` | 179 |
+| `httputil` | 0 |
+| `sdkconnect` | 0 |
 
 Phase assignments that the plan leaves open or states twice are recorded in
 [progress.md](progress.md) under "Full SDK plan, Phase 0".
@@ -81,42 +81,42 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `AppliesToState` | type | sdk/tdf.AppliesToState | `phase 5` |
-| `AppliesToState.String` | method | sdk/tdf.AppliesToState.String | `phase 5` |
-| `Assertion` | type | sdk/tdf.Assertion | `phase 5` |
-| `Assertion.GetHash` | method | sdk/tdf.Assertion.GetHash | `phase 5` |
-| `Assertion.Sign` | method | sdk/tdf.Assertion.Sign | `phase 5` |
-| `Assertion.Verify` | method | sdk/tdf.Assertion.Verify | `phase 5` |
-| `AssertionConfig` | type | sdk/tdf.AssertionConfig | `phase 5` |
-| `AssertionKey` | type | sdk/tdf.AssertionKey | `phase 5` |
-| `AssertionKey.Algorithm` | method | AssertionKey.Algorithm | `phase 5` |
-| `AssertionKey.IsEmpty` | method | AssertionKey.IsEmpty | `phase 5` |
-| `AssertionKeyAlg` | type | sdk/tdf.AssertionKeyAlg | `phase 5` |
-| `AssertionKeyAlg.String` | method | sdk/tdf.AssertionKeyAlg.String | `phase 5` |
-| `AssertionKeyAlgHS256` | const | sdk/tdf.AssertionKeyAlgHS256 | `phase 5` |
-| `AssertionKeyAlgRS256` | const | sdk/tdf.AssertionKeyAlgRS256 | `phase 5` |
-| `AssertionType` | type | sdk/tdf.AssertionType | `phase 5` |
-| `AssertionType.String` | method | sdk/tdf.AssertionType.String | `phase 5` |
-| `AssertionVerificationKeys` | type | sdk/tdf.AssertionVerificationKeys | `phase 5` |
-| `AssertionVerificationKeys.Get` | method | AssertionVerificationKeys.Get | `phase 5` |
-| `AssertionVerificationKeys.IsEmpty` | method | AssertionVerificationKeys.IsEmpty | `phase 5` |
-| `BaseAssertion` | const | sdk/tdf.BaseAssertion | `phase 5` |
-| `Binding` | type | sdk/tdf.Binding | `phase 5` |
-| `BindingMethod` | type | sdk/tdf.BindingMethod | `phase 5` |
-| `BindingMethod.String` | method | sdk/tdf.BindingMethod.String | `phase 5` |
-| `Encrypted` | const | sdk/tdf.Encrypted | `phase 5` |
-| `GetSystemMetadataAssertionConfig` | func | sdk.GetSystemMetadataAssertionConfig | `phase 5` |
-| `HandlingAssertion` | const | sdk/tdf.HandlingAssertion | `phase 5` |
-| `JWS` | const | sdk/tdf.JWS | `phase 5` |
-| `PayloadScope` | const | sdk/tdf.PayloadScope | `phase 5` |
-| `Scope` | type | sdk/tdf.Scope | `phase 5` |
-| `Scope.String` | method | sdk/tdf.Scope.String | `phase 5` |
-| `Statement` | type | sdk/tdf.Statement | `phase 5` |
+| `AppliesToState` | type | sdk/tdf.AppliesToState | `done` |
+| `AppliesToState.String` | method | sdk/tdf.AppliesToState.String | `done` |
+| `Assertion` | type | sdk/tdf.Assertion | `done` |
+| `Assertion.GetHash` | method | sdk/tdf.Assertion.GetHash | `done` |
+| `Assertion.Sign` | method | sdk/tdf.Assertion.Sign | `done` |
+| `Assertion.Verify` | method | sdk/tdf.Assertion.Verify | `done` |
+| `AssertionConfig` | type | sdk/tdf.AssertionConfig | `done` |
+| `AssertionKey` | type | sdk/tdf.AssertionKey | `done` |
+| `AssertionKey.Algorithm` | method | AssertionKey.Algorithm | `done` |
+| `AssertionKey.IsEmpty` | method | AssertionKey.IsEmpty | `done` |
+| `AssertionKeyAlg` | type | sdk/tdf.AssertionKeyAlg | `done` |
+| `AssertionKeyAlg.String` | method | sdk/tdf.AssertionKeyAlg.String | `done` |
+| `AssertionKeyAlgHS256` | const | sdk/tdf.AssertionKeyAlgHS256 | `done` |
+| `AssertionKeyAlgRS256` | const | sdk/tdf.AssertionKeyAlgRS256 | `done` |
+| `AssertionType` | type | sdk/tdf.AssertionType | `done` |
+| `AssertionType.String` | method | sdk/tdf.AssertionType.String | `done` |
+| `AssertionVerificationKeys` | type | sdk/tdf.AssertionVerificationKeys | `done` |
+| `AssertionVerificationKeys.Get` | method | AssertionVerificationKeys.Get | `done` |
+| `AssertionVerificationKeys.IsEmpty` | method | AssertionVerificationKeys.IsEmpty | `done` |
+| `BaseAssertion` | const | sdk/tdf.BaseAssertion | `done` |
+| `Binding` | type | sdk/tdf.Binding | `done` |
+| `BindingMethod` | type | sdk/tdf.BindingMethod | `done` |
+| `BindingMethod.String` | method | sdk/tdf.BindingMethod.String | `done` |
+| `Encrypted` | const | sdk/tdf.Encrypted | `done` |
+| `GetSystemMetadataAssertionConfig` | func | sdk.GetSystemMetadataAssertionConfig | `done` |
+| `HandlingAssertion` | const | sdk/tdf.HandlingAssertion | `done` |
+| `JWS` | const | sdk/tdf.JWS | `done` |
+| `PayloadScope` | const | sdk/tdf.PayloadScope | `done` |
+| `Scope` | type | sdk/tdf.Scope | `done` |
+| `Scope.String` | method | sdk/tdf.Scope.String | `done` |
+| `Statement` | type | sdk/tdf.Statement | `done` |
 | `Statement.UnmarshalJSON` | method | Statement JSON decoding quirks (object or string value) | `phase 10` |
-| `SystemMetadataAssertionID` | const | sdk/tdf.SystemMetadataAssertionID | `phase 5` |
-| `SystemMetadataSchemaV1` | const | sdk/tdf.SystemMetadataSchemaV1 | `phase 5` |
-| `TrustedDataObjScope` | const | sdk/tdf.TrustedDataObjScope | `phase 5` |
-| `Unencrypted` | const | sdk/tdf.Unencrypted | `phase 5` |
+| `SystemMetadataAssertionID` | const | sdk/tdf.SystemMetadataAssertionID | `done` |
+| `SystemMetadataSchemaV1` | const | sdk/tdf.SystemMetadataSchemaV1 | `done` |
+| `TrustedDataObjScope` | const | sdk/tdf.TrustedDataObjScope | `done` |
+| `Unencrypted` | const | sdk/tdf.Unencrypted | `done` |
 
 ### `auth_client.go`
 
@@ -498,8 +498,8 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `TDFOption` | type | sdk.TDFOptions struct; With* adapters in hosts/go | `done` |
 | `TDFReaderConfig` | type | sdk.ReaderOptions | `done` |
 | `TDFReaderOption` | type | sdk.ReaderOptions struct; With* adapters in hosts/go | `done` |
-| `WithAssertionVerificationKeys` | func | ReaderOptions.AssertionVerificationKeys | `phase 5` |
-| `WithAssertions` | func | TDFOptions.Assertions | `phase 5` |
+| `WithAssertionVerificationKeys` | func | ReaderOptions.AssertionVerificationKeys | `done` |
+| `WithAssertions` | func | TDFOptions.Assertions | `done` |
 | `WithAutoconfigure` | func | TDFOptions.DisableAutoconfigure | `done` |
 | `WithDataAttributeValues` | func | TDFOptions.AttributeValues | `done` |
 | `WithDataAttributes` | func | TDFOptions.Attributes | `done` |
@@ -514,7 +514,7 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | `WithSchemaValidation` | func | ReaderOptions.SchemaValidation | `phase 6` |
 | `WithSegmentSize` | func | TDFOptions.SegmentSize | `done` |
 | `WithSessionKeyType` | func | ReaderOptions.SessionKeyType | `done` |
-| `WithSystemMetadataAssertion` | func | TDFOptions.SystemMetadataAssertion | `phase 5` |
+| `WithSystemMetadataAssertion` | func | TDFOptions.SystemMetadataAssertion | `done` |
 | `WithTDFFulfillableObligationFQNs` | func | ReaderOptions.FulfillableObligationFQNs | `phase 9` |
 | `WithTargetMode` | func | TDFOptions.TargetMode | `phase 6` |
 | `WithWrappingKeyAlg` | func | TDFOptions.WrappingKeyAlgorithm | `done` |
@@ -525,9 +525,9 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `ErrAESGCMExhausted` | var | sdk.ErrAESGCMExhausted sentinel; Error.Kind = KindAESGCMExhausted | `done` |
-| `ErrAssertionFailure` | type | Error{Kind: KindAssertionFailure, AssertionID} | `phase 5` |
-| `ErrAssertionFailure.Error` | method | Error{Kind: KindAssertionFailure}.Error | `phase 5` |
-| `ErrAssertionFailure.Unwrap` | method | Error{Kind: KindAssertionFailure}.Unwrap (ErrTampered) | `phase 5` |
+| `ErrAssertionFailure` | type | Error{Kind: KindAssertionFailure, AssertionID} | `done` |
+| `ErrAssertionFailure.Error` | method | Error{Kind: KindAssertionFailure}.Error | `done` |
+| `ErrAssertionFailure.Unwrap` | method | Error{Kind: KindAssertionFailure}.Unwrap (ErrTampered) | `done` |
 | `ErrGMACSignatureFailed` | var | sdk.ErrGMACSignatureFailed sentinel; Error.Kind = KindSegmentSignature | `done` |
 | `ErrKASRequestError` | var | sdk.ErrKASRequestError sentinel; Error.Kind = KindKASRequest | `done` |
 | `ErrRewrapBadRequest` | var | sdk.ErrRewrapBadRequest sentinel; Error.Kind = KindRewrapBadRequest | `done` |

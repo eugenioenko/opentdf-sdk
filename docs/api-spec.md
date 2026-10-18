@@ -980,3 +980,38 @@ on every target would dominate Swift and Rust build times).
   reader use the `granter.go` and `key_splitter.go` ports, and the
   subpackage's exports need the separate importable package Phase 10 builds
   per target.
+
+### Deviations recorded by Phase 5 part 1
+
+Found while porting `assertion.go` and the reader's assertion checks to the
+shared source and the Go host; each keeps the reference behaviour unless
+noted.
+
+- `AssertionKey.Key` is a string, not `interface{}`: the raw HS256 secret, or
+  a PEM block for RS256 (a private key signs; a public or private key
+  verifies). Hardware-backed signers (`crypto.Signer`) do not cross the
+  boundary and are not planned.
+- `AssertionVerificationKeys.Keys` is a list of `AssertionKeyEntry{AssertionID,
+  Alg, Key}` rather than `map[string]AssertionKey`, because maps do not cross
+  the boundary; `Get` and `IsEmpty` behave as the reference's.
+- `Assertion.Verify` requires the JWS header's `alg` to name the key's
+  algorithm and verifies with that key only; the reference also tries a key
+  carried in the header (`jwk`, `x5c`). Header keys arrive with Goalchemy
+  #76 (X.509) in Phase 8.
+- The JWS header is `{"alg":"<alg>","typ":"JWT"}`, as `jwx` writes it; the
+  claims are `assertionHash` and `assertionSig` only.
+- `GetSystemMetadataAssertionConfig` omits `operating_system`,
+  `go_version` and `architecture` until the runtime reports them (Goalchemy
+  #74); `sdk_version` is `Goalchemy-<Version>`. `tdf_spec_version` and
+  `creation_date` (RFC 3339) match the reference.
+- Assertion failures are `Error{Kind: assertion_failure, AssertionID}` with
+  the reference's text: `[tamper detected] tdf: issue verifying assertions,
+  id: <id>: <detail>` for hash and signature mismatches (`errors.Is(err,
+  ErrTampered)` holds), and `assertion verification failed: assertion: failed
+  to verify with provided key: <cause>` when the binding does not verify
+  under the selected key, which the reference does not wrap in
+  `ErrAssertionFailure` either.
+- `--with-assertions` and `--with-assertion-verification-keys` in `otdfgc`
+  accept a file path or JSON text, as otdfctl does; a statement `value` that
+  is a JSON object is kept as its compact text, HS256 keys are used as the
+  bytes of the string and RS256 keys as PEM, as the web SDK's CLI does.

@@ -2578,3 +2578,55 @@ CPUQuota=200%`, one type at a time, platform from `otdf-local` at
 - [parity-matrix.md](parity-matrix.md): no `phase 4` rows remain; the 44
   `experimental/tdf/keysplit` rows move to phase 10 with `experimental/tdf`
   ([api-spec.md](api-spec.md), Phase 4 part 2 deviations).
+
+## Full SDK plan, Phase 5 part 1: assertions (shared source, Go host and CLI)
+
+Branch `feat/phase5-part1-assertions`, on Goalchemy `be2bf10` (the
+`std/encoding/json/jcs` package of goalchemy#112, pinned ahead of its 0.7.3
+release as the lock allows).
+
+Shared source:
+
+- `assertion.go` ported: `AssertionKey`, `AssertionVerificationKeys` (keys
+  as a list of entries), `signAssertions`, `Assertion.Sign`/`Verify`/`GetHash`
+  and `GetSystemMetadataAssertionConfig`. The hash is the SHA-256 of the
+  RFC 8785 form of the assertion without its binding (`jcs.Encode` over a
+  `jsonvalue` object with the reference's `omitempty` shape); the binding is
+  a compact JWS with the `assertionHash` and `assertionSig` claims, HS256 over
+  the payload key by default or the config's HS256 secret or RS256 private
+  PEM. The reference's hash vector
+  (`4a447a13c5a32730d20bdf7feecb9ffe16649bc731914b574d80035a3927f860`) is a
+  unit test.
+- Writer: `TDFOptions.Assertions` and `SystemMetadataAssertion` are signed
+  into the manifest after the segments, the system-metadata assertion last;
+  `useHex` is carried for the 4.2.2 target mode Phase 6 adds.
+- Reader: every assertion is verified in `Init` after the root signature, as
+  the reference does: the key is the payload key (HS256) unless the reader's
+  verification keys name the assertion ID or supply a default; legacy
+  manifests (no `schemaVersion`) bind the hex hash. Failures are
+  `assertion_failure` errors with the reference's wording and `AssertionID`.
+- `SupportedFeatures` adds `assertions` and `assertion_verification`.
+
+Go host and CLI: `WithAssertionVerificationKeys`; `otdfgc` reads
+`--with-assertions` and `--with-assertion-verification-keys` as a file or
+JSON (statement objects kept as compact text, HS256 keys as the string's
+bytes, RS256 keys as PEM) and no longer lists them as unsupported.
+
+Verification (local, throttled, platform from `otdf-local` at `4d9e555b`
+with the `golden-r1` KAS key provisioned, which the legacy fixture needs and
+the reference reader also fails without):
+
+- `go test ./src/...`: pass, including the ported round trips (default key,
+  HS256 default verifier, HS256 and RS256 by ID, missing key, disabled
+  verification, tampered statement, moved binding, system metadata).
+- xtest `--sdks "go gcgo@p5" --focus gcgo --sizes small --containers ztdf`:
+  `test_tdf_assertions_unkeyed`, `test_tdf_assertions_with_keys`,
+  `test_manifest_validity_with_assertions` (with `SCHEMA_FILE`),
+  `test_tdf_with_altered_assertion_statement`,
+  `test_tdf_with_altered_assertion_with_keys`: 14 passed in both directions;
+  `test_tdf_assertions_422_format` skips (`hexaflexible` unadvertised);
+  `test_legacy.py::test_decrypt_object_statement_value_json`: pass
+  (`out/xtest/phase5-gcgo-*.xml`, scoreboard updated).
+
+Deviations are recorded in [api-spec.md](api-spec.md) (Phase 5 part 1).
+Part 2 exposes the options on the other seven hosts and CLIs.
