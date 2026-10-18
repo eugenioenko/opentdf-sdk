@@ -127,7 +127,7 @@ func (s *SDK) EncryptBytes(ctx context.Context, plaintext []byte, opts TDFOption
 // TDF reading.
 func (s *SDK) LoadTDF(ctx context.Context, r io.ReadSeeker, opts ReaderOptions) (*Reader, error)
 func (s *SDK) DecryptBytes(ctx context.Context, ciphertext []byte, opts ReaderOptions) ([]byte, error)
-func (s *SDK) DecryptTo(ctx context.Context, out io.Writer, ciphertext []byte, opts ReaderOptions) error
+func (s *SDK) DecryptTo(ctx context.Context, out io.Writer, in io.ReadSeeker, opts ReaderOptions) error
 func (s *SDK) DecryptFile(ctx context.Context, inputPath, outputPath string, opts ReaderOptions) error
 
 // Bulk.
@@ -214,9 +214,9 @@ type Reader struct{ /* unexported */ }
 
 func (r *Reader) Init(ctx context.Context) error          // fetch and unwrap keys now
 func (r *Reader) Read(p []byte) (int, error)               // io.Reader
-func (r *Reader) ReadAt(p []byte, off int64) (int, error)  // io.ReaderAt
-func (r *Reader) Seek(off int64, whence int) (int64, error)
-func (r *Reader) WriteTo(w io.Writer) (int64, error)
+func (r *Reader) ReadAt(ctx context.Context, off int64, length int) ([]byte, error)
+func (r *Reader) Seek(ctx context.Context, off int64, whence int) (int64, error)
+func (r *Reader) WriteTo(ctx context.Context, w io.Writer) (int64, error)
 func (r *Reader) Manifest() Manifest
 func (r *Reader) Policy() (PolicyObject, error)
 func (r *Reader) DataAttributes() ([]string, error)
@@ -228,7 +228,9 @@ func (r *Reader) Close() error
 
 `TDFReader` is the interface with this method set. `Read`, `ReadAt`, `Seek`
 and `WriteTo` run `Init` lazily with the context given to `LoadTDF`; hosts
-that need a different context call `Init` first.
+that need a different context call `Init` first. The Go adapter adds
+`ReaderAt(ctx) io.ReaderAt` over `ReadAt`; the reference's `io.ReaderAt` and
+`io.WriterTo` shapes cannot cross the boundary (see the Phase 7 deviations).
 
 Across the boundary the reader is a handle that is also a source stream
 (Goalchemy phase 4 of #22): targets receive it as their native readable
@@ -768,6 +770,55 @@ the reference behaviour unless noted.
   until its removal.)
 - The KAS allowlist is fetched in `LoadTDF`, as the reference does, rather
   than on the first decrypt.
+
+### Deviations recorded by Phase 7
+
+Found while porting the reference's `CreateTDF`, `Reader` streams,
+`DecryptTo` and `DecryptFile` over Goalchemy host streams (`std/io`
+parameters) and `std/os` file handles.
+
+- `Reader.ReadAt(ctx, offset int64, length int) ([]byte, error)` and
+  `Reader.WriteTo(ctx, w io.Writer) (int64, error)` replace the reference's
+  `io.ReaderAt` and `io.WriterTo` method sets: a caller-owned `[]byte` cannot
+  be filled across the boundary, and every exported method takes a context.
+  `ReadAt` caps `length` at the payload's end rather than returning
+  `io.EOF` with a short count. The Go adapter restores `io.ReaderAt` as
+  `Reader.ReaderAt(ctx)`.
+- `Reader.Read` is the one method without a context (it is the `io.Reader`
+  the host stream views expose) and the only one that returns the real
+  `io.EOF`; `Seek` and `ReadAt` return `*Error` of kind `invalid_offset` and
+  `payload_read` carrying the reference's texts.
+- `SDK.DecryptTo` takes the ciphertext as an `io.ReadSeeker`, not `[]byte`:
+  the reference's byte form is `DecryptBytes`, and a byte input defeats the
+  purpose of a streaming decrypt.
+- `DecryptFile` compares the two paths as strings (the reference uses
+  `os.SameFile`; `std/os` has no `FileInfo` identity) and relies on the
+  POSIX rename replacing the output atomically, so it has no Windows backup
+  and restore step. The temporary file is created beside the output as
+  `.decrypt-*.tmp` and removed on every failure.
+- An input whose size cannot be established (`InputSize` zero and a
+  non-seekable reader) is written as a ZIP64 archive from the first header,
+  as the reference's `Zip64Always` mode; a measurable input below the 4 GiB
+  boundary is written as ZIP32 with the per-entry ZIP64 switch at 2 GiB, as
+  the reference's default. Hosts whose seekable stream wrappers cannot
+  report a size pass `TDFOptions.InputSize`.
+- Host stream forms sit beside the byte forms under distinct names rather
+  than overloads: TypeScript `encryptTo`/`decryptTo`/`decryptFile` and
+  `loadTdf` over a `HostStream`; Python `encrypt_to`/`decrypt_to`/
+  `decrypt_file` and `load_tdf` over a file-like object; Java `encryptTo`/
+  `decryptTo`/`decryptFile` and `loadTDF(Object)`; C# `EncryptToAsync`/
+  `DecryptToAsync`/`DecryptFileAsync` and `LoadTdfAsync(Stream)`; Rust
+  `encrypt_to`/`decrypt_to`/`decrypt_file`/`load_tdf_stream`; C
+  `otdf_encrypt_to`/`otdf_decrypt_to`/`otdf_decrypt_file`/
+  `otdf_load_tdf_stream`; Swift `encryptTo`/`decryptTo`/`decryptFile` and
+  `loadTDF(HostStream)`. The streamed `TDFObject` carries no bytes.
+- A reader's host stream view (`io()`, `as_file()`, `asInputStream()`,
+  `AsStream()`, `otdf_reader_read`) runs the lazy `Init` without the SDK's
+  token-provider callbacks, so a host that registered a token provider calls
+  `Init` first; the CLIs and consumers do.
+- `WithInputSize` keeps its reference role: a declared size smaller than the
+  input fails the write (`ErrInputSizeMismatch` wording), a larger one ends
+  at the input's end with the reference's short-input error.
 
 ### Deviations recorded by Phase 2 part 2
 

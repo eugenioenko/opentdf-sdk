@@ -51,11 +51,10 @@ Goalchemy issues opened for the gaps the phases depend on, detailed in
 
 | Status | Symbols |
 | --- | --- |
-| `done` | 421 |
+| `done` | 427 |
 | `phase 1` | 2 |
-| `done` | 421 |
 | `phase 6` | 15 |
-| `phase 7` | 7 |
+| `phase 7` | 1 |
 | `phase 8` | 54 |
 | `phase 9` | 20 |
 | `phase 10` | 149 |
@@ -204,8 +203,8 @@ Phase assignments that the plan leaves open or states twice are recorded in
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
 | `SDK.DecryptBytes` | method | SDK.DecryptBytes(ctx, []byte, ReaderOptions) | `done` |
-| `SDK.DecryptFile` | method | SDK.DecryptFile(ctx, inputPath, outputPath, ReaderOptions) | `phase 7` |
-| `SDK.DecryptTo` | method | SDK.DecryptTo(ctx, io.Writer, []byte, ReaderOptions) | `phase 7` |
+| `SDK.DecryptFile` | method | SDK.DecryptFile(ctx, inputPath, outputPath, ReaderOptions); temp file beside the output, renamed into place | `done` |
+| `SDK.DecryptTo` | method | SDK.DecryptTo(ctx, io.Writer, io.ReadSeeker, ReaderOptions) | `done` |
 
 ### `decrypterrors.go`
 
@@ -445,21 +444,21 @@ Phase assignments that the plan leaves open or states twice are recorded in
 
 | Symbol | Kind | Shared-source equivalent | Status |
 | --- | --- | --- | --- |
-| `Reader` | type | sdk.Reader handle (stream methods in phase 7) | `done` |
+| `Reader` | type | sdk.Reader handle, also a source stream (`io()`, `as_file()`, `asInputStream()`, `AsStream()`) | `done` |
 | `Reader.DataAttributes` | method | Reader.DataAttributes | `done` |
 | `Reader.Init` | method | Reader.Init | `done` |
 | `Reader.Manifest` | method | Reader.Manifest | `done` |
 | `Reader.Obligations` | method | Reader.Obligations | `phase 9` |
 | `Reader.Policy` | method | Reader.Policy | `done` |
-| `Reader.Read` | method | Reader.Read (io.Reader) | `phase 7` |
-| `Reader.ReadAt` | method | Reader.ReadAt (io.ReaderAt) | `phase 7` |
-| `Reader.Seek` | method | Reader.Seek (io.Seeker) | `phase 7` |
+| `Reader.Read` | method | Reader.Read (io.Reader; the host stream view) | `done` |
+| `Reader.ReadAt` | method | Reader.ReadAt(ctx, offset, length) ([]byte, error); Go adapter `ReaderAt(ctx)` is the io.ReaderAt | `done` |
+| `Reader.Seek` | method | Reader.Seek(ctx, offset, whence) | `done` |
 | `Reader.UnencryptedMetadata` | method | Reader.UnencryptedMetadata | `done` |
 | `Reader.UnsafePayloadKeyRetrieval` | method | Reader.UnsafePayloadKeyRetrieval | `phase 7` |
-| `Reader.WriteTo` | method | Reader.WriteTo (io.WriterTo) | `phase 7` |
+| `Reader.WriteTo` | method | Reader.WriteTo(ctx, io.Writer) (int64, error) | `done` |
 | `RequiredObligations` | type | sdk.RequiredObligations | `phase 9` |
-| `SDK.CreateTDF` | method | SDK.EncryptBytes (phase 2); SDK.CreateTDF(ctx, w, r, TDFOptions) streams in phase 7 | `done` |
-| `SDK.CreateTDFContext` | method | SDK.CreateTDF takes ctx; streaming form in phase 7 | `done` |
+| `SDK.CreateTDF` | method | SDK.EncryptBytes (bytes); SDK.CreateTDF(ctx, io.Writer, io.Reader, TDFOptions) streams one segment at a time | `done` |
+| `SDK.CreateTDFContext` | method | SDK.CreateTDF takes ctx | `done` |
 | `SDK.LoadTDF` | method | SDK.LoadTDF(ctx, io.ReadSeeker, ReaderOptions) | `done` |
 | `TDFObject` | type | sdk.TDFObject | `done` |
 | `TDFObject.Manifest` | method | TDFObject.Manifest | `done` |
