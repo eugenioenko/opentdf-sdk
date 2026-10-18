@@ -367,6 +367,126 @@
       "request": {
         "fqn": "https://example.com/attr/classification"
       }
+    },
+    {
+      "id": "auth-client-credentials",
+      "title": "Authenticate with client credentials",
+      "for": "opentdf-local/sdk/src#Options",
+      "description": "Supply a platform URL and credentials from trusted application configuration. Acquire a token through the SDK Auth client to verify authentication, then reuse the SDK for encryption or platform calls. Print the scheme only, not the token value. Run statements in a function or async entry point; Go uses your ctx and C# uses your cancellationToken.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    sdk \"goalchemyout\"\n)\n\nclient, err := sdk.New(ctx, platformURL, sdk.Options{\n    ClientID: clientID,\n    ClientSecret: clientSecret,\n})\nif err != nil {\n    return err\n}\ndefer client.Close()\nauth, err := client.Auth(ctx)\nif err != nil {\n    return err\n}\ndefer auth.Close()\ntoken, err := auth.AccessToken(ctx)\nif err != nil {\n    return err\n}\nfmt.Println(\"Auth scheme:\", token.Scheme)"
+        },
+        {
+          "target": "typescript",
+          "code": "import { SDK } from '@opentdf-local/tdf3';\n\nconst client = await SDK.create(platformUrl, { clientId, clientSecret });\ntry {\n  const token = await client.auth().accessToken();\n  console.log('Auth scheme:', token.scheme);\n} finally {\n  await client.close();\n}"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3 import SDK\n\nasync with await SDK.create_async(\n    platform_url, client_id=client_id, client_secret=client_secret,\n) as client:\n    token = await client.auth().access_token_async()\n    print(\"Auth scheme:\", token.scheme)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.SDK;\n\ntry (var client = SDK.builder(platformUrl)\n        .clientCredentials(clientId, clientSecret).build()) {\n    var token = client.auth().accessToken();\n    System.out.println(\"Auth scheme: \" + token.scheme());\n}"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF;\n\nawait using var client = await Sdk.CreateAsync(platformUrl, new Options\n{\n    ClientId = clientId,\n    ClientSecret = clientSecret,\n}, cancellationToken);\nvar token = await client.Auth().AccessTokenAsync(cancellationToken);\nConsole.WriteLine($\"Auth scheme: {token.Scheme}\");"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::{Options, Sdk};\n\nlet client = Sdk::new_async(platform_url, Options {\n    client_id: client_id.into(),\n    client_secret: client_secret.into(),\n    ..Default::default()\n}).await?;\nlet token = client.auth().access_token_async().await;\nlet closed = client.close();\nlet token = token?;\nclosed?;\nprintln!(\"Auth scheme: {}\", token.scheme);"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nlet client = try await SDK(platformUrl, Options(\n    clientId: clientId, clientSecret: clientSecret))\ndefer { try? client.close() }\nlet token = try await client.auth().accessToken()\nprint(\"Auth scheme:\", token.scheme)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf.h\"\n#include <stdio.h>\n\notdf_options options = OTDF_OPTIONS_INIT;\noptions.client_id = client_id;\noptions.client_secret = client_secret;\notdf_sdk *client = NULL;\notdf_error error = {0};\notdf_access_token token = {0};\nint status = otdf_sdk_new(platform_url, &options, NULL, &client, &error);\nif (status == 0) {\n    status = otdf_auth_access_token(client, NULL, &token, &error);\n}\nif (status == 0) {\n    printf(\"Auth scheme: %s\\n\", token.scheme);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_access_token_free(&token);\notdf_error_free(&error);\nif (client != NULL) {\n    otdf_sdk_close(client, NULL);\n    otdf_sdk_free(client);\n}"
+        }
+      ]
+    },
+    {
+      "id": "auth-token-provider",
+      "title": "Provide an application access token",
+      "for": "opentdf-local/sdk/src#Options",
+      "description": "The obtainToken, obtainTokenAsync, obtain_token, ObtainTokenAsync, and provide_access_token functions are application-provided login or refresh operations, not SDK methods. They must observe cancellation and supply a valid Bearer token when called. Go returns (sdk.AccessToken, error); Python returns an awaitable AccessToken; Java and C# return a stage/task of TDF3.AccessToken; Rust returns Result<AccessToken, ProviderError>; Swift implements TokenProvider and completes once. TypeScript obtains {value, expiresAtUnixSeconds} and converts the absolute expiry to bigint. The C callback returns 0 with malloc-owned UTF-8 token JSON in a GXC_BYTES response; keep auth_state valid until the SDK closes. Pass Go callbacks to each operation that needs authentication.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    sdk \"goalchemyout\"\n)\n\ncallbacks := sdk.TokenCallbacks(obtainToken)\nclient, err := sdk.New(ctx, platformURL, sdk.Options{\n    TokenProviderName: sdk.TokenProviderName,\n}, callbacks)\nif err != nil {\n    return err\n}\ndefer client.Close()\nauth, err := client.Auth(ctx, callbacks)\nif err != nil {\n    return err\n}\ndefer auth.Close()\ntoken, err := auth.AccessToken(ctx, callbacks)\nif err != nil {\n    return err\n}\nfmt.Println(\"Auth scheme:\", token.Scheme)"
+        },
+        {
+          "target": "typescript",
+          "code": "import { SDK, type TokenProvider } from '@opentdf-local/tdf3';\n\nconst tokenProvider: TokenProvider = async (signal) => {\n  const token = await obtainToken(signal);\n  return {\n    value: token.value,\n    scheme: 'Bearer',\n    expiresAt: BigInt(token.expiresAtUnixSeconds),\n  };\n};\nconst client = await SDK.create(platformUrl, { tokenProvider });\ntry {\n  const token = await client.auth().accessToken();\n  console.log('Auth scheme:', token.scheme);\n} finally {\n  await client.close();\n}"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3 import SDK\n\nasync def token_provider(request):\n    return await obtain_token(request)\n\nasync with await SDK.create_async(\n    platform_url, token_provider=token_provider,\n) as client:\n    token = await client.auth().access_token_async()\n    print(\"Auth scheme:\", token.scheme)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.SDK;\nimport io.opentdf.tdf3.TDF3;\n\ntry (var client = SDK.builder(platformUrl)\n        .tokenProvider(TDF3.fromStage(request -> obtainTokenAsync(request)))\n        .build()) {\n    var token = client.auth().accessToken();\n    System.out.println(\"Auth scheme: \" + token.scheme());\n}"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF;\n\nawait using var client = await Sdk.CreateAsync(platformUrl, new Options\n{\n    TokenProvider = TDF3.FromTask(request => ObtainTokenAsync(request)),\n}, cancellationToken);\nvar token = await client.Auth().AccessTokenAsync(cancellationToken);\nConsole.WriteLine($\"Auth scheme: {token.Scheme}\");"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::{token_provider, Options, Sdk};\n\nlet client = Sdk::new_async(platform_url, Options {\n    token_provider: Some(token_provider(obtain_token)),\n    ..Default::default()\n}).await?;\nlet token = client.auth().access_token_async().await;\nlet closed = client.close();\nlet token = token?;\nclosed?;\nprintln!(\"Auth scheme: {}\", token.scheme);"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nlet provider: TokenProvider = obtainToken\nlet client = try await SDK(platformUrl, Options(tokenProvider: provider))\ndefer { try? client.close() }\nlet token = try await client.auth().accessToken()\nprint(\"Auth scheme:\", token.scheme)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf.h\"\n#include <stdio.h>\n\nint provide_access_token(void *state,\n    const uint8_t *name, size_t name_length,\n    const uint8_t *payload, size_t payload_length,\n    const atomic_bool *canceled, gxc_value *response);\n\notdf_options options = OTDF_OPTIONS_INIT;\noptions.token_provider = provide_access_token;\noptions.token_provider_state = auth_state;\notdf_sdk *client = NULL;\notdf_error error = {0};\notdf_access_token token = {0};\nint status = otdf_sdk_new(platform_url, &options, NULL, &client, &error);\nif (status == 0) {\n    status = otdf_auth_access_token(client, NULL, &token, &error);\n}\nif (status == 0) {\n    printf(\"Auth scheme: %s\\n\", token.scheme);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_access_token_free(&token);\notdf_error_free(&error);\nif (client != NULL) {\n    otdf_sdk_close(client, NULL);\n    otdf_sdk_free(client);\n}"
+        }
+      ]
+    },
+    {
+      "id": "auth-dpop",
+      "title": "Use DPoP with client credentials",
+      "for": "opentdf-local/sdk/src#Options",
+      "description": "Use a platform and identity provider configured for DPoP and ES256. The SDK creates an ephemeral signing key, obtains a bound token using client credentials, and signs requests. Keep the client alive for subsequent calls. A token supplied by an application provider requires its matching private key and confirmation thumbprint instead; changing the scheme of a Bearer token does not bind it.",
+      "snippets": [
+        {
+          "target": "go",
+          "code": "import (\n    \"fmt\"\n    sdk \"goalchemyout\"\n)\n\nclient, err := sdk.New(ctx, platformURL, sdk.Options{\n    ClientID: clientID,\n    ClientSecret: clientSecret,\n    DPoPAlgorithm: \"ES256\",\n})\nif err != nil {\n    return err\n}\ndefer client.Close()\nauth, err := client.Auth(ctx)\nif err != nil {\n    return err\n}\ndefer auth.Close()\ntoken, err := auth.AccessToken(ctx)\nif err != nil {\n    return err\n}\nfmt.Println(\"Auth scheme:\", token.Scheme)"
+        },
+        {
+          "target": "typescript",
+          "code": "import { SDK } from '@opentdf-local/tdf3';\n\nconst client = await SDK.create(platformUrl, {\n  clientId, clientSecret, dpopAlgorithm: 'ES256',\n});\ntry {\n  const token = await client.auth().accessToken();\n  console.log('Auth scheme:', token.scheme);\n} finally {\n  await client.close();\n}"
+        },
+        {
+          "target": "python",
+          "code": "from opentdf_tdf3 import SDK\n\nasync with await SDK.create_async(\n    platform_url, client_id=client_id, client_secret=client_secret,\n    dpop_algorithm=\"ES256\",\n) as client:\n    token = await client.auth().access_token_async()\n    print(\"Auth scheme:\", token.scheme)"
+        },
+        {
+          "target": "java",
+          "code": "import io.opentdf.tdf3.SDK;\n\ntry (var client = SDK.builder(platformUrl)\n        .clientCredentials(clientId, clientSecret)\n        .dpopAlgorithm(\"ES256\").build()) {\n    var token = client.auth().accessToken();\n    System.out.println(\"Auth scheme: \" + token.scheme());\n}"
+        },
+        {
+          "target": "csharp",
+          "code": "using OpenTDF;\n\nawait using var client = await Sdk.CreateAsync(platformUrl, new Options\n{\n    ClientId = clientId,\n    ClientSecret = clientSecret,\n    DpopAlgorithm = \"ES256\",\n}, cancellationToken);\nvar token = await client.Auth().AccessTokenAsync(cancellationToken);\nConsole.WriteLine($\"Auth scheme: {token.Scheme}\");"
+        },
+        {
+          "target": "rust",
+          "code": "use opentdf_tdf3::{Options, Sdk};\n\nlet client = Sdk::new_async(platform_url, Options {\n    client_id: client_id.into(),\n    client_secret: client_secret.into(),\n    dpop_algorithm: \"ES256\".into(),\n    ..Default::default()\n}).await?;\nlet token = client.auth().access_token_async().await;\nlet closed = client.close();\nlet token = token?;\nclosed?;\nprintln!(\"Auth scheme: {}\", token.scheme);"
+        },
+        {
+          "target": "swift",
+          "code": "import OpenTDFTDF3\n\nlet client = try await SDK(platformUrl, Options(\n    clientId: clientId, clientSecret: clientSecret, dpopAlgorithm: \"ES256\"))\ndefer { try? client.close() }\nlet token = try await client.auth().accessToken()\nprint(\"Auth scheme:\", token.scheme)"
+        },
+        {
+          "target": "c",
+          "code": "#include \"opentdf.h\"\n#include <stdio.h>\n\notdf_options options = OTDF_OPTIONS_INIT;\noptions.client_id = client_id;\noptions.client_secret = client_secret;\noptions.dpop_algorithm = \"ES256\";\notdf_sdk *client = NULL;\notdf_error error = {0};\notdf_access_token token = {0};\nint status = otdf_sdk_new(platform_url, &options, NULL, &client, &error);\nif (status == 0) {\n    status = otdf_auth_access_token(client, NULL, &token, &error);\n}\nif (status == 0) {\n    printf(\"Auth scheme: %s\\n\", token.scheme);\n} else {\n    fprintf(stderr, \"%s\\n\", error.message);\n}\notdf_access_token_free(&token);\notdf_error_free(&error);\nif (client != NULL) {\n    otdf_sdk_close(client, NULL);\n    otdf_sdk_free(client);\n}"
+        }
+      ]
     }
   ]
 }

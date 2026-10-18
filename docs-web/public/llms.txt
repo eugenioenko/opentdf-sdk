@@ -12,6 +12,7 @@ Start with the native language guide for the package an application imports. The
 - [Build and install](https://eugenioenko.github.io/opentdf-sdk/getting-started/): Choose a language and find its native package instructions.
 - [Encrypt and decrypt](https://eugenioenko.github.io/opentdf-sdk/guides/encrypt-and-decrypt/): Client reuse, policy, binary archives, and cleanup.
 - [Authentication](https://eugenioenko.github.io/opentdf-sdk/guides/authentication/): Token providers, client credentials, DPoP, and KAS allowlists.
+- [Native authentication examples](https://eugenioenko.github.io/opentdf-sdk/languages/authentication/): Client credentials, application token providers, expiry units, cancellation, and DPoP in all eight languages.
 - [Errors and lifetimes](https://eugenioenko.github.io/opentdf-sdk/guides/errors-and-lifetimes/): Stable error kinds, cancellation, and ownership.
 - [Platform services](https://eugenioenko.github.io/opentdf-sdk/guides/platform-services/): Native examples for pagination, namespace and attribute administration, FQN lookup, and Connect errors in eight languages.
 
@@ -20,7 +21,7 @@ Start with the native language guide for the package an application imports. The
 - [Portable Markdown index](https://eugenioenko.github.io/opentdf-sdk/reference/index.md): Package indexes link to types, methods, parameters, fields, and native declarations.
 - [JSON catalog](https://eugenioenko.github.io/opentdf-sdk/api.json): Machine-readable symbols, documentation, cross-references, and target availability.
 - [Browsable API](https://eugenioenko.github.io/opentdf-sdk/api/): The same reference rendered in Astro Starlight.
-- [RPC reference](https://eugenioenko.github.io/opentdf-sdk/api/rpc/): Native service methods with request and response fields, nested message types, enums, and protobuf validation options from the pinned platform revision. Reviewed examples are schema checked; authorization and server validation still apply.
+- [RPC API Reference](https://eugenioenko.github.io/opentdf-sdk/api/rpc/): Native endpoints grouped by authorization, entity resolution, policy domains, and configuration. Includes request and response fields, nested types, enums, and protobuf validation options from the pinned platform revision. Reviewed examples are schema checked; authorization and server validation still apply.
 - [Usage examples](https://eugenioenko.github.io/opentdf-sdk/api/examples/): Native language tabs for SDK encryption and platform service calls, with the same snippets included in the JSON and Markdown exports.
 - [Compatibility](https://raw.githubusercontent.com/eugenioenko/opentdf-sdk/main/docs/compatibility.md): Supported profiles and restrictions.
 

@@ -21,8 +21,9 @@ Its SwiftPM source package built reproducibly and was imported independently.
 macOS/iOS integration remains unverified. Linux Swift performance measurements are reported below.
 
 Browse the [SDK documentation](https://eugenioenko.github.io/opentdf-sdk/) for
-getting-started guides, native package APIs, and the generated
-[type and method reference](https://eugenioenko.github.io/opentdf-sdk/api/).
+getting-started guides, [authentication examples](https://eugenioenko.github.io/opentdf-sdk/languages/authentication/),
+the [SDK API Reference](https://eugenioenko.github.io/opentdf-sdk/api/), and the
+[RPC API Reference](https://eugenioenko.github.io/opentdf-sdk/api/rpc/).
 The [documentation maintenance guide](docs-web/README.md) explains generation
 and automatic GitHub Pages publishing.
 

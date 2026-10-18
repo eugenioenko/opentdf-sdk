@@ -5,7 +5,7 @@ dist/
 public/api.json
 public/reference/
 src/content/docs/api/
-src/content/docs/languages/
+src/content/docs/languages/*.md
 src/content/docs/reference/
 src/content/docs/contributing/
 src/data/rpc.json

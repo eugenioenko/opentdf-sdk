@@ -38,5 +38,6 @@ and readers before closing it.
 
 See [authentication](../authentication/), [error handling](../errors-and-lifetimes/),
 and [compatibility limits](../../reference/compatibility/) before choosing a
-profile. Payload APIs currently buffer data in memory; stream-shaped signatures
-do not promise bounded-memory streaming.
+profile. Byte-array helpers buffer archives in memory. For larger payloads,
+use the stream input/output APIs in your [native language guide](../../getting-started/)
+to process payloads in segments.

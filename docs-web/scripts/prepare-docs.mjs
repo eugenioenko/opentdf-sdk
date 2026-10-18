@@ -54,7 +54,7 @@ async function rewrite(node, source, parent) {
   for (const child of node.children ?? []) await rewrite(child, source, node);
 }
 
-for (const directory of ['languages', 'reference', 'contributing']) {
+for (const directory of ['reference', 'contributing']) {
   await rm(path.join(site, 'src/content/docs', directory), { recursive: true, force: true });
 }
 for (const [source, route, title, order] of sources) {
@@ -71,6 +71,11 @@ for (const [source, route, title, order] of sources) {
     });
   }
   await rewrite(tree, source);
+  if (route.startsWith('languages/')) {
+    const position = tree.children.findIndex((node) => node.type === 'heading' && node.depth === 2);
+    const introduction = markdown.parse(`Choose [authentication examples](${base}languages/authentication/) for client credentials, application token providers, and DPoP in ${title}.`);
+    tree.children.splice(position < 0 ? 0 : position, 0, ...introduction.children);
+  }
   const file = path.join(site, 'src/content/docs', `${route}.md`);
   await mkdir(path.dirname(file), { recursive: true });
   const metadata = stringify({ title, sidebar: { order }, editUrl: `${repository}/edit/main/${source}` });

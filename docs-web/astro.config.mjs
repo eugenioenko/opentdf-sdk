@@ -1,5 +1,8 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import { rpcSidebar } from './scripts/rpc-sidebar.mjs';
+
+const rpc = await rpcSidebar();
 
 export default defineConfig({
   site: 'https://eugenioenko.github.io',
@@ -19,9 +22,15 @@ export default defineConfig({
         { label: 'Introduction', link: '/' },
         { label: 'Build and install', link: '/getting-started/' },
       ] },
-      { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
+      { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } },
+        { label: 'More examples', link: '/api/examples/' },
+      ] },
       { label: 'Languages', items: [{ autogenerate: { directory: 'languages' } }] },
-      { label: 'API reference', items: [{ autogenerate: { directory: 'api' } }] },
+      { label: 'SDK API Reference', items: [
+        { label: 'Overview', link: '/api/' },
+        { autogenerate: { directory: 'api/packages' } },
+      ] },
+      { label: 'RPC API Reference', items: rpc },
       { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } },
         { label: 'llms.txt', link: 'https://eugenioenko.github.io/opentdf-sdk/llms.txt' },
       ] },

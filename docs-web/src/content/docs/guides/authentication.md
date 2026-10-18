@@ -10,25 +10,18 @@ your application. An uncredentialed client can discover configuration, but
 protected operations still need authorization. Do not embed client secrets in
 browser code.
 
-The [encrypt and decrypt example](../encrypt-and-decrypt/) shows client-credential
-setup in all eight languages. The same client provides the
+The [authentication examples](../../languages/authentication/) show client
+credentials, application token providers, and DPoP in all eight languages.
+The same client provides the
 [platform service accessors](../platform-services/).
 
 ## Token providers
 
-The TypeScript adapter accepts this shape:
-
-```typescript
-const tokenProvider = async (signal: AbortSignal) => ({
-  value: await obtainAccessToken(signal),
-  scheme: 'Bearer' as const,
-  expiresAt: expiryUnixSeconds,
-});
-```
-
-`obtainAccessToken` and `expiryUnixSeconds` are application-provided. Tokens
-exclude the authorization prefix. Expiry is UTC Unix seconds, not milliseconds.
-Follow your language guide for its callback and cancellation API.
+Connect your application's login and refresh flow through the native token
+provider. Tokens exclude the authorization prefix. Expiry is absolute UTC Unix
+seconds, not milliseconds; TypeScript represents it as `bigint`. Follow the
+[provider example](../../languages/authentication/#application-token-provider)
+for your adapter's callback and cancellation API.
 
 ## Discovery and DPoP
 
