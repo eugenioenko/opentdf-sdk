@@ -126,7 +126,7 @@ func TestSystemMetadataAssertionConfig(t *testing.T) {
 	if err := json.Unmarshal([]byte(c.Statement.Value), &meta); err != nil {
 		t.Fatal(err)
 	}
-	if meta["tdf_spec_version"] != TDFSpecVersion || meta["sdk_version"] != "Goalchemy-"+Version || !strings.Contains(meta["creation_date"], "T") {
+	if meta["tdf_spec_version"] != TDFSpecVersion() || meta["sdk_version"] != "Goalchemy-"+Version() || !strings.Contains(meta["creation_date"], "T") {
 		t.Fatalf("%v", meta)
 	}
 }
@@ -251,7 +251,7 @@ func Test_SystemMetadataAssertion(t *testing.T) {
 		t.Fatalf("%+v", m.Assertions)
 	}
 	var meta map[string]string
-	if err := json.Unmarshal([]byte(m.Assertions[1].Statement.Value), &meta); err != nil || meta["tdf_spec_version"] != TDFSpecVersion {
+	if err := json.Unmarshal([]byte(m.Assertions[1].Statement.Value), &meta); err != nil || meta["tdf_spec_version"] != TDFSpecVersion() {
 		t.Fatalf("%v %v", meta, err)
 	}
 	out, err := s.DecryptBytes(context.Background(), data, ReaderOptions{})

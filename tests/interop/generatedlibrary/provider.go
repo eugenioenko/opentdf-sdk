@@ -25,7 +25,7 @@ import (
 
 // This is an independent host OAuth provider. It performs no TDF operation and
 // imports no shared SDK code. All token/private key values stay in memory.
-func dpopProvider(ctx context.Context, cfg g.Config, mismatched bool) (g.AccessToken, error) {
+func dpopProvider(ctx context.Context, cfg consumerConfig, mismatched bool) (g.AccessToken, error) {
 	block, _ := pem.Decode([]byte(cfg.AuthPrivateKeyPEM))
 	if block == nil {
 		return g.AccessToken{}, errors.New("provider key")

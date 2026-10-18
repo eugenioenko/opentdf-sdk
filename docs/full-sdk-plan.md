@@ -105,8 +105,8 @@ them.
    handles, instances and host streams. The public API becomes a persistent
    `*SDK` handle created by `New`, with `*Reader`, `*TDFObject`,
    `*BulkDecryptPrepared` and `*ChunkedWriter` as derived handles. The current
-   `library.Encrypt`/`library.Decrypt` façade stays as a thin convenience layer
-   over the handle API for one release, then is removed.
+   `library.Encrypt`/`library.Decrypt` façade stayed as a thin convenience
+   layer over the handle API for one release and has been removed.
 2. **Options are structs in the shared source.** Goalchemy has no generics and
    functional options translate badly to most targets. The shared source takes
    `Options`, `TDFOptions`, `ReaderOptions` and `BulkOptions` structs with
@@ -405,7 +405,8 @@ Tasks (three PRs: shared source and Go; TypeScript, Python; Java, C#, Rust, C, S
    wording from `docs/error-wording.md`.
 6. Update each target's CLI to the new API (`--host` plus credentials is
    enough; no `KASURL` in configuration).
-7. Keep the old façade as a wrapper; mark it deprecated in docs.
+7. Keep the old façade as a wrapper; mark it deprecated in docs (removed
+   after one release).
 
 Verification:
 - `test_tdf_roundtrip`, `test_manifest_validity`, `test_tdf_with_unbound_policy`, `test_tdf_with_altered_policy_binding`, `test_tdf_with_altered_root_sig`, `test_tdf_with_altered_seg_sig_wrong`, `test_tdf_with_altered_enc_seg_size`, `test_tdf_altered_payload_end`, `test_tdf_with_malicious_kao` pass for every gc type in both directions against `go` and `js`.

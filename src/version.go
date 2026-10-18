@@ -4,14 +4,22 @@ const (
 	// The latest version of TDF Spec currently targeted by the SDK.
 	// By default, new files will conform to this version of the spec
 	// and, where possible, older versions will still be readable.
-	TDFSpecVersion = "4.3.0"
+	tdfSpecVersion = "4.3.0"
 
 	// The three-part semantic version number of this SDK
-	Version = "0.1.0"
+	version = "0.1.0"
 
 	// ReferenceVersion is the platform/sdk release this SDK matches.
 	ReferenceVersion = "0.34.0"
 )
+
+// TDFSpecVersion is the spec version new files target. Goalchemy exports
+// functions, not constants, so the generated packages read it through this
+// and Version.
+func TDFSpecVersion() string { return tdfSpecVersion }
+
+// Version is the three-part semantic version of this SDK.
+func Version() string { return version }
 
 // SupportedFeatures returns a list of optional features supported by this SDK build.
 // Used by xtest integration harness for feature detection.

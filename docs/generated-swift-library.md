@@ -66,9 +66,9 @@ let package = Package(
 
 The product/module is `OpenTDFTDF3`. It exports the handle API of
 [api-spec.md](api-spec.md) through the hand-written
-[adapter](../src/hosts/swift/OpenTDF.swift.in) and keeps the deprecated
-`encrypt`/`decrypt` façade ([TDF3.swift.in](../src/hosts/swift/TDF3.swift.in)).
-The package is compiled from the two export roots `src/library` and `src`;
+[adapter](../src/hosts/swift/OpenTDF.swift.in), with the token provider
+types in [Token.swift.in](../src/hosts/swift/Token.swift.in).
+The package is compiled from the export root `src`;
 the shared source's `Error` record is emitted as `Error_` by the Swift
 emitter's public-name rule (goalchemy#79), and the adapter presents it as
 `OpenTDFError`.
@@ -112,8 +112,8 @@ the calling task cancels the library call (kind `canceled`). Options are
 structs with defaults (`Options`, `TDFOptions`, `ReaderOptions`, `KASInfo`,
 `TokenExchange`, `CertExchange`, `TLSOptions`) using the shared field names
 in camelCase; every default is the reference default. Strings are Swift
-`String`s, payloads `Data`, sizes `Int64`. `tokenProvider` takes the
-façade's `TokenProvider` closure and replaces client credentials; the SDK
+`String`s, payloads `Data`, sizes `Int64`. `tokenProvider` takes a
+`TokenProvider` closure and replaces client credentials; the SDK
 then signs rewrap requests with the reference's ephemeral ES256 key unless
 `dpopKeyPem` is set. Options this build does not implement yet fail with
 `.unsupportedFeature` and `unsupported in this build: <option>`. `Manifest`,
@@ -176,14 +176,6 @@ registered with the xtest harness as the `gcswift` SDK type (see
 in `tests/interop/generatedswift/Consumer.swift` drives the real platform
 (including the service clients) and, in `controlled` mode, the offline checks of
 `tests/interop/delivery/controlled_platform.py`.
-
-### Deprecated façade
-
-The façade is unchanged for one release: `encrypt`/`decrypt` over
-`Config`/`EncryptOptions` returning a lazy `Operation` (`.wait()` or
-`.value()`), `Decrypted` and `TDFError`, implemented in the shared source as
-thin wrappers that construct an SDK per call. Its `code` is now the
-`Error.kind` string.
 
 ## Verification
 

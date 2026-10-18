@@ -291,9 +291,9 @@ func verifyAssertionJWT(key AssertionKey, token string) (jsonvalue.Value, error)
 // are omitted until the runtime reports them (Goalchemy #74).
 func GetSystemMetadataAssertionConfig() (AssertionConfig, error) {
 	metadata := jsonvalue.Object(
-		"tdf_spec_version", jsonvalue.String(TDFSpecVersion),
+		"tdf_spec_version", jsonvalue.String(TDFSpecVersion()),
 		"creation_date", jsonvalue.String(time.Now().Format(time.RFC3339)),
-		"sdk_version", jsonvalue.String("Goalchemy-"+Version),
+		"sdk_version", jsonvalue.String("Goalchemy-"+Version()),
 	)
 	metadataJSON, err := jsonvalue.Encode(metadata)
 	if err != nil {
