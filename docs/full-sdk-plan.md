@@ -38,7 +38,7 @@ when its verification items passed and its PRs are on `main`.
 | 3 Generated platform service clients | done | #30, #31, #32 | Messages cross the Goalchemy boundary as protobuf JSON: the shared source types only what it reads (`include=`) and exposes `SDK.Call`; each host types the 16 `sdkconnect` services with its own protobuf messages (C: JSON text). Part 1: shared source, generated KAS client, Go, TypeScript, Python. Part 2: Java, C#, Rust, Swift, C. Part 3: `ListAttributes`, `GetEntityAttributes`, `ValidateAttributes`, `AttributeExists`, `AttributeValueExists`, `SDK.Auth`, `SDK.Conn` and per-service `WithCustom*Connection` endpoints on every target. Focused real-KAS `services` runs pass for go, typescript, java, csharp, python, rust and c; the Swift adapter is not CI-verified (the Swift job times out on the hosted runner) |
 | 4 Autoconfigure, key splitting, key management | done | #33, #34 | Part 1 (writer): `granter.go`, `key_splitter.go`, `resource_locator.go` ported; autoconfigure and multi-KAO manifests; `WithDataAttributeValues` and the FQN constructors on all eight targets; split plans identical to the reference's (`tests/splitplan`). Part 2 (reader): split reconstruction, alternatives and duplicate KAOs, post-quantum KAOs rejected per split; RSA-4096, P-384, P-521 wrapping and sessions on every target; `multikao` and `mechanism-rsa-4096` advertised. xtest with go and js, `test_abac.py`, `test_policytypes.py`, round trips (ztdf, ztdf-ecwrap), manifest and duplicate-KAO cells: gcgo, gcts, gcpy, gcjava, gccs, gcrs, gcc 115 pass each; the one failure per type is gc → js@v0.20.0 duplicate KAO, which the reference go → js fails too (js reader); `mechanism-ec-curves-384-521`, `attribute_traversal`, `kas_uri_from_kao` and obligations cells skip on the harness's platform 0.9.0 default, so the first two stay unadvertised; gcswift not run locally. `experimental/tdf/keysplit` moves to Phase 10 |
 | 5 Assertions | done | #40 | `assertion.go` ported over `std/encoding/json/jcs` (goalchemy#112, pinned ahead of its 0.7.3 release): HS256 and RS256 bindings, verification keys by ID with a default, system-metadata assertion; `assertions` and `assertion_verification` advertised; options and `--with-assertions`/`--with-assertion-verification-keys` on all eight hosts and CLIs, an `assertions` mode in every interop consumer. xtest with go, `--sizes small --containers ztdf`: `test_tdf_assertions_unkeyed`, `test_tdf_assertions_with_keys`, `test_manifest_validity_with_assertions`, `test_tdf_with_altered_assertion_statement`, `test_tdf_with_altered_assertion_with_keys` and `test_legacy.py::test_decrypt_object_statement_value_json` pass (14 cells each) for gcgo, gcts, gcpy, gcjava, gccs, gcrs and gcc in both directions; `test_tdf_assertions_422_format` skips (`hexaflexible` is not advertised; Phase 6); gcswift not run locally. Header-carried keys (`jwk`, `x5c`) wait for goalchemy#76 and the system-metadata host fields for goalchemy#74 |
-| 6 Target modes, legacy readers, hardening | pending | | |
+| 6 Hardening | pending | | 4.3.0 only: the 4.2.2 target mode and legacy readers are not planned (decision of 2026-10-18) |
 | 7 Streaming and large payloads | pending | | |
 | 8 Authentication and transport parity | pending | | |
 | 9 Obligations and bulk decryption | pending | | |
@@ -529,10 +529,18 @@ Verification:
 - `test_legacy.py::test_decrypt_object_statement_value_json` passes.
 - Hash vectors: assertions produced by the gc SDK verify in the reference Go SDK and in the web SDK, and vice versa, for HS256 and RS256.
 
-### Phase 6: Target modes, legacy readers and hardening
+### Phase 6: Hardening
 
-Goal: 4.2.2 output, every legacy and tamper case the suite has, and the
-reference's schema validation.
+Goal: the reader refuses every malformed or forged manifest the suite has,
+with the reference's wording, and validates manifests against the schema.
+
+Scope decision (2026-10-18): the generated SDKs write and read TDF spec
+**4.3.0 only**. The 4.2.2 target mode (`WithTargetMode("4.2.2")`,
+`hexaflexible`) and the legacy-reader work (hex integrity values without
+`schemaVersion` beyond what the reader already detects, manifest-level
+segment defaults, ZIP64 reads, alternate manifest entry names) are **not
+planned**; their xtest cells skip on the `hexaflexible` and `chunky` gates
+and `test_legacy.py` stays as it is after Phase 5.
 
 Reference symbols: `WithTargetMode`, `TDFSpecVersion`,
 `WithSchemaValidation`, `SchemaValidationIntensity`, `RootIntegrityAlg`,
@@ -540,25 +548,24 @@ Reference symbols: `WithTargetMode`, `TDFSpecVersion`,
 `WithInputSize`.
 
 Tasks:
-1. Writer target mode `4.2.2`: hex-before-base64 integrity values, omitted
-   `schemaVersion`, legacy assertion binding; advertise `hexaflexible`.
-2. Reader: legacy detection by absent `schemaVersion`, hex decoding, absent
-   root `alg`, segment size defaults from manifest-level defaults
-   (`chunky`), ZIP64 reads, both manifest entry names with precedence.
+1. ~~Writer target mode `4.2.2`~~ — not planned (4.3.0 only).
+2. ~~Legacy reader: hex decoding, absent root `alg`, segment size defaults
+   (`chunky`), ZIP64 reads, both manifest entry names~~ — not planned; the
+   reader keeps its Phase 2 detection of a manifest without `schemaVersion`
+   for assertion hashes only.
 3. Reject a GMAC root signature (`gmac_root_rejected`), unknown integrity
    algorithms, oversized manifests, malformed KAOs, with reference wording.
 4. Manifest schema validation at the reference's intensities using the
-   schema in `../tests/xtest/manifest.schema.json` as the test oracle.
-5. `WithPolicyFrom` and `WithInputSize`.
+   schema in `../tests/xtest/manifest.schema.json` as the test oracle
+   (Goalchemy #75).
+5. `WithPolicyFrom` and `WithInputSize` on every host.
 6. Record the reference's own pending fixes (DSPX-4590, DSPX-4703) and follow
-   the fixed behaviour.
+   the fixed behaviour where they touch 4.3.0 reading.
 
 Verification:
-- Every `test_legacy.py` cell passes for every gc type as decrypt SDK.
 - Every `test_root_signature.py` cell passes, including the forged-GMAC cases without `XT_FORCE_SUPPORTS`.
-- `test_chunky_roundtrip` passes for every gc type in both directions with `js`.
-- `test_tdf_spec_target_422` and `test_tdf_spec_target_430` pass.
-- All remaining `test_tdfs.py` tamper cells pass.
+- All remaining `test_tdfs.py` tamper cells pass for every gc type.
+- `test_tdf_spec_target_430` passes; `test_tdf_spec_target_422`, `test_chunky_roundtrip` and the `test_legacy.py` cells beyond Phase 5 skip on their feature gates.
 
 ### Phase 7: Streaming and large payloads
 
@@ -722,6 +729,7 @@ Verification:
 
 ## Decisions taken with the user
 
+- The generated SDKs target TDF spec 4.3.0 only: no 4.2.2 writer mode and no further legacy-reader work (Phase 6, 2026-10-18).
 - Swift builds in every phase but is gated only in Phase 11.
 - The harness lives in `eugenioenko/opentdf-sdk-tests`, a snapshot of `opentdf/tests`; eight SDK types.
 - `experimental/tdf` and the chunked writer stay in Phase 10.
