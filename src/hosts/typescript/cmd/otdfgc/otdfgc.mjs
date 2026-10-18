@@ -39,6 +39,12 @@ async function fileOrJSON(arg){
  try{JSON.parse(arg);return arg;}catch{}
  try{return await readFile(arg,'utf8');}catch(e){throw new Error(arg+' is neither JSON nor a readable file: '+e.message);}
 }
+// Go's json.Marshal writes object keys sorted; the compact statement value matches it.
+function sortedKeys(v){
+ if(Array.isArray(v))return v.map(sortedKeys);
+ if(v&&typeof v==='object'){const out={};for(const k of Object.keys(v).sort())out[k]=sortedKeys(v[k]);return out;}
+ return v;
+}
 function assertionKey(k,label){
  if(k.alg!=='HS256'&&k.alg!=='RS256')throw new Error(label+': unsupported signing key algorithm '+k.alg);
  return {alg:k.alg,key:String(k.key??'')};
@@ -52,7 +58,7 @@ async function parseAssertions(arg){
   const c={id:a.id??'',type:a.type??'',scope:a.scope??'',appliesToState:a.appliesToState??'',statement:{format:statement.format??'',schema:statement.schema??''}};
   if(statement.value!==undefined&&statement.value!==null){
    if(typeof statement.value==='string')c.statement.value=statement.value;
-   else if(typeof statement.value==='object'&&!Array.isArray(statement.value))c.statement.value=JSON.stringify(statement.value);
+   else if(typeof statement.value==='object'&&!Array.isArray(statement.value))c.statement.value=JSON.stringify(sortedKeys(statement.value));
    else throw new Error('assertion '+c.id+': statement value is neither a string nor an object');
   }
   if(a.signingKey)c.signingKey=assertionKey(a.signingKey,'assertion '+c.id);

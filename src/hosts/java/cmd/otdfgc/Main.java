@@ -1,5 +1,6 @@
 package otdfgc;
 
+import io.opentdf.tdf3.AssertionKey;
 import io.opentdf.tdf3.OpenTDFException;
 import io.opentdf.tdf3.ReaderOptions;
 import io.opentdf.tdf3.SDK;
@@ -37,9 +38,9 @@ public final class Main {
   Usage:
     otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
         [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-        [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+        [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-        [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+        [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
         [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc inspect <in>
     otdfgc supports <feature>
@@ -52,8 +53,8 @@ public final class Main {
  static final Map<String, Boolean> DECRYPT_FLAGS = merge(COMMON, Map.of("with-assertion-verification-keys", false, "no-verify-assertions", true, "session-key-algorithm", false, "kas-allowlist", false));
  static final List<String> DPOP_ALGORITHMS = List.of("ES256", "ES384", "ES512", "RS256", "RS384", "RS512");
  // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
- static final List<Map.Entry<String, List<String>>> ENCRYPT_UNSUPPORTED = List.of(rule("with-assertions"), rule("ecdsa-binding"), rule("target-mode", "4.3.0"), rule("policy-mode", "encrypted"), rule("wrapping-key-algorithm", "rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
- static final List<Map.Entry<String, List<String>>> DECRYPT_UNSUPPORTED = List.of(rule("with-assertion-verification-keys"), rule("session-key-algorithm", "rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
+ static final List<Map.Entry<String, List<String>>> ENCRYPT_UNSUPPORTED = List.of(rule("ecdsa-binding"), rule("target-mode", "4.3.0"), rule("policy-mode", "encrypted"), rule("wrapping-key-algorithm", "rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
+ static final List<Map.Entry<String, List<String>>> DECRYPT_UNSUPPORTED = List.of(rule("session-key-algorithm", "rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"), Map.entry("dpop", DPOP_ALGORITHMS), rule("with-client-creds-file"));
 
  static Map<String, Boolean> merge(Map<String, Boolean> a, Map<String, Boolean> b) { Map<String, Boolean> m = new HashMap<>(a); m.putAll(b); return m; }
  static Map.Entry<String, List<String>> rule(String name, String... allowed) { return Map.entry(name, List.of(allowed)); }
@@ -211,6 +212,53 @@ public final class Main {
   return EXIT_SUCCESS;
  }
 
+ // --with-assertions and --with-assertion-verification-keys take a file path or JSON text, as otdfctl does:
+ // an object statement value is kept as compact JSON with sorted keys; HS256 keys are the string's bytes, RS256 keys PEM.
+ static String fileOrJson(String arg) throws IOException {
+  try { Json.parse(arg); return arg; } catch (RuntimeException ignored) {}
+  try { return Files.readString(Path.of(arg)); }
+  catch (IOException e) { throw new IOException(arg + " is neither JSON nor a readable file: " + e.getMessage()); }
+ }
+ static String text(Map<?, ?> m, String key) { return m.get(key) instanceof String s ? s : ""; }
+ static Object sortedKeys(Object v) {
+  if (v instanceof Map<?, ?> m) { Map<String, Object> out = new java.util.TreeMap<>(); for (Map.Entry<?, ?> e : m.entrySet()) out.put(String.valueOf(e.getKey()), sortedKeys(e.getValue())); return out; }
+  if (v instanceof List<?> l) { List<Object> out = new ArrayList<>(); for (Object x : l) out.add(sortedKeys(x)); return out; }
+  return v;
+ }
+ static AssertionKey assertionKey(Object v, String label) {
+  if (!(v instanceof Map<?, ?> m) || !(m.get("alg") instanceof String alg) || !(alg.equals("HS256") || alg.equals("RS256")))
+   throw new IllegalArgumentException(label + ": unsupported signing key algorithm " + (v instanceof Map<?, ?> m2 ? m2.get("alg") : v));
+  return new AssertionKey(alg, text(m, "key"));
+ }
+ static List<TDFOptions.AssertionConfig> parseAssertions(String arg) throws IOException {
+  Object parsed;
+  try { parsed = Json.parse(fileOrJson(arg)); } catch (RuntimeException e) { throw new IllegalArgumentException("assertions must be a JSON list: " + e.getMessage()); }
+  if (!(parsed instanceof List<?> items)) throw new IllegalArgumentException("assertions must be a JSON list");
+  List<TDFOptions.AssertionConfig> out = new ArrayList<>();
+  for (Object item : items) {
+   if (!(item instanceof Map<?, ?> a)) throw new IllegalArgumentException("assertions must be a JSON list of objects");
+   Map<?, ?> statement = a.get("statement") instanceof Map<?, ?> m ? m : Map.of();
+   Object value = statement.get("value");
+   String valueText;
+   if (value == null) valueText = "";
+   else if (value instanceof String s) valueText = s;
+   else if (value instanceof Map<?, ?>) valueText = Json.write(sortedKeys(value), false);
+   else throw new IllegalArgumentException("assertion " + text(a, "id") + ": statement value is neither a string nor an object");
+   AssertionKey signingKey = a.get("signingKey") == null ? null : assertionKey(a.get("signingKey"), "assertion " + text(a, "id"));
+   out.add(new TDFOptions.AssertionConfig(text(a, "id"), text(a, "type"), text(a, "scope"), text(a, "appliesToState"), text(statement, "format"), text(statement, "schema"), valueText, signingKey));
+  }
+  return out;
+ }
+ static void parseVerificationKeys(String arg, ReaderOptions.Builder options) throws IOException {
+  Object parsed;
+  try { parsed = Json.parse(fileOrJson(arg)); } catch (RuntimeException e) { throw new IllegalArgumentException("assertion verification keys must be a JSON object: " + e.getMessage()); }
+  if (!(parsed instanceof Map<?, ?> file)) throw new IllegalArgumentException("assertion verification keys must be a JSON object");
+  AssertionKey defaultKey = file.get("defaultKey") instanceof Map<?, ?> d ? new AssertionKey(text(d, "alg"), text(d, "key")) : null;
+  Map<String, AssertionKey> keys = new LinkedHashMap<>();
+  if (file.get("keys") instanceof Map<?, ?> m) for (Map.Entry<?, ?> e : m.entrySet()) { Map<?, ?> k = e.getValue() instanceof Map<?, ?> km ? km : Map.of(); keys.put(String.valueOf(e.getKey()), new AssertionKey(text(k, "alg"), text(k, "key"))); }
+  options.assertionVerificationKeys(defaultKey, keys);
+ }
+
  static int encrypt(List<String> args, PrintStream stderr) throws IOException {
   Parsed p;
   try { p = parse(args, ENCRYPT_FLAGS); } catch (IllegalArgumentException e) { stderr.print(e.getMessage() + "\n" + USAGE); return EXIT_USAGE; }
@@ -228,6 +276,10 @@ public final class Main {
    if (!p.value("attr").isEmpty()) options.attributes(splitList(p.value("attr")));
    if (!p.value("wrapping-key-algorithm").isEmpty()) options.wrappingKeyAlgorithm(p.value("wrapping-key-algorithm"));
    if (!p.value("target-mode").isEmpty()) options.targetMode(p.value("target-mode"));
+   if (!p.value("with-assertions").isEmpty()) {
+    try { options.assertions(parseAssertions(p.value("with-assertions"))); }
+    catch (IllegalArgumentException | IOException e) { stderr.println("Failed to read assertions: " + e.getMessage()); return EXIT_USAGE; }
+   }
    byte[] data;
    try { data = sdk.encryptBytes(input, options.build(), TIMEOUT); }
    catch (OpenTDFException e) { stderr.println("Failed to encrypt: " + describe(e)); return EXIT_ERROR; }
@@ -250,6 +302,10 @@ public final class Main {
   if (opened.code() != EXIT_SUCCESS) return opened.code();
   try (SDK sdk = opened.sdk()) {
    ReaderOptions.Builder options = ReaderOptions.builder().disableAssertionVerification(p.flag("no-verify-assertions"));
+   if (!p.value("with-assertion-verification-keys").isEmpty()) {
+    try { parseVerificationKeys(p.value("with-assertion-verification-keys"), options); }
+    catch (IllegalArgumentException | IOException e) { stderr.println("Failed to read assertion verification keys: " + e.getMessage()); return EXIT_USAGE; }
+   }
    if (!p.value("session-key-algorithm").isEmpty()) options.sessionKeyType(p.value("session-key-algorithm"));
    // otdfctl: "*" alone ignores the allowlist; any other list is explicit.
    List<String> allowlist = splitList(p.value("kas-allowlist"));

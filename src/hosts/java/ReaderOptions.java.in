@@ -2,6 +2,7 @@ package io.opentdf.tdf3;
 
 import io.goalchemy.generated.Generated;
 import java.util.List;
+import java.util.Map;
 
 /** The reference's TDFReaderConfig options (shared-source ReaderOptions); every unset field is the reference default. */
 public final class ReaderOptions {
@@ -17,6 +18,22 @@ public final class ReaderOptions {
   private Builder() {}
   /** WithDisableAssertionVerification */
   public Builder disableAssertionVerification(boolean disable) { o.DisableAssertionVerification = disable; return this; }
+  /** WithAssertionVerificationKeys: keys by assertion id, with a default for the rest; either may be null. */
+  public Builder assertionVerificationKeys(AssertionKey defaultKey, Map<String, AssertionKey> keys) {
+   Generated.AssertionVerificationKeys v = new Generated.AssertionVerificationKeys();
+   if (defaultKey != null) v.DefaultKey = defaultKey.toGenerated();
+   if (keys != null) {
+    v.Keys = new Generated.AssertionKeyEntry[keys.size()];
+    int i = 0;
+    for (Map.Entry<String, AssertionKey> e : keys.entrySet()) {
+     Generated.AssertionKeyEntry entry = new Generated.AssertionKeyEntry();
+     entry.AssertionID = Values.encode(e.getKey()); entry.Alg = Values.encode(e.getValue().alg()); entry.Key = Values.encode(e.getValue().key());
+     v.Keys[i++] = entry;
+    }
+   }
+   o.AssertionVerificationKeys = v;
+   return this;
+  }
   /** WithKasAllowlist; unset fetches the registry's list. */
   public Builder kasAllowlist(List<String> allowlist) { o.KasAllowlist = Values.encode(allowlist); return this; }
   public Builder kasAllowlist(String... allowlist) { return kasAllowlist(List.of(allowlist)); }

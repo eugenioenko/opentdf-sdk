@@ -18,8 +18,10 @@ public final class TDFOptions {
    return k;
   }
  }
- /** The reference's AssertionConfig; assertions arrive in Phase 5. */
- public record AssertionConfig(String id, String type, String scope, String appliesToState, String format, String schema, String value) {}
+ /** The reference's AssertionConfig; a null signingKey signs with HS256 over the payload key. */
+ public record AssertionConfig(String id, String type, String scope, String appliesToState, String format, String schema, String value, AssertionKey signingKey) {
+  public AssertionConfig(String id, String type, String scope, String appliesToState, String format, String schema, String value) { this(id, type, scope, appliesToState, format, schema, value, null); }
+ }
 
  private final Generated.TDFOptions generated;
  private TDFOptions(Generated.TDFOptions generated) { this.generated = generated; }
@@ -69,7 +71,7 @@ public final class TDFOptions {
   public Builder mimeType(String mimeType) { o.MimeType = Values.encode(mimeType); return this; }
   /** WithMetaData */
   public Builder metadata(String metadata) { o.Metadata = Values.encode(metadata); return this; }
-  /** WithAssertions; unsupported in this build. */
+  /** WithAssertions */
   public Builder assertions(List<AssertionConfig> assertions) {
    if (assertions == null) { o.Assertions = null; return this; }
    List<Generated.AssertionConfig> out = new ArrayList<>();
@@ -78,12 +80,13 @@ public final class TDFOptions {
     g.ID = Values.encode(a.id()); g.Type = Values.encode(a.type()); g.Scope = Values.encode(a.scope()); g.AppliesToState = Values.encode(a.appliesToState());
     g.Statement = new Generated.Statement();
     g.Statement.Format = Values.encode(a.format()); g.Statement.Schema = Values.encode(a.schema()); g.Statement.Value = Values.encode(a.value());
+    if (a.signingKey() != null) g.SigningKey = a.signingKey().toGenerated();
     out.add(g);
    }
    o.Assertions = out.toArray(new Generated.AssertionConfig[0]);
    return this;
   }
-  /** WithSystemMetadataAssertion; unsupported in this build. */
+  /** WithSystemMetadataAssertion */
   public Builder systemMetadataAssertion(boolean enable) { o.SystemMetadataAssertion = enable; return this; }
   /** WithTargetMode; 4.3.0 in this build. */
   public Builder targetMode(String mode) { o.TargetMode = Values.encode(mode); return this; }

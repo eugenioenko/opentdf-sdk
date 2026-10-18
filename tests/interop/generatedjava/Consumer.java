@@ -1,5 +1,6 @@
 package consumer;
 
+import io.opentdf.tdf3.AssertionKey;
 import io.opentdf.tdf3.OpenTDFException;
 import io.opentdf.tdf3.Reader;
 import io.opentdf.tdf3.ReaderOptions;
@@ -85,11 +86,42 @@ public final class Consumer {
  }
  static Map<String,Object> report(Exception e){
   Map<String,Object> m=new LinkedHashMap<>();
-  if(e instanceof OpenTDFException o){m.put("kind",o.kind());m.put("op",o.op());m.put("httpStatus",o.httpStatus());m.put("connectCode",o.connectCode());m.put("message",o.getMessage());}
+  if(e instanceof OpenTDFException o){m.put("kind",o.kind());m.put("op",o.op());m.put("httpStatus",o.httpStatus());m.put("connectCode",o.connectCode());m.put("assertionId",o.assertionId());m.put("message",o.getMessage());}
   else m.put("untyped",e.getClass().getName()+": "+e.getMessage());
   return m;
  }
  static Map<String,Object> expectFailure(String label,Callable<?> call){try{call.call();throw new AssertionError(label+" returned successful output");}catch(OpenTDFException e){return report(e);}catch(AssertionError e){throw e;}catch(Exception e){throw new AssertionError(label+" untyped: "+e,e);}}
+
+ @SuppressWarnings("unchecked")static ReaderOptions withKeys(Map<String,Object> cfg,AssertionKey defaultKey,Map<String,AssertionKey> keys){
+  List<String> allow=new ArrayList<>();allow.add(text(cfg,"PlatformURL"));if(!text(cfg,"KASURL").isEmpty())allow.add(text(cfg,"KASURL"));
+  if(cfg.get("AllowedKAS") instanceof List<?> routes)for(Object r:routes)allow.add(text((Map<String,Object>)r,"URL"));
+  ReaderOptions.Builder o=ReaderOptions.builder().kasAllowlist(allow).assertionVerificationKeys(defaultKey,keys);if(!text(cfg,"SessionAlgorithm").isEmpty())o.sessionKeyType(text(cfg,"SessionAlgorithm"));return o.build();
+ }
+ /** A TDF with an unsigned assertion (HS256 over the payload key) and one signed with a caller HS256 secret, read with the right key by id, with a wrong key and with no key (assertion_failure), and with verification off. */
+ @SuppressWarnings("unchecked")static void assertions(SDK sdk,Map<String,Object> cfg)throws Exception{
+  String secret="assertion-secret-"+Long.toString(System.nanoTime(),36);
+  String firstValue="{\"ocl\":{\"pol\":\"2ccf11cb-6c9a-4e49-9746-a7f0a295945d\"}}";
+  List<TDFOptions.AssertionConfig> configs=List.of(
+   new TDFOptions.AssertionConfig("unsigned","handling","tdo","encrypted","json+stanag5636","urn:nato:stanag:5636:A:1:elements:json",firstValue),
+   new TDFOptions.AssertionConfig("signed","other","payload","unencrypted","json","urn:example:assertion:v1","{\"note\":\"independent consumer\"}",AssertionKey.hs256(secret)));
+  byte[] payload="assertion payload".getBytes(StandardCharsets.UTF_8);
+  byte[] archive;List<Map<String,Object>> found;
+  try(TDFObject object=sdk.createTDF(payload,tdfOptions(cfg).assertions(configs).build())){archive=object.bytes();found=(List<Map<String,Object>>)object.manifest().get("assertions");}
+  check(found.size()==2&&"unsigned".equals(found.get(0).get("id"))&&"signed".equals(found.get(1).get("id"))&&"jws".equals(((Map<String,Object>)found.get(1).get("binding")).get("method"))&&!"".equals(((Map<String,Object>)found.get(1).get("binding")).get("signature")),"assertions in manifest");
+  check(firstValue.equals(((Map<String,Object>)found.get(0).get("statement")).get("value")),"statement value kept");
+  check(Arrays.equals(payload,sdk.decryptBytes(archive,withKeys(cfg,null,Map.of("signed",AssertionKey.hs256(secret))))),"decrypt with the right key");
+  Map<String,Object> wrong=expectFailure("wrong key",()->sdk.decryptBytes(archive,withKeys(cfg,null,Map.of("signed",AssertionKey.hs256("not the secret")))));
+  check("assertion_failure".equals(wrong.get("kind"))&&"signed".equals(wrong.get("assertionId")),"wrong key: "+Json.write(wrong));
+  Map<String,Object> missing=expectFailure("missing key",()->sdk.decryptBytes(archive,readerOptions(cfg)));
+  check("assertion_failure".equals(missing.get("kind"))&&"signed".equals(missing.get("assertionId")),"missing key: "+Json.write(missing));
+  Map<String,Object> wrongDefault=expectFailure("wrong default key",()->sdk.decryptBytes(archive,withKeys(cfg,AssertionKey.hs256("not the secret"),null)));
+  check("assertion_failure".equals(wrongDefault.get("kind"))&&"unsigned".equals(wrongDefault.get("assertionId")),"wrong default key: "+Json.write(wrongDefault));
+  List<String> allow=new ArrayList<>();allow.add(text(cfg,"PlatformURL"));if(!text(cfg,"KASURL").isEmpty())allow.add(text(cfg,"KASURL"));
+  check(Arrays.equals(payload,sdk.decryptBytes(archive,ReaderOptions.builder().kasAllowlist(allow).disableAssertionVerification(true).build())),"decrypt with verification disabled");
+  write("assertions.generated.tdf",archive);
+  Map<String,Object> out=new LinkedHashMap<>();List<Object> ids=new ArrayList<>();for(Map<String,Object> a:found){Map<String,Object> row=new LinkedHashMap<>();row.put("id",a.get("id"));row.put("method",((Map<String,Object>)a.get("binding")).get("method"));ids.add(row);}
+  out.put("assertions",ids);out.put("wrong_key",wrong);out.put("missing_key",missing);write("assertions.json",Json.write(out));
+ }
 
  /** 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail. */
  @SuppressWarnings("unchecked")static void repeat(SDK sdk,Map<String,Object> cfg)throws Exception{
@@ -252,6 +284,7 @@ public final class Consumer {
       write(name+".out",payload);write(name+".metadata",metadata);write(name+".manifest",Json.write(manifest));write(name+".presence",Boolean.toString(hasMetadata));
      }
      case "negative"->write(name+".error.json",Json.write(expectFailure("negative",()->sdk.decryptBytes(read(name+".tdf"),readerOptions(raw)))));
+     case "assertions"->assertions(sdk,raw);
      case "repeat"->repeat(sdk,raw);
      case "services"->services(sdk,raw);
      default->throw new IllegalArgumentException("unknown mode");

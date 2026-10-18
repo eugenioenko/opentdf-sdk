@@ -210,7 +210,7 @@ def parse_assertions(arg):
              'statement': {'format': statement.get('format', ''), 'schema': statement.get('schema', '')}}
         value = statement.get('value')
         if isinstance(value, str): c['statement']['value'] = value
-        elif isinstance(value, dict): c['statement']['value'] = json.dumps(value, separators=(',', ':'))
+        elif isinstance(value, dict): c['statement']['value'] = json.dumps(value, separators=(',', ':'), sort_keys=True)
         elif value is not None: raise ValueError('assertion %s: statement value is neither a string nor an object' % c['id'])
         if a.get('signingKey') is not None: c['signing_key'] = assertion_key(a['signingKey'], 'assertion ' + c['id'])
         out.append(c)
