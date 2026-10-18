@@ -241,7 +241,7 @@ def setup_swift(base, package, reference_environment=None):
         'let package = Package(name: "TDF3Benchmark", dependencies: [.package(path: "package")], '
         'targets: [.executableTarget(name: "Benchmark", dependencies: [.product(name: "OpenTDFTDF3", package: "package")], '
         'path: ".", exclude: ["package"], sources: ["Benchmark.swift"])], swiftLanguageModes: [.v5])\n')
-    invoke(['swift', 'build', '-c', 'release'], swift, env, 900)
+    invoke(['swift', 'build', '-c', 'release'], swift, env, 1800)
     if reference_environment:
         original = json.loads(reference_environment.read_text())
         reference_command = original['commands']['reference']
