@@ -106,7 +106,13 @@ const optionsShape: Shape = [
 ];
 const kasInfoShape: Shape = [['url', 'URL', 's'], ['publicKey', 'PublicKey', 's'], ['kid', 'KID', 's'], ['algorithm', 'Algorithm', 's'], ['default', 'Default', 'b']];
 const statementShape: Shape = [['format', 'Format', 's'], ['schema', 'Schema', 's'], ['value', 'Value', 's']];
-const assertionConfigShape: Shape = [['id', 'ID', 's'], ['type', 'Type', 's'], ['scope', 'Scope', 's'], ['appliesToState', 'AppliesToState', 's'], ['statement', 'Statement', statementShape]];
+const assertionKeyShape: Shape = [['alg', 'Alg', 's'], ['key', 'Key', 's']];
+const assertionConfigShape: Shape = [
+  ['id', 'ID', 's'], ['type', 'Type', 's'], ['scope', 'Scope', 's'], ['appliesToState', 'AppliesToState', 's'], ['statement', 'Statement', statementShape],
+  ['signingKey', 'SigningKey', assertionKeyShape],
+];
+const assertionKeyEntryShape: Shape = [['assertionId', 'AssertionID', 's'], ['alg', 'Alg', 's'], ['key', 'Key', 's']];
+const assertionVerificationKeysShape: Shape = [['defaultKey', 'DefaultKey', assertionKeyShape], ['keys', 'Keys', [assertionKeyEntryShape]]];
 const tdfOptionsShape: Shape = [
   ['attributes', 'Attributes', 'ss'], ['attributeValues', 'AttributeValues', 'ss'], ['disableAutoconfigure', 'DisableAutoconfigure', 'b'], ['kasInformation', 'KasInformation', [kasInfoShape]],
   ['wrappingKeyAlgorithm', 'WrappingKeyAlgorithm', 's'], ['segmentSize', 'SegmentSize', 'n'], ['inputSize', 'InputSize', 'n'], ['mimeType', 'MimeType', 's'],
@@ -117,10 +123,23 @@ function generatedTdfOptions(options: TDFOptions): generated.TDFOptions {
   return toGenerated(tdfOptionsShape, { ...options, attributeValues }) as generated.TDFOptions;
 }
 const readerOptionsShape: Shape = [
-  ['disableAssertionVerification', 'DisableAssertionVerification', 'b'], ['kasAllowlist', 'KasAllowlist', 'ss'], ['ignoreAllowlist', 'IgnoreAllowlist', 'b'],
+  ['disableAssertionVerification', 'DisableAssertionVerification', 'b'], ['assertionVerificationKeys', 'AssertionVerificationKeys', assertionVerificationKeysShape],
+  ['kasAllowlist', 'KasAllowlist', 'ss'], ['ignoreAllowlist', 'IgnoreAllowlist', 'b'],
   ['maxManifestSize', 'MaxManifestSize', 'n'], ['schemaValidation', 'SchemaValidation', 'n'], ['sessionKeyType', 'SessionKeyType', 's'],
   ['fulfillableObligationFqns', 'FulfillableObligationFQNs', 'ss'],
 ];
+function generatedReaderOptions(options: ReaderOptions): generated.ReaderOptions {
+  const verification = options.assertionVerificationKeys;
+  if (verification === undefined || verification === null) return toGenerated(readerOptionsShape, options) as generated.ReaderOptions;
+  if (typeof verification !== 'object' || Array.isArray(verification)) throw new generated.LibraryError('invalid_argument');
+  const keys = verification.keys ?? {};
+  if (typeof keys !== 'object' || Array.isArray(keys)) throw new generated.LibraryError('invalid_argument');
+  const entries = Object.entries(keys).map(([assertionId, key]) => {
+    if (typeof key !== 'object' || key === null || Array.isArray(key)) throw new generated.LibraryError('invalid_argument');
+    return { assertionId, alg: key.alg, key: key.key };
+  });
+  return toGenerated(readerOptionsShape, { ...options, assertionVerificationKeys: { defaultKey: verification.defaultKey, keys: entries } }) as generated.ReaderOptions;
+}
 const kasPublicKeyShape: Shape = [['pem', 'Pem', 's'], ['kid', 'Kid', 's'], ['alg', 'Alg', 's']];
 const kasPublicKeySetShape: Shape = [['keys', 'Keys', [kasPublicKeyShape]]];
 const attributeFqnShape: Shape = [['url', 'URL', 's'], ['key', 'Key', 's']];
@@ -185,7 +204,13 @@ export interface Options {
 }
 export interface KASInfo { url: string; publicKey?: string; kid?: string; algorithm?: KeyType | string; default?: boolean; }
 export interface Statement { format?: string; schema?: string; value?: string; }
-export interface AssertionConfig { id: string; type: string; scope: string; appliesToState?: string; statement: Statement; }
+/** The reference's AssertionKey: an HS256 secret as text, or a PEM block for RS256. */
+export type AssertionKeyAlg = 'HS256' | 'RS256';
+export interface AssertionKey { alg: AssertionKeyAlg | string; key: string; }
+/** WithAssertions; an absent signingKey signs with HS256 over the payload key. */
+export interface AssertionConfig { id: string; type: string; scope: string; appliesToState?: string; statement: Statement; signingKey?: AssertionKey; }
+/** WithAssertionVerificationKeys: keys by assertion id, with a default for the rest. */
+export interface AssertionVerificationKeys { defaultKey?: AssertionKey; keys?: Record<string, AssertionKey>; }
 export interface TDFOptions {
   /** WithDataAttributes. */
   attributes?: string[];
@@ -196,7 +221,7 @@ export interface TDFOptions {
   systemMetadataAssertion?: boolean; targetMode?: string;
 }
 export interface ReaderOptions {
-  disableAssertionVerification?: boolean; kasAllowlist?: string[]; ignoreAllowlist?: boolean; maxManifestSize?: number;
+  disableAssertionVerification?: boolean; assertionVerificationKeys?: AssertionVerificationKeys; kasAllowlist?: string[]; ignoreAllowlist?: boolean; maxManifestSize?: number;
   schemaValidation?: number; sessionKeyType?: KeyType | string; fulfillableObligationFqns?: string[];
 }
 export interface CallOptions { signal?: AbortSignal; }
@@ -473,13 +498,13 @@ export class SDK {
   }
   loadTdf(ciphertext: Uint8Array, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Reader> {
     return guard(async () => {
-      const handle = await this.#handle.LoadTDF(bytes(ciphertext), toGenerated(readerOptionsShape, options) as generated.ReaderOptions, this.#options(call));
+      const handle = await this.#handle.LoadTDF(bytes(ciphertext), generatedReaderOptions(options), this.#options(call));
       if (handle === null) throw new Error('invalid generated result');
       return new Reader(handle, this.#calls);
     });
   }
   decryptBytes(ciphertext: Uint8Array, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Uint8Array> {
-    return guard(async () => (await this.#handle.DecryptBytes(bytes(ciphertext), toGenerated(readerOptionsShape, options) as generated.ReaderOptions, this.#options(call))) ?? new Uint8Array());
+    return guard(async () => (await this.#handle.DecryptBytes(bytes(ciphertext), generatedReaderOptions(options), this.#options(call))) ?? new Uint8Array());
   }
   isHealthy(call: CallOptions = {}): Promise<boolean> { return guard(() => this.#handle.IsHealthy(this.#options(call))); }
   platformConfiguration(call: CallOptions = {}): Promise<Record<string, string>> {

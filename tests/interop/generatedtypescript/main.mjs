@@ -46,7 +46,7 @@ function readerOptions(cfg){
  return options;
 }
 function report(e){
- if(e instanceof g.OpenTDFError)return {kind:e.kind,op:e.op,httpStatus:e.httpStatus,connectCode:e.connectCode,message:e.message};
+ if(e instanceof g.OpenTDFError)return {kind:e.kind,op:e.op,httpStatus:e.httpStatus,connectCode:e.connectCode,assertionId:e.assertionId,message:e.message};
  return {untyped:e?.name+': '+e?.message};
 }
 
@@ -83,6 +83,8 @@ try{
    try{await sdk.decryptBytes(new Uint8Array(await read(name+'.tdf')),readerOptions(cfg));}
    catch(e){assert(e instanceof g.OpenTDFError,'typed SDK error');rejected=true;await write(name+'.error.json',JSON.stringify(report(e)));}
    assert(rejected,'negative returned output');
+  }else if(mode==='assertions'){
+   await assertions(sdk,cfg);
   }else if(mode==='repeat'){
    await repeat(sdk,cfg);
   }else if(mode==='services'){
@@ -91,6 +93,36 @@ try{
   console.log('PASS generated native library',mode,name);
  }
 }catch(e){console.error('consumer failure',mode,name,report(e));process.exitCode=1;}
+
+// assertions writes a TDF with an unsigned assertion (HS256 over the payload
+// key) and one signed with a caller HS256 secret, then reads it with the
+// right key by id, with a wrong key and with no key (both assertion_failure)
+// and with verification disabled.
+async function assertions(sdk,cfg){
+ const secret='assertion-secret-'+Date.now().toString(36);
+ const configs=[
+  {id:'unsigned',type:'handling',scope:'tdo',appliesToState:'encrypted',statement:{format:'json+stanag5636',schema:'urn:nato:stanag:5636:A:1:elements:json',value:'{"ocl":{"pol":"2ccf11cb-6c9a-4e49-9746-a7f0a295945d"}}'}},
+  {id:'signed',type:'other',scope:'payload',appliesToState:'unencrypted',statement:{format:'json',schema:'urn:example:assertion:v1',value:'{"note":"independent consumer"}'},signingKey:{alg:'HS256',key:secret}},
+ ];
+ const input=new TextEncoder().encode('assertion payload');
+ const object=await sdk.createTdf(input,tdfOptions(cfg,{assertions:configs}));
+ const manifest=await object.manifest();
+ await object.close();
+ assert(manifest.assertions.length===2&&manifest.assertions[0].id==='unsigned'&&manifest.assertions[1].id==='signed'&&manifest.assertions[1].binding.method==='jws'&&manifest.assertions[1].binding.signature!=='','assertions in manifest');
+ assert(manifest.assertions[0].statement.value===configs[0].statement.value,'statement value kept');
+ const withKeys=keys=>({...readerOptions(cfg),assertionVerificationKeys:keys});
+ const plain=await sdk.decryptBytes(object.bytes,withKeys({keys:{signed:{alg:'HS256',key:secret}}}));
+ assert(plain.length===input.length&&plain.every((b,i)=>b===input[i]),'decrypt with the right key');
+ const fails=async(label,options,id)=>{let error;try{await sdk.decryptBytes(object.bytes,options);}catch(e){error=e;}
+  assert(error instanceof g.OpenTDFError&&error.kind==='assertion_failure'&&error.assertionId===id,label+': '+JSON.stringify(report(error)));return error;};
+ const wrong=await fails('wrong key',withKeys({keys:{signed:{alg:'HS256',key:'not the secret'}}}),'signed');
+ const missing=await fails('missing key',readerOptions(cfg),'signed');
+ await fails('wrong default key',withKeys({defaultKey:{alg:'HS256',key:'not the secret'}}),'unsigned');
+ const unverified=await sdk.decryptBytes(object.bytes,{...readerOptions(cfg),disableAssertionVerification:true});
+ assert(unverified.length===input.length,'decrypt with verification disabled');
+ await write('assertions.generated.tdf',object.bytes);
+ await write('assertions.json',new TextEncoder().encode(JSON.stringify({assertions:manifest.assertions.map(a=>({id:a.id,method:a.binding.method})),wrong_key:report(wrong),missing_key:report(missing)})));
+}
 
 // repeat runs 100 encrypt and decrypt calls on one SDK, keeps inputs and
 // results independent, closes every reader handle, then closes the SDK and
