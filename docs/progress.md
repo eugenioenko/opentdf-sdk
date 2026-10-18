@@ -2676,3 +2676,11 @@ sorted keys, but Go's `json.Marshal` escapes `<>&` and Python's `json.dumps`
 non-ASCII while the others write them literally, so the same input can give
 byte-different statement strings across CLIs for such values; verification is
 unaffected because the hash is over the string written.
+
+## Goalchemy 0.7.3
+
+The compiler pin moves from the pre-release `be2bf10` to released Goalchemy
+v0.7.3 at `be9520347ca1d047527f9730a9d2e927621a872d`, the release that carries
+`std/encoding/json/jcs` (goalchemy#112) which Phase 5 was pinned ahead of. Root
+and nested Go module requirements, the reference lock and both CI compiler
+checkouts move together; no source change.
