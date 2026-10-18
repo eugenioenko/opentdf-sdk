@@ -163,6 +163,27 @@ class BenchmarkPolicyTests(unittest.TestCase):
             with self.subTest(size=size):
                 self.assertEqual(BENCH.validate_manifest(manifest, size)['segment_count'], 1)
 
+    def test_100mib_payload_reporting_and_segment_validation(self):
+        rows = [batch(i, [10 + i, 20 + i, 30 + i, 40 + i, 50 + i]) for i in range(3)]
+        for row in rows:
+            row.update(size_bytes=100 << 20, size_label='100MiB', fixture_id='100')
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            (base / 'raw.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            BENCH.tables(base)
+            self.assertIn('| SDK | 100 MiB |', (base / 'tables.md').read_text())
+            self.assertIn('| Java | 31.00 ms |', (base / 'tables.md').read_text())
+            summary = json.loads((base / 'summary.json').read_text())
+            self.assertEqual(summary[0]['size_bytes'], 104857600)
+            self.assertEqual(len(summary[0]['samples_ms']), 15)
+        manifest = {'encryptionInformation': {'method': {'algorithm': 'AES-256-GCM'},
+                    'integrityInformation': {'segmentHashAlg': 'GMAC', 'segmentSizeDefault': 2 << 20,
+                                             'segments': [{}] * 50}}}
+        self.assertEqual(BENCH.validate_manifest(manifest, 100 << 20)['segment_count'], 50)
+        manifest['encryptionInformation']['integrityInformation']['segments'].pop()
+        with self.assertRaises(ValueError):
+            BENCH.validate_manifest(manifest, 100 << 20)
+
     def test_bulk_fixture_is_independent_of_the_measured_size(self):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

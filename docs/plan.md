@@ -562,3 +562,26 @@ warmup warnings were reviewed with all original samples and flags retained.
 The README contains only this rerun; detailed evidence stays in ignored local
 storage. Temporary token settings were restored and verified. PR #50 contains
 the fix and accepted results; Swift remains omitted as authorized.
+
+## Extend the benchmark to 100 MiB
+
+Add 100 MiB as an explicit benchmark size and check the seven generated SDKs
+plus the upstream Go and Web references. Keep the default sizes within their
+common supported byte-API range. Reuse the verified
+post-wipe packages after confirming that main's production source is identical
+to their build source. Keep the existing five columns and append the separately
+measured 100 MiB column with the same policy and explicit provenance.
+
+Acceptance: confirm all nine API outcomes. TypeScript, Java, C#, and Python
+reject 100 MiB at their existing 64 MiB byte boundary; label these limits. The
+five supported rows pool fifteen samples from three fresh processes, each with
+forty 10 MiB bulk warmups and twenty 100 MiB warmups. Verify full plaintext and
+all 90 retained archives through Go/KAS, ZIP CRC, and the fifty-segment profile. Review warmup flags, keep raw
+data under ignored storage, restore temporary token settings, and open a new PR.
+Swift remains omitted as authorized.
+
+Status: accepted locally. All five supported rows passed, with 75 timed pairs
+and 90 independently validated fifty-segment archives. The four unsupported
+byte APIs are explicitly labeled at their 64 MiB boundary. No warmup flags
+triggered. Existing columns are unchanged, all frozen hashes match, and the
+temporary token setting was restored and verified. Pull request submission follows.
