@@ -3,6 +3,7 @@
 // OpenTDFError). It maps names and errors only; the TDF protocol executes in
 // the compiler output.
 import * as generated from './main.js';
+import type { HostStreamInput } from './rt/runtime/library.js';
 import { fromJsonString, toJsonString, create, type DescMessage, type DescMethodStreaming, type DescMethodUnary, type MessageInitShape } from '@bufbuild/protobuf';
 import { Code, ConnectError, type ContextValues, type StreamResponse, type Transport, type UnaryResponse } from '@connectrpc/connect';
 import { platformServices, type PlatformServices } from './services.js';
@@ -285,6 +286,17 @@ function bytes(value: unknown): Uint8Array {
   if (!(value instanceof Uint8Array)) throw new generated.LibraryError('invalid_argument');
   return value;
 }
+/**
+ * A host stream for a std/io parameter: a plain object with read, write and
+ * seek methods, a web ReadableStream or WritableStream, an AsyncIterable of
+ * Uint8Array, a Node Readable or Writable, or, where the call needs to seek,
+ * a Uint8Array or Blob.
+ */
+export type HostStream = HostStreamInput;
+function stream(value: unknown): HostStream {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) throw new generated.LibraryError('invalid_argument');
+  return value as HostStream;
+}
 type Callbacks = NonNullable<generated.CallOptions['callbacks']>;
 
 function providerCallbacks(provider: TokenProvider): Callbacks {
@@ -334,8 +346,14 @@ export class TDFObject {
   [Symbol.asyncDispose](): Promise<void> { return this.close(); }
 }
 
-/** The reference's Reader over a loaded TDF; stream methods arrive in Phase 7. */
-export class Reader {
+/**
+ * The reference's Reader over a loaded TDF. The payload is decrypted segment
+ * by segment as it is read: read, seek, readAt and writeTo mirror the
+ * reference's io methods, stream() and async iteration give the plaintext
+ * from the cursor. Reads run init lazily; stream() and iteration do so
+ * without the SDK's token provider, so call init() first when one is set.
+ */
+export class Reader implements AsyncIterable<Uint8Array> {
   readonly #handle: generated.Reader;
   readonly #calls: Callbacks | undefined;
   /** @internal */
@@ -346,6 +364,30 @@ export class Reader {
   #options(call: CallOptions): generated.CallOptions { return { signal: call.signal, callbacks: this.#calls }; }
   /** Fetches and unwraps the payload key now, under this call's signal. */
   init(call: CallOptions = {}): Promise<void> { return guard(() => this.#handle.Init(this.#options(call))); }
+  /** Reads up to size bytes of plaintext from the cursor and advances it; null at the end. */
+  read(size?: number, call: CallOptions = {}): Promise<Uint8Array | null> {
+    return guard(async () => {
+      await this.#handle.Init(this.#options(call));
+      return this.#handle.io().read(size);
+    });
+  }
+  /** Moves the cursor: whence 0 from the start, 1 from the cursor, 2 from the end. Returns the new position. */
+  seek(offset: number | bigint, whence: 0 | 1 | 2 = 0, call: CallOptions = {}): Promise<number> {
+    return guard(async () => Number(await this.#handle.Seek(BigInt(offset), BigInt(whence), this.#options(call))));
+  }
+  /** Up to length plaintext bytes from offset, fewer at the end of the payload; the cursor does not move. */
+  readAt(offset: number | bigint, length: number, call: CallOptions = {}): Promise<Uint8Array> {
+    return guard(async () => (await this.#handle.ReadAt(BigInt(offset), BigInt(length), this.#options(call))) ?? new Uint8Array());
+  }
+  /** Decrypts from the cursor to the end into output, one segment at a time; returns the bytes written. */
+  writeTo(output: HostStream, call: CallOptions = {}): Promise<number> {
+    return guard(async () => Number(await this.#handle.WriteTo(stream(output), this.#options(call))));
+  }
+  /** A web ReadableStream of the plaintext from the cursor; ending or canceling it does not close the reader. */
+  stream(chunkSize?: number): ReadableStream<Uint8Array> { return this.#handle.stream(chunkSize); }
+  [Symbol.asyncIterator](): AsyncIterator<Uint8Array> { return this.#handle[Symbol.asyncIterator](); }
+  /** The reader as a source stream (read, seek, close); closing it closes the reader. */
+  io(): generated.SourceReader & generated.SourceSeeker & generated.SourceCloser { return this.#handle.io(); }
   manifest(call: CallOptions = {}): Promise<Manifest> {
     return guard(async () => fromGenerated(manifestShape, await this.#handle.Manifest(this.#options(call))) as unknown as Manifest);
   }
@@ -481,6 +523,20 @@ export class SDK {
     });
   }
   #options(call: CallOptions): generated.CallOptions { return { signal: call.signal, callbacks: this.#calls }; }
+  /**
+   * The reference's CreateTDF over streams: encrypts input into output one
+   * segment at a time, so memory stays bounded whatever the payload's size.
+   * A Uint8Array or Blob input, or options.inputSize, lets the writer size
+   * the archive as ZIP32; an input of unknown length is written as ZIP64.
+   * The TDFObject carries the manifest and size; its bytes are empty.
+   */
+  encryptTo(output: HostStream, input: HostStream, options: TDFOptions = {}, call: CallOptions = {}): Promise<TDFObject> {
+    return guard(async () => {
+      const object = await this.#handle.CreateTDF(stream(output), stream(input), generatedTdfOptions(options), this.#options(call));
+      if (object === null) throw new Error('invalid generated result');
+      return new TDFObject(new Uint8Array(), object, this.#calls);
+    });
+  }
   /** The reference's CreateTDF over bytes: the TDF bytes with their TDFObject handle. */
   createTdf(plaintext: Uint8Array, options: TDFOptions = {}, call: CallOptions = {}): Promise<TDFObject> {
     return guard(async () => {
@@ -495,15 +551,36 @@ export class SDK {
     await object.close();
     return object.bytes;
   }
-  loadTdf(ciphertext: Uint8Array, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Reader> {
+  /**
+   * The reference's LoadTDF: reads the archive's directory and manifest and
+   * keeps the source for the payload, which the Reader decrypts on demand.
+   * The source must be seekable: a Uint8Array, a Blob, or a host stream with
+   * read and seek; it stays open and unused by the caller while the Reader lives.
+   */
+  loadTdf(ciphertext: Uint8Array | HostStream, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Reader> {
     return guard(async () => {
-      const handle = await this.#handle.LoadTDF(bytes(ciphertext), generatedReaderOptions(options), this.#options(call));
+      const handle = await this.#handle.LoadTDF(stream(ciphertext), generatedReaderOptions(options), this.#options(call));
       if (handle === null) throw new Error('invalid generated result');
       return new Reader(handle, this.#calls);
     });
   }
   decryptBytes(ciphertext: Uint8Array, options: ReaderOptions = {}, call: CallOptions = {}): Promise<Uint8Array> {
     return guard(async () => (await this.#handle.DecryptBytes(bytes(ciphertext), generatedReaderOptions(options), this.#options(call))) ?? new Uint8Array());
+  }
+  /** The reference's DecryptTo: decrypts the seekable input into output, one segment at a time. */
+  decryptTo(output: HostStream, input: Uint8Array | HostStream, options: ReaderOptions = {}, call: CallOptions = {}): Promise<void> {
+    return guard(() => this.#handle.DecryptTo(stream(output), stream(input), generatedReaderOptions(options), this.#options(call)));
+  }
+  /**
+   * The reference's DecryptFile: streams the TDF at inputPath to a temporary
+   * file beside outputPath that takes its name once decryption succeeds, so a
+   * failure leaves no partial output. Node only (the browser build has no files).
+   */
+  decryptFile(inputPath: string, outputPath: string, options: ReaderOptions = {}, call: CallOptions = {}): Promise<void> {
+    return guard(() => {
+      if (typeof inputPath !== 'string' || typeof outputPath !== 'string') throw new generated.LibraryError('invalid_argument');
+      return this.#handle.DecryptFile(encode(inputPath), encode(outputPath), generatedReaderOptions(options), this.#options(call));
+    });
   }
   isHealthy(call: CallOptions = {}): Promise<boolean> { return guard(() => this.#handle.IsHealthy(this.#options(call))); }
   platformConfiguration(call: CallOptions = {}): Promise<Record<string, string>> {

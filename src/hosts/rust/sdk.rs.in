@@ -5,7 +5,7 @@
 //! [`crate::protocol`], which cross to the generated crate as protobuf JSON.
 //! The adapter maps names, idioms and errors only; the TDF protocol executes
 //! in the generated crate.
-use crate::generated::{self, CallOptions, LibraryError, Operation, Provider, Stream};
+use crate::generated::{self, CallOptions, LibraryError, Operation, Provider, SourceStream, Stream};
 use std::collections::BTreeMap;
 use std::future::Future;
 
@@ -738,7 +738,10 @@ impl TdfObject {
     }
 }
 
-/// The reference's Reader over a loaded TDF; stream methods arrive in Phase 7.
+/// The reference's Reader over a loaded TDF. The payload streams in
+/// segments: `io`, `seek`, `read_at` and `write_to` decrypt on demand. Call
+/// `init` first when the Sdk uses a token provider, since `io` reads carry
+/// no callbacks.
 pub struct Reader {
     handle: generated::Reader,
     calls: Calls,
@@ -750,6 +753,34 @@ impl Reader {
     }
     pub fn init_async(&self) -> impl Future<Output = Result<()>> {
         future(self.handle.Init(self.calls.options()), |v| v)
+    }
+    /// The decrypted payload as a `std::io::Read + Seek` view sharing this
+    /// reader's position; closing the view closes the reader.
+    pub fn io(&self) -> SourceStream {
+        self.handle.io()
+    }
+    /// The reference's Seek: moves the plaintext position.
+    pub fn seek(&self, pos: std::io::SeekFrom) -> Result<i64> {
+        let (offset, whence) = match pos {
+            std::io::SeekFrom::Start(o) => (o as i64, 0),
+            std::io::SeekFrom::Current(o) => (o, 1),
+            std::io::SeekFrom::End(o) => (o, 2),
+        };
+        wait(self.handle.Seek(offset, whence, self.calls.options()), |n| n)
+    }
+    /// Decrypts `length` plaintext bytes at `offset` without moving the position.
+    pub fn read_at(&self, offset: i64, length: i64) -> Result<Vec<u8>> {
+        wait(self.handle.ReadAt(offset, length, self.calls.options()), |v| v)
+    }
+    pub fn read_at_async(&self, offset: i64, length: i64) -> impl Future<Output = Result<Vec<u8>>> {
+        future(self.handle.ReadAt(offset, length, self.calls.options()), |v| v)
+    }
+    /// Decrypts the payload from the current position into `output`; returns the bytes written.
+    pub fn write_to(&self, output: Stream) -> Result<i64> {
+        wait(self.handle.WriteTo(Some(output), self.calls.options()), |n| n)
+    }
+    pub fn write_to_async(&self, output: Stream) -> impl Future<Output = Result<i64>> {
+        future(self.handle.WriteTo(Some(output), self.calls.options()), |n| n)
     }
     pub fn manifest(&self) -> Result<Manifest> {
         wait(self.handle.Manifest(self.calls.options()), Manifest::from)
@@ -879,6 +910,44 @@ impl Sdk {
             object.close()?;
             Ok(object.bytes)
         }
+    }
+    /// The reference's CreateTDF over streams: encrypts `plaintext` into
+    /// `output` in segments; the TdfObject's bytes are empty. A
+    /// `Stream::read_seeker` input, or `TdfOptions::input_size`, selects a
+    /// ZIP32 archive when it fits; an unknown size writes ZIP64.
+    pub fn encrypt_to(&self, output: Stream, plaintext: Stream, options: &TdfOptions) -> Result<TdfObject> {
+        let calls = self.calls.clone();
+        wait(self.handle.CreateTDF(Some(output), Some(plaintext), options.generated(), self.calls.options()), move |handle| TdfObject { bytes: Vec::new(), handle: handle.expect("invalid generated result"), calls })
+    }
+    pub fn encrypt_to_async(&self, output: Stream, plaintext: Stream, options: &TdfOptions) -> impl Future<Output = Result<TdfObject>> {
+        let calls = self.calls.clone();
+        future(self.handle.CreateTDF(Some(output), Some(plaintext), options.generated(), self.calls.options()), move |handle| TdfObject { bytes: Vec::new(), handle: handle.expect("invalid generated result"), calls })
+    }
+    /// The reference's LoadTDF over a seekable stream (`Stream::read_seeker`)
+    /// the Reader keeps open and reads segment by segment.
+    pub fn load_tdf_stream(&self, ciphertext: Stream, options: &ReaderOptions) -> Result<Reader> {
+        let calls = self.calls.clone();
+        wait(self.handle.LoadTDF(Some(ciphertext), options.generated(), self.calls.options()), move |h| Reader { handle: h.expect("invalid generated result"), calls })
+    }
+    pub fn load_tdf_stream_async(&self, ciphertext: Stream, options: &ReaderOptions) -> impl Future<Output = Result<Reader>> {
+        let calls = self.calls.clone();
+        future(self.handle.LoadTDF(Some(ciphertext), options.generated(), self.calls.options()), move |h| Reader { handle: h.expect("invalid generated result"), calls })
+    }
+    /// The reference's DecryptTo: decrypts a seekable stream into `output` in segments.
+    pub fn decrypt_to(&self, output: Stream, ciphertext: Stream, options: &ReaderOptions) -> Result<()> {
+        wait(self.handle.DecryptTo(Some(output), Some(ciphertext), options.generated(), self.calls.options()), |v| v)
+    }
+    pub fn decrypt_to_async(&self, output: Stream, ciphertext: Stream, options: &ReaderOptions) -> impl Future<Output = Result<()>> {
+        future(self.handle.DecryptTo(Some(output), Some(ciphertext), options.generated(), self.calls.options()), |v| v)
+    }
+    /// The reference's DecryptFile: decrypts the TDF at `input_path` into a
+    /// temporary file beside `output_path` and renames it into place, so a
+    /// failure leaves any existing output untouched.
+    pub fn decrypt_file(&self, input_path: &str, output_path: &str, options: &ReaderOptions) -> Result<()> {
+        wait(self.handle.DecryptFile(bytes(input_path), bytes(output_path), options.generated(), self.calls.options()), |v| v)
+    }
+    pub fn decrypt_file_async(&self, input_path: &str, output_path: &str, options: &ReaderOptions) -> impl Future<Output = Result<()>> {
+        future(self.handle.DecryptFile(bytes(input_path), bytes(output_path), options.generated(), self.calls.options()), |v| v)
     }
     /// The reference's LoadTDF over bytes.
     pub fn load_tdf(&self, ciphertext: &[u8], options: &ReaderOptions) -> Result<Reader> {

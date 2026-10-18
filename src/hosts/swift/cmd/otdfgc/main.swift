@@ -168,9 +168,20 @@ func newSDK(_ p: Parsed) async -> (SDK?, String, Int32) {
   do { return (try await SDK(host, options), host, exitSuccess) }
   catch { stderr(describeNew(error, host) + "\n"); return (nil, host, exitError) }
 }
-func writeOut(_ path: String, _ data: Data, _ mode: Int) throws {
-  let tmp = path + ".tmp"
-  try data.write(to: URL(fileURLWithPath: tmp))
+/// A seekable host stream over an open FileHandle; the caller closes the handle.
+func fileStream(_ handle: FileHandle) -> HostStream {
+  HostStream(
+    read: { n in try handle.read(upToCount: n).map(Array.init) ?? [] },
+    write: { data in try handle.write(contentsOf: data); return data.count },
+    seek: { offset, whence in
+      let base: UInt64 = whence == 0 ? 0 : whence == 1 ? try handle.offset() : try handle.seekToEnd()
+      let target = Int64(base) + offset
+      if target < 0 { throw InputError(message: "seek: negative position") }
+      try handle.seek(toOffset: UInt64(target))
+      return target
+    })
+}
+func moveInto(_ tmp: String, _ path: String, _ mode: Int) throws {
   try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: tmp)
   do {
     if FileManager.default.fileExists(atPath: path) { _ = try FileManager.default.replaceItemAt(URL(fileURLWithPath: path), withItemAt: URL(fileURLWithPath: tmp)) }
@@ -242,9 +253,8 @@ func encrypt(_ args: [String]) async -> Int32 {
   let reason = unsupported(p, encryptUnsupported)
   if !reason.isEmpty { stderr("unsupported in this build: \(reason)\n"); return exitUsage }
   guard p.positional.count == 1, !p.value("out").isEmpty else { stderr("encrypt needs exactly one input file and --out\n" + usage); return exitUsage }
-  let input: Data
-  do { input = try Data(contentsOf: URL(fileURLWithPath: p.positional[0])) }
-  catch { stderr("Failed to read \(p.positional[0]): \(error.localizedDescription)\n"); return exitError }
+  guard let input = FileHandle(forReadingAtPath: p.positional[0]) else { stderr("Failed to read \(p.positional[0]): \(String(cString: strerror(errno)))\n"); return exitError }
+  defer { try? input.close() }
   let (sdk, host, code) = await newSDK(p)
   guard let sdk = sdk else { return code }
   defer { try? sdk.close() }
@@ -255,10 +265,19 @@ func encrypt(_ args: [String]) async -> Int32 {
     catch let e as InputError { stderr("Failed to read assertions: \(e.message)\n"); return exitUsage }
     catch { stderr("Failed to read assertions: \(error.localizedDescription)\n"); return exitUsage }
   }
-  let data: Data
-  do { data = try await sdk.encryptBytes(input, options) }
-  catch { stderr("Failed to encrypt: \(describe(error))\n"); return exitError }
-  do { try writeOut(p.value("out"), data, 0o644) }
+  let tmp = p.value("out") + ".tmp"
+  guard FileManager.default.createFile(atPath: tmp, contents: nil), let output = FileHandle(forWritingAtPath: tmp) else {
+    stderr("Failed to write encrypted file \(p.value("out")): \(String(cString: strerror(errno)))\n"); return exitError
+  }
+  do {
+    let object = try await sdk.encryptTo(fileStream(output), fileStream(input), options)
+    try object.close()
+    try output.close()
+  } catch {
+    try? output.close(); try? FileManager.default.removeItem(atPath: tmp)
+    stderr("Failed to encrypt: \(describe(error))\n"); return exitError
+  }
+  do { try moveInto(tmp, p.value("out"), 0o644) }
   catch { stderr("Failed to write encrypted file \(p.value("out")): \(error.localizedDescription)\n"); return exitError }
   return exitSuccess
 }
@@ -268,9 +287,7 @@ func decrypt(_ args: [String]) async -> Int32 {
   let reason = unsupported(p, decryptUnsupported)
   if !reason.isEmpty { stderr("unsupported in this build: \(reason)\n"); return exitUsage }
   guard p.positional.count == 1, !p.value("out").isEmpty else { stderr("decrypt needs exactly one input file and --out\n" + usage); return exitUsage }
-  let input: Data
-  do { input = try Data(contentsOf: URL(fileURLWithPath: p.positional[0])) }
-  catch { stderr("Failed to read file: \(error.localizedDescription)\n"); return exitError }
+  guard FileManager.default.isReadableFile(atPath: p.positional[0]) else { stderr("Failed to read file: \(p.positional[0]): no such file or directory\n"); return exitError }
   let (sdk, _, code) = await newSDK(p)
   guard let sdk = sdk else { return code }
   defer { try? sdk.close() }
@@ -283,11 +300,8 @@ func decrypt(_ args: [String]) async -> Int32 {
     catch let e as InputError { stderr("Failed to read assertion verification keys: \(e.message)\n"); return exitUsage }
     catch { stderr("Failed to read assertion verification keys: \(error.localizedDescription)\n"); return exitUsage }
   }
-  let plaintext: Data
-  do { plaintext = try await sdk.decryptBytes(input, options) }
+  do { try await sdk.decryptFile(p.positional[0], p.value("out"), options) }
   catch { stderr("Failed to decrypt file: \(describe(error))\n"); return exitError }
-  do { try writeOut(p.value("out"), plaintext, 0o600) }
-  catch { stderr("Failed to write decrypted data to file: \(error.localizedDescription)\n"); return exitError }
   return exitSuccess
 }
 

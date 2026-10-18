@@ -63,11 +63,15 @@ try{
    if(name==='denied'||name.endsWith('-denied'))extra.attributes=['https://example.com/attr/attr1/value/value2'];
    const split=name==='split'||name.endsWith('-split');
    if(split)extra.kasInformation=[kasInformation(cfg),kasInformation(cfg)];
-   const object=await sdk.createTdf(new Uint8Array(await read(name+'.input')),tdfOptions(cfg,extra));
+   // encryptTo streams the payload into a host writer; a Uint8Array input is
+   // seekable, so the archive is ZIP32 and the TDFObject reports its size.
+   const parts=[];
+   const object=await sdk.encryptTo({write(data){parts.push(data.slice());}},new Uint8Array(await read(name+'.input')),tdfOptions(cfg,extra));
    const manifest=await object.manifest();
-   assert((await object.size())===object.bytes.length&&manifest.encryptionInformation.keyAccess.length===(split?2:1),'object');
+   const tdf=new Uint8Array(await new Blob(parts).arrayBuffer());
+   assert((await object.size())===tdf.length&&manifest.encryptionInformation.keyAccess.length===(split?2:1),'object');
    await object.close();
-   await write(name+'.generated.tdf',object.bytes);
+   await write(name+'.generated.tdf',tdf);
   }else if(mode==='decrypt'){
    const input=new Uint8Array(await read(name+'.tdf'));
    const reader=await sdk.loadTdf(input,readerOptions(cfg));
@@ -75,8 +79,17 @@ try{
    const hasMetadata=manifest.encryptionInformation.keyAccess.length>0&&manifest.encryptionInformation.keyAccess[0].encryptedMetadata!=='';
    let metadata=new Uint8Array();
    if(hasMetadata){await reader.init();metadata=await reader.unencryptedMetadata();}
+   // The reader streams the plaintext: async iteration from the cursor, and
+   // decryptTo writes the same payload into a host writer.
+   await reader.init();
+   const chunks=[];
+   for await(const chunk of reader)chunks.push(chunk);
    await reader.close();
-   const payload=await sdk.decryptBytes(input,readerOptions(cfg));
+   const streamed=new Uint8Array(await new Blob(chunks).arrayBuffer());
+   const parts=[];
+   await sdk.decryptTo({write(data){parts.push(data.slice());}},input,readerOptions(cfg));
+   const payload=new Uint8Array(await new Blob(parts).arrayBuffer());
+   assert(payload.length===streamed.length&&payload.every((b,i)=>b===streamed[i]),'streamed plaintext differs from decryptTo');
    await write(name+'.out',payload);await write(name+'.metadata',metadata);await write(name+'.manifest',new TextEncoder().encode(JSON.stringify(manifest)));await write(name+'.presence',String(hasMetadata));
   }else if(mode==='negative'){
    let rejected=false;

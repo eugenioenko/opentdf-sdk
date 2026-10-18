@@ -10,6 +10,7 @@
 #define OPENTDF_H
 #include "library.h"
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -138,8 +139,22 @@ int otdf_tdf_object_size(otdf_tdf_object *object, const otdf_call *call, int64_t
 int otdf_tdf_object_close(otdf_tdf_object *object, otdf_error *error);
 void otdf_tdf_object_free(otdf_tdf_object *object);
 
+/* The reference's CreateTDF over streams: encrypts plaintext (read callback;
+ * seek too when the size is known) into output (write callback) in segments.
+ * A seekable input, or options->input_size, selects a ZIP32 archive when it
+ * fits; an unknown size writes ZIP64. object receives the TDFObject handle,
+ * or is NULL to release it. */
+int otdf_encrypt_to(otdf_sdk *sdk, const gxc_stream *output, const gxc_stream *plaintext, const otdf_tdf_options *options, const otdf_call *call, otdf_tdf_object **object, otdf_error *error);
+/* A gxc_stream over an open stdio FILE (read, write and seek); the caller keeps
+ * owning and closing the FILE, which must stay open while the stream is used. */
+gxc_stream otdf_stream_file(FILE *file);
+
 /* The reference's LoadTDF over bytes; the reader keeps a copy of the bytes until it is closed. */
 int otdf_load_tdf(otdf_sdk *sdk, otdf_bytes ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_reader **reader, otdf_error *error);
+/* The reference's LoadTDF over a stream (read and seek callbacks) the reader
+ * keeps reading segment by segment: *ciphertext and its state must stay valid
+ * until the reader is closed. */
+int otdf_load_tdf_stream(otdf_sdk *sdk, const gxc_stream *ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_reader **reader, otdf_error *error);
 /* Fetches and unwraps the payload key now. */
 int otdf_reader_init(otdf_reader *reader, const otdf_call *call, otdf_error *error);
 /* The manifest keyed by the reference's JSON tags (encryptionInformation.keyAccess[0].url, ...). */
@@ -149,10 +164,27 @@ int otdf_reader_policy_json(otdf_reader *reader, const otdf_call *call, char **j
 int otdf_reader_data_attributes(otdf_reader *reader, const otdf_call *call, char ***attributes, size_t *count, otdf_error *error);
 /* The decrypted metadata; runs init lazily. */
 int otdf_reader_unencrypted_metadata(otdf_reader *reader, const otdf_call *call, otdf_owned_bytes *metadata, otdf_error *error);
+/* Payload streaming. read decrypts at most length bytes (at most 1 MiB) from
+ * the current position into buffer and sets *count; 0 for a non-zero length
+ * is the end. seek moves the position (whence 0 start, 1 current, 2 end) and
+ * sets *position. read_at decrypts length bytes at offset without moving the
+ * position. write_to decrypts from the current position into output and sets
+ * *written. Call otdf_reader_init first when the SDK uses a token provider,
+ * since read carries no callbacks. */
+int otdf_reader_read(otdf_reader *reader, uint8_t *buffer, size_t length, size_t *count, otdf_error *error);
+int otdf_reader_seek(otdf_reader *reader, int64_t offset, int whence, const otdf_call *call, int64_t *position, otdf_error *error);
+int otdf_reader_read_at(otdf_reader *reader, int64_t offset, int64_t length, const otdf_call *call, otdf_owned_bytes *data, otdf_error *error);
+int otdf_reader_write_to(otdf_reader *reader, const gxc_stream *output, const otdf_call *call, int64_t *written, otdf_error *error);
 /* Close and free as for otdf_sdk: close releases, free disposes of the handle and its bytes. */
 int otdf_reader_close(otdf_reader *reader, otdf_error *error);
 void otdf_reader_free(otdf_reader *reader);
 int otdf_decrypt_bytes(otdf_sdk *sdk, otdf_bytes ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_owned_bytes *plaintext, otdf_error *error);
+/* The reference's DecryptTo: decrypts ciphertext (read and seek callbacks) into output (write callback) in segments. */
+int otdf_decrypt_to(otdf_sdk *sdk, const gxc_stream *output, const gxc_stream *ciphertext, const otdf_reader_options *options, const otdf_call *call, otdf_error *error);
+/* The reference's DecryptFile: decrypts the TDF at input_path into a temporary
+ * file beside output_path and renames it into place, so a failure leaves any
+ * existing output untouched. */
+int otdf_decrypt_file(otdf_sdk *sdk, const char *input_path, const char *output_path, const otdf_reader_options *options, const otdf_call *call, otdf_error *error);
 
 int otdf_is_healthy(otdf_sdk *sdk, const otdf_call *call, bool *healthy, otdf_error *error);
 /* The platform configuration members as a JSON object of strings. */

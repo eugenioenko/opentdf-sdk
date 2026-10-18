@@ -362,13 +362,10 @@ fn new_sdk(p: &Parsed) -> Result<(Sdk, String), (u8, String)> {
     Sdk::new(&host, options).map(|sdk| (sdk, host.clone())).map_err(|e| (EXIT_ERROR, describe_new(&e, &host)))
 }
 
-fn write_out(path: &str, data: &[u8], mode: u32) -> std::io::Result<()> {
+fn move_into(tmp: &str, path: &str, mode: u32) -> std::io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
-    let tmp = format!("{path}.tmp");
-    fs::write(&tmp, data)?;
-    fs::set_permissions(&tmp, fs::Permissions::from_mode(mode))?;
-    if let Err(e) = fs::rename(&tmp, path) {
-        let _ = fs::remove_file(&tmp);
+    if let Err(e) = fs::set_permissions(tmp, fs::Permissions::from_mode(mode)).and_then(|()| fs::rename(tmp, path)) {
+        let _ = fs::remove_file(tmp);
         return Err(e);
     }
     Ok(())
@@ -600,8 +597,8 @@ fn encrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
         let _ = write!(stderr, "encrypt needs exactly one input file and --out\n{USAGE}");
         return EXIT_USAGE;
     }
-    let input = match fs::read(&p.positional[0]) {
-        Ok(d) => d,
+    let input = match fs::File::open(&p.positional[0]) {
+        Ok(f) => f,
         Err(e) => {
             let _ = writeln!(stderr, "Failed to read {}: {e}", p.positional[0]);
             return EXIT_ERROR;
@@ -636,16 +633,23 @@ fn encrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
         assertions,
         ..Default::default()
     };
-    let result = sdk.encrypt_bytes(&input, &options);
-    let _ = sdk.close();
-    let data = match result {
-        Ok(d) => d,
+    let tmp = format!("{}.tmp", p.value("out"));
+    let output = match fs::File::create(&tmp) {
+        Ok(f) => f,
         Err(e) => {
-            let _ = writeln!(stderr, "Failed to encrypt: {}", describe(&e));
+            let _ = sdk.close();
+            let _ = writeln!(stderr, "Failed to write encrypted file {}: {e}", p.value("out"));
             return EXIT_ERROR;
         }
     };
-    if let Err(e) = write_out(p.value("out"), &data, 0o644) {
+    let result = sdk.encrypt_to(tdf::Stream::writer(output), tdf::Stream::read_seeker(input), &options).and_then(|object| object.close());
+    let _ = sdk.close();
+    if let Err(e) = result {
+        let _ = fs::remove_file(&tmp);
+        let _ = writeln!(stderr, "Failed to encrypt: {}", describe(&e));
+        return EXIT_ERROR;
+    }
+    if let Err(e) = move_into(&tmp, p.value("out"), 0o644) {
         let _ = writeln!(stderr, "Failed to write encrypted file {}: {e}", p.value("out"));
         return EXIT_ERROR;
     }
@@ -669,13 +673,10 @@ fn decrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
         let _ = write!(stderr, "decrypt needs exactly one input file and --out\n{USAGE}");
         return EXIT_USAGE;
     }
-    let input = match fs::read(&p.positional[0]) {
-        Ok(d) => d,
-        Err(e) => {
-            let _ = writeln!(stderr, "Failed to read file: {e}");
-            return EXIT_ERROR;
-        }
-    };
+    if let Err(e) = fs::metadata(&p.positional[0]) {
+        let _ = writeln!(stderr, "Failed to read file: {e}");
+        return EXIT_ERROR;
+    }
     let (sdk, _) = match new_sdk(&p) {
         Ok(v) => v,
         Err((code, message)) => {
@@ -706,17 +707,10 @@ fn decrypt(args: &[String], stderr: &mut dyn Write) -> u8 {
         kas_allowlist: if !ignore && !allowlist.is_empty() { Some(allowlist) } else { None },
         ..Default::default()
     };
-    let result = sdk.decrypt_bytes(&input, &options);
+    let result = sdk.decrypt_file(&p.positional[0], p.value("out"), &options);
     let _ = sdk.close();
-    let plaintext = match result {
-        Ok(d) => d,
-        Err(e) => {
-            let _ = writeln!(stderr, "Failed to decrypt file: {}", describe(&e));
-            return EXIT_ERROR;
-        }
-    };
-    if let Err(e) = write_out(p.value("out"), &plaintext, 0o600) {
-        let _ = writeln!(stderr, "Failed to write decrypted data to file: {e}");
+    if let Err(e) = result {
+        let _ = writeln!(stderr, "Failed to decrypt file: {}", describe(&e));
         return EXIT_ERROR;
     }
     EXIT_SUCCESS

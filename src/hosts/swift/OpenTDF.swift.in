@@ -408,13 +408,29 @@ public final class TDFObject {
   public func close() throws { do { try handle.close() } catch let failure as GoalchemyFailure { throw OpenTDFError(failure) } }
 }
 
-/// The reference's Reader over a loaded TDF; stream methods arrive in Phase 7.
+/// A host stream passed to encryptTo, loadTDF, decryptTo and writeTo: closures over the host's bytes, an InputStream or an OutputStream.
+public typealias HostStream = GoalchemyStream
+/// The host view of a source stream: read, seek, write, close and `for try await chunk in stream`.
+public typealias SourceStream = GoalchemySourceStream
+
+/// The reference's Reader over a loaded TDF. The payload streams in segments: read, seek, readAt, writeTo and io decrypt on
+/// demand. Call initialize first when the SDK uses a token provider, since io reads carry no callbacks.
 public final class Reader {
   private let handle: GoalchemyGenerated.Reader
   private let calls: Calls
   fileprivate init(_ handle: GoalchemyGenerated.Reader, _ calls: Calls) { self.handle = handle; self.calls = calls }
   /// Fetches and unwraps the payload key now, under this Task.
   public func initialize() async throws { try await run(handle.Init(calls.options)) }
+  /// The decrypted payload as a stream view sharing this reader's position; closing it closes the reader.
+  public func io() -> SourceStream { handle.io() }
+  /// Reads up to maxLength plaintext bytes from the current position; nil at the end.
+  public func read(_ maxLength: Int = 64 << 10) throws -> Data? { try io().read(maxLength).map { Data($0) } }
+  /// The reference's Seek: moves the plaintext position; whence is 0 (start), 1 (current) or 2 (end).
+  public func seek(_ offset: Int64, _ whence: Int = 0) async throws -> Int64 { try await run(handle.Seek(offset, Int64(whence), calls.options)) }
+  /// Decrypts length plaintext bytes at offset without moving the position.
+  public func readAt(_ offset: Int64, _ length: Int64) async throws -> Data { Data(try await run(handle.ReadAt(offset, length, calls.options)) ?? []) }
+  /// Decrypts the payload from the current position into output; returns the bytes written.
+  public func writeTo(_ output: HostStream) async throws -> Int64 { try await run(handle.WriteTo(output, calls.options)) }
   public func manifest() async throws -> Manifest { Manifest(try await run(handle.Manifest(calls.options))) }
   public func policy() async throws -> PolicyObject { PolicyObject(try await run(handle.Policy(calls.options))) }
   public func dataAttributes() async throws -> [String] { texts(try await run(handle.DataAttributes(calls.options))) }
@@ -474,6 +490,26 @@ public final class SDK {
     let object = try await createTDF(plaintext, options)
     try object.close()
     return object.bytes
+  }
+  /// The reference's CreateTDF over streams: encrypts plaintext into output in segments; the TDFObject's bytes are empty.
+  /// A seekable input, or TDFOptions.inputSize, selects a ZIP32 archive when it fits; an unknown size writes ZIP64.
+  public func encryptTo(_ output: HostStream, _ plaintext: HostStream, _ options: TDFOptions = TDFOptions()) async throws -> TDFObject {
+    guard let object = try await run(handle.CreateTDF(output, plaintext, options.generated, calls.options)) else { throw GoalchemyFailure("host", "invalid generated result") }
+    return TDFObject(nil, object, calls)
+  }
+  /// The reference's LoadTDF over a seekable stream the Reader keeps open and reads segment by segment.
+  public func loadTDF(_ ciphertext: HostStream, _ options: ReaderOptions = ReaderOptions()) async throws -> Reader {
+    guard let reader = try await run(handle.LoadTDF(ciphertext, options.generated, calls.options)) else { throw GoalchemyFailure("host", "invalid generated result") }
+    return Reader(reader, calls)
+  }
+  /// The reference's DecryptTo: decrypts a seekable stream into output in segments.
+  public func decryptTo(_ output: HostStream, _ ciphertext: HostStream, _ options: ReaderOptions = ReaderOptions()) async throws {
+    try await run(handle.DecryptTo(output, ciphertext, options.generated, calls.options))
+  }
+  /// The reference's DecryptFile: decrypts the TDF at inputPath into a temporary file beside outputPath and renames it into
+  /// place, so a failure leaves any existing output untouched.
+  public func decryptFile(_ inputPath: String, _ outputPath: String, _ options: ReaderOptions = ReaderOptions()) async throws {
+    try await run(handle.DecryptFile(go(inputPath), go(outputPath), options.generated, calls.options))
   }
   /// The reference's LoadTDF over bytes.
   public func loadTDF(_ ciphertext: Data, _ options: ReaderOptions = ReaderOptions()) async throws -> Reader {

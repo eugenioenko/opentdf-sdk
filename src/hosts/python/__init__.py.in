@@ -303,11 +303,45 @@ class TDFObject:
 
 
 class Reader:
-    """The reference's Reader over a loaded TDF; stream methods arrive in Phase 7."""
+    """The reference's Reader over a loaded TDF. Payload bytes stream in
+    segments: read, seek, read_at and write_to decrypt on demand, as_file
+    is the payload as a binary file-like object. Call init first when the
+    SDK uses a token_provider, since file reads carry no callbacks."""
     def __init__(self, handle, calls):
-        self._handle = handle; self._calls = calls
+        self._handle = handle; self._calls = calls; self._file = None
     def init(self, timeout=None): return _wait(self._handle.Init(self._calls), timeout)
     async def init_async(self): return await _await(self._handle.Init(self._calls))
+    def as_file(self):
+        """The decrypted payload as an unbuffered binary file (io.RawIOBase)
+        sharing this reader's position; closing it closes the reader."""
+        if self._file is None: self._file = self._handle.as_file()
+        return self._file
+    def read(self, size=-1):
+        """Reads up to size bytes of plaintext from the current position (all
+        remaining bytes when size is negative); b'' at the end."""
+        return self.as_file().readall() if size is None or size < 0 else self.as_file().read(size)
+    def seek(self, offset, whence=0, timeout=None):
+        """The reference's Seek: moves the plaintext position; whence is
+        os.SEEK_SET, SEEK_CUR or SEEK_END."""
+        return _wait(self._handle.Seek(offset, whence, self._calls), timeout)
+    async def seek_async(self, offset, whence=0): return await _await(self._handle.Seek(offset, whence, self._calls))
+    def read_at(self, offset, length, timeout=None):
+        """Decrypts length plaintext bytes at offset without moving the position."""
+        return _wait(self._handle.ReadAt(offset, length, self._calls), timeout, lambda v: v or b'')
+    async def read_at_async(self, offset, length): return await _await(self._handle.ReadAt(offset, length, self._calls), lambda v: v or b'')
+    def write_to(self, output, timeout=None):
+        """Decrypts the payload from the current position into a writable
+        file-like object; returns the bytes written."""
+        return _wait(self._write_to(output), timeout)
+    async def write_to_async(self, output): return await _await(self._write_to(output))
+    def _write_to(self, output):
+        try: return self._handle.WriteTo(output, self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def __iter__(self):
+        while True:
+            chunk = self.read(1 << 20)
+            if not chunk: return
+            yield chunk
     def manifest(self, timeout=None): return _wait(self._handle.Manifest(self._calls), timeout, _manifest)
     async def manifest_async(self): return await _await(self._handle.Manifest(self._calls), _manifest)
     def policy(self, timeout=None): return _wait(self._handle.Policy(self._calls), timeout, lambda v: _from_generated(_POLICY, v))
@@ -371,10 +405,27 @@ class SDK:
     async def encrypt_bytes_async(self, plaintext, **options):
         async with await self.create_tdf_async(plaintext, **options) as obj: return obj.bytes
 
-    def _load(self, ciphertext, options):
-        try: return self._handle.LoadTDF(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, _reader_options(options)), self._calls)
+    def _encrypt_to(self, output, plaintext, options):
+        try: return self._handle.CreateTDF(output, plaintext, _to_generated(_TDF_OPTIONS, _tdf_options(options)), self._calls)
         except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
-    def load_tdf(self, ciphertext, *, timeout=None, **options): return _wait(self._load(ciphertext, options), timeout, lambda h: Reader(h, self._calls))
+    def _streamed(self, handle): return TDFObject(b'', handle, self._calls)
+    def encrypt_to(self, output, plaintext, *, timeout=None, **options):
+        """The reference's CreateTDF over streams: encrypts the readable
+        file-like object (or bytes) plaintext into the writable file-like
+        object output in segments and returns the TDFObject (its bytes are
+        empty). A seekable or sized input (input_size) writes a ZIP32 archive
+        when it fits; an unknown size writes ZIP64."""
+        return _wait(self._encrypt_to(output, plaintext, options), timeout, self._streamed)
+    async def encrypt_to_async(self, output, plaintext, **options): return await _await(self._encrypt_to(output, plaintext, options), self._streamed)
+
+    def _load(self, ciphertext, options):
+        source = rt.library_snapshot_bytes(ciphertext) if isinstance(ciphertext, (bytes, bytearray, memoryview)) else ciphertext
+        try: return self._handle.LoadTDF(source, _to_generated(_READER_OPTIONS, _reader_options(options)), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def load_tdf(self, ciphertext, *, timeout=None, **options):
+        """The reference's LoadTDF over bytes or a seekable readable file-like
+        object, which the Reader keeps open and reads segment by segment."""
+        return _wait(self._load(ciphertext, options), timeout, lambda h: Reader(h, self._calls))
     async def load_tdf_async(self, ciphertext, **options): return await _await(self._load(ciphertext, options), lambda h: Reader(h, self._calls))
 
     def _decrypt(self, ciphertext, options):
@@ -382,6 +433,25 @@ class SDK:
         except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
     def decrypt_bytes(self, ciphertext, *, timeout=None, **options): return _wait(self._decrypt(ciphertext, options), timeout, lambda v: v or b'')
     async def decrypt_bytes_async(self, ciphertext, **options): return await _await(self._decrypt(ciphertext, options), lambda v: v or b'')
+
+    def _decrypt_to(self, output, ciphertext, options):
+        source = rt.library_snapshot_bytes(ciphertext) if isinstance(ciphertext, (bytes, bytearray, memoryview)) else ciphertext
+        try: return self._handle.DecryptTo(output, source, _to_generated(_READER_OPTIONS, _reader_options(options)), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def decrypt_to(self, output, ciphertext, *, timeout=None, **options):
+        """The reference's DecryptTo: decrypts a seekable readable file-like
+        object (or bytes) into the writable file-like object output in segments."""
+        return _wait(self._decrypt_to(output, ciphertext, options), timeout)
+    async def decrypt_to_async(self, output, ciphertext, **options): return await _await(self._decrypt_to(output, ciphertext, options))
+    def _decrypt_file(self, input_path, output_path, options):
+        try: return self._handle.DecryptFile(_text(input_path), _text(output_path), _to_generated(_READER_OPTIONS, _reader_options(options)), self._calls)
+        except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
+    def decrypt_file(self, input_path, output_path, *, timeout=None, **options):
+        """The reference's DecryptFile: decrypts the TDF at input_path into a
+        temporary file beside output_path and renames it into place, so a
+        failure leaves any existing output untouched."""
+        return _wait(self._decrypt_file(input_path, output_path, options), timeout)
+    async def decrypt_file_async(self, input_path, output_path, **options): return await _await(self._decrypt_file(input_path, output_path, options))
 
     def is_healthy(self, timeout=None): return _wait(self._handle.IsHealthy(self._calls), timeout)
     async def is_healthy_async(self): return await _await(self._handle.IsHealthy(self._calls))

@@ -123,6 +123,30 @@ public final class Consumer {
   out.put("assertions",ids);out.put("wrong_key",wrong);out.put("missing_key",missing);write("assertions.json",Json.write(out));
  }
 
+ /** Phase 7: encryptTo from a file channel into a file (ZIP32 for a seekable input), loadTDF over the channel with asInputStream/seek/readAt/writeTo, then decryptTo and decryptFile. */
+ @SuppressWarnings("unchecked")static void streams(SDK sdk,Map<String,Object> cfg)throws Exception{
+  byte[] payload=new byte[256*300];for(int i=0;i<payload.length;i++)payload[i]=(byte)i;
+  Path plain=run.resolve("stream.plain"),encrypted=run.resolve("stream.generated.tdf"),decrypted=run.resolve("stream.decrypted");
+  Files.write(plain,payload);
+  try(java.nio.channels.FileChannel in=java.nio.channels.FileChannel.open(plain);java.io.OutputStream out=Files.newOutputStream(encrypted);TDFObject object=sdk.encryptTo(out,in,tdfOptions(cfg).segmentSize(16384).build())){
+   Map<String,Object> integrity=(Map<String,Object>)((Map<String,Object>)object.manifest().get("encryptionInformation")).get("integrityInformation");
+   check(object.bytes().length==0&&Long.valueOf(16384).equals(((Map<String,Object>)((List<Object>)integrity.get("segments")).get(0)).get("segmentSize")),"streamed object");
+  }
+  check(SDK.isValidTdf(Files.readAllBytes(encrypted)),"streamed archive is a TDF");
+  try(java.nio.channels.FileChannel in=java.nio.channels.FileChannel.open(encrypted);Reader reader=sdk.loadTDF(in,readerOptions(cfg))){
+   reader.init();java.io.InputStream stream=reader.asInputStream();
+   check(Arrays.equals(stream.readNBytes(5),Arrays.copyOf(payload,5))&&reader.seek(-10,2)==payload.length-10&&Arrays.equals(stream.readAllBytes(),Arrays.copyOfRange(payload,payload.length-10,payload.length)),"read and seek");
+   check(Arrays.equals(reader.readAt(16380,8),Arrays.copyOfRange(payload,16380,16388))&&reader.seek(0,0)==0,"readAt");
+   java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();
+   check(reader.writeTo(out)==payload.length&&Arrays.equals(out.toByteArray(),payload),"writeTo");
+  }
+  try(java.nio.channels.FileChannel in=java.nio.channels.FileChannel.open(encrypted)){java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();sdk.decryptTo(out,in,readerOptions(cfg));check(Arrays.equals(out.toByteArray(),payload),"decryptTo");}
+  sdk.decryptFile(encrypted.toString(),decrypted.toString(),readerOptions(cfg));
+  check(Arrays.equals(Files.readAllBytes(decrypted),payload),"decryptFile");
+  Map<String,Object> notTdf=expectFailure("plain file",()->{sdk.decryptFile(plain.toString(),decrypted.toString(),readerOptions(cfg));return null;});
+  check("not_decryptable".equals(notTdf.get("kind"))&&Arrays.equals(Files.readAllBytes(decrypted),payload),"decryptFile keeps the output: "+Json.write(notTdf));
+ }
+
  /** 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail. */
  @SuppressWarnings("unchecked")static void repeat(SDK sdk,Map<String,Object> cfg)throws Exception{
   byte[] original={0,(byte)255,(byte)128,1};
@@ -139,6 +163,7 @@ public final class Consumer {
    byte[] plain=sdk.decryptBytes(archive,readerOptions(cfg));
    byte[] expected=Arrays.copyOf(original,5);expected[4]=(byte)i;check(Arrays.equals(plain,expected),"round trip");
   }
+  streams(sdk,cfg);
   final byte[] last=archive;
   Map<String,Object> wrong=expectFailure("wrong credentials",()->{try(SDK s=builder(cfg).clientCredentials(text(cfg,"ClientID"),"wrong").build()){return s.decryptBytes(last,readerOptions(cfg));}});
   check("auth".equals(wrong.get("kind"))&&Long.valueOf(401).equals(wrong.get("httpStatus")),"wrong credentials rejected: "+wrong);

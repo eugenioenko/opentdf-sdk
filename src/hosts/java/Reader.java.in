@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-/** The reference's Reader over a loaded TDF; stream methods arrive in Phase 7. */
+/** The reference's Reader over a loaded TDF. The payload streams in segments:
+ * asInputStream, seek, readAt and writeTo decrypt on demand. Call init first
+ * when the SDK uses a token provider, since InputStream reads carry no callbacks. */
 public final class Reader implements AutoCloseable {
  private final Generated.Reader handle;
  private final SDK sdk;
@@ -35,6 +37,26 @@ public final class Reader implements AutoCloseable {
  public List<String> dataAttributes() { return dataAttributes(null); }
  public List<String> dataAttributes(Duration timeout) { return Values.decode(Values.await(Values.run(() -> handle.DataAttributes(sdk.call())), timeout)); }
  public CompletableFuture<List<String>> dataAttributesAsync() { return Values.future(Values.run(() -> handle.DataAttributes(sdk.call())), Values::decode); }
+
+ /** The decrypted payload as a stream view sharing this reader's position; closing it closes the reader. */
+ public Library.SourceStream io() { return handle.io(); }
+ /** The decrypted payload as an InputStream from the current position; closing it closes the reader. */
+ public java.io.InputStream asInputStream() { return handle.asInputStream(); }
+
+ /** The reference's Seek: moves the plaintext position; whence is 0 (start), 1 (current) or 2 (end). */
+ public long seek(long offset, int whence) { return seek(offset, whence, null); }
+ public long seek(long offset, int whence, Duration timeout) { return Values.await(Values.run(() -> handle.Seek(offset, whence, sdk.call())), timeout); }
+ public CompletableFuture<Long> seekAsync(long offset, int whence) { return Values.future(Values.run(() -> handle.Seek(offset, whence, sdk.call())), n -> n); }
+
+ /** Decrypts length plaintext bytes at offset without moving the position. */
+ public byte[] readAt(long offset, long length) { return readAt(offset, length, null); }
+ public byte[] readAt(long offset, long length, Duration timeout) { return orEmpty(Values.await(Values.run(() -> handle.ReadAt(offset, length, sdk.call())), timeout)); }
+ public CompletableFuture<byte[]> readAtAsync(long offset, long length) { return Values.future(Values.run(() -> handle.ReadAt(offset, length, sdk.call())), Reader::orEmpty); }
+
+ /** Decrypts the payload from the current position into output (an OutputStream or WritableByteChannel); returns the bytes written. */
+ public long writeTo(Object output) { return writeTo(output, null); }
+ public long writeTo(Object output, Duration timeout) { return Values.await(Values.run(() -> handle.WriteTo(output, sdk.call())), timeout); }
+ public CompletableFuture<Long> writeToAsync(Object output) { return Values.future(Values.run(() -> handle.WriteTo(output, sdk.call())), n -> n); }
 
  /** The decrypted metadata; runs init lazily. */
  public byte[] unencryptedMetadata() { return unencryptedMetadata(null); }

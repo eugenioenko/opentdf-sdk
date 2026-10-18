@@ -274,6 +274,57 @@ fn helpers(sdk: &Sdk, cfg: &Value, name: &str, ns: &str, fqn: &str) -> Result<Va
     }))
 }
 
+/// A Write sink shared with the host stream that fills it.
+#[derive(Clone, Default)]
+struct Sink(Arc<std::sync::Mutex<Vec<u8>>>);
+impl std::io::Write for Sink {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.lock().unwrap().extend_from_slice(buf);
+        Ok(buf.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+impl Sink {
+    fn bytes(&self) -> Vec<u8> {
+        self.0.lock().unwrap().clone()
+    }
+}
+
+/// Phase 7: encrypt_to from a file into a file (ZIP32 for a seekable input), load_tdf_stream with io/seek/read_at/write_to, then decrypt_to and decrypt_file.
+fn streams(sdk: &Sdk, cfg: &Value, run: &Path) -> Result<(), Error> {
+    use std::io::{Read, SeekFrom};
+    let payload: Vec<u8> = (0..256 * 300).map(|i| i as u8).collect();
+    let (plain, encrypted, decrypted) = (run.join("stream.plain"), run.join("stream.generated.tdf"), run.join("stream.decrypted"));
+    fs::write(&plain, &payload).unwrap();
+    let object = sdk.encrypt_to(tdf::Stream::writer(fs::File::create(&encrypted).unwrap()), tdf::Stream::read_seeker(fs::File::open(&plain).unwrap()), &TdfOptions { segment_size: 16384, ..tdf_options(cfg) })?;
+    check(object.bytes.is_empty() && object.manifest()?.encryption_information.integrity_information.segments[0].segment_size == 16384, "streamed object");
+    object.close()?;
+    check(tdf::is_valid_tdf(&fs::read(&encrypted).unwrap())?, "streamed archive is a TDF");
+    let reader = sdk.load_tdf_stream(tdf::Stream::read_seeker(fs::File::open(&encrypted).unwrap()), &reader_options(cfg))?;
+    reader.init()?;
+    let mut view = reader.io();
+    let mut head = [0u8; 5];
+    view.read_exact(&mut head).unwrap();
+    check(head == payload[..5] && reader.seek(SeekFrom::End(-10))? == payload.len() as i64 - 10, "read and seek");
+    let mut tail = vec![];
+    view.read_to_end(&mut tail).unwrap();
+    check(tail == payload[payload.len() - 10..], "tail");
+    check(reader.read_at(16380, 8)? == payload[16380..16388] && reader.seek(SeekFrom::Start(0))? == 0, "read_at");
+    let sink = Sink::default();
+    check(reader.write_to(tdf::Stream::writer(sink.clone()))? == payload.len() as i64 && sink.bytes() == payload, "write_to");
+    reader.close()?;
+    let sink = Sink::default();
+    sdk.decrypt_to(tdf::Stream::writer(sink.clone()), tdf::Stream::read_seeker(fs::File::open(&encrypted).unwrap()), &reader_options(cfg))?;
+    check(sink.bytes() == payload, "decrypt_to");
+    sdk.decrypt_file(encrypted.to_str().unwrap(), decrypted.to_str().unwrap(), &reader_options(cfg))?;
+    check(fs::read(&decrypted).unwrap() == payload, "decrypt_file");
+    let not_tdf = expect_failure("plain file", sdk.decrypt_file(plain.to_str().unwrap(), decrypted.to_str().unwrap(), &reader_options(cfg)));
+    check(not_tdf["kind"] == "not_decryptable" && fs::read(&decrypted).unwrap() == payload, &format!("decrypt_file keeps the output: {not_tdf}"));
+    Ok(())
+}
+
 /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
 fn repeat(sdk: &Sdk, cfg: &Value, name: &str) -> Result<(), Error> {
     let original = vec![0u8, 255, 128, 1];
@@ -431,6 +482,7 @@ fn main() {
                 }
                 "assertions" => assertions(&sdk, &cfg, run)?,
                 "repeat" => {
+                    streams(&sdk, &cfg, run)?;
                     repeat(&sdk, &cfg, name)?;
                     return Ok(());
                 }

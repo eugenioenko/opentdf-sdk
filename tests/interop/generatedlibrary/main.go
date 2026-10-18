@@ -199,9 +199,18 @@ func main() {
 		if name == "split" || strings.HasSuffix(name, "-split") {
 			extra = append(extra, g.WithKasInformation(kasInformation(cfg), kasInformation(cfg)))
 		}
-		data, _, e := client.EncryptBytes(ctx, read(filepath.Join(run, name+".input")), tdfOptions(cfg, extra...), callbacks)
+		// CreateTDF streams the payload: the input is a seekable reader
+		// here, so the archive is ZIP32; the TDFObject reports its size.
+		var data bytes.Buffer
+		object, e := client.CreateTDF(ctx, &data, bytes.NewReader(read(filepath.Join(run, name+".input"))), tdfOptions(cfg, extra...), callbacks)
 		fail("encrypt", e)
-		write(filepath.Join(run, name+".generated.tdf"), data)
+		size, e := object.Size(ctx)
+		fail("size", e)
+		fail("object close", object.Close())
+		if size != int64(data.Len()) {
+			panic("TDFObject size differs from the bytes written")
+		}
+		write(filepath.Join(run, name+".generated.tdf"), data.Bytes())
 	case "decrypt":
 		input := read(filepath.Join(run, name+".tdf"))
 		reader, e := client.LoadTDF(ctx, bytes.NewReader(input), readerOptions(cfg), callbacks)
@@ -217,10 +226,19 @@ func main() {
 			metadata, e = reader.UnencryptedMetadata(ctx, callbacks)
 			fail("metadata", e)
 		}
+		// The reader is a stream: Init carries the token callbacks, then the
+		// io view reads the plaintext in chunks; DecryptTo streams the same
+		// payload from the archive to a writer.
+		fail("init", reader.Init(ctx, callbacks))
+		streamed, e := io.ReadAll(reader.IO())
+		fail("stream", e)
 		fail("reader close", reader.Close())
-		payload, e := client.DecryptBytes(ctx, input, readerOptions(cfg), callbacks)
-		fail("decrypt", e)
-		write(filepath.Join(run, name+".out"), payload)
+		var payload bytes.Buffer
+		fail("decrypt", client.DecryptTo(ctx, &payload, bytes.NewReader(input), readerOptions(cfg), callbacks))
+		if !bytes.Equal(streamed, payload.Bytes()) {
+			panic("streamed plaintext differs from DecryptTo")
+		}
+		write(filepath.Join(run, name+".out"), payload.Bytes())
 		write(filepath.Join(run, name+".metadata"), metadata)
 		write(filepath.Join(run, name+".manifest"), manifestJSON)
 		write(filepath.Join(run, name+".presence"), []byte(strconv.FormatBool(hasMetadata)))

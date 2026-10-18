@@ -121,15 +121,6 @@ static int read_file(const char *path, uint8_t **data, size_t *n) {
     *data = buf; *n = len;
     return 0;
 }
-static int write_out(const char *path, const uint8_t *data, size_t n, mode_t mode) {
-    char tmp[4096];
-    snprintf(tmp, sizeof tmp, "%s.tmp", path);
-    FILE *f = fopen(tmp, "wb");
-    if (!f) return -1;
-    bool ok = (n == 0 || fwrite(data, 1, n, f) == n) && !fclose(f);
-    if (!ok || chmod(tmp, mode) || rename(tmp, path)) { remove(tmp); return -1; }
-    return 0;
-}
 
 /* describe renders an SDK failure: the reference SDK's wording plus otdfctl's "required obligations" suffix. */
 static void describe(const otdf_error *e, FILE *out) {
@@ -499,11 +490,11 @@ static int encrypt(int argc, char **argv) {
     if (parse(argc, argv, encrypt_flags, &p, error, sizeof error)) { fprintf(stderr, "%s\n%s", error, usage); return EXIT_USAGE; }
     if (unsupported(&p, encrypt_unsupported, reason, sizeof reason)) { fprintf(stderr, "unsupported in this build: %s\n", reason); return EXIT_USAGE; }
     if (p.positional_count != 1 || !*value_of(&p, "out")) { fprintf(stderr, "encrypt needs exactly one input file and --out\n%s", usage); return EXIT_USAGE; }
-    uint8_t *input; size_t n;
-    if (read_file(p.positional[0], &input, &n)) { fprintf(stderr, "Failed to read %s: %s\n", p.positional[0], strerror(errno)); return EXIT_FAILED; }
+    FILE *input = fopen(p.positional[0], "rb");
+    if (!input) { fprintf(stderr, "Failed to read %s: %s\n", p.positional[0], strerror(errno)); return EXIT_FAILED; }
     otdf_sdk *sdk = NULL; char host[2048]; credentials c = {0};
     int rc = new_sdk(&p, &sdk, host, sizeof host, &c);
-    if (rc) { free(input); credentials_free(&c); return rc; }
+    if (rc) { fclose(input); credentials_free(&c); return rc; }
     /* As otdfctl: the platform's KAS is the default key access server and attributes drive autoconfigure. */
     char kas[2100];
     snprintf(kas, sizeof kas, "%s/kas", host);
@@ -519,20 +510,29 @@ static int encrypt(int argc, char **argv) {
     if (*value_of(&p, "with-assertions")) {
         if (parse_assertions(value_of(&p, "with-assertions"), &assertions, error, sizeof error)) {
             fprintf(stderr, "Failed to read assertions: %s\n", error);
-            otdf_sdk_close(sdk, NULL); otdf_sdk_free(sdk); free(input); otdf_strings_free(attributes, attribute_count); credentials_free(&c); assertion_list_free(&assertions);
+            otdf_sdk_close(sdk, NULL); otdf_sdk_free(sdk); fclose(input); otdf_strings_free(attributes, attribute_count); credentials_free(&c); assertion_list_free(&assertions);
             return EXIT_USAGE;
         }
         o.assertions = assertions.configs; o.assertion_count = assertions.count;
     }
+    char tmp[4096];
+    snprintf(tmp, sizeof tmp, "%s.tmp", value_of(&p, "out"));
+    FILE *output = fopen(tmp, "wb");
+    if (!output) {
+        fprintf(stderr, "Failed to write encrypted file %s: %s\n", value_of(&p, "out"), strerror(errno));
+        otdf_sdk_close(sdk, NULL); otdf_sdk_free(sdk); fclose(input); otdf_strings_free(attributes, attribute_count); credentials_free(&c); assertion_list_free(&assertions);
+        return EXIT_FAILED;
+    }
     otdf_call call = {.timeout_millis = TIMEOUT_MILLIS};
-    otdf_owned_bytes tdf = {0}; otdf_error e = {0};
-    rc = otdf_encrypt_bytes(sdk, (otdf_bytes){input, n}, &o, &call, &tdf, &e);
+    otdf_error e = {0};
+    gxc_stream out = otdf_stream_file(output), in = otdf_stream_file(input);
+    rc = otdf_encrypt_to(sdk, &out, &in, &o, &call, NULL, &e);
     otdf_sdk_close(sdk, NULL);
     otdf_sdk_free(sdk);
-    free(input); otdf_strings_free(attributes, attribute_count); credentials_free(&c); assertion_list_free(&assertions);
-    if (rc) { fputs("Failed to encrypt: ", stderr); describe(&e, stderr); otdf_error_free(&e); return EXIT_FAILED; }
-    if (write_out(value_of(&p, "out"), tdf.data, tdf.length, 0644)) { fprintf(stderr, "Failed to write encrypted file %s: %s\n", value_of(&p, "out"), strerror(errno)); otdf_bytes_free(&tdf); return EXIT_FAILED; }
-    otdf_bytes_free(&tdf);
+    fclose(input); otdf_strings_free(attributes, attribute_count); credentials_free(&c); assertion_list_free(&assertions);
+    bool flushed = !fclose(output);
+    if (rc) { remove(tmp); fputs("Failed to encrypt: ", stderr); describe(&e, stderr); otdf_error_free(&e); return EXIT_FAILED; }
+    if (!flushed || chmod(tmp, 0644) || rename(tmp, value_of(&p, "out"))) { remove(tmp); fprintf(stderr, "Failed to write encrypted file %s: %s\n", value_of(&p, "out"), strerror(errno)); return EXIT_FAILED; }
     return EXIT_OK;
 }
 static int decrypt(int argc, char **argv) {
@@ -540,18 +540,18 @@ static int decrypt(int argc, char **argv) {
     if (parse(argc, argv, decrypt_flags, &p, error, sizeof error)) { fprintf(stderr, "%s\n%s", error, usage); return EXIT_USAGE; }
     if (unsupported(&p, decrypt_unsupported, reason, sizeof reason)) { fprintf(stderr, "unsupported in this build: %s\n", reason); return EXIT_USAGE; }
     if (p.positional_count != 1 || !*value_of(&p, "out")) { fprintf(stderr, "decrypt needs exactly one input file and --out\n%s", usage); return EXIT_USAGE; }
-    uint8_t *input; size_t n;
-    if (read_file(p.positional[0], &input, &n)) { fprintf(stderr, "Failed to read file: %s\n", strerror(errno)); return EXIT_FAILED; }
+    struct stat st;
+    if (stat(p.positional[0], &st)) { fprintf(stderr, "Failed to read file: %s\n", strerror(errno)); return EXIT_FAILED; }
     otdf_sdk *sdk = NULL; char host[2048]; credentials c = {0};
     int rc = new_sdk(&p, &sdk, host, sizeof host, &c);
-    if (rc) { free(input); credentials_free(&c); return rc; }
+    if (rc) { credentials_free(&c); return rc; }
     otdf_reader_options o = OTDF_READER_OPTIONS_INIT;
     o.disable_assertion_verification = flag_of(&p, "no-verify-assertions");
     verification_keys keys = {0};
     if (*value_of(&p, "with-assertion-verification-keys")) {
         if (parse_verification_keys(value_of(&p, "with-assertion-verification-keys"), &keys, error, sizeof error)) {
             fprintf(stderr, "Failed to read assertion verification keys: %s\n", error);
-            otdf_sdk_close(sdk, NULL); otdf_sdk_free(sdk); free(input); credentials_free(&c); verification_keys_free(&keys);
+            otdf_sdk_close(sdk, NULL); otdf_sdk_free(sdk); credentials_free(&c); verification_keys_free(&keys);
             return EXIT_USAGE;
         }
         o.assertion_default_key = keys.default_key; o.assertion_keys = keys.entries; o.assertion_key_count = keys.count;
@@ -563,14 +563,12 @@ static int decrypt(int argc, char **argv) {
     if (allowlist_count == 1 && !strcmp(allowlist[0], "*")) o.ignore_allowlist = true;
     else if (allowlist_count) { o.kas_allowlist = (const char *const *)allowlist; o.kas_allowlist_count = allowlist_count; }
     otdf_call call = {.timeout_millis = TIMEOUT_MILLIS};
-    otdf_owned_bytes plaintext = {0}; otdf_error e = {0};
-    rc = otdf_decrypt_bytes(sdk, (otdf_bytes){input, n}, &o, &call, &plaintext, &e);
+    otdf_error e = {0};
+    rc = otdf_decrypt_file(sdk, p.positional[0], value_of(&p, "out"), &o, &call, &e);
     otdf_sdk_close(sdk, NULL);
     otdf_sdk_free(sdk);
-    free(input); otdf_strings_free(allowlist, allowlist_count); credentials_free(&c); verification_keys_free(&keys);
+    otdf_strings_free(allowlist, allowlist_count); credentials_free(&c); verification_keys_free(&keys);
     if (rc) { fputs("Failed to decrypt file: ", stderr); describe(&e, stderr); otdf_error_free(&e); return EXIT_FAILED; }
-    if (write_out(value_of(&p, "out"), plaintext.data, plaintext.length, 0600)) { fprintf(stderr, "Failed to write decrypted data to file: %s\n", strerror(errno)); otdf_bytes_free(&plaintext); return EXIT_FAILED; }
-    otdf_bytes_free(&plaintext);
     return EXIT_OK;
 }
 int main(int argc, char **argv) {

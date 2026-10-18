@@ -140,6 +140,33 @@ static class Entry
    h["override"]=new Dictionary<string,object>{["endpoint"]=(await over.ConnAsync()).Endpoint,["attribute_exists"]=await over.AttributeExistsAsync(fqn)};
   return h;
  }
+ /// Phase 7: EncryptToAsync from a file into a file (ZIP32 for a seekable input), LoadTdfAsync over the file with AsStream/SeekAsync/ReadAtAsync/WriteToAsync, then DecryptToAsync and DecryptFileAsync.
+ static async Task Streams(Sdk sdk,JsonElement cfg)
+ {
+  var payload=Enumerable.Range(0,256*300).Select(i=>(byte)i).ToArray();
+  string plain=Path.Combine(run,"stream.plain"),encrypted=Path.Combine(run,"stream.generated.tdf"),decrypted=Path.Combine(run,"stream.decrypted");
+  File.WriteAllBytes(plain,payload);
+  await using(var input=File.OpenRead(plain))await using(var output=File.Create(encrypted))await using(var obj=await sdk.EncryptToAsync(output,input,TdfOptionsOf(cfg) with{SegmentSize=16384}))
+  {
+   var integrity=(IReadOnlyDictionary<string,object>)((IReadOnlyDictionary<string,object>)(await obj.ManifestAsync())["encryptionInformation"])["integrityInformation"];
+   Check(obj.Bytes.Length==0&&(long)((IReadOnlyDictionary<string,object>)((IReadOnlyList<object>)integrity["segments"])[0])["segmentSize"]==16384,"streamed object");
+  }
+  Check(await Sdk.IsValidTdfAsync(File.ReadAllBytes(encrypted)),"streamed archive is a TDF");
+  await using(var input=File.OpenRead(encrypted))await using(var reader=await sdk.LoadTdfAsync(input,ReaderOptionsOf(cfg)))
+  {
+   await reader.InitAsync();var stream=reader.AsStream();var head=new byte[5];
+   Check(await stream.ReadAsync(head)==5&&head.SequenceEqual(payload.Take(5))&&await reader.SeekAsync(-10,SeekOrigin.End)==payload.Length-10,"read and seek");
+   var tail=new MemoryStream();await stream.CopyToAsync(tail);Check(tail.ToArray().SequenceEqual(payload.Skip(payload.Length-10)),"tail");
+   Check((await reader.ReadAtAsync(16380,8)).SequenceEqual(payload.Skip(16380).Take(8))&&await reader.SeekAsync(0,SeekOrigin.Begin)==0,"ReadAt");
+   var all=new MemoryStream();Check(await reader.WriteToAsync(all)==payload.Length&&all.ToArray().SequenceEqual(payload),"WriteTo");
+  }
+  await using(var input=File.OpenRead(encrypted)){var all=new MemoryStream();await sdk.DecryptToAsync(all,input,ReaderOptionsOf(cfg));Check(all.ToArray().SequenceEqual(payload),"DecryptTo");}
+  await sdk.DecryptFileAsync(encrypted,decrypted,ReaderOptionsOf(cfg));
+  Check(File.ReadAllBytes(decrypted).SequenceEqual(payload),"DecryptFile");
+  var notTdf=await ExpectFailure("plain file",()=>sdk.DecryptFileAsync(plain,decrypted,ReaderOptionsOf(cfg)));
+  Check((string)notTdf["kind"]=="not_decryptable"&&File.ReadAllBytes(decrypted).SequenceEqual(payload),"DecryptFile keeps the output: "+JsonSerializer.Serialize(notTdf));
+ }
+
  static async Task Repeat(Sdk sdk,JsonElement cfg)
  {
   byte[] original={0,255,128,1};byte[] archive=null;
@@ -156,6 +183,7 @@ static class Entry
    await using(var reader=await sdk.LoadTdfAsync(archive,ReaderOptionsOf(cfg)))Check((await reader.DataAttributesAsync()).Count==1,"attributes");
    var plain=await sdk.DecryptBytesAsync(archive,ReaderOptionsOf(cfg));Check(plain.SequenceEqual(original.Append((byte)i)),"round trip");
   }
+  await Streams(sdk,cfg);
   var wrong=await ExpectFailure("wrong credentials",async()=>{await using var s=await Sdk.CreateAsync(Text(cfg,"PlatformURL"),OptionsOf(cfg) with{ClientSecret="wrong"});await s.DecryptBytesAsync(archive,ReaderOptionsOf(cfg));});
   Check((string)wrong["kind"]=="auth"&&(long)wrong["httpStatus"]==401,"wrong credentials rejected: "+JsonSerializer.Serialize(wrong));
   using var started=new ManualResetEventSlim();
