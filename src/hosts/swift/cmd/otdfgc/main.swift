@@ -12,9 +12,9 @@ let usage = """
   Usage:
     otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
         [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-        [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+        [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-        [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+        [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
         [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
     otdfgc inspect <in>
     otdfgc supports <feature>
@@ -28,8 +28,8 @@ let encryptFlags = commonFlags.merging(["attr": false, "mime-type": false, "with
 let decryptFlags = commonFlags.merging(["with-assertion-verification-keys": false, "no-verify-assertions": true, "session-key-algorithm": false, "kas-allowlist": false]) { $1 }
 let dpopAlgorithms = ["ES256", "ES384", "ES512", "RS256", "RS384", "RS512"]
 // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
-let encryptUnsupported: [(String, [String]?)] = [("with-assertions", nil), ("ecdsa-binding", nil), ("target-mode", ["4.3.0"]), ("policy-mode", ["encrypted"]), ("wrapping-key-algorithm", ["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
-let decryptUnsupported: [(String, [String]?)] = [("with-assertion-verification-keys", nil), ("session-key-algorithm", ["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
+let encryptUnsupported: [(String, [String]?)] = [("ecdsa-binding", nil), ("target-mode", ["4.3.0"]), ("policy-mode", ["encrypted"]), ("wrapping-key-algorithm", ["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
+let decryptUnsupported: [(String, [String]?)] = [("session-key-algorithm", ["rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"]), ("dpop", dpopAlgorithms), ("with-client-creds-file", nil)]
 
 struct Parsed {
   var values: [String: String] = [:]
@@ -98,6 +98,52 @@ func describeNew(_ e: Error, _ host: String) -> String {
 func jsonText(_ value: Any, pretty: Bool) -> String {
   let options: JSONSerialization.WritingOptions = pretty ? [.prettyPrinted, .withoutEscapingSlashes, .fragmentsAllowed] : [.withoutEscapingSlashes, .fragmentsAllowed]
   return (try? JSONSerialization.data(withJSONObject: value, options: options)).map { String(decoding: $0, as: UTF8.self) } ?? "null"
+}
+
+// --with-assertions and --with-assertion-verification-keys take a file path or JSON text, as otdfctl does:
+// an object statement value is kept as compact JSON with sorted keys; HS256 keys are the string's bytes, RS256 keys PEM.
+struct InputError: Error { let message: String }
+func fileOrJSON(_ arg: String) throws -> Any {
+  if let value = try? JSONSerialization.jsonObject(with: Data(arg.utf8), options: [.fragmentsAllowed]) { return value }
+  let data: Data
+  do { data = try Data(contentsOf: URL(fileURLWithPath: arg)) } catch { throw InputError(message: "\(arg) is neither JSON nor a readable file: \(error.localizedDescription)") }
+  do { return try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) } catch { throw InputError(message: "\(arg): \(error.localizedDescription)") }
+}
+func text(_ object: [String: Any]?, _ key: String) -> String { object?[key] as? String ?? "" }
+func assertionKey(_ value: Any?, _ label: String) throws -> AssertionKey {
+  let object = value as? [String: Any]
+  let alg = text(object, "alg")
+  guard alg == "HS256" || alg == "RS256" else { throw InputError(message: "\(label): unsupported signing key algorithm \(alg)") }
+  return AssertionKey(alg: alg, key: text(object, "key"))
+}
+func parseAssertions(_ arg: String) throws -> [AssertionConfig] {
+  let parsed: Any
+  do { parsed = try fileOrJSON(arg) } catch let e as InputError { throw InputError(message: "assertions must be a JSON list: \(e.message)") }
+  guard let list = parsed as? [Any] else { throw InputError(message: "assertions must be a JSON list") }
+  return try list.map { item in
+    let a = item as? [String: Any]
+    let statement = a?["statement"] as? [String: Any]
+    let id = text(a, "id")
+    var value = ""
+    switch statement?["value"] {
+    case nil, is NSNull: break
+    case let s as String: value = s
+    case let object as [String: Any]: value = String(decoding: try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys, .withoutEscapingSlashes]), as: UTF8.self)
+    default: throw InputError(message: "assertion \(id): statement value is neither a string nor an object")
+    }
+    var signingKey: AssertionKey? = nil
+    if let key = a?["signingKey"], !(key is NSNull) { signingKey = try assertionKey(key, "assertion \(id)") }
+    return AssertionConfig(id: id, type: text(a, "type"), scope: text(a, "scope"), appliesToState: text(a, "appliesToState"), statement: Statement(format: text(statement, "format"), schema: text(statement, "schema"), value: value), signingKey: signingKey)
+  }
+}
+func parseVerificationKeys(_ arg: String) throws -> AssertionVerificationKeys {
+  let parsed: Any
+  do { parsed = try fileOrJSON(arg) } catch let e as InputError { throw InputError(message: "assertion verification keys must be a JSON object: \(e.message)") }
+  guard let file = parsed as? [String: Any] else { throw InputError(message: "assertion verification keys must be a JSON object") }
+  var keys = AssertionVerificationKeys()
+  if let d = file["defaultKey"] as? [String: Any] { keys.defaultKey = AssertionKey(alg: text(d, "alg"), key: text(d, "key")) }
+  for (id, k) in file["keys"] as? [String: Any] ?? [:] { keys.keys[id] = AssertionKey(alg: text(k as? [String: Any], "alg"), key: text(k as? [String: Any], "key")) }
+  return keys
 }
 
 // Builds the SDK from --host, --with-client-creds and the DPoP and TLS flags; the SDK discovers everything else.
@@ -203,7 +249,12 @@ func encrypt(_ args: [String]) async -> Int32 {
   guard let sdk = sdk else { return code }
   defer { try? sdk.close() }
   // As otdfctl: the platform's KAS is the default key access server and attributes drive autoconfigure.
-  let options = TDFOptions(attributes: splitList(p.value("attr")), kasInformation: [KASInfo(url: host + "/kas")], wrappingKeyAlgorithm: p.value("wrapping-key-algorithm"), mimeType: p.value("mime-type"), targetMode: p.value("target-mode"))
+  var options = TDFOptions(attributes: splitList(p.value("attr")), kasInformation: [KASInfo(url: host + "/kas")], wrappingKeyAlgorithm: p.value("wrapping-key-algorithm"), mimeType: p.value("mime-type"), targetMode: p.value("target-mode"))
+  if !p.value("with-assertions").isEmpty {
+    do { options.assertions = try parseAssertions(p.value("with-assertions")) }
+    catch let e as InputError { stderr("Failed to read assertions: \(e.message)\n"); return exitUsage }
+    catch { stderr("Failed to read assertions: \(error.localizedDescription)\n"); return exitUsage }
+  }
   let data: Data
   do { data = try await sdk.encryptBytes(input, options) }
   catch { stderr("Failed to encrypt: \(describe(error))\n"); return exitError }
@@ -226,7 +277,12 @@ func decrypt(_ args: [String]) async -> Int32 {
   // otdfctl: "*" alone ignores the allowlist; any other list is explicit.
   let allowlist = splitList(p.value("kas-allowlist"))
   let ignore = allowlist.count == 1 && allowlist[0] == "*"
-  let options = ReaderOptions(disableAssertionVerification: p.flag("no-verify-assertions"), kasAllowlist: !ignore && !allowlist.isEmpty ? allowlist : nil, ignoreAllowlist: ignore, sessionKeyType: p.value("session-key-algorithm"))
+  var options = ReaderOptions(disableAssertionVerification: p.flag("no-verify-assertions"), kasAllowlist: !ignore && !allowlist.isEmpty ? allowlist : nil, ignoreAllowlist: ignore, sessionKeyType: p.value("session-key-algorithm"))
+  if !p.value("with-assertion-verification-keys").isEmpty {
+    do { options.assertionVerificationKeys = try parseVerificationKeys(p.value("with-assertion-verification-keys")) }
+    catch let e as InputError { stderr("Failed to read assertion verification keys: \(e.message)\n"); return exitUsage }
+    catch { stderr("Failed to read assertion verification keys: \(error.localizedDescription)\n"); return exitUsage }
+  }
   let plaintext: Data
   do { plaintext = try await sdk.decryptBytes(input, options) }
   catch { stderr("Failed to decrypt file: \(describe(error))\n"); return exitError }

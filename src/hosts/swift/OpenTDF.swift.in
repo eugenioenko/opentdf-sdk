@@ -180,10 +180,29 @@ public struct KASInfo {
   public var isDefault: Bool
   public init(url: String, publicKey: String = "", kid: String = "", algorithm: String = "", isDefault: Bool = false) { self.url = url; self.publicKey = publicKey; self.kid = kid; self.algorithm = algorithm; self.isDefault = isDefault }
 }
+/// The reference's AssertionKey: an HS256 secret as text, or a PEM block for RS256 (a private key signs; a public or private key verifies).
+public struct AssertionKey: Equatable {
+  public var alg: String, key: String
+  public init(alg: String, key: String) { self.alg = alg; self.key = key }
+  public static func hs256(_ secret: String) -> AssertionKey { AssertionKey(alg: "HS256", key: secret) }
+  public static func rs256(_ pem: String) -> AssertionKey { AssertionKey(alg: "RS256", key: pem) }
+  fileprivate static func generated(_ key: AssertionKey?) -> GoalchemyGenerated.AssertionKey { GoalchemyGenerated.AssertionKey(Alg: go(key?.alg ?? ""), Key: go(key?.key ?? "")) }
+}
+/// The reference's AssertionConfig; a nil signingKey signs with HS256 over the payload key.
 public struct AssertionConfig {
   public var id: String, type: String, scope: String, appliesToState: String
   public var statement: Statement
-  public init(id: String, type: String, scope: String, appliesToState: String = "", statement: Statement) { self.id = id; self.type = type; self.scope = scope; self.appliesToState = appliesToState; self.statement = statement }
+  public var signingKey: AssertionKey?
+  public init(id: String, type: String, scope: String, appliesToState: String = "", statement: Statement, signingKey: AssertionKey? = nil) { self.id = id; self.type = type; self.scope = scope; self.appliesToState = appliesToState; self.statement = statement; self.signingKey = signingKey }
+}
+/// WithAssertionVerificationKeys: keys by assertion id, with a default for the rest.
+public struct AssertionVerificationKeys {
+  public var defaultKey: AssertionKey?
+  public var keys: [String: AssertionKey]
+  public init(defaultKey: AssertionKey? = nil, keys: [String: AssertionKey] = [:]) { self.defaultKey = defaultKey; self.keys = keys }
+  fileprivate var generated: GoalchemyGenerated.AssertionVerificationKeys {
+    GoalchemyGenerated.AssertionVerificationKeys(DefaultKey: AssertionKey.generated(defaultKey), Keys: keys.isEmpty ? nil : keys.sorted { $0.key < $1.key }.map { GoalchemyGenerated.AssertionKeyEntry(AssertionID: go($0.key), Alg: go($0.value.alg), Key: go($0.value.key)) })
+  }
 }
 
 /// The reference's TDFConfig options (shared-source TDFOptions); every default is the reference default.
@@ -217,7 +236,7 @@ public struct TDFOptions {
     o.KasInformation = kasInformation.isEmpty ? nil : kasInformation.map { GoalchemyGenerated.KASInfo(URL: go($0.url), PublicKey: go($0.publicKey), KID: go($0.kid), Algorithm: go($0.algorithm), Default: $0.isDefault) }
     o.WrappingKeyAlgorithm = go(wrappingKeyAlgorithm); o.SegmentSize = segmentSize; o.InputSize = inputSize
     o.MimeType = go(mimeType); o.Metadata = go(metadata)
-    o.Assertions = assertions.isEmpty ? nil : assertions.map { GoalchemyGenerated.AssertionConfig(ID: go($0.id), Type: go($0.type), Scope: go($0.scope), AppliesToState: go($0.appliesToState), Statement: GoalchemyGenerated.Statement(Format: go($0.statement.format), Schema: go($0.statement.schema), Value: go($0.statement.value))) }
+    o.Assertions = assertions.isEmpty ? nil : assertions.map { GoalchemyGenerated.AssertionConfig(ID: go($0.id), Type: go($0.type), Scope: go($0.scope), AppliesToState: go($0.appliesToState), Statement: GoalchemyGenerated.Statement(Format: go($0.statement.format), Schema: go($0.statement.schema), Value: go($0.statement.value)), SigningKey: AssertionKey.generated($0.signingKey)) }
     o.SystemMetadataAssertion = systemMetadataAssertion; o.TargetMode = go(targetMode)
     return o
   }
@@ -229,6 +248,7 @@ public struct AttributeFQN: Equatable { public let url: String; public let key: 
 /// The reference's TDFReaderConfig options (shared-source ReaderOptions); every default is the reference default.
 public struct ReaderOptions {
   public var disableAssertionVerification = false
+  public var assertionVerificationKeys = AssertionVerificationKeys()
   /// WithKasAllowlist; nil fetches the registry's list.
   public var kasAllowlist: [String]? = nil
   public var ignoreAllowlist = false
@@ -237,16 +257,16 @@ public struct ReaderOptions {
   public var sessionKeyType = ""
   public var fulfillableObligationFqns: [String] = []
   public init(
-    disableAssertionVerification: Bool = false, kasAllowlist: [String]? = nil, ignoreAllowlist: Bool = false,
+    disableAssertionVerification: Bool = false, assertionVerificationKeys: AssertionVerificationKeys = AssertionVerificationKeys(), kasAllowlist: [String]? = nil, ignoreAllowlist: Bool = false,
     maxManifestSize: Int64 = 0, schemaValidation: Int64 = 0, sessionKeyType: String = "", fulfillableObligationFqns: [String] = []
   ) {
-    self.disableAssertionVerification = disableAssertionVerification; self.kasAllowlist = kasAllowlist
+    self.disableAssertionVerification = disableAssertionVerification; self.assertionVerificationKeys = assertionVerificationKeys; self.kasAllowlist = kasAllowlist
     self.ignoreAllowlist = ignoreAllowlist; self.maxManifestSize = maxManifestSize; self.schemaValidation = schemaValidation
     self.sessionKeyType = sessionKeyType; self.fulfillableObligationFqns = fulfillableObligationFqns
   }
   fileprivate var generated: GoalchemyGenerated.ReaderOptions {
     var o = GoalchemyGenerated.ReaderOptions()
-    o.DisableAssertionVerification = disableAssertionVerification; o.KasAllowlist = kasAllowlist.flatMap(gos)
+    o.DisableAssertionVerification = disableAssertionVerification; o.AssertionVerificationKeys = assertionVerificationKeys.generated; o.KasAllowlist = kasAllowlist.flatMap(gos)
     o.IgnoreAllowlist = ignoreAllowlist; o.MaxManifestSize = maxManifestSize; o.SchemaValidation = schemaValidation
     o.SessionKeyType = go(sessionKeyType); o.FulfillableObligationFQNs = gos(fulfillableObligationFqns)
     return o
