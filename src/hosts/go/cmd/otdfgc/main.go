@@ -26,9 +26,9 @@ const (
 const usage = `Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
       [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-      [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+      [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+      [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -211,6 +211,14 @@ func encrypt(ctx context.Context, args []string, stderr *os.File) int {
 	if mode := p.value("target-mode"); mode != "" {
 		tdfOpts = append(tdfOpts, g.WithTargetMode(mode))
 	}
+	if arg := p.value("with-assertions"); arg != "" {
+		assertions, err := parseAssertions(arg)
+		if err != nil {
+			fmt.Fprintf(stderr, "Failed to read assertions: %s\n", err)
+			return exitUsage
+		}
+		tdfOpts = append(tdfOpts, g.WithAssertions(assertions...))
+	}
 	options, err := g.TDFOptionsOf(tdfOpts...)
 	if err != nil {
 		fmt.Fprintf(stderr, "Failed to encrypt: %s\n", err)
@@ -254,6 +262,14 @@ func decrypt(ctx context.Context, args []string, stderr *os.File) int {
 	}
 	defer sdk.Close()
 	readerOpts := []g.TDFReaderOption{g.WithDisableAssertionVerification(p.flag("no-verify-assertions"))}
+	if arg := p.value("with-assertion-verification-keys"); arg != "" {
+		keys, err := parseVerificationKeys(arg)
+		if err != nil {
+			fmt.Fprintf(stderr, "Failed to read assertion verification keys: %s\n", err)
+			return exitUsage
+		}
+		readerOpts = append(readerOpts, g.WithAssertionVerificationKeys(keys))
+	}
 	if session := p.value("session-key-algorithm"); session != "" {
 		readerOpts = append(readerOpts, g.WithSessionKeyType(g.KeyType(session)))
 	}

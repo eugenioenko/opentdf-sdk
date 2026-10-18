@@ -94,7 +94,6 @@ type unsupportedRule struct {
 }
 
 var encryptUnsupported = []unsupportedRule{
-	{name: "with-assertions"},
 	{name: "ecdsa-binding"},
 	{name: "target-mode", allowed: []string{"4.3.0"}},
 	{name: "policy-mode", allowed: []string{"encrypted"}},
@@ -104,7 +103,6 @@ var encryptUnsupported = []unsupportedRule{
 }
 
 var decryptUnsupported = []unsupportedRule{
-	{name: "with-assertion-verification-keys"},
 	{name: "session-key-algorithm", allowed: []string{"rsa:2048", "ec:secp256r1", "rsa:4096", "ec:secp384r1", "ec:secp521r1"}},
 	{name: "dpop", allowed: []string{"ES256", "ES384", "ES512", "RS256", "RS384", "RS512"}},
 	{name: "with-client-creds-file"},
