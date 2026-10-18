@@ -136,6 +136,42 @@ class BenchmarkPolicyTests(unittest.TestCase):
             BENCH.tables(base)
             self.assertIn('| Swift | 31.00 ms |', (base / 'tables.md').read_text())
 
+    def test_small_payloads_are_reported_separately_without_unmeasured_columns(self):
+        rows = []
+        for label, expected in [('1KiB', 1024), ('10KiB', 10240), ('100KiB', 102400)]:
+            for i in range(3):
+                row = batch(i, [expected / 1024 + j for j in range(5)])
+                row.update(size_bytes=expected, size_label=label, fixture_id=BENCH.SIZES[label][0])
+                rows.append(row)
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            (base / 'raw.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows))
+            BENCH.tables(base)
+            table = (base / 'tables.md').read_text()
+            self.assertIn('| SDK | 1 KiB | 10 KiB | 100 KiB |', table)
+            self.assertIn('| Java | 3.00 ms | 12.00 ms | 102.00 ms |', table)
+            self.assertNotIn('MiB', table)
+            summary = json.loads((base / 'summary.json').read_text())
+            self.assertEqual([row['size_bytes'] for row in summary], [1024, 10240, 102400])
+            self.assertTrue(all(len(row['samples_ms']) == 15 for row in summary))
+
+    def test_small_payload_manifest_has_one_segment(self):
+        manifest = {'encryptionInformation': {'method': {'algorithm': 'AES-256-GCM'},
+                    'integrityInformation': {'segmentHashAlg': 'GMAC', 'segmentSizeDefault': 2 << 20,
+                                             'segments': [{}]}}}
+        for size in [1024, 10240, 102400, 1 << 20]:
+            with self.subTest(size=size):
+                self.assertEqual(BENCH.validate_manifest(manifest, size)['segment_count'], 1)
+
+    def test_stock_go_reference_rejects_tracked_source_changes_before_building(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            with patch.object(BENCH, 'invoke', return_value=b' M sdk/file.go\n') as invoke:
+                with self.assertRaisesRegex(ValueError, 'stock Go source has tracked changes'):
+                    BENCH.setup(base / 'campaign', base / 'missing-packages', base / 'reference')
+            self.assertEqual(invoke.call_args.args[1], base / 'reference')
+            self.assertFalse((base / 'campaign').exists())
+
     def test_invalid_cli_policy_rejected_before_building_or_contacting_services(self):
         with tempfile.TemporaryDirectory() as directory:
             result = subprocess.run([sys.executable, str(ROOT / 'scripts/benchmark-sdk.py'), '--output', directory, '--samples', '0'], capture_output=True, text=True, timeout=10)

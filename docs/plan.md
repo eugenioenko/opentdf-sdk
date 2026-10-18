@@ -536,3 +536,21 @@ with a separate documentation PR. No native suites or benchmarks are required
 for this documentation-only work.
 
 Status: accepted locally; PR submission follows.
+
+## Current handle API benchmark refresh
+
+Build all eight SDK packages from the latest merged SDK and Goalchemy revisions,
+with native pausing except C's frames. Remeasure source-built upstream Go and Web
+SDK references. Freeze source revisions, toolchains, binaries, and a common
+warmup policy before timing 1 KiB, 10 KiB, 100 KiB, 1 MiB, and 10 MiB payloads.
+Run targets sequentially through real KAS, validate full plaintext and retained
+archives independently, and preserve every sample and warmup history.
+
+Acceptance: repeatable package builds and independent native importers pass;
+all fifty target/size cells have three fresh-process batches; warmup flags are
+investigated; README contains only fresh results, with the removed facade
+comparison replaced by the current handle API. Publish a reproducible methodology
+and sanitized measurement evidence, restore temporary local token settings,
+and open a pull request.
+
+Status: package preparation and benchmark harness verification in progress.

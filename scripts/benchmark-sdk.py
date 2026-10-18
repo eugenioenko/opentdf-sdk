@@ -11,7 +11,8 @@ SRC = SDK / 'tests/bench'
 RUNTIME_OPTIONS = ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS', 'NODE_OPTIONS', 'GOGC', 'GOMEMLIMIT', 'GOMAXPROCS', 'PYTHONMALLOC', 'PYTHONOPTIMIZE', 'MALLOC_ARENA_MAX')
 NATIVE_TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
 TARGETS = NATIVE_TARGETS + ['web', 'swift']
-SIZES = {'1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024), '50MiB': ('50', 50 * 1024 * 1024)}
+SIZES = {'1KiB': ('1k', 1024), '10KiB': ('10k', 10 * 1024), '100KiB': ('100k', 100 * 1024),
+         '1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024), '50MiB': ('50', 50 * 1024 * 1024)}
 
 def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -84,7 +85,10 @@ def aggregate_batches(rows):
             'encrypted_samples_validated': [archive for row in rows for archive in row['encrypted_samples_validated']]}
 
 
-def setup(base, packages):
+def setup(base, packages, reference_source=None):
+    reference_source = (reference_source or SDK.parent / 'platform').resolve()
+    if invoke(['git', 'status', '--porcelain', '--untracked-files=no'], reference_source, os.environ).strip():
+        raise ValueError('stock Go source has tracked changes')
     build = base / 'build'
     build.mkdir(parents=True, exist_ok=True)
     consumers = packages / 'consumers'
@@ -110,9 +114,10 @@ def setup(base, packages):
             (directory / 'go.mod').write_text(module)
             shutil.copyfile(SDK / 'tests/interop/generatedlibrary/go.sum', directory / 'go.sum')
         else:
-            module = (SDK / 'tests/interop/generatedreference/go.mod').read_text().replace('../../../../platform/', str(SDK.parent / 'platform') + '/')
+            module = (SDK / 'tests/interop/generatedreference/go.mod').read_text().replace('../../../../platform/', str(reference_source) + '/')
             (directory / 'go.mod').write_text(module)
             shutil.copyfile(SDK / 'tests/interop/generatedreference/go.sum', directory / 'go.sum')
+            invoke(['go', 'mod', 'tidy'], directory, env)
         invoke(['go', 'build', '-trimpath', '-o', directory / 'benchmark', '.'], directory, env)
         commands[target] = [str(directory / 'benchmark')]
     java = build / 'java'
@@ -148,13 +153,15 @@ def setup(base, packages):
     commands['python'] = receipts['python']['consumer_command'][:2] + [str(SRC / 'python.py')]
     commands['typescript'] = [shutil.which('node', path=env['PATH']), str(SRC / 'node.mjs')]
     env['TDF_TS_NODE_PACKAGE'] = str((consumers / 'typescript/package/dist/node-index.js').resolve())
-    snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(), 'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(), 'references_lock_sha256': sha(SDK / 'references.lock.json'), 'packages': identities, 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}, 'timing_scope': 'one contiguous encrypt then decrypt interval; fixture/setup/OAuth/validation untimed', 'original_client_lifecycle': 'SDK.New once before warmup, reused client and default RSA2048 response session for all pairs in each cell', 'generated_client_lifecycle': 'stateless public facades; internal per-operation client setup and per-decrypt ephemeral RSA session remain timed', 'commands': commands, 'built_consumers': {t: sha(Path(cmd[0])) for (t, cmd) in commands.items() if t in ('reference', 'go', 'c', 'rust')}, 'system': platform.uname()._asdict(), 'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''), 'memory_kib': Path('/proc/meminfo').read_text().splitlines()[0], 'toolchains': {}}
+    snapshot = {'sdk_head': invoke(['git', 'rev-parse', 'HEAD'], SDK, env).decode().strip(), 'platform_head': invoke(['git', 'rev-parse', 'HEAD'], SDK.parent / 'platform', env).decode().strip(), 'references_lock_sha256': sha(SDK / 'references.lock.json'), 'packages': identities, 'sources': {str(p.relative_to(SDK)): sha(p) for p in SRC.iterdir() if p.is_file()}, 'timing_scope': 'one contiguous encrypt then decrypt interval; fixture/setup/OAuth/validation untimed', 'original_client_lifecycle': 'SDK.New once before warmup, reused client and default RSA2048 response session for all pairs in each cell', 'generated_client_lifecycle': 'one SDK handle and default RSA2048 response session per fresh process; initialization before warmup; handle reused for all pairs', 'commands': commands, 'built_consumers': {t: sha(Path(cmd[0])) for (t, cmd) in commands.items() if t in ('reference', 'go', 'c', 'rust')}, 'system': platform.uname()._asdict(), 'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''), 'memory_kib': Path('/proc/meminfo').read_text().splitlines()[0], 'toolchains': {}}
     for (name, args) in [('go', ['go', 'version']), ('node', ['node', '--version']), ('python', [commands['python'][0], '--version']), ('java', [java_command[0], '-version']), ('dotnet', [dotnet, '--version']), ('rust', ['rustc', '--version']), ('cc', ['cc', '--version'])]:
         v = subprocess.run(args, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         snapshot['toolchains'][name] = (v.stdout + v.stderr).decode().strip()
     snapshot['normal_runtime_environment'] = {'policy': 'inherited runtime tuning removed; ordinary paths and CLI settings retained', 'inherited_option_names': sorted(key for key in os.environ if key not in normal_environment(os.environ)), 'known_options_absent': [key for key in RUNTIME_OPTIONS if key not in env], 'normalized_tuning_options_present': sorted(key for key in env if key not in normal_environment(env))}
     snapshot['controller_sha256'] = sha(Path(__file__))
+    snapshot['reference_source'] = {'path': str(reference_source), 'revision': invoke(['git', 'rev-parse', 'HEAD'], reference_source, env).decode().strip()}
     snapshot['built_source_sha256'] = {t: sha(build / t / 'main.go') for t in ('reference', 'go')}
+    snapshot['reference_module_sha256'] = {name: sha(build / 'reference' / name) for name in ('go.mod', 'go.sum')}
     snapshot['consumer_artifacts_sha256'] = {str(p.relative_to(base)): sha(p) for p in build.rglob('*') if p.is_file() and (p.name == 'benchmark' or p.suffix in ('.dll', '.class'))}
     (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
     return (commands, env)
@@ -263,7 +270,7 @@ def setup_swift(base, package, reference_environment=None):
                 'system': platform.uname()._asdict(),
                 'cpu': next((v.partition(':')[2].strip() for v in Path('/proc/cpuinfo').read_text().splitlines() if v.startswith('model name')), ''),
                 'swift_version': invoke(['swift', '--version'], SDK, env).decode().strip(),
-                'timing_scope': 'public Data facade encrypt then same-archive decrypt.wait; full owned Data returned before timer stops; equality, I/O, OAuth and discovery untimed'}
+                'timing_scope': 'public SDK handle encryptBytes then same-archive decryptBytes; full owned Data returned before timer stops; SDK initialization, equality, I/O, OAuth and discovery untimed'}
     (base / 'environment.json').write_text(json.dumps(snapshot, indent=2) + '\n')
     return commands, env
 
@@ -317,11 +324,12 @@ def normalized_results(base):
 def tables(base):
     latest = normalized_results(base)
     names = {'swift': 'Swift', 'web': 'Original OpenTDF Web (Node)', 'reference': 'Original OpenTDF Go', 'go': 'Generated Go', 'typescript': 'TypeScript (Node)', 'java': 'Java', 'csharp': 'C#', 'python': 'Python', 'rust': 'Rust', 'c': 'C'}
-    labels = [label.replace('KiB', ' KiB').replace('MiB', ' MiB') for label in SIZES]
+    sizes = {label: size for label, size in SIZES.items() if any(key[2] == size[1] for key in latest)}
+    labels = [label.replace('KiB', ' KiB').replace('MiB', ' MiB') for label in sizes]
     parts = ['| SDK | ' + ' | '.join(labels) + ' |', '| --- | ' + ' | '.join('---:' for _ in labels) + ' |']
     for target in TARGETS:
         cells = []
-        for _, size_bytes in SIZES.values():
+        for _, size_bytes in sizes.values():
             row = latest.get((target, 'e2e', size_bytes))
             if not row:
                 cell = 'Not measured'
@@ -340,12 +348,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--packages', type=Path, default=SDK / '.local/steady-state-2026-10-04/delivery')
-    parser.add_argument('--sizes', default='1MiB,10MiB,50MiB')
+    parser.add_argument('--sizes', default='1KiB,10KiB,100KiB,1MiB,10MiB')
     parser.add_argument('--targets', default=','.join(NATIVE_TARGETS))
     parser.add_argument('--web-package', type=Path, help='installed pinned @opentdf/sdk package directory for the optional Web Node row')
     parser.add_argument('--web-source', type=Path, default=SDK.parent / 'web-sdk', help='pinned stock Web repository used to build the installed package')
     parser.add_argument('--web-revision', help='explicit full benchmark-only Web source revision; defaults to references.lock.json without changing the oracle pin')
     parser.add_argument('--reference-environment', type=Path, help='frozen original-Go environment.json; Web-only preparation reuses its validated binary without native rebuilds')
+    parser.add_argument('--reference-source', type=Path, default=SDK.parent / 'platform', help='clean platform source checkout used to build the stock Go SDK reference')
     parser.add_argument('--swift-package', type=Path, help='built SwiftPM OpenTDFTDF3 source package for a Swift-only campaign')
     parser.add_argument('--platform-url', default='http://localhost:8080')
     parser.add_argument('--issuer-url', default='http://localhost:8888/auth/realms/opentdf')
@@ -363,7 +372,7 @@ def main():
     if args.web_revision and (args.targets != 'web' or len(args.web_revision) != 40 or any(c not in '0123456789abcdef' for c in args.web_revision)):
         parser.error('--web-revision requires a Web-only campaign and a full lowercase Git revision')
     if any(label not in SIZES for label in args.sizes.split(',')):
-        parser.error('--sizes must select 1MiB,10MiB,50MiB')
+        parser.error('--sizes must select from ' + ','.join(SIZES))
     if any(target not in TARGETS for target in args.targets.split(',')) or min(args.samples, args.batches, args.warmups) < 1 or args.bulk_warmups < 0:
         parser.error('select supported targets and positive samples/batches/warmups')
     reruns = set()
@@ -420,7 +429,7 @@ def main():
     else:
         if any(target in args.targets.split(',') for target in ('web', 'swift')):
             parser.error('measure optional Web and Swift rows separately with --targets web or --targets swift')
-        commands, env = setup(base, packages)
+        commands, env = setup(base, packages, args.reference_source)
     if 'web' in commands:
         env['TDF_WEB_PACKAGE'] = json.loads((base / 'environment.json').read_text())['web']['package_path']
     if 'java' in commands and (len(commands['java']) != 4 or commands['java'][1] != '-cp'):

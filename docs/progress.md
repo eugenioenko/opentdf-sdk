@@ -2896,3 +2896,18 @@ methods, selecting CreateRegisteredResource keeps its parent branches open,
 and all three authentication tab sets synchronize. The Go guide's authentication
 link returned HTTP 200. No native SDK builds, live auth requests, interoperability
 suites, or benchmarks ran locally. CI will validate the PR.
+
+## Benchmark refresh: harness and frozen sources
+
+Prepared an isolated worktree from SDK 5cc75d4 and built Goalchemy 468ec24.
+Extended the controller to measure 1 KiB, 10 KiB, and 100 KiB alongside 1 MiB
+and 10 MiB, retaining 50 MiB support for bulk warmups and historical reproduction.
+Tables include measured sizes only. Corrected snapshot descriptions to match
+the current native SDK handle consumers. Added a clean stock-Go source override
+so the current upstream reference can be built without changing the platform
+used by KAS or the SDK's CI oracle pins. Its resolved module hashes are recorded.
+
+Verification: all 18 benchmark controller tests passed, including small-payload
+pooling, manifest segmentation, reference-source cleanliness, and the stock-Web
+stream timing tests. Package preparation and measurement are still in progress;
+no new README performance claims are accepted in this phase.
