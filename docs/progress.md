@@ -56,11 +56,9 @@ peak memory per target.
 
 The bench consumers under `tests/bench/` moved from the stateless façade to the
 handle API, one SDK per process as the reference consumer; `benchmark-sdk.py`
-links the generated Go consumer with the interop consumer's module. A quick
-check with Goalchemy 0.7.2 native packages (five warmups, no bulk warmups, two
-sizes) puts generated Go at 20/52 ms against the reference's 40/96 ms; the
-table and the façade's three-keygens-per-pair diagnosis are in
-[benchmarks](benchmarks.md#handle-api-quick-check). The delivery workflow
+links the generated Go consumer with the interop consumer's module. Earlier
+quick-check and facade tables are superseded by the
+[current benchmark campaign](benchmarks.md#current-campaign). The delivery workflow
 builds Swift only when the `swift` dispatch input is set: its two release
 builds exceed the 1800 s package timeout on the hosted runner, and Swift is
 gated only in Phase 11.
@@ -2933,3 +2931,37 @@ byte-exact small inputs, distinct or identical measured and bulk sizes, and
 rejection of truncated cached fixtures. Native benchmark importers will be
 rebuilt and every target's smoke check repeated before the new timing campaign.
 SDK packages and their compiler pin remain frozen.
+
+The user allowed Swift to be omitted to avoid delaying the measurements. Its
+fresh release archive and optimized benchmark importer passed the new bulk-input
+smoke check, but Swift timing cells are excluded from the README campaign. The
+final matrix contains seven generated SDKs plus both freshly built upstream
+references at five sizes: forty-five cells. No older Swift numbers are reused.
+
+### Benchmark refresh: accepted measurement campaign
+
+Completed all forty-five cells at 1 KiB, 10 KiB, 100 KiB, 1 MiB, and 10 MiB:
+seven generated SDKs, upstream Go SDK 0.35.0, and upstream Web SDK 0.22.0 in
+Node. Each cell pools fifteen samples from three fresh processes after forty
+10 MiB bulk warmups and twenty size-specific warmups per process. Every warmup
+and sample passed full plaintext equality. All 810 retained archives passed
+independent upstream Go/real-KAS decryption, ZIP CRC, and segment-profile checks.
+No cell raised the sustained warmup-trend flag. Source and binary hashes stayed
+frozen, all targets used identical fixtures, and installed package members match
+their build receipts. No SDK or compiler implementation changed.
+
+Replaced both old README tables with the current results. Published the exact
+revisions, toolchains, timing boundaries, reproduction commands, and sanitized
+sample/warmup evidence in `docs/benchmark-results/2026-10-18.json`. Generated Go
+measured 43.31 ms at 10 MiB, against upstream Go's 96.15 ms and Web's 150.29 ms.
+Python measured 4,199.39 ms; the user requested opening this results PR before
+investigating that slowdown. A same-source frames/native comparison has not run,
+and no cause is claimed. Swift timing remains omitted as authorized.
+
+Verification: the twenty controller tests passed before the frozen campaign;
+final validation accepted all forty-five cells, 675 measured pairs, and 810
+archive checks, including the complete warmup histories. Restored the local
+Keycloak client's original token-lifetime attribute and verified that new tokens
+again expire after 300 seconds. Documentation links, table/evidence consistency,
+secret exclusion, and whitespace are checked before committing. No extra native
+suites or performance-fix experiments ran.

@@ -547,10 +547,14 @@ Run targets sequentially through real KAS, validate full plaintext and retained
 archives independently, and preserve every sample and warmup history.
 
 Acceptance: repeatable package builds and independent native importers pass;
-all fifty target/size cells have three fresh-process batches; warmup flags are
+all forty-five measured target/size cells have three fresh-process batches;
+Swift can be omitted at the user's request to keep this campaign bounded; warmup flags are
 investigated; README contains only fresh results, with the removed facade
 comparison replaced by the current handle API. Publish a reproducible methodology
 and sanitized measurement evidence, restore temporary local token settings,
 and open a pull request.
 
-Status: package preparation and benchmark harness verification in progress.
+Status: accepted locally. All forty-five cells passed, with 675 timed pairs
+and 810 independent archive checks. No warmup flags remain. The README,
+methodology, and sanitized evidence are ready; temporary token settings were
+restored. PR submission follows. Python regression investigation is deferred.
