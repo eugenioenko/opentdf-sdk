@@ -3105,3 +3105,12 @@ Run SDK CI concurrently with Goalchemy CI in a draft PR. Publish only after
 upstream acceptance, a signed v0.7.4 tag at the tested pin, external release
 installation/output verification, and complete green SDK checks. Detailed data
 remains ignored; only the table, methodology and release pins are committed.
+
+### Align nested test modules with v0.7.4
+
+The first SDK CI offline job reached the split-plan module and required its
+indirect Goalchemy dependency to match the root module. Update all eight
+nested test modules that declare Goalchemy to v0.7.4. The split-plan module
+now passes readonly test loading and has no tidy diff. The same offline
+format/protocol gate passes all 273 named checks locally. These module-only
+changes leave measured SDK source and packages unchanged.
