@@ -16,6 +16,10 @@ closed handles.
 Service-supplied diagnostic messages may contain sensitive information. Choose
 what to expose in application logs.
 
+Platform calls also expose Connect service codes such as `not_found`. The
+[missing-attribute example](../platform-services/#handle-a-missing-attribute)
+shows how to handle that code in all eight languages without hiding other errors.
+
 ## Cancellation
 
 Use your language's cancellation API, such as `AbortSignal`, a Go context, or

@@ -500,3 +500,19 @@ No wall-clock estimate is committed yet. The compiler host/library work and per-
 - [OpenTDF documentation index](https://opentdf.io/llms.txt)
 - [Official quickstart](https://opentdf.io/quickstart)
 - [Official quickstart Compose](https://opentdf.io/quickstart/docker-compose.yaml)
+
+## Public SDK documentation follow-up
+
+Adopt Goalchemy PR #115 after its full CI passes and it merges. Generate SDK
+reference pages, portable Markdown, and JSON together with the native clients'
+RPC methods and their reachable protobuf schemas. Keep examples in one reviewed
+content file and reuse language tabs in task guides and generated pages.
+
+Acceptance: every exposed RPC has request/response types and eight native
+declarations; reviewed examples cover all eight languages; the Astro build and
+local links pass under `/opentdf-sdk/`; the documentation workflow regenerates
+and publishes on main. SDK native builds and interoperability remain CI work.
+
+Status: accepted locally. Goalchemy merged as
+17b435e0d1ba5cb92ba27b7ac7205d5e333eb5fa after all PR checks passed. The SDK
+documentation PR contains adoption and publication integration.

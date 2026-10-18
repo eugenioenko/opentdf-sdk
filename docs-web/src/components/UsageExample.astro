@@ -1,0 +1,11 @@
+---
+import content from '../../examples.json';
+import LanguageTabs from './LanguageTabs.astro';
+
+interface Props { id: string }
+
+const example = content.examples.find((example) => example.id === Astro.props.id);
+if (!example) throw new Error(`Unknown usage example: ${Astro.props.id}`);
+---
+
+<LanguageTabs snippets={example.snippets} />

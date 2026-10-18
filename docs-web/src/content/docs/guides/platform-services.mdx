@@ -1,0 +1,78 @@
+---
+title: Call platform services
+description: Browse request fields, create policy objects, and handle Connect RPC errors.
+sidebar:
+  order: 3
+---
+
+import UsageExample from '../../../components/UsageExample.astro';
+
+The SDK's platform clients use the same authentication and transport as
+encryption. Start with an authenticated `client` from the
+[SDK example](../encrypt-and-decrypt/). Use an administrative identity for policy
+changes; encryption permission alone does not grant administration access.
+
+Examples run inside your application's function or async entry point. Go uses
+your `ctx`, and C# uses your `cancellationToken`. Responses shown in the API
+reference illustrate their shape; actual IDs and results come from your server.
+
+## Browse requests and responses
+
+Open a method in the [RPC reference](../../api/rpc/). Expand nested request and
+response fields, inspect enum values, or follow a linked type. Each method has
+native declarations in eight languages. JSON names, oneofs, presence, and
+validation options come from the pinned platform's protobuf definitions.
+
+Example JSON is checked against those message schemas during generation.
+Server validation and authorization still apply when you make a request.
+
+## List namespaces
+
+Fetch one page. If `pagination.nextOffset` is nonzero, use it as the next request's
+offset and keep the same limit. A zero next offset marks the last page.
+
+<UsageExample id="list-namespaces" />
+
+## Create a namespace
+
+Use your organization's domain name. Keep the returned namespace ID for later
+requests. If the namespace already exists, look it up instead of creating it again.
+
+<UsageExample id="create-namespace" />
+
+## List attributes
+
+Replace `example.com` with an existing namespace name or ID. Attributes use the
+same pagination pattern as namespaces.
+
+<UsageExample id="list-attributes" />
+
+## Create an attribute with values
+
+Replace the example UUID with the namespace ID returned by the platform.
+This creates a classification attribute and a `confidential` value.
+Usable encryption policy also needs KAS grants, keys, and subject entitlements
+configured by your platform administrator.
+
+<UsageExample id="create-attribute" />
+
+## Look up an attribute by FQN
+
+The JSON request uses a top-level `fqn`. It is part of the `identifier` oneof,
+so do not also set `attributeId` or the deprecated `id` field. Native protobuf
+libraries represent that oneof according to their language's conventions.
+
+<UsageExample id="get-attribute-by-fqn" />
+
+## Handle a missing attribute
+
+Handle `not_found` separately and propagate other failures. An authentication
+or permission error should not become a misleading "attribute does not exist"
+result. Supply `attributeFqn` from your application; the C example uses a fixed
+FQN and reports other failures to stderr.
+
+<UsageExample id="handle-missing-attribute" />
+
+See [errors and cleanup](../errors-and-lifetimes/) for cancellation and resource
+ownership. The C service helpers return protobuf JSON; the other native clients
+return typed protobuf messages.

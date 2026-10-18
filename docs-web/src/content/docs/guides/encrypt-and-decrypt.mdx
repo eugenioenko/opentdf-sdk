@@ -1,0 +1,42 @@
+---
+title: Encrypt and decrypt
+description: Reuse a client, apply policy, and decrypt through KAS.
+sidebar:
+  order: 1
+---
+
+import UsageExample from '../../../components/UsageExample.astro';
+
+Create one SDK client and reuse it. It retains discovered configuration,
+authentication state, and keys. KAS authorizes access to key material; the SDK
+encrypts and decrypts the payload locally.
+
+## Encrypt a note and read it back
+
+First [build and install](../../getting-started/) your language's package.
+Supply your platform URL, client credentials, and an existing attribute-value
+FQN from application configuration. The attribute needs usable KAS mappings,
+and your identity must be entitled to decrypt it. Use client credentials only
+in trusted applications. Browser applications should use a token provider.
+
+Run the example inside a normal function or async entry point for your language.
+The Go examples use an application-provided `ctx`; C# uses `cancellationToken`.
+Tabs select the native package API and remember your language across pages.
+
+<UsageExample id="encrypt-and-decrypt" />
+
+The archive is binary TDF data. Store or transmit those bytes without text
+decoding. Reuse the client for further operations, then close owned results
+and readers before closing it.
+
+## Options that matter
+
+- Attributes define policy. Default autoconfiguration resolves grants and KAS keys.
+- Metadata is encrypted separately from payload bytes.
+- Reader allowlists constrain the KAS origins an archive can contact.
+- Assertions are verified by default. Explicit signing keys need matching verification keys.
+
+See [authentication](../authentication/), [error handling](../errors-and-lifetimes/),
+and [compatibility limits](../../reference/compatibility/) before choosing a
+profile. Payload APIs currently buffer data in memory; stream-shaped signatures
+do not promise bounded-memory streaming.

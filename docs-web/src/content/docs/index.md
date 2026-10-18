@@ -26,16 +26,22 @@ and full OpenTDF SDK parity is outside the verified scope.
 - [Build and install](./getting-started/) the SDK for your language.
 - [Encrypt and decrypt](./guides/encrypt-and-decrypt/) with a persistent client.
 - [Configure authentication](./guides/authentication/) and [handle failures](./guides/errors-and-lifetimes/).
+- [Call platform services](./guides/platform-services/) with examples in every language.
 - Browse [types, functions, and methods](./api/) from the implemented source.
+- Explore [RPC requests and responses](./api/rpc/), including nested fields and enums.
 
-## Two API layers
+## Find the API you need
 
 The **language guides** describe the native adapters applications import,
 including installation, idiomatic names, byte containers, and cancellation.
 
-The **generated reference** describes the shared Go implementation and the
+The **SDK reference** describes the shared Go implementation and the
 compiler's native declarations beneath those adapters. Their names can differ
 from the package API you consume.
+
+The **RPC reference** describes the platform services exposed by the SDK's
+native clients. Browse their actual request and response messages, then switch
+language tabs for native method declarations and usage examples.
 
 For agents, use [llms.txt](./llms.txt), the [JSON catalog](./api.json), or the
 [portable Markdown reference](./reference/index.md).

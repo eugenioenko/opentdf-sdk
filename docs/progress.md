@@ -2718,3 +2718,37 @@ The documentation workflow validates pull requests and publishes relevant main
 pushes to https://eugenioenko.github.io/opentdf-sdk/. GitHub Pages was configured
 for workflow deployment. The site will be public after this PR merges and the
 publication workflow completes.
+
+## Public SDK documentation: language tabs and platform RPC reference
+
+Goalchemy PR #115 passed full CI and merged as
+17b435e0d1ba5cb92ba27b7ac7205d5e333eb5fa. Updated the documentation compiler
+pin and adopted its reusable language tabs and expandable RPC field viewer.
+The SDK build compiler pin is unchanged.
+
+Generation reads platform source at the references.lock.json revision, builds
+source-info descriptors with pinned Buf, and derives native declarations from
+the checked-in host adapters and existing service inventory. The reference now
+covers 356 SDK symbols, 16 services, 131 methods, and 364 reachable messages.
+The generated package reference covers the SDK and archive packages.
+
+Added seven examples, each in all eight languages: SDK encryption/decryption,
+namespace listing and creation, attribute listing and creation, FQN lookup, and
+not_found handling. Task guides and generated API pages reuse the same snippets.
+RPC JSON examples are checked against protobuf schemas. Native snippets were
+reviewed against host APIs and generated message definitions; documentation
+generation does not compile or execute them or claim server-side validation.
+Replaced three placeholder FQN examples with concrete URLs that render in MDX.
+Only source comments changed in the SDK implementation.
+
+Verification: source coverage passed for 541 public declarations and members.
+Astro reported zero errors, warnings, and hints. The production build passed
+links, anchors, assets, RPC/example coverage, and repository-base checks across
+936 pages. Browser checks confirmed synchronized language selection between
+pages and expandable nested response schemas. Regeneration reused cached output
+for unchanged inputs. No native SDK tests or benchmarks ran locally.
+
+The existing documentation workflow now tracks platform pins and service-doc
+generators. It regenerates JSON, portable Markdown, task examples, and RPC pages
+in CI, validates pull requests, and publishes only main builds with GitHub Pages.
+Publication still awaits merging the SDK documentation PR.

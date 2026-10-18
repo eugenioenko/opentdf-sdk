@@ -10,6 +10,10 @@ your application. An uncredentialed client can discover configuration, but
 protected operations still need authorization. Do not embed client secrets in
 browser code.
 
+The [encrypt and decrypt example](../encrypt-and-decrypt/) shows client-credential
+setup in all eight languages. The same client provides the
+[platform service accessors](../platform-services/).
+
 ## Token providers
 
 The TypeScript adapter accepts this shape:

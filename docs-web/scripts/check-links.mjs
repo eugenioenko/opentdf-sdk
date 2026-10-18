@@ -54,9 +54,21 @@ for (const [file, { links }] of documents) {
 }
 const catalog = JSON.parse(await readFile(path.join(dist, 'api.json'), 'utf8'));
 if (catalog.targets.length !== 8 || catalog.targets.some((target) => target.status !== 'available')) failures.push('API reference must include all eight native targets.');
+const targets = ['go', 'typescript', 'python', 'java', 'csharp', 'rust', 'c', 'swift'];
+const methods = catalog.rpc?.services.flatMap((service) => service.methods) ?? [];
+const messages = new Set(catalog.rpc?.messages.map((message) => message.id) ?? []);
+if (!methods.length || methods.some((method) =>
+  !messages.has(method.request) || !messages.has(method.response) ||
+  targets.some((target) => !method.bindings?.some((binding) => binding.target === target))
+)) failures.push('Every RPC method needs linked request/response messages and all eight native declarations.');
+const examples = JSON.parse(await readFile(new URL('../examples.json', import.meta.url), 'utf8')).examples;
+if (!examples.length || examples.some((example) =>
+  !catalog.examples?.some((generated) => generated.id === example.id) ||
+  targets.some((target) => !example.snippets.some((snippet) => snippet.target === target && snippet.code.trim()))
+)) failures.push('Every reviewed example must be published and include all eight native languages.');
 if (!(await readFile(path.join(dist, 'llms.txt'), 'utf8')).includes(`${origin}${base}`)) failures.push('llms.txt must use the published repository URL.');
 if (!(await readFile(path.join(dist, 'reference/index.md'), 'utf8')).includes('## Packages')) failures.push('Portable Markdown reference is missing.');
 if (failures.length) {
   console.error([...new Set(failures)].join('\n'));
   process.exitCode = 1;
-} else console.log(`Checked links, fragments, assets, and repository-base paths across ${pageCount} pages; JSON and Markdown references include all eight targets.`);
+} else console.log(`Checked links, fragments, assets, and repository-base paths across ${pageCount} pages; ${methods.length} RPC methods and ${examples.length} examples cover all eight targets.`);
