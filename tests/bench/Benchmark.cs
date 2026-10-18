@@ -21,7 +21,7 @@ static class Benchmark {
         var raw = JsonDocument.Parse(File.ReadAllText(Path.Combine(run, "private.json"))).RootElement;
         var cfg = raw.GetProperty("Config");
         byte[] input = File.ReadAllBytes(Path.Combine(run, size + ".input"));
-        byte[] bulkInput = bulkWarmups == 0 || size == "50" ? input : File.ReadAllBytes(Path.Combine(run, "50.input"));
+        byte[] bulkInput = bulkWarmups == 0 ? input : File.ReadAllBytes(Path.Combine(run, "bulk.input"));
         string token = raw.GetProperty("Token").GetString();
         long expires = raw.GetProperty("Expires").GetInt64();
         string kasUrl = Text(cfg, "KASURL");

@@ -536,3 +536,29 @@ with a separate documentation PR. No native suites or benchmarks are required
 for this documentation-only work.
 
 Status: accepted locally; PR submission follows.
+
+## Current handle API benchmark refresh
+
+Build all eight SDK packages from the latest merged SDK and Goalchemy revisions,
+with native pausing except C's frames. Remeasure source-built upstream Go and Web
+SDK references. Freeze source revisions, toolchains, binaries, and a common
+warmup policy before timing 1 KiB, 10 KiB, 100 KiB, 1 MiB, and 10 MiB payloads.
+Run targets sequentially through real KAS, validate full plaintext and retained
+archives independently, and preserve every sample and warmup history.
+
+Acceptance: repeatable package builds and independent native importers pass;
+all forty-five measured target/size cells have three fresh-process batches;
+Swift can be omitted at the user's request to keep this campaign bounded; warmup flags are
+investigated; README contains only fresh results, with the removed facade
+comparison replaced by the current handle API. Publish a reproducible methodology,
+keep detailed measurement evidence in ignored local storage, restore temporary
+token settings, and open a pull request.
+
+Status: accepted locally. The shared wipe helper uses `clear(data)` at
+948cf50. Focused Go wipe/streaming tests passed, as did all seven reproducible
+package builds and independent importers. The complete post-fix campaign passed
+forty-five cells, 675 timed pairs, and 810 independent archive checks. Three
+warmup warnings were reviewed with all original samples and flags retained.
+The README contains only this rerun; detailed evidence stays in ignored local
+storage. Temporary token settings were restored and verified. PR #50 contains
+the fix and accepted results; Swift remains omitted as authorized.

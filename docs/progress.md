@@ -56,11 +56,9 @@ peak memory per target.
 
 The bench consumers under `tests/bench/` moved from the stateless façade to the
 handle API, one SDK per process as the reference consumer; `benchmark-sdk.py`
-links the generated Go consumer with the interop consumer's module. A quick
-check with Goalchemy 0.7.2 native packages (five warmups, no bulk warmups, two
-sizes) puts generated Go at 20/52 ms against the reference's 40/96 ms; the
-table and the façade's three-keygens-per-pair diagnosis are in
-[benchmarks](benchmarks.md#handle-api-quick-check). The delivery workflow
+links the generated Go consumer with the interop consumer's module. Earlier
+quick-check and facade tables are superseded by the
+[current benchmark campaign](benchmarks.md#current-campaign). The delivery workflow
 builds Swift only when the `swift` dispatch input is set: its two release
 builds exceed the 1800 s package timeout on the hosted runner, and Swift is
 gated only in Phase 11.
@@ -2896,3 +2894,129 @@ methods, selecting CreateRegisteredResource keeps its parent branches open,
 and all three authentication tab sets synchronize. The Go guide's authentication
 link returned HTTP 200. No native SDK builds, live auth requests, interoperability
 suites, or benchmarks ran locally. CI will validate the PR.
+
+## Benchmark refresh: harness and frozen sources
+
+Prepared an isolated worktree from SDK 5cc75d4 and built Goalchemy 468ec24.
+Extended the controller to measure 1 KiB, 10 KiB, and 100 KiB alongside 1 MiB
+and 10 MiB, retaining 50 MiB support for bulk warmups and historical reproduction.
+Tables include measured sizes only. Corrected snapshot descriptions to match
+the current native SDK handle consumers. Added a clean stock-Go source override
+so the current upstream reference can be built without changing the platform
+used by KAS or the SDK's CI oracle pins. Its resolved module hashes are recorded.
+
+Verification: all 18 benchmark controller tests passed, including small-payload
+pooling, manifest segmentation, reference-source cleanliness, and the stock-Web
+stream timing tests. Package preparation and measurement are still in progress;
+no new README performance claims are accepted in this phase.
+
+### Benchmark preparation: payload-specific warmup
+
+All eight latest-source SDK packages were generated. Swift's first optimized
+release library took 1,207 seconds. Reused that fresh static archive and compiled
+modules for a separate optimized native benchmark importer; its archive hash
+remained unchanged. Swift source packages generated at relative and absolute
+output paths matched byte for byte. No SDK optimizer settings changed.
+
+The legacy 50 MiB bulk warmup is outside the new measured range and took about
+two minutes per TypeScript process. Stopped that initial campaign and retained
+it separately as diagnostics, excluding every cell from the README refresh.
+The new common policy uses forty 10 MiB bulk warmups followed by twenty actual-size
+warmups, five timed pairs, and three fresh processes. Added an explicit
+`--bulk-size` option and a separate `bulk.input` fixture for every consumer,
+including when the measured size equals the bulk size.
+
+Verification: all twenty benchmark controller tests passed. New checks cover
+byte-exact small inputs, distinct or identical measured and bulk sizes, and
+rejection of truncated cached fixtures. Native benchmark importers will be
+rebuilt and every target's smoke check repeated before the new timing campaign.
+SDK packages and their compiler pin remain frozen.
+
+The user allowed Swift to be omitted to avoid delaying the measurements. Its
+fresh release archive and optimized benchmark importer passed the new bulk-input
+smoke check, but Swift timing cells are excluded from the README campaign. The
+final matrix contains seven generated SDKs plus both freshly built upstream
+references at five sizes: forty-five cells. No older Swift numbers are reused.
+
+### Benchmark refresh: accepted measurement campaign
+
+Completed all forty-five cells at 1 KiB, 10 KiB, 100 KiB, 1 MiB, and 10 MiB:
+seven generated SDKs, upstream Go SDK 0.35.0, and upstream Web SDK 0.22.0 in
+Node. Each cell pools fifteen samples from three fresh processes after forty
+10 MiB bulk warmups and twenty size-specific warmups per process. Every warmup
+and sample passed full plaintext equality. All 810 retained archives passed
+independent upstream Go/real-KAS decryption, ZIP CRC, and segment-profile checks.
+No cell raised the sustained warmup-trend flag. Source and binary hashes stayed
+frozen, all targets used identical fixtures, and installed package members match
+their build receipts. No SDK or compiler implementation changed.
+
+Replaced both old README tables with the current results. Recorded the exact
+revisions, toolchains, timing boundaries, and reproduction commands in the
+methodology. Detailed sample/warmup evidence remains in ignored local storage.
+Generated Go measured 43.31 ms at 10 MiB, against upstream Go's 96.15 ms and Web's 150.29 ms.
+Python measured 4,199.39 ms; the user requested opening this results PR before
+investigating that slowdown. A same-source frames/native comparison has not run,
+and no cause is claimed. Swift timing remains omitted as authorized.
+
+Verification: the twenty controller tests passed before the frozen campaign;
+final validation accepted all forty-five cells, 675 measured pairs, and 810
+archive checks, including the complete warmup histories. Restored the local
+Keycloak client's original token-lifetime attribute and verified that new tokens
+again expire after 300 seconds. Documentation links, table/evidence consistency,
+secret exclusion, and whitespace are checked before committing. No extra native
+suites or performance-fix experiments ran.
+
+### Bulk buffer wiping and a new benchmark campaign
+
+Research isolated the large-payload slowdown to the streaming reader wiping
+cached plaintext a byte at a time. A same-source Python comparison measured
+4,231 ms with native pausing and 4,191 ms with frames at 10 MiB. Changing only
+the wipe helper to `clear(data)` measured 166 ms. A focused TypeScript comparison
+measured 567 ms before and 140 ms after. These short diagnostic runs are not
+substituted into the published benchmark table. Their retained archives passed
+independent Go/KAS, ZIP CRC, and manifest checks; sub-slice and alias checks
+confirmed that bulk clearing preserves in-place wiping.
+
+The shared helper now uses `clear(data)`. Add focused coverage for nil and empty
+slices, aliases, and bytes outside the slice length, then rebuild packages and
+remeasure all forty-five cells before updating PR #50. Keep the compiler,
+reference revisions, toolchains, timing boundaries, and warmup policy fixed.
+
+### Bulk buffer wiping: accepted rerun for PR #50
+
+The production helper changed only from its per-byte loop to `clear(data)`.
+Focused `TestWipe` and `Test_CreateTDF_Streams` passed under Go 1.25.14. Alias,
+sub-slice length versus capacity, nil, and empty-slice behavior remain covered.
+All seven measured SDKs were rebuilt twice reproducibly with the unchanged
+Goalchemy 468ec24 compiler, then installed and checked through independent
+native consumers. Fresh native and Web real-KAS smoke checks passed.
+
+Reran every one of the forty-five target/size cells at SDK 948cf50, including
+both upstream references, under the existing forty-bulk/twenty-size-specific
+warmup policy. All 675 timed encrypt/decrypt pairs matched plaintext, and all
+810 retained archives passed independent Go/KAS decryption, ZIP CRC, and the
+manifest segment profile. Frozen source, binary, and installed-member hashes
+match; payload hashes match across all targets.
+
+At 10 MiB, Python changed from 4,199.39 to 167.77 ms, TypeScript from 504.98 to
+134.35 ms, Rust from 617.08 to 73.66 ms, and C from 373.98 to 83.06 ms. Fresh
+reference Go and Web measurements are 109.29 and 135.38 ms. The README replaces
+every pre-fix cell; detailed timing evidence stays local. Diagnostic samples
+were not mixed in. Swift remains omitted as requested.
+
+Reviewed three warmup warnings: C# 1 KiB, Rust 10 MiB, and Web 100 KiB. The
+methodology records the review reasons; local campaign reports retain the
+warning flags and exact histories. No measured samples or batches were
+discarded, replaced, or rerun. The local token-lifetime attribute was restored and a new token again
+reported a 300-second lifetime. Final checks verify evidence/table consistency,
+relative documentation links, secret exclusion, and whitespace before pushing
+the accepted update to PR #50. The benchmark harness remains the version that
+passed its twenty controller tests; no compiler or CI oracle pins changed.
+
+### Keep detailed benchmark evidence local
+
+Removed the large benchmark JSON from PR #50 at the user's request. The README
+retains the complete measured table and links to the methodology. Detailed
+samples, warmup histories, and receipts remain under ignored `.local/`.
+Removed the JSON links and updated the PR description; no implementation or
+measurement changed. Verified local documentation links and whitespace.

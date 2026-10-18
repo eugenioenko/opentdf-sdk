@@ -18,7 +18,8 @@ enforced DPoP, encrypted metadata, owned results and cancellation. See
 Swift also passed a fresh full local real-KAS matrix: 541 comparisons across
 BASIC, EC and enforced DPoP, plus integrity and transport rejection checks.
 Its SwiftPM source package built reproducibly and was imported independently.
-macOS/iOS integration remains unverified. Linux Swift performance measurements are reported below.
+macOS/iOS integration remains unverified. Swift is omitted from the current
+performance campaign.
 
 Browse the [SDK documentation](https://eugenioenko.github.io/opentdf-sdk/) for
 getting-started guides, [authentication examples](https://eugenioenko.github.io/opentdf-sdk/languages/authentication/),
@@ -40,64 +41,33 @@ and automatic GitHub Pages publishing.
 
 ## End-to-end performance
 
-Median encrypt → decrypt time through **real KAS**, in milliseconds, over the
-handle API: one SDK per process, as the reference consumer, built with Goalchemy
-**v0.7.2** and native pausing (C: frames). Quick-check policy: three fresh
-processes, five size-specific warmups and five timed pairs each, no 50 MiB bulk
-warmups. See the [methodology](docs/benchmarks.md#handle-api-quick-check).
+Median encrypt → decrypt latency through **real local KAS**, in milliseconds,
+measured on 2026-10-18 after the bulk buffer wiping fix at SDK `948cf50`.
+The generated SDKs use Goalchemy `468ec24`, with native pausing except C
+(frames). Both upstream Go and Web SDK references were remeasured in the same
+campaign.
+Swift is omitted from these timings.
 
-| SDK | 1 MiB | 10 MiB |
-| --- | ---: | ---: |
-| Original OpenTDF Go | 40.46 ms | 96.24 ms |
-| Generated Go | 20.42 ms | 51.58 ms |
-| TypeScript (Node) | 48.32 ms | 134.12 ms |
-| Java | 61.77 ms | 318.61 ms |
-| C# | 38.11 ms | 125.23 ms |
-| Python | 46.61 ms | 96.01 ms |
-| Rust | 28.10 ms | 72.81 ms |
-| C | 27.44 ms | 76.08 ms |
+| SDK | 1 KiB | 10 KiB | 100 KiB | 1 MiB | 10 MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Original OpenTDF Go | 15.26 ms | 14.81 ms | 20.40 ms | 43.25 ms | 109.29 ms |
+| Original OpenTDF Web (Node) | 55.24 ms | 70.33 ms | 47.93 ms | 61.88 ms | 135.38 ms |
+| Generated Go | 16.04 ms | 15.44 ms | 19.77 ms | 18.20 ms | 39.43 ms |
+| TypeScript (Node) | 38.26 ms | 37.38 ms | 39.43 ms | 45.69 ms | 134.35 ms |
+| Java | 24.17 ms | 25.45 ms | 26.57 ms | 29.63 ms | 74.62 ms |
+| C# | 21.37 ms | 21.76 ms | 23.70 ms | 37.96 ms | 105.08 ms |
+| Python | 52.85 ms | 56.09 ms | 59.04 ms | 62.94 ms | 167.77 ms |
+| Rust | 22.99 ms | 24.90 ms | 24.61 ms | 28.69 ms | 73.66 ms |
+| C | 22.74 ms | 24.11 ms | 22.05 ms | 30.13 ms | 83.06 ms |
 
-### Historical stateless façade rows
-
-Original Go and the first seven generated rows retain historical Goalchemy
-**v0.2.1** results through the stateless façade, which builds a client and an
-RSA session key per call.\* Web SDK (Node) and Swift were remeasured in a fresh campaign.†
-
-| SDK | 1 MiB | 10 MiB | 50 MiB |
-| --- | ---: | ---: | ---: |
-| Original OpenTDF Go | 36.28 ms | 88.27 ms | 217.77 ms |
-| Original OpenTDF Web (Node)† | 58.44 ms | 138.43 ms | 901.18 ms |
-| Generated Go | 72.83 ms | 83.18 ms | 266.32 ms |
-| TypeScript (Node) | 96.57 ms | 199.28 ms | 750.11 ms |
-| Java | 87.70 ms | 142.18 ms | 401.28 ms |
-| C# | 190.50 ms | 211.22 ms | 537.33 ms |
-| Python | 141.06 ms | 186.54 ms | 691.28 ms |
-| Rust | 61.66 ms | 127.14 ms | 614.88 ms |
-| C | 148.24 ms | 254.38 ms | 555.77 ms |
-| Swift† | 283.56 ms | 371.41 ms | 1012.40 ms |
-
-\* Each historical cell pools 15 measurements: five per process across three fresh
-processes, with normal runtime settings. Before timing, each process runs
-40 warmup pairs at 50 MiB and 20 at the measured size; generated Go 1 MiB,
-Java 1 MiB and C# 10 MiB use 100 size-specific warmups after checking their initial
-histories. Every pair checks the full plaintext; retained archives also passed
-independent OpenTDF Go/KAS decryption and ZIP CRC checks.
-
-† Source-built Web SDK **0.22.0** (`e52ac7bb`, upstream `main`) and Swift use the same policy:
-15 measured pairs per cell across three fresh processes, each after 40 full
-50 MiB warmups and 20 size-specific warmups. Swift is a Linux release build of
-SDK `7f845a5`, including the JSON string-run optimization, generated with
-compiler `7863d12`. All 108 retained archives passed independent Go/KAS, ZIP CRC
-and segment-profile checks; Swift also decrypted stock-Go archives at all three
-sizes. Other rows were not remeasured. See the methodology for source revisions,
-timing boundaries and the local service setup.
-
-Original Go reuses a client initialized before timing; generated facades'
-internal setup and session-key generation remain timed. Original Web reuses
-its client and ES256 signer; its per-decrypt RSA key generation remains timed.
-File I/O, OAuth, public-key discovery and correctness checks are untimed. Inputs use 2 MiB
-segments. Browser execution is excluded. See the
-[methodology](docs/benchmarks.md).
+Each cell pools fifteen timed pairs across three fresh processes after
+forty 10 MiB warmup pairs and twenty size-specific warmups per process.
+SDK handles are initialized once and reused. The upstream Web API generates
+a fresh RSA response key inside each decrypt; the other SDKs reuse theirs.
+File I/O, OAuth, discovery, and correctness checks are untimed. All retained
+archives pass independent Go/KAS decryption, plaintext, ZIP CRC, and segment
+checks. Sizes use 1,024-based units. See the
+[methodology and source revisions](docs/benchmarks.md).
 
 ## Build and run
 

@@ -50,7 +50,7 @@ struct Benchmark {
       return
     }
     let bulkInput =
-      bulkWarmups > 0 && args[3] != "50" ? try Data(contentsOf: file("50.input")) : input
+      bulkWarmups > 0 ? try Data(contentsOf: file("bulk.input")) : input
     var measured: [Double] = []
     var warmupHistory: [Double] = []
     var bulkHistory: [Double] = []

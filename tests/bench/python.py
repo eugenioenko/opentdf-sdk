@@ -14,7 +14,7 @@ assert n > 0 and warmups > 0 and bulk_warmups >= 0
 raw = json.loads((run / 'private.json').read_text())
 r = raw['Config']
 input = (run / (size + '.input')).read_bytes()
-bulk_input = (run / '50.input').read_bytes() if bulk_warmups and size != '50' else input
+bulk_input = (run / 'bulk.input').read_bytes() if bulk_warmups else input
 
 token, expires = raw['Token'], int(raw['Expires'])
 sdk = SDK(r['PlatformURL'], insecure_plaintext=True, token_endpoint=r['TokenURL'],

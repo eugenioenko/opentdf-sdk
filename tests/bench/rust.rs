@@ -19,8 +19,8 @@ fn main() {
     let raw: Value = serde_json::from_slice(&fs::read(run.join("private.json")).unwrap()).unwrap();
     let r = &raw["Config"];
     let input = fs::read(run.join(format!("{size}.input"))).unwrap();
-    let bulk_input = if bulk_warmups > 0 && size != "50" {
-        fs::read(run.join("50.input")).unwrap()
+    let bulk_input = if bulk_warmups > 0 {
+        fs::read(run.join("bulk.input")).unwrap()
     } else {
         vec![]
     };
@@ -52,7 +52,7 @@ fn main() {
     let mut warmup_history = vec![];
     let mut bulk_history = vec![];
     for i in -bulk_warmups - warmups..n {
-        let pair_input = if i < -warmups && size != "50" { &bulk_input } else { &input };
+        let pair_input = if i < -warmups { &bulk_input } else { &input };
         let start = Instant::now();
         let archive = sdk.encrypt_bytes(pair_input, &options).unwrap();
         let output = sdk.decrypt_bytes(&archive, &reader_options).unwrap();
