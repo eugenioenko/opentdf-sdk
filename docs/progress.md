@@ -2662,3 +2662,17 @@ read every other target's TDF with the same keys.
 
 Deviations are recorded in [api-spec.md](api-spec.md) (Phase 5 part 2).
 
+xtest for part 2 (local, throttled, platform from `otdf-local` at `4d9e555b`
+with the `golden-r1` key, `--sdks "go <type>@p5" --focus <type> --sizes
+small --containers ztdf`): `test_tdf_assertions_unkeyed`,
+`test_tdf_assertions_with_keys`, `test_manifest_validity_with_assertions`,
+`test_tdf_with_altered_assertion_statement`,
+`test_tdf_with_altered_assertion_with_keys` and
+`test_legacy.py::test_decrypt_object_statement_value_json`: 14 passed for
+each of gcts, gcpy, gcjava, gccs, gcrs and gcc, both directions with the
+reference Go CLI (`out/xtest/phase5-<type>-assertions.xml`); gcswift not run
+locally. Follow-up: when a statement value is a JSON object the CLIs agree on
+sorted keys, but Go's `json.Marshal` escapes `<>&` and Python's `json.dumps`
+non-ASCII while the others write them literally, so the same input can give
+byte-different statement strings across CLIs for such values; verification is
+unaffected because the hash is over the string written.
