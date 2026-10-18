@@ -2981,3 +2981,34 @@ The shared helper now uses `clear(data)`. Add focused coverage for nil and empty
 slices, aliases, and bytes outside the slice length, then rebuild packages and
 remeasure all forty-five cells before updating PR #50. Keep the compiler,
 reference revisions, toolchains, timing boundaries, and warmup policy fixed.
+
+### Bulk buffer wiping: accepted rerun for PR #50
+
+The production helper changed only from its per-byte loop to `clear(data)`.
+Focused `TestWipe` and `Test_CreateTDF_Streams` passed under Go 1.25.14. Alias,
+sub-slice length versus capacity, nil, and empty-slice behavior remain covered.
+All seven measured SDKs were rebuilt twice reproducibly with the unchanged
+Goalchemy 468ec24 compiler, then installed and checked through independent
+native consumers. Fresh native and Web real-KAS smoke checks passed.
+
+Reran every one of the forty-five target/size cells at SDK 948cf50, including
+both upstream references, under the existing forty-bulk/twenty-size-specific
+warmup policy. All 675 timed encrypt/decrypt pairs matched plaintext, and all
+810 retained archives passed independent Go/KAS decryption, ZIP CRC, and the
+manifest segment profile. Frozen source, binary, and installed-member hashes
+match; payload hashes match across all targets.
+
+At 10 MiB, Python changed from 4,199.39 to 167.77 ms, TypeScript from 504.98 to
+134.35 ms, Rust from 617.08 to 73.66 ms, and C from 373.98 to 83.06 ms. Fresh
+reference Go and Web measurements are 109.29 and 135.38 ms. The README and
+sanitized timing report replace every pre-fix cell. Diagnostic samples were
+not mixed in. Swift remains omitted as requested.
+
+Reviewed three warmup warnings: C# 1 KiB, Rust 10 MiB, and Web 100 KiB. The
+methodology and timing JSON retain the warning flags, exact histories, and
+review reasons. No measured samples or batches were discarded, replaced, or
+rerun. The local token-lifetime attribute was restored and a new token again
+reported a 300-second lifetime. Final checks verify evidence/table consistency,
+relative documentation links, secret exclusion, and whitespace before pushing
+the accepted update to PR #50. The benchmark harness remains the version that
+passed its twenty controller tests; no compiler or CI oracle pins changed.

@@ -554,9 +554,11 @@ comparison replaced by the current handle API. Publish a reproducible methodolog
 and sanitized measurement evidence, restore temporary local token settings,
 and open a pull request.
 
-Status: PR #50 contains the initial campaign. Research traced Python and
-TypeScript's large-payload slowdown to per-byte wiping of decrypted segments.
-Replace the shared wipe loop with `clear(data)`, verify alias and slice-bound
-semantics, rebuild the seven measured SDK packages, and rerun both references
-and all forty-five cells under the same policy. Replace the PR's published
-results with this new campaign. Swift timing remains omitted as authorized.
+Status: accepted locally. The shared wipe helper uses `clear(data)` at
+948cf50. Focused Go wipe/streaming tests passed, as did all seven reproducible
+package builds and independent importers. The complete post-fix campaign passed
+forty-five cells, 675 timed pairs, and 810 independent archive checks. Three
+warmup warnings were reviewed with all original samples and flags retained.
+The README and timing evidence now contain only this rerun. Temporary token
+settings were restored and verified. Update the existing PR #50 with the fix
+and accepted results; Swift remains omitted as authorized.

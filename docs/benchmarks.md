@@ -3,15 +3,16 @@
 ## Current campaign
 
 Measured on 2026-10-18 on an AMD Ryzen 7 6800H running Linux x86_64.
-All eight generated packages use the merged SDK source at `5cc75d4` and a fresh
-Goalchemy build at `468ec2482d3a70f304f9a06c2186c9aff6cc28a3`.
-Go, TypeScript, Python, Java, C#, Rust, and Swift use native pausing; C uses frames.
-Rust uses a release build. The reported matrix covers seven generated SDKs
-and both references; Swift is omitted as described below. No language
-implementation changed during measurement. The benchmark harness is pinned at
-`2880d3d`; its hashes and toolchain versions are included in the timing evidence.
+The seven measured generated SDKs use source at `948cf50`, including the
+shared bulk buffer wiping fix, and the unchanged Goalchemy build at
+`468ec2482d3a70f304f9a06c2186c9aff6cc28a3`. Go, TypeScript, Python, Java, C#,
+and Rust use native pausing; C uses frames. Rust uses a release build. Swift
+is omitted as described below. SDK source, compiler, and benchmark inputs
+remain frozen throughout measurement. The benchmark harness is pinned at
+`948cf50`; hashes and toolchain versions are included in the timing evidence.
 
-Both upstream references were built and measured again in this campaign:
+Both upstream references were source-built at these exact revisions and
+remeasured for this campaign:
 Go SDK 0.35.0 at `b04847659c0fe82a3b2cf47ca61f8dbba33218e6`, and Web SDK
 0.22.0 at `59c42c894523f581134dcd3b77fd9ba55ce16af7` running in Node. These
 benchmark-only checkouts do not change the CI oracle pins in `references.lock.json`.
@@ -51,15 +52,37 @@ Each retained archive is independently decrypted through the upstream Go SDK
 and real KAS, checked byte for byte, read through ZIP CRC validation, and
 checked for AES-256-GCM, GMAC, and the expected segment count.
 
-The initial 50 MiB bulk-warmup attempt is retained separately as diagnostics;
-none of its timing cells are reused. Every reported cell uses the common
-10 MiB bulk-warmup policy.
+The pre-fix campaign and earlier 50 MiB bulk-warmup diagnostics are retained
+separately. None of those timing cells are reused. Every reported cell was
+remeasured after the wipe fix using the common 10 MiB bulk-warmup policy.
 
 The controller preserves all samples and warmup histories. A cell is flagged
 when its last-ten-warmup median and measured median are both more than 20%
 below its first-ten-warmup median. Flags require investigation before results
 are accepted. Any whole-cell replacement retains the initial evidence and
 records why it was superseded; the fastest samples are never selected.
+
+C# at 1 KiB triggered this warning in one batch: its first-to-last warmup
+median fell 20.14%. The final-ten warmup medians and measured medians agreed
+within 3% in every batch, and the three measured process medians were 21.11,
+21.18, and 21.54 ms. That agreement supports accepting the measured windows.
+All fifteen original samples are retained, with the original warning and its
+review recorded in the timing report. No samples or batches were replaced.
+
+Rust at 10 MiB also warned in its first process, with a 27.88% warmup median
+fall. Its final-ten warmup median was 74.36 ms and measured median 73.80 ms.
+The three processes' final-ten warmup medians agreed within 4.4%, and the pooled
+median of all fifteen measurements was 73.66 ms, within those final warmup
+medians. The measured windows had converged after the higher initial warmups.
+This review also retains the original warning and every sample without reruns.
+
+The Web reference at 100 KiB warned in one batch. Measured pairs ranged from
+32.98 to 131.16 ms, with high timings also appearing after the lower warmup
+window. Its bulk-warmup half-medians stayed within 6% in every process. The
+public API's fresh RSA key generation on every decrypt adds variable work to
+these small-payload timings. All fifteen samples and the original warning are
+retained. Small differences between Web-reference medians should be read
+alongside this spread, rather than treated as precise speed changes.
 
 For the seven reported SDKs, package receipts record the compiler hash,
 reproducible relative and absolute packages, installed members, and native
@@ -70,8 +93,7 @@ evidence and exact versions are in
 
 ## Reproduce
 
-Use the SDK checkout at benchmark harness `2880d3d`, which retains the SDK
-implementation from `5cc75d4`, and the upstream source revisions above. See the
+Use the SDK checkout at `948cf50` and the upstream source revisions above. See the
 native prerequisites in [final-delivery.md](final-delivery.md). Let `COMPILER`,
 `DELIVERY`, and the campaign directories below be absolute paths. Build the
 frozen compiler from the Goalchemy checkout, then build and install each package:
@@ -121,7 +143,7 @@ archives rather than executable wrappers.
 
 ## Swift performance follow-up
 
-A fresh Swift 6.4 release build and an optimized native importer passed
-correctness checks. The user requested omitting Swift if it delayed the timing
-campaign, so no Swift measurements are included. Its earlier stateless-facade
-numbers are superseded and remain in Git history.
+Before the wipe fix, a fresh Swift 6.4 release build and optimized native
+importer passed correctness checks. The user allowed Swift to be omitted to
+avoid delaying the campaign, so Swift is not rebuilt or measured in this
+rerun. No earlier Swift timings are reused; they remain in Git history.

@@ -42,22 +42,23 @@ and automatic GitHub Pages publishing.
 ## End-to-end performance
 
 Median encrypt → decrypt latency through **real local KAS**, in milliseconds,
-measured on 2026-10-18 at SDK `5cc75d4`. The generated SDKs use Goalchemy
-`468ec24`, with native pausing except C (frames). Both upstream Go and Web SDK
-references were rebuilt and remeasured in the same campaign.
+measured on 2026-10-18 after the bulk buffer wiping fix at SDK `948cf50`.
+The generated SDKs use Goalchemy `468ec24`, with native pausing except C
+(frames). Both upstream Go and Web SDK references were remeasured in the same
+campaign.
 Swift is omitted from these timings.
 
 | SDK | 1 KiB | 10 KiB | 100 KiB | 1 MiB | 10 MiB |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Original OpenTDF Go | 17.31 ms | 15.35 ms | 16.36 ms | 41.59 ms | 96.15 ms |
-| Original OpenTDF Web (Node) | 54.35 ms | 60.14 ms | 59.59 ms | 68.15 ms | 150.29 ms |
-| Generated Go | 16.24 ms | 15.15 ms | 14.89 ms | 18.49 ms | 43.31 ms |
-| TypeScript (Node) | 39.69 ms | 38.33 ms | 41.63 ms | 84.83 ms | 504.98 ms |
-| Java | 28.13 ms | 24.57 ms | 24.74 ms | 27.95 ms | 79.69 ms |
-| C# | 23.79 ms | 23.04 ms | 21.96 ms | 37.55 ms | 118.94 ms |
-| Python | 62.70 ms | 56.67 ms | 99.04 ms | 446.79 ms | 4199.39 ms |
-| Rust | 25.55 ms | 24.08 ms | 28.31 ms | 79.81 ms | 617.08 ms |
-| C | 22.63 ms | 22.59 ms | 26.40 ms | 57.44 ms | 373.98 ms |
+| Original OpenTDF Go | 15.26 ms | 14.81 ms | 20.40 ms | 43.25 ms | 109.29 ms |
+| Original OpenTDF Web (Node) | 55.24 ms | 70.33 ms | 47.93 ms | 61.88 ms | 135.38 ms |
+| Generated Go | 16.04 ms | 15.44 ms | 19.77 ms | 18.20 ms | 39.43 ms |
+| TypeScript (Node) | 38.26 ms | 37.38 ms | 39.43 ms | 45.69 ms | 134.35 ms |
+| Java | 24.17 ms | 25.45 ms | 26.57 ms | 29.63 ms | 74.62 ms |
+| C# | 21.37 ms | 21.76 ms | 23.70 ms | 37.96 ms | 105.08 ms |
+| Python | 52.85 ms | 56.09 ms | 59.04 ms | 62.94 ms | 167.77 ms |
+| Rust | 22.99 ms | 24.90 ms | 24.61 ms | 28.69 ms | 73.66 ms |
+| C | 22.74 ms | 24.11 ms | 22.05 ms | 30.13 ms | 83.06 ms |
 
 Each cell pools fifteen timed pairs across three fresh processes after
 forty 10 MiB warmup pairs and twenty size-specific warmups per process.
