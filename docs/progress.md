@@ -3090,3 +3090,18 @@ README replaces the four limit labels while retaining every previous timing.
 Detailed samples, receipts, rejection/build diagnostics and archives remain
 local. Goalchemy CI, signed release publication, released compiler output
 verification and the SDK release pin remain the next acceptance steps.
+
+### Prepare the v0.7.4 adoption PR
+
+Pin c470ed7 in the shared Go module, reference lock, both delivery checkouts
+and documentation compiler lock. Update the build guides and C value-boundary
+policy. The final C output-budget change does not affect the measured managed
+targets: compiling with c470ed7 produced 648 generated/runtime source files
+identical to the frozen measured packages. All seventeen delivery-bootstrap
+regression tests passed. The README and methodology retain the exact measured
+compiler commit and distinguish the final release pin.
+
+Run SDK CI concurrently with Goalchemy CI in a draft PR. Publish only after
+upstream acceptance, a signed v0.7.4 tag at the tested pin, external release
+installation/output verification, and complete green SDK checks. Detailed data
+remains ignored; only the table, methodology and release pins are committed.

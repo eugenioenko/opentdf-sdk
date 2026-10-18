@@ -44,10 +44,16 @@ batch triggered the warmup warning; no samples or batches were replaced.
 ## Complete the 100 MiB byte-API measurements
 
 The four remaining rows were measured on the same machine and date using
-Goalchemy PR #117 at `5d5edf0529455e856062fbc42e64437275930b51`, the v0.7.4
-candidate. This removes the fixed library value-size caps, including the
-TypeScript and C# output conversions. The same byte APIs now accept 100 MiB;
-streaming APIs were not substituted. Release adoption follows CI acceptance.
+the Goalchemy v0.7.4 build from PR #117 at
+`5d5edf0529455e856062fbc42e64437275930b51`. This removes the fixed library
+value-size caps, including the TypeScript and C# output conversions. The same
+byte APIs now accept 100 MiB; streaming APIs were not substituted.
+
+The SDK pins v0.7.4 at `c470ed70e187ac6071433a2a485d7f911fe639f8`. Its
+subsequent C output-budget correction leaves the four measured targets
+unchanged: all 648 generated and runtime source files were checked byte for
+byte against the measured packages. The measured compiler binary's own commit
+and hash remain recorded in the local receipts.
 
 TypeScript, Java, C#, and Python packages were rebuilt twice reproducibly from
 SDK `27cc668`, whose production source is identical to `948cf50`, and installed
@@ -182,7 +188,7 @@ from the identical SDK source at `948cf50`. Use new output directories and the
 same references and runtime versions. Run the native command with
 `--targets reference,go,rust,c --sizes 100MiB`, and the Web command with
 `--sizes 100MiB`. Keep all sample, process, and warmup arguments unchanged.
-For the four-row follow-up, use SDK `27cc668` and Goalchemy `5d5edf0` with the
+For the four-row follow-up, use SDK `27cc668` and Goalchemy v0.7.4 with the
 same controller. Regenerate and install TypeScript, Java, C# and Python;
 retain the earlier Go/Rust/C consumer receipts needed to prepare the controller.
 Select `--targets typescript,java,csharp,python --sizes 100MiB` with a new output

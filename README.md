@@ -45,7 +45,8 @@ Median encrypt → decrypt latency through **real local KAS**, in milliseconds,
 measured on 2026-10-18 after the bulk buffer wiping fix at SDK `948cf50`.
 The original five columns and Go, Rust, and C at 100 MiB use Goalchemy `468ec24`.
 The four follow-up 100 MiB cells for TypeScript, Java, C#, and Python use
-Goalchemy `5d5edf0`, which removes their fixed byte-API limits. Generated SDKs
+[Goalchemy v0.7.4](https://github.com/eugenioenko/goalchemy/releases/tag/v0.7.4),
+which removes their fixed byte-API limits. Generated SDKs
 use native pausing except C (frames). Both upstream references were source-built
 and remeasured for the original campaign and its first 100 MiB extension.
 
@@ -84,8 +85,8 @@ compiles the export root `./src`. Native adapters, dependency locks and delivery
 Build scripts and top-level `tests/` remain at root. Generated native SDK public
 APIs retain their existing package names and signatures.
 
-The build configuration pins released
-[Goalchemy v0.7.2](https://github.com/eugenioenko/goalchemy/releases/tag/v0.7.2)
+The build configuration pins
+[Goalchemy v0.7.4](https://github.com/eugenioenko/goalchemy/releases/tag/v0.7.4)
 for package-based output across all eight targets. The exact release commit is
 recorded in [references.lock.json](references.lock.json).
 Build helpers explicitly select `--pause-model=native` for Go, TypeScript,

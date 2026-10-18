@@ -616,3 +616,10 @@ warnings or replaced samples. README now contains the four new medians and
 preserves all 50 previously published timing cells. Temporary token settings
 are restored and frozen hashes match. Release adoption and publication remain
 gated on hosted CI and released-output equivalence verification.
+
+The SDK adoption PR pins candidate c470ed7 consistently in the source module,
+delivery workflow, reference lock and documentation compiler lock so both CI
+pipelines can run concurrently. Keep it in draft until Goalchemy #117 is merged,
+its accepted head is signed and published as v0.7.4, and the installed release
+emits identical managed-target source to the measured build. SDK merge then
+requires its own complete green checks on the pinned candidate.
