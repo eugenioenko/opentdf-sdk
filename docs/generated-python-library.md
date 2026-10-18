@@ -13,7 +13,7 @@ standard library; no compiler, Go process or external executable.
 
 Python 3.10 on Linux x86-64 is the observed environment (the locked `cffi`
 wheel is `cp310`); Python 3.10+ is the API baseline. From `goalchemy/`,
-build `GOTOOLCHAIN=go1.25.14 go build -o out/python-tdf-library/goalchemy
+build `go build -o out/python-tdf-library/goalchemy
 ./cmd/goalchemy`, then run `scripts/build-generated-python.sh [destination]`.
 The script needs a build environment with the locked dependencies: pass it
 as `TDF_PYTHON` (a venv's `python`) with `TDF_WHEELHOUSE`, or let it make the

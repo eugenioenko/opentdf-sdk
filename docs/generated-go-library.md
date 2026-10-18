@@ -9,7 +9,7 @@ implementation.
 
 ## Build and import
 
-From `goalchemy/`, use `GOTOOLCHAIN=go1.25.14 go build -o
+From `goalchemy/`, use `go build -o
 out/go-tdf-library/goalchemy ./cmd/goalchemy`, then run
 `scripts/build-generated-go.sh`. An optional absolute destination argument
 selects another output directory; `GOALCHEMY_BIN` selects a compiler binary.

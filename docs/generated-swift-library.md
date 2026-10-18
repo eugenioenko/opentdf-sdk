@@ -26,7 +26,7 @@ cd goalchemy
 git checkout "$(python3 -c 'import json;print(json.load(open("../sdk/references.lock.json"))["repositories"]["goalchemy"]["revision"])')"
 bash scripts/fetch-toolchains.sh swift
 export PATH="$PWD/.toolchains/swift-6.4.0/usr/bin:$PATH"
-GOTOOLCHAIN=go1.25.14 go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy
+go build -o out/swift-tdf-library/goalchemy ./cmd/goalchemy
 cd ../sdk
 GOALCHEMY_BIN=../goalchemy/out/swift-tdf-library/goalchemy \
     bash scripts/build-generated-swift.sh out/swift-tdf-library/sdk

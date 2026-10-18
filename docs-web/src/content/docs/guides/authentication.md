@@ -33,7 +33,8 @@ Supplying platform configuration bypasses that discovery.
 
 DPoP binds tokens to a signing key. A provider must supply matching key and
 confirmation information. Do not relabel a Bearer token as DPoP. See the
-[EC and DPoP profiles](../../reference/secure-profiles/).
+[local EC and DPoP test profiles](../../contributing/secure-profiles/) for
+contributor examples.
 
 ## Trusted endpoints
 

@@ -25,6 +25,7 @@ export default defineConfig({
       { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } },
         { label: 'llms.txt', link: 'https://eugenioenko.github.io/opentdf-sdk/llms.txt' },
       ] },
+      { label: 'Contributing', items: [{ autogenerate: { directory: 'contributing' } }] },
     ],
   })],
 });

@@ -1,4 +1,4 @@
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unified } from 'unified';
@@ -19,9 +19,9 @@ const sources = [
   ]),
   ['docs/compatibility.md', 'reference/compatibility', 'Compatibility and limits', 1],
   ['docs/format.md', 'reference/format', 'TDF format', 2],
-  ['docs/secure-profiles.md', 'reference/secure-profiles', 'EC and DPoP profiles', 3],
-  ['docs/platform.md', 'reference/platform', 'Local platform setup', 4],
-  ['docs/final-delivery.md', 'reference/builds', 'Build details and evidence', 5],
+  ['docs/secure-profiles.md', 'contributing/secure-profiles', 'Local EC and DPoP profiles', 1],
+  ['docs/platform.md', 'contributing/platform', 'Local test platform', 2],
+  ['docs/final-delivery.md', 'contributing/builds', 'Build verification and evidence', 3],
 ];
 const routes = new Map(sources.map(([source, route]) => [source, `${base}${route}/`]));
 
@@ -54,9 +54,22 @@ async function rewrite(node, source, parent) {
   for (const child of node.children ?? []) await rewrite(child, source, node);
 }
 
+for (const directory of ['languages', 'reference', 'contributing']) {
+  await rm(path.join(site, 'src/content/docs', directory), { recursive: true, force: true });
+}
 for (const [source, route, title, order] of sources) {
   const tree = markdown.parse(await readFile(path.join(root, source), 'utf8'));
   tree.children = tree.children.filter((node, index) => !(index === 0 && node.type === 'heading' && node.depth === 1));
+  if (route.startsWith('languages/')) {
+    let include = true;
+    tree.children = tree.children.filter((node) => {
+      if (node.type === 'heading' && node.depth === 2) {
+        const title = node.children.map((child) => child.value ?? '').join('');
+        include = !['CLI', 'Verification', 'Verification and interoperability', 'Validation evidence', 'Bounded acceptance repairs'].includes(title);
+      }
+      return include;
+    });
+  }
   await rewrite(tree, source);
   const file = path.join(site, 'src/content/docs', `${route}.md`);
   await mkdir(path.dirname(file), { recursive: true });

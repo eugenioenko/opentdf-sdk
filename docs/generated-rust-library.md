@@ -22,7 +22,7 @@ failures are outside managed cleanup guarantees.
 From the workspace root:
 
 ```sh
-(cd goalchemy; GOTOOLCHAIN=go1.25.14 go build \
+(cd goalchemy; go build \
   -o out/rust-tdf-library/goalchemy ./cmd/goalchemy)
 bash sdk/scripts/build-generated-rust.sh
 bash sdk/tests/interop/generatedrust/install-consumer.sh

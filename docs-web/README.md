@@ -35,6 +35,8 @@ the generated reference. Delete `.local/docs/source.sha256` to force generation.
   code and handwritten native adapters have separate documentation.
 - Edit native package guides in `docs/generated-<language>-library.md` and other
   canonical references in `docs/`. `scripts/prepare-docs.mjs` publishes them.
+  Contributor-only CLI and validation sections are omitted from language pages;
+  local test infrastructure and evidence have their own Contributing section.
 - Edit the homepage and task guides under `src/content/docs/`.
 - Keep generated API pages, imported guides, JSON, Markdown exports, build output,
   and dependency installations ignored. Regenerate them instead of editing them.

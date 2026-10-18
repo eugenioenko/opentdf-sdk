@@ -14,7 +14,7 @@ protobuf-java; no compiler, Go process or external executable.
 
 JDK 21 (the repository pins Temurin 21.0.12.1+1 under
 `goalchemy/.toolchains`), Bash and Python 3. From `goalchemy/`, build
-`GOTOOLCHAIN=go1.25.14 go build -o out/java-tdf-library/goalchemy
+`go build -o out/java-tdf-library/goalchemy
 ./cmd/goalchemy`, then run `scripts/build-generated-java.sh [destination]`.
 `GOALCHEMY_BIN` selects a compiler binary, `GOALCHEMY_ROOT` the Goalchemy
 checkout (toolchains, the Java target's dependency lock) and `JAVA_HOME` a

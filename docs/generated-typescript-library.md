@@ -9,7 +9,7 @@ TypeScript idiom: it maps names, idioms and errors and implements no protocol.
 
 ## Build and import
 
-From `goalchemy/`, build `GOTOOLCHAIN=go1.25.14 go build -o
+From `goalchemy/`, build `go build -o
 out/typescript-tdf-library/goalchemy ./cmd/goalchemy`, then run
 `scripts/build-generated-typescript.sh`. An optional destination argument
 selects the package directory; `GOALCHEMY_BIN` selects a compiler binary and

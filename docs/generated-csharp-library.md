@@ -15,7 +15,7 @@ production path has no Go process, compiler or reference SDK.
 
 The .NET 8 SDK (the repository pins SDK 8.0.425 under
 `goalchemy/.toolchains/dotnet`), Bash and Python 3. From `goalchemy/`, build
-`GOTOOLCHAIN=go1.25.14 go build -o out/csharp-tdf-library/goalchemy
+`go build -o out/csharp-tdf-library/goalchemy
 ./cmd/goalchemy`, then run `scripts/build-generated-csharp.sh [destination]`.
 `GOALCHEMY_BIN` selects a compiler binary, `GOALCHEMY_ROOT` the Goalchemy
 checkout and `DOTNET_BIN` another .NET 8 SDK. The script compiles both roots,
