@@ -12,7 +12,8 @@ RUNTIME_OPTIONS = ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS', 'NO
 NATIVE_TARGETS = ['reference', 'go', 'typescript', 'java', 'csharp', 'python', 'rust', 'c']
 TARGETS = NATIVE_TARGETS + ['web', 'swift']
 SIZES = {'1KiB': ('1k', 1024), '10KiB': ('10k', 10 * 1024), '100KiB': ('100k', 100 * 1024),
-         '1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024), '50MiB': ('50', 50 * 1024 * 1024)}
+         '1MiB': ('1', 1024 * 1024), '10MiB': ('10', 10 * 1024 * 1024),
+         '50MiB': ('50', 50 * 1024 * 1024), '100MiB': ('100', 100 * 1024 * 1024)}
 
 def sha(p):
     return hashlib.sha256(p.read_bytes()).hexdigest()

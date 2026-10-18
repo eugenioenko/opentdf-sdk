@@ -3020,3 +3020,25 @@ retains the complete measured table and links to the methodology. Detailed
 samples, warmup histories, and receipts remain under ignored `.local/`.
 Removed the JSON links and updated the PR description; no implementation or
 measurement changed. Verified local documentation links and whitespace.
+
+### Prepare the 100 MiB benchmark extension
+
+Branched from main at b786639 after PR #50 merged. Added 100 MiB to the
+supported benchmark sizes, leaving the common-range defaults unchanged. Focused coverage checks pooled reporting
+at exactly 104,857,600 bytes and rejects a manifest with fewer than the expected
+fifty 2 MiB segments. All twenty-one controller tests passed.
+
+Main's production source and host adapters are identical to SDK 948cf50 used by
+the verified post-wipe packages. Reuse those packages, compiler, references, and
+toolchains after checking their hashes. Measure only the new size under the
+existing warmup/process policy, retain the earlier five columns unchanged, and
+record that the 100 MiB column is a separate extension. Detailed evidence stays
+under ignored local storage; Swift remains omitted as authorized.
+
+
+The 100 MiB smoke check exposed existing 64 MiB whole-buffer boundaries in
+TypeScript, Java, C#, and Python. Generated Go, Rust, C, and both references
+passed 100 MiB probes. Keep the same public byte APIs and report those four
+limits explicitly. Measure the five supported rows; a separate streaming
+comparison or boundary-limit change requires its own scope decision. No
+production code or limits change in this benchmark PR.
