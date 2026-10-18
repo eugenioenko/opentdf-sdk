@@ -118,14 +118,15 @@ type KASInfo struct {
 	Default bool
 }
 
-// AssertionConfig describes an assertion to add to a TDF (reference
-// AssertionConfig without its signing key; both arrive in Phase 5).
+// AssertionConfig describes an assertion to add to a TDF: the reference's
+// AssertionConfig. An empty SigningKey signs with HS256 over the payload key.
 type AssertionConfig struct {
 	ID             string
 	Type           AssertionType
 	Scope          Scope
 	AppliesToState AppliesToState
 	Statement      Statement
+	SigningKey     AssertionKey
 }
 
 // TDFOptions configures CreateTDF and EncryptBytes. Zero values are the
@@ -163,6 +164,7 @@ type TDFConfig struct {
 	preferredKeyWrapAlg        KeyType
 	useHex                     bool
 	excludeVersionFromManifest bool
+	assertions                 []AssertionConfig
 	addDefaultAssertion        bool
 }
 
@@ -222,12 +224,8 @@ func newTDFConfig(opts TDFOptions) (*TDFConfig, error) {
 	default:
 		return nil, fmt.Errorf("unsupported key type: %s", string(opts.WrappingKeyAlgorithm))
 	}
-	if len(opts.Assertions) > 0 {
-		return nil, unsupported("CreateTDF", "Assertions")
-	}
-	if opts.SystemMetadataAssertion {
-		return nil, unsupported("CreateTDF", "SystemMetadataAssertion")
-	}
+	c.assertions = append(c.assertions, opts.Assertions...)
+	c.addDefaultAssertion = opts.SystemMetadataAssertion
 	if opts.TargetMode != "" && opts.TargetMode != hexSemverThreshold {
 		return nil, unsupported("CreateTDF", "TargetMode "+opts.TargetMode)
 	}
@@ -249,6 +247,7 @@ const (
 // registry, 10 MiB manifests, RSA-2048 session keys.
 type ReaderOptions struct {
 	DisableAssertionVerification bool
+	AssertionVerificationKeys    AssertionVerificationKeys
 	KasAllowlist                 []string
 	IgnoreAllowlist              bool
 	MaxManifestSize              int64
@@ -259,6 +258,7 @@ type ReaderOptions struct {
 
 type TDFReaderConfig struct {
 	disableAssertionVerification bool
+	verifiers                    AssertionVerificationKeys
 
 	schemaValidationIntensity SchemaValidationIntensity
 	kasSessionKey             *crypto.Key
@@ -341,6 +341,7 @@ func (a AllowList) Add(kasURL string) error {
 func newTDFReaderConfig(sessionKey *crypto.Key, opts ReaderOptions) (*TDFReaderConfig, error) {
 	c := &TDFReaderConfig{
 		disableAssertionVerification: opts.DisableAssertionVerification,
+		verifiers:                    opts.AssertionVerificationKeys,
 		maxManifestSize:              defaultMaxManifestSize,
 		kasSessionKey:                sessionKey,
 		kasSessionKeyType:            RSA2048Key,

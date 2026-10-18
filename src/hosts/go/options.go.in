@@ -386,6 +386,15 @@ func WithDisableAssertionVerification(disable bool) TDFReaderOption {
 	}
 }
 
+// WithAssertionVerificationKeys sets the keys the reader verifies assertion
+// bindings with, by assertion ID with a default.
+func WithAssertionVerificationKeys(keys AssertionVerificationKeys) TDFReaderOption {
+	return func(o *ReaderOptions) error {
+		o.AssertionVerificationKeys = keys
+		return nil
+	}
+}
+
 func WithSessionKeyType(keyType KeyType) TDFReaderOption {
 	return func(o *ReaderOptions) error {
 		o.SessionKeyType = keyType

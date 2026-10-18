@@ -14,9 +14,9 @@ const TIMEOUT_MILLIS=120000;
 const USAGE=`Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
       [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-      [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+      [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+      [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -29,8 +29,51 @@ const g=await import(pathToFileURL(packagePath).href);
 const commonFlags=[['out'],['host'],['with-client-creds'],['with-client-creds-file'],['dpop'],['dpop-key'],['tls-no-verify',true],['log-level']];
 const encryptFlags=[['attr'],['mime-type'],['with-assertions'],['wrapping-key-algorithm'],['target-mode'],['policy-mode'],['ecdsa-binding',true],...commonFlags];
 const decryptFlags=[['with-assertion-verification-keys'],['no-verify-assertions',true],['session-key-algorithm'],['kas-allowlist'],...commonFlags];
-const encryptUnsupported=[['with-assertions'],['ecdsa-binding'],['target-mode',['4.3.0']],['policy-mode',['encrypted']],['wrapping-key-algorithm',['rsa:2048','ec:secp256r1','rsa:4096','ec:secp384r1','ec:secp521r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
-const decryptUnsupported=[['with-assertion-verification-keys'],['session-key-algorithm',['rsa:2048','ec:secp256r1','rsa:4096','ec:secp384r1','ec:secp521r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
+const encryptUnsupported=[['ecdsa-binding'],['target-mode',['4.3.0']],['policy-mode',['encrypted']],['wrapping-key-algorithm',['rsa:2048','ec:secp256r1','rsa:4096','ec:secp384r1','ec:secp521r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
+const decryptUnsupported=[['session-key-algorithm',['rsa:2048','ec:secp256r1','rsa:4096','ec:secp384r1','ec:secp521r1']],['dpop',['ES256','ES384','ES512','RS256','RS384','RS512']],['with-client-creds-file']];
+
+// --with-assertions and --with-assertion-verification-keys take a file path
+// or JSON text, as otdfctl does: a statement value that is an object is kept
+// as compact JSON; HS256 keys are the string's bytes, RS256 keys PEM.
+async function fileOrJSON(arg){
+ try{JSON.parse(arg);return arg;}catch{}
+ try{return await readFile(arg,'utf8');}catch(e){throw new Error(arg+' is neither JSON nor a readable file: '+e.message);}
+}
+// Go's json.Marshal writes object keys sorted; the compact statement value matches it.
+function sortedKeys(v){
+ if(Array.isArray(v))return v.map(sortedKeys);
+ if(v&&typeof v==='object'){const out={};for(const k of Object.keys(v).sort())out[k]=sortedKeys(v[k]);return out;}
+ return v;
+}
+function assertionKey(k,label){
+ if(k.alg!=='HS256'&&k.alg!=='RS256')throw new Error(label+': unsupported signing key algorithm '+k.alg);
+ return {alg:k.alg,key:String(k.key??'')};
+}
+async function parseAssertions(arg){
+ let list;
+ try{list=JSON.parse(await fileOrJSON(arg));}catch(e){throw new Error('assertions must be a JSON list: '+e.message);}
+ if(!Array.isArray(list))throw new Error('assertions must be a JSON list');
+ return list.map(a=>{
+  const statement=a.statement??{};
+  const c={id:a.id??'',type:a.type??'',scope:a.scope??'',appliesToState:a.appliesToState??'',statement:{format:statement.format??'',schema:statement.schema??''}};
+  if(statement.value!==undefined&&statement.value!==null){
+   if(typeof statement.value==='string')c.statement.value=statement.value;
+   else if(typeof statement.value==='object'&&!Array.isArray(statement.value))c.statement.value=JSON.stringify(sortedKeys(statement.value));
+   else throw new Error('assertion '+c.id+': statement value is neither a string nor an object');
+  }
+  if(a.signingKey)c.signingKey=assertionKey(a.signingKey,'assertion '+c.id);
+  return c;
+ });
+}
+async function parseVerificationKeys(arg){
+ let file;
+ try{file=JSON.parse(await fileOrJSON(arg));}catch(e){throw new Error('assertion verification keys must be a JSON object: '+e.message);}
+ if(typeof file!=='object'||file===null||Array.isArray(file))throw new Error('assertion verification keys must be a JSON object');
+ const keys={};
+ if(file.defaultKey)keys.defaultKey={alg:file.defaultKey.alg??'',key:String(file.defaultKey.key??'')};
+ if(file.keys){keys.keys={};for(const [id,k] of Object.entries(file.keys))keys.keys[id]={alg:k.alg??'',key:String(k.key??'')};}
+ return keys;
+}
 
 function parseFlags(args,spec){
  const specs=new Map(spec.map(([name,bool])=>[name,Boolean(bool)]));
@@ -188,6 +231,7 @@ async function encrypt(args,signal){
   if(p.value('attr'))options.attributes=splitList(p.value('attr'));
   if(p.value('wrapping-key-algorithm'))options.wrappingKeyAlgorithm=p.value('wrapping-key-algorithm');
   if(p.value('target-mode'))options.targetMode=p.value('target-mode');
+  if(p.value('with-assertions')){try{options.assertions=await parseAssertions(p.value('with-assertions'));}catch(e){process.stderr.write('Failed to read assertions: '+e.message+'\n');return EXIT_USAGE;}}
   let data;
   try{data=await created.sdk.encryptBytes(input,options,{signal});}catch(e){process.stderr.write('Failed to encrypt: '+describe(e)+'\n');return EXIT_ERROR;}
   try{await writeOut(p.value('out'),data);}catch(e){process.stderr.write('Failed to write encrypted file '+p.value('out')+': '+e.message+'\n');return EXIT_ERROR;}
@@ -206,6 +250,7 @@ async function decrypt(args,signal){
  if(!created.sdk)return created.code;
  try{
   const options={disableAssertionVerification:p.flag('no-verify-assertions')};
+  if(p.value('with-assertion-verification-keys')){try{options.assertionVerificationKeys=await parseVerificationKeys(p.value('with-assertion-verification-keys'));}catch(e){process.stderr.write('Failed to read assertion verification keys: '+e.message+'\n');return EXIT_USAGE;}}
   if(p.value('session-key-algorithm'))options.sessionKeyType=p.value('session-key-algorithm');
   // otdfctl: "*" alone ignores the allowlist; any other list is explicit.
   const allowlist=splitList(p.value('kas-allowlist'));

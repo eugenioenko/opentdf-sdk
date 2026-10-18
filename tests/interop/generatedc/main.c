@@ -65,13 +65,51 @@ static const char *attribute=ATTRIBUTE;
 static otdf_tdf_options tdf_options(J *cfg,otdf_kas_info *kas){*kas=kas_information(cfg);otdf_tdf_options o=OTDF_TDF_OPTIONS_INIT;o.disable_autoconfigure=true;o.kas_information=kas;o.kas_information_count=1;o.attributes=&attribute;o.attribute_count=1;o.segment_size=16384;if(*text(cfg,"KASAlgorithm"))o.wrapping_key_algorithm=text(cfg,"KASAlgorithm");return o;}
 static const char *allow[16];
 static otdf_reader_options reader_options(J *cfg){size_t n=0;allow[n++]=text(cfg,"PlatformURL");if(*text(cfg,"KASURL"))allow[n++]=text(cfg,"KASURL");J *routes=j_get(cfg,"AllowedKAS");if(routes&&routes->t==J_ARR)for(size_t i=0;i<routes->len&&n<16;i++)allow[n++]=text(routes->items[i],"URL");otdf_reader_options o=OTDF_READER_OPTIONS_INIT;o.kas_allowlist=allow;o.kas_allowlist_count=n;if(*text(cfg,"SessionAlgorithm"))o.session_key_type=text(cfg,"SessionAlgorithm");return o;}
-static J *report(const otdf_error *e){J *j=j_new(J_OBJ);j_set(j,"kind",j_cstr(e->kind?e->kind:""));j_set(j,"op",j_cstr(e->op?e->op:""));char n[32];snprintf(n,sizeof n,"%lld",(long long)e->http_status);J *status=j_new(J_NUM);status->s=GC_strdup(n);status->n=strlen(n);j_set(j,"httpStatus",status);j_set(j,"connectCode",j_cstr(e->connect_code?e->connect_code:""));j_set(j,"message",j_cstr(e->message?e->message:""));return j;}
+static J *report(const otdf_error *e){J *j=j_new(J_OBJ);j_set(j,"kind",j_cstr(e->kind?e->kind:""));j_set(j,"op",j_cstr(e->op?e->op:""));char n[32];snprintf(n,sizeof n,"%lld",(long long)e->http_status);J *status=j_new(J_NUM);status->s=GC_strdup(n);status->n=strlen(n);j_set(j,"httpStatus",status);j_set(j,"connectCode",j_cstr(e->connect_code?e->connect_code:""));j_set(j,"assertionId",j_cstr(e->assertion_id?e->assertion_id:""));j_set(j,"message",j_cstr(e->message?e->message:""));return j;}
 static void fail(const char *label,otdf_error *e){fprintf(stderr,"consumer failure %s: %s\n",label,jsontext(report(e)));exit(1);}
 #define TRY(label,call) do{otdf_error e_={0};if(call)fail(label,&e_);}while(0)
 /* expect_failure runs a call that must fail and returns its report. */
 #define EXPECT(label,call) ({otdf_error e_={0};int rc_=(call);if(!rc_){fprintf(stderr,"%s returned successful output\n",label);exit(1);}J *r_=report(&e_);otdf_error_free(&e_);r_;})
 static bool same_kind(J *r,const char *kind){return !strcmp(text(r,"kind"),kind);}
 static void write_json(const char *run,const char *file,J *j){char path[4096];snprintf(path,sizeof path,"%s/%s",run,file);char *out=jsontext(j);writefile(path,out,strlen(out));}
+
+/* A TDF with an unsigned assertion (HS256 over the payload key) and one signed
+ * with a caller HS256 secret, read with the right key by id, with a wrong key
+ * and with no key (assertion_failure), and with verification off. */
+static void assertions(otdf_sdk *sdk,J *cfg,const char *run){
+ char secret[64];snprintf(secret,sizeof secret,"assertion-secret-%llx",(unsigned long long)time(NULL));
+ const char *first_value="{\"ocl\":{\"pol\":\"2ccf11cb-6c9a-4e49-9746-a7f0a295945d\"}}";
+ otdf_assertion_config configs[2]={
+  {.id="unsigned",.type="handling",.scope="tdo",.applies_to_state="encrypted",.format="json+stanag5636",.schema="urn:nato:stanag:5636:A:1:elements:json",.value=first_value},
+  {.id="signed",.type="other",.scope="payload",.applies_to_state="unencrypted",.format="json",.schema="urn:example:assertion:v1",.value="{\"note\":\"independent consumer\"}",.signing_key={.alg="HS256",.key=secret}}};
+ otdf_kas_info kas;otdf_tdf_options options=tdf_options(cfg,&kas);options.assertions=configs;options.assertion_count=2;
+ const char *payload="assertion payload";size_t payload_length=strlen(payload);
+ otdf_owned_bytes tdf={0};otdf_tdf_object *object=NULL;otdf_error e={0};
+ if(otdf_create_tdf(sdk,(otdf_bytes){(const uint8_t *)payload,payload_length},&options,NULL,&tdf,&object,&e))fail("encrypt with assertions",&e);
+ char *manifest=NULL;if(otdf_tdf_object_manifest_json(object,NULL,&manifest,&e)){fail("manifest",&e);}
+ otdf_tdf_object_close(object,NULL);otdf_tdf_object_free(object);
+ const char *err=NULL;J *m=j_parse(manifest,&err);check(m&&!err,"manifest json");free(manifest);
+ J *found=j_get(m,"assertions");check(found&&found->t==J_ARR&&found->len==2&&!strcmp(text(found->items[0],"id"),"unsigned")&&!strcmp(text(found->items[1],"id"),"signed"),"assertions in manifest");
+ J *binding=j_get(found->items[1],"binding");check(binding&&!strcmp(text(binding,"method"),"jws")&&*text(binding,"signature"),"signed binding");
+ check(!strcmp(text(j_get(found->items[0],"statement"),"value"),first_value),"statement value kept");
+ otdf_bytes archive={tdf.data,tdf.length};
+ otdf_assertion_key_entry right={.assertion_id="signed",.alg="HS256",.key=secret},wrong_entry={.assertion_id="signed",.alg="HS256",.key="not the secret"};
+ otdf_reader_options ro=reader_options(cfg);ro.assertion_keys=&right;ro.assertion_key_count=1;
+ otdf_owned_bytes out={0};if(otdf_decrypt_bytes(sdk,archive,&ro,NULL,&out,&e)){fail("decrypt with the right key",&e);}
+ check(out.length==payload_length&&!memcmp(out.data,payload,payload_length),"decrypt with the right key");otdf_bytes_free(&out);
+ ro=reader_options(cfg);ro.assertion_keys=&wrong_entry;ro.assertion_key_count=1;
+ J *wrong=EXPECT("wrong key",otdf_decrypt_bytes(sdk,archive,&ro,NULL,&out,&e_));check(same_kind(wrong,"assertion_failure")&&!strcmp(text(wrong,"assertionId"),"signed"),"wrong key");
+ ro=reader_options(cfg);
+ J *missing=EXPECT("missing key",otdf_decrypt_bytes(sdk,archive,&ro,NULL,&out,&e_));check(same_kind(missing,"assertion_failure")&&!strcmp(text(missing,"assertionId"),"signed"),"missing key");
+ ro=reader_options(cfg);ro.assertion_default_key=(otdf_assertion_key){.alg="HS256",.key="not the secret"};
+ J *wrong_default=EXPECT("wrong default key",otdf_decrypt_bytes(sdk,archive,&ro,NULL,&out,&e_));check(same_kind(wrong_default,"assertion_failure")&&!strcmp(text(wrong_default,"assertionId"),"unsigned"),"wrong default key");
+ ro=reader_options(cfg);ro.disable_assertion_verification=true;
+ if(otdf_decrypt_bytes(sdk,archive,&ro,NULL,&out,&e)){fail("decrypt with verification disabled",&e);}
+ check(out.length==payload_length,"decrypt with verification disabled");otdf_bytes_free(&out);
+ char path[4096];snprintf(path,sizeof path,"%s/assertions.generated.tdf",run);writefile(path,tdf.data,tdf.length);otdf_bytes_free(&tdf);
+ J *ids=j_new(J_ARR);for(size_t i=0;i<found->len;i++){J *row=j_new(J_OBJ);j_set(row,"id",j_cstr(text(found->items[i],"id")));j_set(row,"method",j_cstr(text(j_get(found->items[i],"binding"),"method")));j_push(ids,row);}
+ J *result=j_new(J_OBJ);j_set(result,"assertions",ids);j_set(result,"wrong_key",wrong);j_set(result,"missing_key",missing);write_json(run,"assertions.json",result);
+}
 
 /* xtest's test_self.py through the service clients: list namespaces, create a
  * namespace and an attribute, read the attribute back by id, through the
@@ -252,7 +290,8 @@ int main(int argc,char **argv){assert(argc==5);GC_INIT();GC_allow_register_threa
  }else if(!strcmp(mode,"negative")){
   snprintf(path,sizeof path,"%s/%s.tdf",run,name);uint8_t *input=readfile(path,&n);assert(input);otdf_owned_bytes out={0};otdf_reader_options ro=reader_options(cfg);
   J *error=EXPECT("negative",otdf_decrypt_bytes(sdk,(otdf_bytes){input,n},&ro,NULL,&out,&e_));char file[256];snprintf(file,sizeof file,"%s.error.json",name);write_json(run,file,error);free(input);
- }else if(!strcmp(mode,"repeat")){repeat(sdk,cfg,name);sdk=NULL;}
+ }else if(!strcmp(mode,"assertions"))assertions(sdk,cfg,run);
+ else if(!strcmp(mode,"repeat")){repeat(sdk,cfg,name);sdk=NULL;}
  else if(!strcmp(mode,"services"))services(sdk,cfg,&ps,run);
  else{fprintf(stderr,"unknown mode\n");return 1;}
  if(sdk){otdf_sdk_close(sdk,NULL);otdf_sdk_free(sdk);}

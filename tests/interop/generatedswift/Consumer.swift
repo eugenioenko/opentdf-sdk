@@ -126,7 +126,7 @@ func readerOptions(_ raw: [String: Any]) -> ReaderOptions {
 }
 func report(_ e: Error) -> [String: Any] {
   guard let o = e as? OpenTDFError else { return ["untyped": "\(e)"] }
-  return ["kind": o.kind.name, "op": o.op, "httpStatus": o.httpStatus, "connectCode": o.connectCode, "message": o.message]
+  return ["kind": o.kind.name, "op": o.op, "httpStatus": o.httpStatus, "connectCode": o.connectCode, "assertionId": o.assertionId, "message": o.message]
 }
 func expectFailure<T>(_ label: String, _ call: () async throws -> T) async throws -> [String: Any] {
   do { _ = try await call() } catch let e as OpenTDFError { return report(e) } catch { throw Failure(label: label + " untyped: \(error)") }
@@ -134,6 +134,44 @@ func expectFailure<T>(_ label: String, _ call: () async throws -> T) async throw
 }
 func writeJSON(_ run: URL, _ file: String, _ value: [String: Any]) throws {
   try JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]).write(to: run.appendingPathComponent(file))
+}
+
+/// A TDF with an unsigned assertion (HS256 over the payload key) and one signed with a caller HS256 secret, read with the right key by id, with a wrong key and with no key (assertion_failure), and with verification off.
+func assertions(_ sdk: SDK, _ raw: [String: Any], _ run: URL) async throws {
+  let secret = "assertion-secret-" + String(UInt64(Date().timeIntervalSince1970 * 1000), radix: 36)
+  let firstValue = "{\"ocl\":{\"pol\":\"2ccf11cb-6c9a-4e49-9746-a7f0a295945d\"}}"
+  let configs = [
+    AssertionConfig(id: "unsigned", type: "handling", scope: "tdo", appliesToState: "encrypted", statement: Statement(format: "json+stanag5636", schema: "urn:nato:stanag:5636:A:1:elements:json", value: firstValue)),
+    AssertionConfig(id: "signed", type: "other", scope: "payload", appliesToState: "unencrypted", statement: Statement(format: "json", schema: "urn:example:assertion:v1", value: "{\"note\":\"independent consumer\"}"), signingKey: .hs256(secret)),
+  ]
+  let payload = Data("assertion payload".utf8)
+  var options = tdfOptions(raw)
+  options.assertions = configs
+  let object = try await sdk.createTDF(payload, options)
+  let found = try await object.manifest().assertions
+  try object.close()
+  let archive = object.bytes
+  try check(found.count == 2 && found[0].id == "unsigned" && found[1].id == "signed" && found[1].binding.method == "jws" && !found[1].binding.signature.isEmpty, "assertions in manifest")
+  try check(found[0].statement.value == firstValue, "statement value kept")
+  func withKeys(_ defaultKey: AssertionKey?, _ keys: [String: AssertionKey]) -> ReaderOptions {
+    var o = readerOptions(raw)
+    o.assertionVerificationKeys = AssertionVerificationKeys(defaultKey: defaultKey, keys: keys)
+    return o
+  }
+  try check(try await sdk.decryptBytes(archive, withKeys(nil, ["signed": .hs256(secret)])) == payload, "decrypt with the right key")
+  func fails(_ label: String, _ options: ReaderOptions, _ id: String) async throws -> [String: Any] {
+    let error = try await expectFailure(label) { try await sdk.decryptBytes(archive, options) }
+    try check(error["kind"] as? String == "assertion_failure" && error["assertionId"] as? String == id, "\(label): \(error)")
+    return error
+  }
+  let wrong = try await fails("wrong key", withKeys(nil, ["signed": .hs256("not the secret")]), "signed")
+  let missing = try await fails("missing key", readerOptions(raw), "signed")
+  _ = try await fails("wrong default key", withKeys(.hs256("not the secret"), [:]), "unsigned")
+  var unverified = readerOptions(raw)
+  unverified.disableAssertionVerification = true
+  try check(try await sdk.decryptBytes(archive, unverified) == payload, "decrypt with verification disabled")
+  try archive.write(to: run.appendingPathComponent("assertions.generated.tdf"))
+  try writeJSON(run, "assertions.json", ["assertions": found.map { ["id": $0.id, "method": $0.binding.method] }, "wrong_key": wrong, "missing_key": missing])
 }
 
 /// xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error.
@@ -352,6 +390,8 @@ struct Consumer {
         try Data((hasMetadata ? "true" : "false").utf8).write(to: path(".presence"))
       case "negative":
         try writeJSON(run, name + ".error.json", try await expectFailure("negative") { try await sdk.decryptBytes(try Data(contentsOf: path(".tdf")), readerOptions(raw)) })
+      case "assertions":
+        try await assertions(sdk, raw, run)
       case "repeat":
         try await repeatRounds(sdk, raw, name)
         print("PASS generated native library", mode, name)

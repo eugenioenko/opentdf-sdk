@@ -22,9 +22,9 @@ static class Program
     const string Usage = @"Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
       [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-      [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+      [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+      [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -36,8 +36,8 @@ static class Program
     static readonly Dictionary<string,bool> DecryptFlags=Merge(Common,new(){["with-assertion-verification-keys"]=false,["no-verify-assertions"]=true,["session-key-algorithm"]=false,["kas-allowlist"]=false});
     static readonly string[] DpopAlgorithms={"ES256","ES384","ES512","RS256","RS384","RS512"};
     // Rules naming the flags this build cannot honour, optionally only for values other than the allowed ones.
-    static readonly (string,string[])[] EncryptUnsupported={("with-assertions",null),("ecdsa-binding",null),("target-mode",new[]{"4.3.0"}),("policy-mode",new[]{"encrypted"}),("wrapping-key-algorithm",new[]{"rsa:2048","ec:secp256r1","rsa:4096","ec:secp384r1","ec:secp521r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
-    static readonly (string,string[])[] DecryptUnsupported={("with-assertion-verification-keys",null),("session-key-algorithm",new[]{"rsa:2048","ec:secp256r1","rsa:4096","ec:secp384r1","ec:secp521r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
+    static readonly (string,string[])[] EncryptUnsupported={("ecdsa-binding",null),("target-mode",new[]{"4.3.0"}),("policy-mode",new[]{"encrypted"}),("wrapping-key-algorithm",new[]{"rsa:2048","ec:secp256r1","rsa:4096","ec:secp384r1","ec:secp521r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
+    static readonly (string,string[])[] DecryptUnsupported={("session-key-algorithm",new[]{"rsa:2048","ec:secp256r1","rsa:4096","ec:secp384r1","ec:secp521r1"}),("dpop",DpopAlgorithms),("with-client-creds-file",null)};
     static Dictionary<string,bool> Merge(Dictionary<string,bool> a,Dictionary<string,bool> b){var m=new Dictionary<string,bool>(a);foreach(var e in b)m[e.Key]=e.Value;return m;}
 
     sealed class Parsed
@@ -150,6 +150,69 @@ static class Program
         catch(JsonException e){stderr.WriteLine("failed to inspect TDF: "+e.Message);return ExitError;}
         return ExitSuccess;
     }
+    // --with-assertions and --with-assertion-verification-keys take a file path or JSON text, as otdfctl does:
+    // an object statement value is kept as compact JSON with sorted keys; HS256 keys are the string's bytes, RS256 keys PEM.
+    static string FileOrJson(string arg)
+    {
+        try{JsonDocument.Parse(arg).Dispose();return arg;}catch(JsonException){}
+        try{return File.ReadAllText(arg);}
+        catch(Exception e)when(e is IOException||e is UnauthorizedAccessException){throw new IOException(arg+" is neither JSON nor a readable file: "+e.Message);}
+    }
+    static string Text(JsonElement e,string key)=>e.ValueKind==JsonValueKind.Object&&e.TryGetProperty(key,out var v)&&v.ValueKind==JsonValueKind.String?v.GetString():"";
+    static void WriteSorted(Utf8JsonWriter w,JsonElement e)
+    {
+        switch(e.ValueKind)
+        {
+            case JsonValueKind.Object:w.WriteStartObject();foreach(var property in e.EnumerateObject().OrderBy(x=>x.Name,StringComparer.Ordinal)){w.WritePropertyName(property.Name);WriteSorted(w,property.Value);}w.WriteEndObject();break;
+            case JsonValueKind.Array:w.WriteStartArray();foreach(var item in e.EnumerateArray())WriteSorted(w,item);w.WriteEndArray();break;
+            default:e.WriteTo(w);break;
+        }
+    }
+    static string Compact(JsonElement e)
+    {
+        using var stream=new MemoryStream();
+        using(var w=new Utf8JsonWriter(stream,new JsonWriterOptions{Encoder=System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping}))WriteSorted(w,e);
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+    static AssertionKey AssertionKeyOf(JsonElement e,string label)
+    {
+        string alg=Text(e,"alg");
+        if(alg!="HS256"&&alg!="RS256")throw new ArgumentException(label+": unsupported signing key algorithm "+alg);
+        return new AssertionKey(alg,Text(e,"key"));
+    }
+    static IReadOnlyList<AssertionConfig> ParseAssertions(string arg)
+    {
+        using var doc=JsonDocument.Parse(FileOrJson(arg));
+        if(doc.RootElement.ValueKind!=JsonValueKind.Array)throw new ArgumentException("assertions must be a JSON list");
+        var configs=new List<AssertionConfig>();
+        foreach(var a in doc.RootElement.EnumerateArray())
+        {
+            if(a.ValueKind!=JsonValueKind.Object)throw new ArgumentException("assertions must be a JSON list of objects");
+            string id=Text(a,"id");
+            JsonElement statement=a.TryGetProperty("statement",out var st)&&st.ValueKind==JsonValueKind.Object?st:default;
+            string value="";
+            if(statement.ValueKind==JsonValueKind.Object&&statement.TryGetProperty("value",out var v)&&v.ValueKind!=JsonValueKind.Null)
+            {
+                if(v.ValueKind==JsonValueKind.String)value=v.GetString();
+                else if(v.ValueKind==JsonValueKind.Object)value=Compact(v);
+                else throw new ArgumentException("assertion "+id+": statement value is neither a string nor an object");
+            }
+            var config=new AssertionConfig(id,Text(a,"type"),Text(a,"scope"),Text(a,"appliesToState"),Text(statement,"format"),Text(statement,"schema"),value);
+            if(a.TryGetProperty("signingKey",out var key)&&key.ValueKind==JsonValueKind.Object)config=config with{SigningKey=AssertionKeyOf(key,"assertion "+id)};
+            configs.Add(config);
+        }
+        return configs;
+    }
+    static AssertionVerificationKeys ParseVerificationKeys(string arg)
+    {
+        using var doc=JsonDocument.Parse(FileOrJson(arg));
+        if(doc.RootElement.ValueKind!=JsonValueKind.Object)throw new ArgumentException("assertion verification keys must be a JSON object");
+        var keys=new AssertionVerificationKeys();
+        if(doc.RootElement.TryGetProperty("defaultKey",out var d)&&d.ValueKind==JsonValueKind.Object)keys=keys with{DefaultKey=new AssertionKey(Text(d,"alg"),Text(d,"key"))};
+        if(doc.RootElement.TryGetProperty("keys",out var k)&&k.ValueKind==JsonValueKind.Object)
+            keys=keys with{Keys=k.EnumerateObject().ToDictionary(e=>e.Name,e=>new AssertionKey(Text(e.Value,"alg"),Text(e.Value,"key")))};
+        return keys;
+    }
     static async Task<int> Encrypt(string[] args,TextWriter stderr)
     {
         Parsed p;try{p=Parse(args,EncryptFlags);}catch(ArgumentException e){stderr.Write(e.Message+"\n"+Usage);return ExitUsage;}
@@ -164,6 +227,11 @@ static class Program
             if(p.Value("attr")!="")options=options with{Attributes=SplitList(p.Value("attr"))};
             if(p.Value("wrapping-key-algorithm")!="")options=options with{WrappingKeyAlgorithm=p.Value("wrapping-key-algorithm")};
             if(p.Value("target-mode")!="")options=options with{TargetMode=p.Value("target-mode")};
+            if(p.Value("with-assertions")!="")
+            {
+                try{options=options with{Assertions=ParseAssertions(p.Value("with-assertions"))};}
+                catch(Exception e)when(e is ArgumentException||e is IOException||e is JsonException){stderr.WriteLine("Failed to read assertions: "+e.Message);return ExitUsage;}
+            }
             byte[] data;
             try{data=await Run(ct=>sdk.EncryptBytesAsync(input,options,ct));}
             catch(Exception e)when(e is OpenTdfException||e is TimeoutException){stderr.WriteLine("Failed to encrypt: "+Describe(e));return ExitError;}
@@ -182,6 +250,11 @@ static class Program
         await using(sdk)
         {
             var options=new ReaderOptions{DisableAssertionVerification=p.Flag("no-verify-assertions")};
+            if(p.Value("with-assertion-verification-keys")!="")
+            {
+                try{options=options with{AssertionVerificationKeys=ParseVerificationKeys(p.Value("with-assertion-verification-keys"))};}
+                catch(Exception e)when(e is ArgumentException||e is IOException||e is JsonException){stderr.WriteLine("Failed to read assertion verification keys: "+e.Message);return ExitUsage;}
+            }
             if(p.Value("session-key-algorithm")!="")options=options with{SessionKeyType=p.Value("session-key-algorithm")};
             // otdfctl: "*" alone ignores the allowlist; any other list is explicit.
             var allowlist=SplitList(p.Value("kas-allowlist"));

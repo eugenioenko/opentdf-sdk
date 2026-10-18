@@ -55,13 +55,39 @@ static class Entry
   if(cfg.TryGetProperty("AllowedKAS",out var routes))foreach(var r in routes.EnumerateArray())allow.Add(Text(r,"URL"));
   return new(){KasAllowlist=allow,SessionKeyType=Text(cfg,"SessionAlgorithm")==""?null:Text(cfg,"SessionAlgorithm")};
  }
- static Dictionary<string,object> Report(Exception e)=>e is OpenTdfException o?new(){["kind"]=o.Kind,["op"]=o.Op,["httpStatus"]=o.HttpStatus,["connectCode"]=o.ConnectCode,["message"]=o.Message}:new(){["untyped"]=e.GetType().Name+": "+e.Message};
+ static Dictionary<string,object> Report(Exception e)=>e is OpenTdfException o?new(){["kind"]=o.Kind,["op"]=o.Op,["httpStatus"]=o.HttpStatus,["connectCode"]=o.ConnectCode,["assertionId"]=o.AssertionId,["message"]=o.Message}:new(){["untyped"]=e.GetType().Name+": "+e.Message};
  static async Task<Dictionary<string,object>> ExpectFailure(string label,Func<Task> call)
  {
   try{await call();}catch(OpenTdfException e){return Report(e);}catch(Exception e){throw new Exception(label+" untyped: "+e);}
   throw new Exception(label+" returned successful output");
  }
  static IReadOnlyList<object> KeyAccess(IReadOnlyDictionary<string,object> manifest)=>(IReadOnlyList<object>)((IReadOnlyDictionary<string,object>)manifest["encryptionInformation"])["keyAccess"];
+
+ /// A TDF with an unsigned assertion (HS256 over the payload key) and one signed with a caller HS256 secret, read with the right key by id, with a wrong key and with no key (assertion_failure), and with verification off.
+ static async Task Assertions(Sdk sdk,JsonElement cfg)
+ {
+  string secret="assertion-secret-"+Guid.NewGuid().ToString("N")[..8];
+  string firstValue="{\"ocl\":{\"pol\":\"2ccf11cb-6c9a-4e49-9746-a7f0a295945d\"}}";
+  var configs=new[]{
+   new AssertionConfig("unsigned","handling","tdo","encrypted","json+stanag5636","urn:nato:stanag:5636:A:1:elements:json",firstValue),
+   new AssertionConfig("signed","other","payload","unencrypted","json","urn:example:assertion:v1","{\"note\":\"independent consumer\"}"){SigningKey=AssertionKey.Hs256(secret)}};
+  byte[] payload=Encoding.UTF8.GetBytes("assertion payload");byte[] archive;IReadOnlyList<object> found;
+  await using(var obj=await sdk.CreateTdfAsync(payload,TdfOptionsOf(cfg) with{Assertions=configs})){archive=obj.Bytes;found=(IReadOnlyList<object>)(await obj.ManifestAsync())["assertions"];}
+  var first=(IReadOnlyDictionary<string,object>)found[0];var second=(IReadOnlyDictionary<string,object>)found[1];var binding=(IReadOnlyDictionary<string,object>)second["binding"];
+  Check(found.Count==2&&(string)first["id"]=="unsigned"&&(string)second["id"]=="signed"&&(string)binding["method"]=="jws"&&(string)binding["signature"]!="","assertions in manifest");
+  Check((string)((IReadOnlyDictionary<string,object>)first["statement"])["value"]==firstValue,"statement value kept");
+  ReaderOptions WithKeys(AssertionKey defaultKey,IReadOnlyDictionary<string,AssertionKey> keys)=>ReaderOptionsOf(cfg) with{AssertionVerificationKeys=new(){DefaultKey=defaultKey,Keys=keys}};
+  Check((await sdk.DecryptBytesAsync(archive,WithKeys(null,new Dictionary<string,AssertionKey>{["signed"]=AssertionKey.Hs256(secret)}))).SequenceEqual(payload),"decrypt with the right key");
+  var wrong=await ExpectFailure("wrong key",()=>sdk.DecryptBytesAsync(archive,WithKeys(null,new Dictionary<string,AssertionKey>{["signed"]=AssertionKey.Hs256("not the secret")})));
+  Check((string)wrong["kind"]=="assertion_failure"&&(string)wrong["assertionId"]=="signed","wrong key: "+JsonSerializer.Serialize(wrong));
+  var missing=await ExpectFailure("missing key",()=>sdk.DecryptBytesAsync(archive,ReaderOptionsOf(cfg)));
+  Check((string)missing["kind"]=="assertion_failure"&&(string)missing["assertionId"]=="signed","missing key: "+JsonSerializer.Serialize(missing));
+  var wrongDefault=await ExpectFailure("wrong default key",()=>sdk.DecryptBytesAsync(archive,WithKeys(AssertionKey.Hs256("not the secret"),null)));
+  Check((string)wrongDefault["kind"]=="assertion_failure"&&(string)wrongDefault["assertionId"]=="unsigned","wrong default key: "+JsonSerializer.Serialize(wrongDefault));
+  Check((await sdk.DecryptBytesAsync(archive,ReaderOptionsOf(cfg) with{DisableAssertionVerification=true})).SequenceEqual(payload),"decrypt with verification disabled");
+  Write("assertions.generated.tdf",archive);
+  Write("assertions.json",JsonSerializer.Serialize(new Dictionary<string,object>{["assertions"]=found.Select(a=>new Dictionary<string,object>{["id"]=((IReadOnlyDictionary<string,object>)a)["id"],["method"]=((IReadOnlyDictionary<string,object>)((IReadOnlyDictionary<string,object>)a)["binding"])["method"]}).ToList(),["wrong_key"]=wrong,["missing_key"]=missing}));
+ }
 
  /// 100 encrypt and decrypt calls on one SDK, independent inputs and results, every handle closed; then the SDK is closed and later calls fail.
  /// xtest's test_self.py through the service clients: list namespaces, create a namespace and an attribute, read the attribute back by id, through the namespace's list and through the raw JSON call, and check a missing attribute's error.
@@ -222,6 +248,7 @@ static class Entry
      break;
     }
     case "negative":Write(name+".error.json",JsonSerializer.Serialize(await ExpectFailure("negative",()=>sdk.DecryptBytesAsync(Read(name+".tdf"),ReaderOptionsOf(raw)))));break;
+    case "assertions":await Assertions(sdk,raw);break;
     case "repeat":await Repeat(sdk,raw);break;
     case "services":await Services(sdk,raw);break;
     default:throw new ArgumentException("unknown mode");

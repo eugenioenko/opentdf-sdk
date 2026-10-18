@@ -75,7 +75,22 @@ public sealed record CertExchange(string ClientCertPem,string ClientKeyPem,IRead
 public sealed record TlsOptions{public string ClientCertPem{get;init;}public string ClientKeyPem{get;init;}public string RootCasPem{get;init;}public IReadOnlyList<string> Audience{get;init;}}
 /// The reference's KASInfo: one key access server for the template.
 public sealed record KasInfo(string Url){public string PublicKey{get;init;}public string Kid{get;init;}public string Algorithm{get;init;}public bool Default{get;init;}}
-public sealed record AssertionConfig(string Id,string Type,string Scope,string AppliesToState,string Format,string Schema,string Value);
+/// The reference's AssertionKey: an HS256 secret as text, or a PEM block for RS256 (a private key signs; a public or private key verifies).
+public sealed record AssertionKey(string Alg,string Key)
+{
+    public static AssertionKey Hs256(string secret)=>new("HS256",secret);
+    public static AssertionKey Rs256(string pem)=>new("RS256",pem);
+    internal Generated.AssertionKey ToGenerated()=>new(){Alg=Values.Encode(Alg),Key=Values.Encode(Key)};
+}
+/// The reference's AssertionConfig; a null SigningKey signs with HS256 over the payload key.
+public sealed record AssertionConfig(string Id,string Type,string Scope,string AppliesToState,string Format,string Schema,string Value){public AssertionKey SigningKey{get;init;}}
+/// WithAssertionVerificationKeys: keys by assertion id, with a default for the rest.
+public sealed record AssertionVerificationKeys
+{
+    public AssertionKey DefaultKey{get;init;}public IReadOnlyDictionary<string,AssertionKey> Keys{get;init;}
+    internal Generated.AssertionVerificationKeys ToGenerated()=>new(){DefaultKey=DefaultKey?.ToGenerated(),
+        Keys=Keys?.Select(e=>new Generated.AssertionKeyEntry{AssertionID=Values.Encode(e.Key),Alg=Values.Encode(e.Value.Alg),Key=Values.Encode(e.Value.Key)}).ToArray()};
+}
 public sealed record KasPublicKey(string Pem,string Kid,string Alg);
 /// The reference's ConnectRPCConnection: the endpoint a connection reaches.
 public sealed record ConnectRPCConnection(string Endpoint);
@@ -107,7 +122,7 @@ public sealed record TdfOptions
     internal Generated.TDFOptions ToGenerated()=>new(){Attributes=Values.Encode(Attributes),AttributeValues=Values.Encode(AttributeValues?.Select(v=>JsonFormatter.Default.Format(v)).ToList()),DisableAutoconfigure=DisableAutoconfigure,
         KasInformation=KasInformation?.Select(k=>new Generated.KASInfo{URL=Values.Encode(k.Url),PublicKey=Values.Encode(k.PublicKey),KID=Values.Encode(k.Kid),Algorithm=Values.Encode(k.Algorithm),Default=k.Default}).ToArray(),
         WrappingKeyAlgorithm=Values.Encode(WrappingKeyAlgorithm),SegmentSize=SegmentSize,InputSize=InputSize,MimeType=Values.Encode(MimeType),Metadata=Values.Encode(Metadata),
-        Assertions=Assertions?.Select(a=>new Generated.AssertionConfig{ID=Values.Encode(a.Id),Type=Values.Encode(a.Type),Scope=Values.Encode(a.Scope),AppliesToState=Values.Encode(a.AppliesToState),Statement=new Generated.Statement{Format=Values.Encode(a.Format),Schema=Values.Encode(a.Schema),Value=Values.Encode(a.Value)}}).ToArray(),
+        Assertions=Assertions?.Select(a=>new Generated.AssertionConfig{ID=Values.Encode(a.Id),Type=Values.Encode(a.Type),Scope=Values.Encode(a.Scope),AppliesToState=Values.Encode(a.AppliesToState),Statement=new Generated.Statement{Format=Values.Encode(a.Format),Schema=Values.Encode(a.Schema),Value=Values.Encode(a.Value)},SigningKey=a.SigningKey?.ToGenerated()}).ToArray(),
         SystemMetadataAssertion=SystemMetadataAssertion,TargetMode=Values.Encode(TargetMode)};
 }
 /// The reference's AttributeNameFQN and AttributeValueFQN: the FQN as given and its lower-case key.
@@ -115,12 +130,12 @@ public sealed record AttributeFqn(string Url,string Key);
 /// The reference's TDFReaderConfig options (shared-source ReaderOptions); every unset member is the reference default.
 public sealed record ReaderOptions
 {
-    public bool DisableAssertionVerification{get;init;}
+    public bool DisableAssertionVerification{get;init;}public AssertionVerificationKeys AssertionVerificationKeys{get;init;}
     /// WithKasAllowlist; null fetches the registry's list.
     public IReadOnlyList<string> KasAllowlist{get;init;}public bool IgnoreAllowlist{get;init;}public long MaxManifestSize{get;init;}public long SchemaValidation{get;init;}
     /// WithSessionKeyType: rsa:2048 (default), rsa:4096, ec:secp256r1, ec:secp384r1 or ec:secp521r1.
     public string SessionKeyType{get;init;}public IReadOnlyList<string> FulfillableObligationFqns{get;init;}
-    internal Generated.ReaderOptions ToGenerated()=>new(){DisableAssertionVerification=DisableAssertionVerification,KasAllowlist=Values.Encode(KasAllowlist),IgnoreAllowlist=IgnoreAllowlist,MaxManifestSize=MaxManifestSize,SchemaValidation=SchemaValidation,SessionKeyType=Values.Encode(SessionKeyType),FulfillableObligationFQNs=Values.Encode(FulfillableObligationFqns)};
+    internal Generated.ReaderOptions ToGenerated()=>new(){DisableAssertionVerification=DisableAssertionVerification,AssertionVerificationKeys=AssertionVerificationKeys?.ToGenerated(),KasAllowlist=Values.Encode(KasAllowlist),IgnoreAllowlist=IgnoreAllowlist,MaxManifestSize=MaxManifestSize,SchemaValidation=SchemaValidation,SessionKeyType=Values.Encode(SessionKeyType),FulfillableObligationFQNs=Values.Encode(FulfillableObligationFqns)};
 }
 
 /// The reference's TDFObject: the TDF bytes and a handle to its manifest.

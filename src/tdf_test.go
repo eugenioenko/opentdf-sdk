@@ -349,8 +349,8 @@ func Test_TDFReaderFail(t *testing.T) {
 		m["assertions"] = []any{map[string]any{"id": "a", "type": "other", "scope": "payload", "statement": map[string]any{"format": "json", "value": map[string]any{"k": "v"}}}}
 	}, nil)
 	_, err = s.DecryptBytes(context.Background(), withAssertions, ReaderOptions{})
-	if !errors.As(err, &e) || e.Kind != KindUnsupportedFeature {
-		t.Fatal("assertions unsupported until Phase 5", err)
+	if !errors.As(err, &e) || e.Kind != KindAssertionFailure || e.AssertionID != "a" || !strings.Contains(e.Message, "assertion verification failed") {
+		t.Fatal("an unsigned assertion fails verification", err)
 	}
 	if out, err := s.DecryptBytes(context.Background(), withAssertions, ReaderOptions{DisableAssertionVerification: true}); err != nil || len(out) == 0 {
 		t.Fatal("verification disabled", err)

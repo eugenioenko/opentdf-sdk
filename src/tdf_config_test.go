@@ -49,8 +49,6 @@ func TestWithSegmentSize(t *testing.T) {
 func TestUnsupportedTDFOptions(t *testing.T) {
 	for name, opts := range map[string]TDFOptions{
 		"TargetMode 4.2.2": {TargetMode: "4.2.2"},
-		"Assertions":       {Assertions: []AssertionConfig{{ID: "1"}}},
-		"SystemMetadata":   {SystemMetadataAssertion: true},
 		"X-Wing":           {WrappingKeyAlgorithm: hybridXWingKey},
 	} {
 		_, err := newTDFConfig(opts)

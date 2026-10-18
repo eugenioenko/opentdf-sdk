@@ -40,7 +40,13 @@ _OPTIONS = (
 )
 _KAS_INFO = (('url', 'URL', 's'), ('public_key', 'PublicKey', 's'), ('kid', 'KID', 's'), ('algorithm', 'Algorithm', 's'), ('default', 'Default', 'b'))
 _STATEMENT = (('format', 'Format', 's'), ('schema', 'Schema', 's'), ('value', 'Value', 's'))
-_ASSERTION_CONFIG = (('id', 'ID', 's'), ('type', 'Type', 's'), ('scope', 'Scope', 's'), ('applies_to_state', 'AppliesToState', 's'), ('statement', 'Statement', _STATEMENT))
+_ASSERTION_KEY = (('alg', 'Alg', 's'), ('key', 'Key', 's'))
+_ASSERTION_CONFIG = (
+    ('id', 'ID', 's'), ('type', 'Type', 's'), ('scope', 'Scope', 's'), ('applies_to_state', 'AppliesToState', 's'), ('statement', 'Statement', _STATEMENT),
+    ('signing_key', 'SigningKey', _ASSERTION_KEY),
+)
+_ASSERTION_KEY_ENTRY = (('assertion_id', 'AssertionID', 's'), ('alg', 'Alg', 's'), ('key', 'Key', 's'))
+_ASSERTION_VERIFICATION_KEYS = (('default_key', 'DefaultKey', _ASSERTION_KEY), ('keys', 'Keys', [_ASSERTION_KEY_ENTRY]))
 _TDF_OPTIONS = (
     ('attributes', 'Attributes', 'ss'), ('attribute_values', 'AttributeValues', 'ss'), ('disable_autoconfigure', 'DisableAutoconfigure', 'b'),
     ('kas_information', 'KasInformation', [_KAS_INFO]),
@@ -48,7 +54,8 @@ _TDF_OPTIONS = (
     ('metadata', 'Metadata', 's'), ('assertions', 'Assertions', [_ASSERTION_CONFIG]), ('system_metadata_assertion', 'SystemMetadataAssertion', 'b'), ('target_mode', 'TargetMode', 's'),
 )
 _READER_OPTIONS = (
-    ('disable_assertion_verification', 'DisableAssertionVerification', 'b'), ('kas_allowlist', 'KasAllowlist', 'ss'), ('ignore_allowlist', 'IgnoreAllowlist', 'b'),
+    ('disable_assertion_verification', 'DisableAssertionVerification', 'b'), ('assertion_verification_keys', 'AssertionVerificationKeys', _ASSERTION_VERIFICATION_KEYS),
+    ('kas_allowlist', 'KasAllowlist', 'ss'), ('ignore_allowlist', 'IgnoreAllowlist', 'b'),
     ('max_manifest_size', 'MaxManifestSize', 'n'), ('schema_validation', 'SchemaValidation', 'n'), ('session_key_type', 'SessionKeyType', 's'),
     ('fulfillable_obligation_fqns', 'FulfillableObligationFQNs', 'ss'),
 )
@@ -232,6 +239,20 @@ def _tdf_options(options):
     return dict(options, attribute_values=[json.dumps(json_format.MessageToDict(v), separators=(',', ':')) for v in values])
 
 
+def _reader_options(options):
+    verification = options.get('assertion_verification_keys')
+    if verification is None: return options
+    if type(verification) is not dict: _invalid()
+    keys = verification.get('keys')
+    if keys is None: return options
+    if type(keys) is not dict: _invalid()
+    entries = []
+    for assertion_id, key in keys.items():
+        if type(key) is not dict: _invalid()
+        entries.append(dict(key, assertion_id=assertion_id))
+    return dict(options, assertion_verification_keys=dict(verification, keys=entries))
+
+
 def _provider(provider):
     def call(request):
         value = provider(request)
@@ -353,13 +374,13 @@ class SDK:
         async with await self.create_tdf_async(plaintext, **options) as obj: return obj.bytes
 
     def _load(self, ciphertext, options):
-        try: return self._handle.LoadTDF(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, options), self._calls)
+        try: return self._handle.LoadTDF(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, _reader_options(options)), self._calls)
         except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
     def load_tdf(self, ciphertext, *, timeout=None, **options): return _wait(self._load(ciphertext, options), timeout, lambda h: Reader(h, self._calls))
     async def load_tdf_async(self, ciphertext, **options): return await _await(self._load(ciphertext, options), lambda h: Reader(h, self._calls))
 
     def _decrypt(self, ciphertext, options):
-        try: return self._handle.DecryptBytes(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, options), self._calls)
+        try: return self._handle.DecryptBytes(rt.library_snapshot_bytes(ciphertext), _to_generated(_READER_OPTIONS, _reader_options(options)), self._calls)
         except rt.LibraryFailure as failure: raise OpenTDFError(failure) from None
     def decrypt_bytes(self, ciphertext, *, timeout=None, **options): return _wait(self._decrypt(ciphertext, options), timeout, lambda v: v or b'')
     async def decrypt_bytes_async(self, ciphertext, **options): return await _await(self._decrypt(ciphertext, options), lambda v: v or b'')

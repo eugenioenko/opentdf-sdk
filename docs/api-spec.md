@@ -980,3 +980,64 @@ on every target would dominate Swift and Rust build times).
   reader use the `granter.go` and `key_splitter.go` ports, and the
   subpackage's exports need the separate importable package Phase 10 builds
   per target.
+
+### Deviations recorded by Phase 5 part 1
+
+Found while porting `assertion.go` and the reader's assertion checks to the
+shared source and the Go host; each keeps the reference behaviour unless
+noted.
+
+- `AssertionKey.Key` is a string, not `interface{}`: the raw HS256 secret, or
+  a PEM block for RS256 (a private key signs; a public or private key
+  verifies). Hardware-backed signers (`crypto.Signer`) do not cross the
+  boundary and are not planned.
+- `AssertionVerificationKeys.Keys` is a list of `AssertionKeyEntry{AssertionID,
+  Alg, Key}` rather than `map[string]AssertionKey`, because maps do not cross
+  the boundary; `Get` and `IsEmpty` behave as the reference's.
+- `Assertion.Verify` requires the JWS header's `alg` to name the key's
+  algorithm and verifies with that key only; the reference also tries a key
+  carried in the header (`jwk`, `x5c`). Header keys arrive with Goalchemy
+  #76 (X.509) in Phase 8.
+- The JWS header is `{"alg":"<alg>","typ":"JWT"}`, as `jwx` writes it; the
+  claims are `assertionHash` and `assertionSig` only.
+- `GetSystemMetadataAssertionConfig` omits `operating_system`,
+  `go_version` and `architecture` until the runtime reports them (Goalchemy
+  #74); `sdk_version` is `Goalchemy-<Version>`. `tdf_spec_version` and
+  `creation_date` (RFC 3339) match the reference.
+- Assertion failures are `Error{Kind: assertion_failure, AssertionID}` with
+  the reference's text: `[tamper detected] tdf: issue verifying assertions,
+  id: <id>: <detail>` for hash and signature mismatches (`errors.Is(err,
+  ErrTampered)` holds), and `assertion verification failed: assertion: failed
+  to verify with provided key: <cause>` when the binding does not verify
+  under the selected key, which the reference does not wrap in
+  `ErrAssertionFailure` either.
+- `--with-assertions` and `--with-assertion-verification-keys` in `otdfgc`
+  accept a file path or JSON text, as otdfctl does; a statement `value` that
+  is a JSON object is kept as its compact text, HS256 keys are used as the
+  bytes of the string and RS256 keys as PEM, as the web SDK's CLI does.
+
+### Deviations recorded by Phase 5 part 2
+
+Found while exposing the assertion options on the seven other hosts and
+their `otdfgc` CLIs; the shared source is unchanged.
+
+- Verification keys are a map by assertion id in each host's idiom
+  (TypeScript `Record<string, AssertionKey>`, Python `dict`, Java `Map`, C#
+  `IReadOnlyDictionary`, Rust `BTreeMap`, Swift `[String: AssertionKey]`)
+  and an entry array in C (`otdf_assertion_key_entry`); every adapter
+  flattens the map to the shared source's `AssertionVerificationKeys.Keys`
+  list. Swift sorts the entries by id, the others keep the map's order; the
+  lookup is by id, so the order does not matter.
+- A signing key is optional on every host (`undefined`, `None`, `null`,
+  `Option`, `nil`; both members `NULL` in C) and crosses as the shared
+  source's empty `AssertionKey`, which signs with HS256 over the payload
+  key.
+- Every CLI writes an object statement value as compact JSON with sorted
+  keys, as the Go CLI's `json.Marshal` of a `map` does, so the same input
+  file produces the same statement on every target. The C CLI carries a
+  small JSON reader for the two flags; no dependency was added.
+- `GetSystemMetadataAssertionConfig` is reachable only through the Go
+  host's generated package; the other hosts add the system-metadata
+  assertion with the `systemMetadataAssertion` option and do not expose the
+  config builder.
+

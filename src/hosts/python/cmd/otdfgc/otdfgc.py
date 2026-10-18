@@ -16,9 +16,9 @@ TIMEOUT_SECONDS = 120
 USAGE = '''Usage:
   otdfgc encrypt <in> --out <file> --host <url> --with-client-creds <json>
       [--attr <fqn,...>] [--mime-type <t>] [--wrapping-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
-      [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
+      [--with-assertions <file|json>] [--target-mode 4.3.0] [--policy-mode encrypted] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc decrypt <in> --out <file> --host <url> --with-client-creds <json>
-      [--no-verify-assertions] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
+      [--no-verify-assertions] [--with-assertion-verification-keys <file|json>] [--session-key-algorithm rsa:2048|ec:secp256r1|rsa:4096|ec:secp384r1|ec:secp521r1]
       [--kas-allowlist <url,...|*>] [--dpop ES256|RS256] [--dpop-key <pem>] [--tls-no-verify]
   otdfgc inspect <in>
   otdfgc supports <feature>
@@ -29,8 +29,8 @@ COMMON_FLAGS = (('out', False), ('host', False), ('with-client-creds', False), (
 ENCRYPT_FLAGS = (('attr', False), ('mime-type', False), ('with-assertions', False), ('wrapping-key-algorithm', False), ('target-mode', False), ('policy-mode', False), ('ecdsa-binding', True)) + COMMON_FLAGS
 DECRYPT_FLAGS = (('with-assertion-verification-keys', False), ('no-verify-assertions', True), ('session-key-algorithm', False), ('kas-allowlist', False)) + COMMON_FLAGS
 DPOP_ALGORITHMS = ('ES256', 'ES384', 'ES512', 'RS256', 'RS384', 'RS512')
-ENCRYPT_UNSUPPORTED = (('with-assertions', None), ('ecdsa-binding', None), ('target-mode', ('4.3.0',)), ('policy-mode', ('encrypted',)), ('wrapping-key-algorithm', ('rsa:2048', 'ec:secp256r1', 'rsa:4096', 'ec:secp384r1', 'ec:secp521r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
-DECRYPT_UNSUPPORTED = (('with-assertion-verification-keys', None), ('session-key-algorithm', ('rsa:2048', 'ec:secp256r1', 'rsa:4096', 'ec:secp384r1', 'ec:secp521r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
+ENCRYPT_UNSUPPORTED = (('ecdsa-binding', None), ('target-mode', ('4.3.0',)), ('policy-mode', ('encrypted',)), ('wrapping-key-algorithm', ('rsa:2048', 'ec:secp256r1', 'rsa:4096', 'ec:secp384r1', 'ec:secp521r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
+DECRYPT_UNSUPPORTED = (('session-key-algorithm', ('rsa:2048', 'ec:secp256r1', 'rsa:4096', 'ec:secp384r1', 'ec:secp521r1')), ('dpop', DPOP_ALGORITHMS), ('with-client-creds-file', None))
 
 
 class Parsed:
@@ -180,6 +180,55 @@ def inspect(args, stdout, stderr):
     return EXIT_SUCCESS
 
 
+def file_or_json(arg):
+    """The argument's text: the file it names, or the argument itself when it
+    is JSON, as otdfctl accepts both."""
+    try: json.loads(arg); return arg
+    except ValueError: pass
+    try:
+        with open(arg, encoding='utf-8') as f: return f.read()
+    except OSError as e: raise ValueError('%s is neither JSON nor a readable file: %s' % (arg, e))
+
+
+def assertion_key(k, label):
+    if not isinstance(k, dict) or k.get('alg') not in ('HS256', 'RS256'):
+        raise ValueError('%s: unsupported signing key algorithm %s' % (label, (k or {}).get('alg') if isinstance(k, dict) else k))
+    return {'alg': k['alg'], 'key': str(k.get('key', ''))}
+
+
+def parse_assertions(arg):
+    """--with-assertions: a JSON list of assertion configs whose statement value
+    is a string or an object (kept as compact JSON) and whose optional
+    signingKey is {alg, key} with the HS256 secret or RS256 private key PEM."""
+    try: items = json.loads(file_or_json(arg))
+    except ValueError as e: raise ValueError('assertions must be a JSON list: %s' % e)
+    if not isinstance(items, list): raise ValueError('assertions must be a JSON list')
+    out = []
+    for a in items:
+        statement = a.get('statement') or {}
+        c = {'id': a.get('id', ''), 'type': a.get('type', ''), 'scope': a.get('scope', ''), 'applies_to_state': a.get('appliesToState', ''),
+             'statement': {'format': statement.get('format', ''), 'schema': statement.get('schema', '')}}
+        value = statement.get('value')
+        if isinstance(value, str): c['statement']['value'] = value
+        elif isinstance(value, dict): c['statement']['value'] = json.dumps(value, separators=(',', ':'), sort_keys=True)
+        elif value is not None: raise ValueError('assertion %s: statement value is neither a string nor an object' % c['id'])
+        if a.get('signingKey') is not None: c['signing_key'] = assertion_key(a['signingKey'], 'assertion ' + c['id'])
+        out.append(c)
+    return out
+
+
+def parse_verification_keys(arg):
+    """--with-assertion-verification-keys: {"keys": {id: {alg, key}},
+    "defaultKey": {alg, key}} with the HS256 secret or RS256 public key PEM."""
+    try: data = json.loads(file_or_json(arg))
+    except ValueError as e: raise ValueError('assertion verification keys must be a JSON object: %s' % e)
+    if not isinstance(data, dict): raise ValueError('assertion verification keys must be a JSON object')
+    keys = {}
+    if data.get('defaultKey'): keys['default_key'] = {'alg': data['defaultKey'].get('alg', ''), 'key': str(data['defaultKey'].get('key', ''))}
+    if data.get('keys'): keys['keys'] = {i: {'alg': k.get('alg', ''), 'key': str(k.get('key', ''))} for i, k in data['keys'].items()}
+    return keys
+
+
 def encrypt(args, stderr):
     try: p = parse_flags(args, ENCRYPT_FLAGS)
     except ValueError as e:
@@ -202,6 +251,10 @@ def encrypt(args, stderr):
         if p.value('attr'): opts['attributes'] = split_list(p.value('attr'))
         if p.value('wrapping-key-algorithm'): opts['wrapping_key_algorithm'] = p.value('wrapping-key-algorithm')
         if p.value('target-mode'): opts['target_mode'] = p.value('target-mode')
+        if p.value('with-assertions'):
+            try: opts['assertions'] = parse_assertions(p.value('with-assertions'))
+            except ValueError as e:
+                print('Failed to read assertions: %s' % e, file=stderr); return EXIT_USAGE
         try: out = sdk.encrypt_bytes(data, timeout=TIMEOUT_SECONDS, **opts)
         except tdf.OpenTDFError as e:
             print('Failed to encrypt: ' + describe(e), file=stderr); return EXIT_ERROR
@@ -228,6 +281,10 @@ def decrypt(args, stderr):
     if sdk is None: return code
     with sdk:
         opts = {'disable_assertion_verification': p.flag('no-verify-assertions')}
+        if p.value('with-assertion-verification-keys'):
+            try: opts['assertion_verification_keys'] = parse_verification_keys(p.value('with-assertion-verification-keys'))
+            except ValueError as e:
+                print('Failed to read assertion verification keys: %s' % e, file=stderr); return EXIT_USAGE
         if p.value('session-key-algorithm'): opts['session_key_type'] = p.value('session-key-algorithm')
         # otdfctl: "*" alone ignores the allowlist; any other list is explicit.
         allowlist = split_list(p.value('kas-allowlist'))

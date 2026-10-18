@@ -359,6 +359,24 @@ impl KasInfo {
         KasInfo { url: url.to_owned(), ..Default::default() }
     }
 }
+/// The reference's AssertionKey: an HS256 secret as text, or a PEM block for RS256 (a private key signs; a public or private key verifies).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AssertionKey {
+    pub alg: String,
+    pub key: String,
+}
+impl AssertionKey {
+    pub fn hs256(secret: &str) -> Self {
+        AssertionKey { alg: "HS256".into(), key: secret.to_owned() }
+    }
+    pub fn rs256(pem: &str) -> Self {
+        AssertionKey { alg: "RS256".into(), key: pem.to_owned() }
+    }
+    fn generated(key: Option<&AssertionKey>) -> generated::AssertionKey {
+        generated::AssertionKey { Alg: key.map(|k| bytes(&k.alg)).unwrap_or_default(), Key: key.map(|k| bytes(&k.key)).unwrap_or_default() }
+    }
+}
+/// The reference's AssertionConfig; no `signing_key` signs with HS256 over the payload key.
 #[derive(Clone, Debug, Default)]
 pub struct AssertionConfig {
     pub id: String,
@@ -366,6 +384,21 @@ pub struct AssertionConfig {
     pub scope: String,
     pub applies_to_state: String,
     pub statement: Statement,
+    pub signing_key: Option<AssertionKey>,
+}
+/// WithAssertionVerificationKeys: keys by assertion id, with a default for the rest.
+#[derive(Clone, Debug, Default)]
+pub struct AssertionVerificationKeys {
+    pub default_key: Option<AssertionKey>,
+    pub keys: BTreeMap<String, AssertionKey>,
+}
+impl AssertionVerificationKeys {
+    fn generated(&self) -> generated::AssertionVerificationKeys {
+        generated::AssertionVerificationKeys {
+            DefaultKey: AssertionKey::generated(self.default_key.as_ref()),
+            Keys: self.keys.iter().map(|(id, k)| generated::AssertionKeyEntry { AssertionID: bytes(id), Alg: bytes(&k.alg), Key: bytes(&k.key) }).collect(),
+        }
+    }
 }
 
 /// The reference's TDFConfig options (shared-source `TDFOptions`); every default is the reference default.
@@ -421,6 +454,7 @@ impl TdfOptions {
                         Schema: bytes(&a.statement.schema),
                         Value: bytes(&a.statement.value),
                     },
+                    SigningKey: AssertionKey::generated(a.signing_key.as_ref()),
                 })
                 .collect(),
             SystemMetadataAssertion: self.system_metadata_assertion,
@@ -433,6 +467,7 @@ impl TdfOptions {
 #[derive(Clone, Debug, Default)]
 pub struct ReaderOptions {
     pub disable_assertion_verification: bool,
+    pub assertion_verification_keys: AssertionVerificationKeys,
     /// WithKasAllowlist; `None` fetches the registry's list.
     pub kas_allowlist: Option<Vec<String>>,
     pub ignore_allowlist: bool,
@@ -446,6 +481,7 @@ impl ReaderOptions {
     fn generated(&self) -> generated::ReaderOptions {
         generated::ReaderOptions {
             DisableAssertionVerification: self.disable_assertion_verification,
+            AssertionVerificationKeys: self.assertion_verification_keys.generated(),
             KasAllowlist: self.kas_allowlist.as_deref().map(list).unwrap_or_default(),
             IgnoreAllowlist: self.ignore_allowlist,
             MaxManifestSize: self.max_manifest_size,

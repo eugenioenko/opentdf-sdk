@@ -1,0 +1,14 @@
+package io.opentdf.tdf3;
+
+import io.goalchemy.generated.Generated;
+
+/** The reference's AssertionKey: an HS256 secret as text, or a PEM block for RS256 (a private key signs; a public or private key verifies). */
+public record AssertionKey(String alg, String key) {
+ public static AssertionKey hs256(String secret) { return new AssertionKey("HS256", secret); }
+ public static AssertionKey rs256(String pem) { return new AssertionKey("RS256", pem); }
+ Generated.AssertionKey toGenerated() {
+  Generated.AssertionKey k = new Generated.AssertionKey();
+  k.Alg = Values.encode(alg); k.Key = Values.encode(key);
+  return k;
+ }
+}
