@@ -3114,3 +3114,18 @@ nested test modules that declare Goalchemy to v0.7.4. The split-plan module
 now passes readonly test loading and has no tidy diff. The same offline
 format/protocol gate passes all 273 named checks locally. These module-only
 changes leave measured SDK source and packages unchanged.
+
+### Limit shared CI runner usage
+
+Assign every runner job to one of four repository-wide concurrency groups
+with `queue: max`, and cap the native package matrix at four. Documentation
+builds and deployments share this budget. New commits cancel superseded PR
+delivery runs. All target lists, test steps, permissions and deployment
+conditions remain unchanged.
+
+Validated all eleven possible job instances, including optional Swift, against
+the four groups. YAML parsing, workflow expression lint, source comparisons
+and whitespace checks pass. Actionlint 1.7.12 requires a narrow compatibility
+filter for GitHub's documented `queue` key; the queue settings are checked
+separately. No compiler, SDK or benchmark tests were rerun for these scheduling
+changes.

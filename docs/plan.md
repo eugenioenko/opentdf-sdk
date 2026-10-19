@@ -623,3 +623,10 @@ pipelines can run concurrently. Keep it in draft until Goalchemy #117 is merged,
 its accepted head is signed and published as v0.7.4, and the installed release
 emits identical managed-target source to the measured build. SDK merge then
 requires its own complete green checks on the pinned candidate.
+
+### Repository CI runner budget
+
+Limit all workflow runs together to four active runners using four shared
+job concurrency groups. Include documentation, offline checks and native
+package matrices, retaining all targets and existing test steps. Superseded
+PR runs cancel at workflow level. See [CI runner budget](ci.md).
