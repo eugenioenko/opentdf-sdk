@@ -17,9 +17,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   offline-format-protocol:
     runs-on: ubuntu-22.04
+    concurrency:
+      group: repository-runner-2
+      cancel-in-progress: false
+      queue: max
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -61,10 +69,14 @@ jobs:
   real-kas-native-packages:
     name: ${{ matrix.target }} - Real KAS (${{ inputs.coverage || 'focused' }})
     runs-on: ubuntu-22.04
+    concurrency:
+      group: repository-runner-${{ fromJSON('{"go":1,"typescript":2,"java":3,"csharp":4,"python":1,"rust":2,"c":3,"swift":4}')[matrix.target] || 4 }}
+      cancel-in-progress: false
+      queue: max
     timeout-minutes: 75
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 4
       matrix:
         target: ${{ fromJSON(inputs.swift && '["go","typescript","java","csharp","python","rust","c","swift"]' || '["go","typescript","java","csharp","python","rust","c"]') }}
     env:

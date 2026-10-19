@@ -20,6 +20,10 @@ jobs:
   build:
     name: Generate and build SDK documentation
     runs-on: ubuntu-latest
+    concurrency:
+      group: repository-runner-1
+      cancel-in-progress: false
+      queue: max
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -69,13 +73,14 @@ jobs:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: repository-runner-1
+      cancel-in-progress: false
+      queue: max
     timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
-    concurrency:
-      group: github-pages
-      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
