@@ -67,6 +67,7 @@ jobs:
         run: bash sdk/scripts/generate-protocol.sh --check
 
   real-kas-native-packages:
+    needs: offline-format-protocol
     name: ${{ matrix.target }} - Real KAS (${{ inputs.coverage || 'focused' }})
     runs-on: ubuntu-22.04
     concurrency:
@@ -75,8 +76,7 @@ jobs:
       queue: max
     timeout-minutes: 75
     strategy:
-      fail-fast: false
-      max-parallel: 4
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
         target: ${{ fromJSON(inputs.swift && '["go","typescript","java","csharp","python","rust","c","swift"]' || '["go","typescript","java","csharp","python","rust","c"]') }}
     env:

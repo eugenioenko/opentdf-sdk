@@ -3129,3 +3129,18 @@ and whitespace checks pass. Actionlint 1.7.12 requires a narrow compatibility
 filter for GitHub's documented `queue` key; the queue settings are checked
 separately. No compiler, SDK or benchmark tests were rerun for these scheduling
 changes.
+
+### PR fail-fast and retry continuation
+
+Gate native package matrices on the offline check and enable fail-fast for
+PRs. Add a trusted default-branch resume workflow: a manually retried failure
+that passes can restart its cancelled siblings, but unresolved failures,
+cancelled retries, stale commits, changed attempts and closed PRs do not
+trigger automatic retries. Successful jobs retain their earlier results.
+
+The resume job shares the existing four runner groups. Those groups enforce
+the cap directly; removing the extra matrix parallelism limit prevents idle
+free groups behind a busy group. All 53 focused Python CI tests pass, including
+13 new retry/gate cases. Workflow expression lint, runner-group inventory,
+permission checks and whitespace checks pass. The isolated live GitHub retry
+probe is awaiting a hosted runner; its receipts stay under ignored storage.
