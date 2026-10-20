@@ -28,7 +28,7 @@ workflows remain independent.
 Retry a failed matrix job from its Actions page. After it passes, the trusted
 `Resume CI after retry` workflow requests the remaining failed or cancelled
 jobs, keeping successful results. It does not automatically retry a job that
-is still failing. It ignores cancelled retry attempts and checks that the PR
-is still open at the same commit and attempt before resuming. Source fixes
+is still failing. It respects newly cancelled retry jobs while distinguishing
+GitHub's carried cancellation records, and checks that the PR is still open at the same commit and attempt before resuming. Source fixes
 need a new commit; job retries use the original commit. Automatic continuation
 requires the resume workflow to be merged into the default branch.

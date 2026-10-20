@@ -3144,3 +3144,11 @@ free groups behind a busy group. All 53 focused Python CI tests pass, including
 13 new retry/gate cases. Workflow expression lint, runner-group inventory,
 permission checks and whitespace checks pass. The isolated live GitHub retry
 probe is awaiting a hosted runner; its receipts stay under ignored storage.
+
+The live probe exposed GitHub copying cancelled sibling records into a new
+partial attempt with their original completion times. Distinguish those
+carried records from new cancellations so a repaired retry can resume safely.
+All 16 retry/gate tests and all 56 SDK CI helper tests pass after the fix.
+Replay of the recorded job history selects exactly the two cancelled siblings;
+the live API accepted their continuation without replaying the repaired job.
+The final resumed probe job is still queued at this checkpoint.
