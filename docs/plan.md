@@ -630,3 +630,10 @@ Limit all workflow runs together to four active runners using four shared
 job concurrency groups. Include documentation, offline checks and native
 package matrices, retaining all targets and existing test steps. Superseded
 PR runs cancel at workflow level. See [CI runner budget](ci.md).
+
+### PR failure and retry scheduling
+
+Enable native fail-fast on PR package matrices and gate them on offline
+checks. Resume cancelled siblings after a failed job is manually retried and
+passes, using trusted default-branch automation. Preserve the four shared
+runner groups and reject stale commits, changed attempts and cancelled retries.
